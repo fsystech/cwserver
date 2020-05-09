@@ -1,0 +1,31 @@
+{
+  "name": "swserver",
+  "version": "0.0.1",
+  "description": "Sow.Node.Web.ServerTs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": {
+    "name": "Safe Online World Ltd.",
+    "url": "https://github.com/rktuxyn/swserver"
+  },
+  "scripts": {
+    "start": "node clean.js && tsc && node dist/server.js o_conference",
+    "test": "node dist/test.js",
+    "dev": "nodemon server.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.14",
+    "tslint": "^6.1.2",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "@types/crypto-js": "^3.1.45",
+    "@types/js-base64": "^2.3.1",
+    "@types/socket.io": "^2.1.4",
+    "crypto-js": "^4.0.0",
+    "js-base64": "^2.5.2",
+    "nodemon": "^2.0.3",
+    "socket.io": "^2.3.0",
+    "ts-node": "^8.10.1"
+  }
+}
