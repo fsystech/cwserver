@@ -32,5 +32,6 @@ httpServer.listen( server.port, () => server.log.write( `
     [~] Running Server...
 `, ConsoleColor.FgMagenta ) );
 ```
+follow ```app_config.json```
 run ```node server your_app_dir_name```
 
