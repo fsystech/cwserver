@@ -6,12 +6,8 @@ import { IController } from './sow-controller';
 import { ICryptoInfo } from "./sow-encryption";
 import { ILogger } from "./sow-logger";
 import { ISowDatabaseType } from './sow-database-type';
-export interface CtxNext {
-    (code: number | undefined, transfer?: boolean): any;
-}
-export interface AppHandler {
-    (ctx: IContext): any;
-}
+export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => any;
+export declare type AppHandler = (ctx: IContext) => any;
 export interface IContext {
     [key: string]: any;
     error?: string;
@@ -64,15 +60,15 @@ export interface IServerConfig {
         key: ICryptoInfo;
         maxAge: number;
     };
-    mimeType: Array<string>;
+    mimeType: string[];
     defaultExt: string;
-    views: Array<string>;
+    views: string[];
     errorPage: {
         [x: string]: string;
     };
-    hiddenDirectory: Array<string>;
+    hiddenDirectory: string[];
     hostInfo: {
-        origin: Array<string>;
+        origin: string[];
         root: string;
         hostName: string;
         frameAncestors?: string;
@@ -82,7 +78,7 @@ export interface IServerConfig {
         };
         port: string | number;
     };
-    database?: Array<IDatabaseConfig>;
+    database?: IDatabaseConfig[];
     templateCacheType: string;
     staticFile: {
         compression: boolean;
@@ -93,8 +89,8 @@ export interface IServerConfig {
         maxAge: number;
         serverRevalidate: boolean;
     };
-    liveStream: Array<string>;
-    noCache: Array<string>;
+    liveStream: string[];
+    noCache: string[];
     socketPath?: string;
     bundler: {
         enable: boolean;
@@ -142,9 +138,7 @@ export interface ISowServer {
         [x: string]: ISowDatabaseType;
     };
 }
-export interface IViewHandler {
-    (app: IApps, controller: IController, server: ISowServer): void;
-}
+export declare type IViewHandler = (app: IApps, controller: IController, server: ISowServer) => void;
 export interface ISowView {
     [key: string]: IViewHandler | any;
     __isRunOnly: boolean;
@@ -182,7 +176,7 @@ export declare class Context implements IContext {
     servedFrom?: string;
     server: ISowServer;
     constructor(_server: ISowServer, _req: IRequest, _res: IResponse, _session: ISession);
-    next(code: number | undefined, transfer?: boolean): void;
+    next(code?: number | undefined, transfer?: boolean): void;
     redirect(url: string): void;
     write(str: string): void;
     transferRequest(toPath: string): void;

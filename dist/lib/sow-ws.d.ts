@@ -6,9 +6,9 @@ export interface IWsClientInfo {
     client: (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
         [x: string]: any;
     };
-    getServerEvent(): Array<{
+    getServerEvent(): {
         [x: string]: any;
-    }>;
+    }[];
 }
 export interface ISowSocketInfo {
     token: string;
@@ -24,15 +24,15 @@ export interface ISowSocketInfo {
 }
 export interface ISowSocket {
     isActiveSocket(token: string): boolean;
-    getOwners(group?: string): Array<ISowSocketInfo>;
-    findByHash(hash: string): Array<ISowSocketInfo>;
-    findByLogin(loginId: string): Array<ISowSocketInfo>;
-    toList(sockets: Array<ISowSocketInfo>): Array<{
+    getOwners(group?: string): ISowSocketInfo[];
+    findByHash(hash: string): ISowSocketInfo[];
+    findByLogin(loginId: string): ISowSocketInfo[];
+    toList(sockets: ISowSocketInfo[]): {
         [x: string]: any;
-    }>;
-    getClientByExceptHash(exceptHash: string, group?: string): Array<ISowSocketInfo>;
-    getClientByExceptLogin(exceptLoginId: string, group?: string): Array<ISowSocketInfo>;
-    getClient(token: string, group?: string): Array<ISowSocketInfo>;
+    }[];
+    getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[];
+    getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[];
+    getClient(token: string, group?: string): ISowSocketInfo[];
     getSocket(token: string): ISowSocketInfo | void;
     removeSocket(token: string): boolean;
     sendMsg(token: string, method: string, data?: any): boolean;
@@ -84,8 +84,8 @@ export declare class SowSocket implements ISowSocket {
 }
 export declare function SoketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
     isConnectd: boolean;
-    wsEvent: Array<{
+    wsEvent: {
         [x: string]: any;
-    }>;
+    }[];
     create: () => void;
 };

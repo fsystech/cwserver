@@ -1,0 +1,49 @@
+{
+  "appName": "cwserver",
+  "version": "0.0.4",
+  "packageVersion": "1",
+  "isDebug": true,
+  "templateCache": true,
+  "encryptionKey": "123$#132",
+  "templateCacheType": "FILE",
+  "socketPath": "",
+  "staticFile": {
+    "fileCache": true,
+    "compression": true,
+    "minCompressionSize": 0
+  },
+  "cacheHeader": {
+    "maxAge": "7d",
+    "serverRevalidate": true
+  },
+  "liveStream": [ "mp4", "3gp", "3gpp" ],
+  "noCache": [ "pdf" ],
+  "session": {
+    "cookie": "_session",
+    "maxAge": "1d",
+    "key": "abc$#123"
+  },
+  "mimeType": [ "css", "js", "png", "gif", "ico", "map", "mp4", "pdf" ],
+  "defaultExt": ".html",
+  "bundler": {
+    "enable": true,
+    "fileCache": true
+  },
+  "views": [ "$root/$public/lib/view/main.js" ],
+  "errorPage": {
+    "404": "$root/$public/error_page/404.html",
+    "401": "$root/$public/error_page/401.html",
+    "500": "$root/$public/error_page/500.html"
+  },
+  "hiddenDirectory": [ "/lib/", "/config/", "/error_page/" ],
+  "hostInfo": {
+    "origin": [ ],
+    "root": "www",
+    "hostName": "",
+    "frameAncestors": "",
+    "tls": false,
+    "cert": {},
+    "port": 8080
+  },
+  "database": []
+}

@@ -239,10 +239,11 @@ ${appRoot}\\www_public
         this.public = wwwName === null || wwwName === void 0 ? void 0 : wwwName.toString();
         this.config = new ServerConfig();
         this.db = {};
+        const myParent = _path.resolve(__dirname, '..');
         this.errorPage = {
-            "404": "$root/error_page/404.html",
-            "401": "$root/error_page/401.html",
-            "500": "$root/error_page/500.html"
+            "404": _path.resolve(`${myParent}/error_page/404.html`),
+            "401": _path.resolve(`${myParent}/error_page/401.html`),
+            "500": _path.resolve(`${myParent}/error_page/500.html`)
         };
         const absPath = _path.resolve(`${this.root}/${this.public}/config/app_config.json`);
         if (!_fs.existsSync(absPath)) {
@@ -278,9 +279,6 @@ ${appRoot}\\www_public
     implimentConfig(config) {
         if (!config.encryptionKey)
             throw _Error("Security risk... encryption key required....");
-        if (!_fs.existsSync(_path.resolve(`${this.root}/error_page/`))) {
-            throw _Error(`No found server error page directory ${_path.resolve(`${this.root}/error_page/`)} `);
-        }
         if (!sow_util_1.Util.isArrayLike(config.hiddenDirectory)) {
             throw _Error('hidden_directory should be Array...');
         }
@@ -309,19 +307,6 @@ ${appRoot}\\www_public
         this.config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
     }
     initilize() {
-        if (sow_util_1.Util.isPlainObject(this.config.errorPage) === false)
-            throw _Error("errorPage property should be Object.");
-        for (const prop in this.config.errorPage) {
-            const path = this.config.errorPage[prop];
-            const code = parseInt(prop);
-            const status_code = sow_http_status_1.HttpStatus.fromPath(path, code);
-            if (!status_code || status_code !== code || !sow_http_status_1.HttpStatus.isErrorCode(status_code)) {
-                throw _Error(`Invalid Server/Client error page... ${path} and code ${code}}`);
-            }
-        }
-        if (!this.config.errorPage["500"]) {
-            this.config.errorPage["500"] = this.error_page["500"];
-        }
         if (isDefined(this.config.database)) {
             if (!sow_util_1.Util.isArrayLike(this.config.database))
                 throw _Error("database cofig should be Array....");
@@ -336,11 +321,32 @@ ${appRoot}\\www_public
                 this.db[conf.module] = new (require(conf.path))(conf.dbConn);
             });
         }
-        for (const property in this.config.errorPage) {
-            this.config.errorPage[property] = this.formatPath(this.config.errorPage[property]);
+        if (!this.config.errorPage || (this.config.errorPage && Object.keys(this.config.errorPage).length === 0)) {
+            if (!this.config.errorPage)
+                this.config.errorPage = {};
+            for (const property in this.errorPage) {
+                if (this.errorPage.hasOwnProperty(property)) {
+                    this.config.errorPage[property] = this.errorPage[property];
+                }
+            }
         }
-        for (const property in this.errorPage) {
-            this.errorPage[property] = this.formatPath(this.errorPage[property]);
+        else {
+            if (sow_util_1.Util.isPlainObject(this.config.errorPage) === false)
+                throw _Error("errorPage property should be Object.");
+            for (const property in this.config.errorPage) {
+                if (!this.errorPage.hasOwnProperty(property))
+                    continue;
+                const path = this.config.errorPage[property];
+                const code = parseInt(property);
+                const status_code = sow_http_status_1.HttpStatus.fromPath(path, code);
+                if (!status_code || status_code !== code || !sow_http_status_1.HttpStatus.isErrorCode(status_code)) {
+                    throw _Error(`Invalid Server/Client error page... ${path} and code ${code}}`);
+                }
+                this.config.errorPage[property] = this.formatPath(path);
+            }
+            if (!this.config.errorPage["500"]) {
+                this.config.errorPage["500"] = this.errorPage["500"];
+            }
         }
         this.config.views.forEach((name, index) => {
             this.config.views[index] = this.formatPath(name);
@@ -657,7 +663,6 @@ function initilizeServer(appRoot, wwwName) {
                 root
             }), void 0;
         };
-        _server.addVirtualDir('/libs', _path.resolve(_server.root + "\\virtual_dir\\libs\\"));
         if (_server.config.bundler && _server.config.bundler.enable) {
             const { Bundler } = require("./sow-bundler");
             Bundler.Init(_app, _controller, _server);
@@ -668,15 +673,41 @@ function initilizeServer(appRoot, wwwName) {
                 if (sowView.__isRunOnly)
                     return;
                 if (sowView.__esModule) {
+                    if (typeof (sowView[sowView.__moduleName]) !== "function") {
+                        throw new Error(`Invalid module name declear ${sowView.__moduleName} not found in ${a}`);
+                    }
+                    if (typeof (sowView[sowView.__moduleName].Init) !== "function") {
+                        throw new Error("Invalid __esModule Init Function not defined....");
+                    }
                     return sowView[sowView.__moduleName].Init(_app, _controller, _server);
+                }
+                if (typeof (sowView.Init) !== "function") {
+                    throw new Error("Invalid module use module.export.Init Function()");
                 }
                 return sowView.Init(_app, _controller, _server);
             });
         }
+        _app.onError((req, res, err) => {
+            if (res.headersSent)
+                return;
+            const _context = _server.createContext(req, res, (err) => {
+                res.writeHead(404, { 'Content-Type': 'text/html' });
+                res.end("Nothing found....");
+            });
+            if (!err) {
+                return _context.transferRequest(_server.config.errorPage["404"]);
+            }
+            if (err instanceof Error) {
+                _server.addError(_context, err);
+                return _context.transferRequest(_server.config.errorPage["500"]);
+            }
+        });
         _app.use((req, res, next) => {
             const _context = _server.createContext(req, res, next);
             const _next = _context.next;
             _context.next = (code, transfer) => {
+                if (code && code === -404)
+                    return next();
                 return _processNext.render(code, _context, _next, transfer);
             };
             if (_server.config.hiddenDirectory.some((a) => req.path.indexOf(a) > -1)) {

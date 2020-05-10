@@ -34,7 +34,8 @@ var Util;
 (function (Util) {
     function guid() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-            let r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
     }
@@ -67,6 +68,22 @@ var Util;
         return false;
     }
     Util.isFileModified = isFileModified;
+    function copySync(src, dest) {
+        if (!_fs.existsSync(src))
+            return;
+        const stats = _fs.statSync(src);
+        if (stats.isDirectory()) {
+            if (!_fs.existsSync(dest))
+                _fs.mkdirSync(dest);
+            _fs.readdirSync(src).forEach((nextItem) => {
+                copySync(_path.join(src, nextItem), _path.join(dest, nextItem));
+            });
+        }
+        else {
+            _fs.copyFileSync(src, dest);
+        }
+    }
+    Util.copySync = copySync;
     function isExists(path, next) {
         const url = _path.resolve(path);
         if (!_fs.existsSync(url)) {
@@ -75,6 +92,39 @@ var Util;
         return url;
     }
     Util.isExists = isExists;
+    function mkdirSync(rootDir, targetDir) {
+        if (!rootDir || typeof (rootDir) !== "string")
+            throw new Error("Invalid argument");
+        let fullPath = "";
+        if (targetDir && typeof (targetDir) !== "string")
+            throw new Error("Invalid argument");
+        let sep = "";
+        if (targetDir) {
+            if (targetDir.charAt(0) === '.')
+                throw new Error("No need to defined start point....");
+            fullPath = _path.resolve(rootDir, targetDir);
+            sep = "/";
+        }
+        else {
+            fullPath = _path.resolve(rootDir);
+            targetDir = fullPath;
+            sep = _path.sep;
+            rootDir = _path.isAbsolute(targetDir) ? sep : '';
+        }
+        if (_fs.existsSync(fullPath))
+            return true;
+        targetDir.split(sep).reduce((parentDir, childDir) => {
+            if (!childDir)
+                return parentDir;
+            const curDir = _path.resolve(parentDir, childDir);
+            if (!_fs.existsSync(curDir)) {
+                _fs.mkdirSync(curDir);
+            }
+            return curDir;
+        }, rootDir);
+        return _fs.existsSync(fullPath);
+    }
+    Util.mkdirSync = mkdirSync;
     function sendResponse(req, res, next, reqPath) {
         const url = isExists(reqPath, next);
         if (!url)

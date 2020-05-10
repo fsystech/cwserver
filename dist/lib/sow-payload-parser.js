@@ -19,6 +19,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_static_1 = require("./sow-static");
+const sow_util_1 = require("./sow-util");
 const guid = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
         const r = Math.random() * 16 | 0;
@@ -59,7 +60,7 @@ const getHeader = (headers, key) => {
 };
 const createDir = (tempDir) => {
     if (!_fs.existsSync(tempDir))
-        _fs.mkdirSync(tempDir, parseInt('0777', 8));
+        sow_util_1.Util.mkdirSync(tempDir);
 };
 const incomingContentType = {
     URL_ENCODE: "application/x-www-form-urlencoded",

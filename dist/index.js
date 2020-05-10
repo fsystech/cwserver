@@ -50,4 +50,6 @@ exports.SowSocketInfo = sow_ws_1.SowSocketInfo;
 exports.SowSocket = sow_ws_1.SowSocket;
 var sow_zlib_compression_1 = require("./lib/sow-zlib-compression");
 exports.Compression = sow_zlib_compression_1.Compression;
+var sow_project_template_1 = require("./lib/sow-project-template");
+exports.createProjectTemplate = sow_project_template_1.createProjectTemplate;
 //# sourceMappingURL=index.js.map

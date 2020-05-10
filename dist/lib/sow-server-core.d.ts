@@ -6,12 +6,8 @@ import { Socket } from 'net';
 declare type ParsedUrlQuery = {
     [key: string]: string | string[] | undefined;
 };
-export interface NextFunction {
-    (err?: any): void;
-}
-export interface HandlerFunc {
-    (req: IRequest, res: IResponse, next: NextFunction): void;
-}
+export declare type NextFunction = (err?: any) => void;
+export declare type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunction) => void;
 export interface CookieOptions {
     maxAge?: number;
     signed?: boolean;
@@ -52,16 +48,18 @@ export interface IResponse extends ServerResponse {
 export interface IApplication {
     server: Server;
     use(...args: any[]): IApplication;
-    listen(handle: any, listeningListener?: Function): IApplication;
+    listen(handle: any, listeningListener?: () => void): IApplication;
     handleRequest(req: IRequest, res: IResponse): void;
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApplication;
+    onError(handler: (req: IRequest, res: IResponse, err?: Error | number) => void): void;
 }
 export interface IApps {
     use(...args: any[]): IApps;
-    listen(handle: any, listeningListener?: Function): IApps;
+    listen(handle: any, listeningListener?: () => void): IApps;
     handleRequest(req: IRequest, res: IResponse): IApps;
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApps;
     getHttpServer(): Server;
+    onError(handler: (req: IRequest, res: IResponse, err?: Error | number) => void): void;
 }
 export declare function parseCookie(cook: undefined | string[] | string | {
     [x: string]: string;
@@ -93,17 +91,20 @@ export declare class Application implements IApplication {
     server: Server;
     private _appHandler;
     private _prerequisitesHandler;
+    private _onError?;
     constructor(server: Server);
-    _handleRequest(req: IRequest, res: IResponse, handlers: IHandlers[], next: (err?: Error) => void, isPrerequisites: boolean): void;
+    onError(handler: (req: IRequest, res: IResponse, err?: Error | number) => void): void;
+    _handleRequest(req: IRequest, res: IResponse, handlers: IHandlers[], next: NextFunction, isPrerequisites: boolean): void;
     handleRequest(req: IRequest, res: IResponse): void;
     prerequisites(handler: HandlerFunc): IApplication;
     use(...args: any[]): IApplication;
-    listen(handle: any, listeningListener?: Function | undefined): IApplication;
+    listen(handle: any, listeningListener?: () => void): IApplication;
 }
 export declare class Apps implements IApps {
+    onError(handler: (req: IRequest, res: IResponse, err?: number | Error | undefined) => void): void;
     use(..._args: any[]): IApps;
     getHttpServer(): Server;
-    listen(_handle: any, listeningListener?: Function | undefined): IApps;
+    listen(_handle: any, listeningListener?: () => void): IApps;
     handleRequest(req: IRequest, res: IResponse): IApps;
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApps;
 }

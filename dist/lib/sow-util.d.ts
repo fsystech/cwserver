@@ -14,7 +14,9 @@ export declare namespace Util {
     };
     function isArrayLike(obj?: any): obj is [];
     function isFileModified(a: string, b: string): boolean;
-    function isExists(path: string, next?: (code: number | undefined, transfer?: boolean) => void): string | boolean;
-    function sendResponse(req: IRequest, res: IResponse, next: (code: number | undefined, transfer?: boolean) => void, reqPath: string): void;
+    function copySync(src: string, dest: string): void;
+    function isExists(path: string, next?: (code?: number | undefined, transfer?: boolean) => void): string | boolean;
+    function mkdirSync(rootDir: string, targetDir?: string): boolean;
+    function sendResponse(req: IRequest, res: IResponse, next: (code?: number | undefined, transfer?: boolean) => void, reqPath: string): void;
     function getExtension(reqPath: string): string | void;
 }

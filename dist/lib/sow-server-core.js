@@ -162,6 +162,11 @@ class Application {
         this._prerequisitesHandler = [];
         this.server = server;
     }
+    onError(handler) {
+        if (this._onError)
+            delete this._onError;
+        this._onError = handler;
+    }
     _handleRequest(req, res, handlers, next, isPrerequisites) {
         if (handlers.length === 0)
             return next();
@@ -198,6 +203,9 @@ class Application {
             if (err) {
                 if (res.headersSent)
                     return;
+                if (this._onError) {
+                    return this._onError(req, res, err);
+                }
                 res.writeHead(500, { 'Content-Type': 'text/html' });
                 res.end("Error found...." + err.message);
                 return;
@@ -205,6 +213,9 @@ class Application {
             this._handleRequest(req, res, this._appHandler, (err) => {
                 if (res.headersSent)
                     return;
+                if (this._onError) {
+                    return this._onError(req, res, err);
+                }
                 res.writeHead(200, { 'Content-Type': 'text/html' });
                 res.end(`Can not ${req.method} ${req.path}....`);
             }, false);
@@ -219,7 +230,7 @@ class Application {
         const argtype0 = typeof (args[0]);
         const argtype1 = typeof (args[1]);
         if (argtype0 === "function") {
-            return this._prerequisitesHandler.push({ handler: args[0], regexp: void 0 }), this;
+            return this._appHandler.push({ handler: args[0], regexp: void 0 }), this;
         }
         if (argtype0 === "string" && argtype1 === "function") {
             return this._appHandler.push({ route: args[0], handler: args[1], regexp: getRouteExp(args[0]) }), this;
@@ -233,6 +244,9 @@ class Application {
 }
 exports.Application = Application;
 class Apps {
+    onError(handler) {
+        throw new Error("Method not implemented.");
+    }
     use(..._args) {
         throw new Error("Method not implemented.");
     }
@@ -258,6 +272,9 @@ function App() {
         _app.handleRequest(req, res);
     }));
     const _apps = new Apps();
+    _apps.onError = (handler) => {
+        return _app.onError(handler);
+    };
     _apps.prerequisites = (handler) => {
         return _app.prerequisites(handler), _apps;
     };

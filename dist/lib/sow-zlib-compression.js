@@ -19,7 +19,7 @@ class Gzip {
 exports.Gzip = Gzip;
 class Compression {
     static isAcceptedEncoding(req, name) {
-        let acceptEncoding = req.headers['accept-encoding'];
+        const acceptEncoding = req.headers['accept-encoding'];
         if (!acceptEncoding)
             return false;
         return acceptEncoding.indexOf(name) > -1;

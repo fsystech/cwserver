@@ -13,6 +13,7 @@ const _zlib = require("zlib");
 const sow_http_cache_1 = require("./sow-http-cache");
 const sow_web_streamer_1 = require("./sow-web-streamer");
 const sow_encryption_1 = require("./sow-encryption");
+const sow_util_1 = require("./sow-util");
 const isAcceptedEncoding = (req, name) => {
     const acceptEncoding = req.headers['accept-encoding'];
     if (!acceptEncoding)
@@ -34,7 +35,7 @@ class MimeHandler {
     static getCachePath(ctx) {
         const dir = ctx.server.mapPath(`/web/temp/cache/`);
         if (!_fs.existsSync(dir)) {
-            _fs.mkdirSync(dir, 1);
+            sow_util_1.Util.mkdirSync(ctx.server.getPublic(), "/web/temp/cache/");
         }
         const path = `${dir}\\${sow_encryption_1.Encryption.toMd5(ctx.path)}`;
         return _path.resolve(`${path}.${ctx.extension}.cache`);
@@ -207,8 +208,9 @@ class MimeHandler {
     }
 }
 class HttpMimeHandler {
-    constructor(appRoot) {
-        const absPath = _path.resolve(`${appRoot}/mime-type.json`);
+    constructor() {
+        const parent = _path.resolve(__dirname, '..');
+        const absPath = _path.resolve(`${parent}/mime-type.json`);
         if (!_fs.existsSync(absPath))
             throw new Error(`Unable to load mime-type from ${absPath}`);
         const types = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '');

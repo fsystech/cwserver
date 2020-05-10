@@ -11,7 +11,7 @@ const routeInfo = {
 class Controller {
     constructor(server) {
         this._server = server;
-        this.httpMimeHandler = new sow_http_mime_1.HttpMimeHandler(server.getRoot());
+        this.httpMimeHandler = new sow_http_mime_1.HttpMimeHandler();
     }
     get(route, next) {
         if (routeInfo.get[route])
@@ -56,13 +56,13 @@ class Controller {
                 return sow_template_1.Template.parse(this._server, ctx, path);
             }
         }
-        return ctx.next(404);
+        return ctx.next(-404);
     }
     processPost(ctx) {
         if (routeInfo.post[ctx.req.path]) {
             return routeInfo.post[ctx.req.path](ctx);
         }
-        return ctx.next(404);
+        return ctx.next(-404);
     }
     processAny(ctx) {
         if (routeInfo.any[ctx.path])

@@ -5,6 +5,7 @@ const _path = require("path");
 const _zlib = require("zlib");
 const sow_encryption_1 = require("./sow-encryption");
 const sow_http_cache_1 = require("./sow-http-cache");
+const sow_util_1 = require("./sow-util");
 var ContentType;
 (function (ContentType) {
     ContentType[ContentType["JS"] = 0] = "JS";
@@ -48,7 +49,7 @@ This 'Combiner' contains the following files:\n`;
     static getCachePath(server, str, ctEnum, cacheKey) {
         const dir = server.mapPath(`/web/temp/`);
         if (!_fs.existsSync(dir)) {
-            _fs.mkdirSync(dir, 1);
+            sow_util_1.Util.mkdirSync(server.getPublic(), "/web/temp/");
         }
         let path = `${dir}\\${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${sow_encryption_1.Encryption.toMd5(str)}`;
         if (ctEnum === ContentType.JS) {
