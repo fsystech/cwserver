@@ -1,13 +1,18 @@
-# cwserver
-Complete Node Web Server
+# ```cwserver``` Complete Node Web Server<br/>
+Install ```cwserver``` by this command ```npm i cwserver```<br/>
+Create ```createProjectTemplate.js``` as following
 ```
 const { createProjectTemplate } = require( 'cwserver' );
 createProjectTemplate( {
     appRoot: __dirname,
-    projectRoot: "www"
+    projectRoot: "www" /** Your project root folder name*/
 } );
 ```
-Create your server.js file
+Then run this commmand ```node createProjectTemplate```<br/>
+It will create default project template for ```cwserver```<br/>
+After run this command ```node server www /**your project root*/```<br/><br/><br/>
+Or you may create by yourself as following:<br/>
+Create server.js file:
 ```
 const { ConsoleColor, initilizeServer } = require( 'cwserver' );
 let wwwName = void 0;
@@ -40,4 +45,3 @@ httpServer.listen( server.port, () => server.log.write( `
 ```
 follow ```app_config.json``` and 
 run ```node server your_app_dir_name```
-
