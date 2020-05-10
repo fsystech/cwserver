@@ -1,6 +1,12 @@
 # cwserver
 Complete Node Web Server
-
+```
+const { createProjectTemplate } = require( 'cwserver' );
+createProjectTemplate( {
+    appRoot: __dirname,
+    projectRoot: "www"
+} );
+```
 Create your server.js file
 ```
 const { ConsoleColor, initilizeServer } = require( 'cwserver' );
