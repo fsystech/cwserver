@@ -9,7 +9,7 @@ createProjectTemplate( {
 } );
 ```
 Then run this commmand ```node createProjectTemplate```<br/>
-It will create default project template for ```cwserver```<br/>
+It will create default project template for ```cwserver``` in your application root.<br/>
 After run this command ```node server www /**your project root*/```<br/><br/><br/>
 Or you may create by yourself as following:<br/>
 Create server.js file:
