@@ -12,6 +12,7 @@ import { IContext } from './sow-server';
 import { SowHttpCache } from './sow-http-cache';
 import { Streamer } from './sow-web-streamer';
 import { Encryption } from './sow-encryption';
+import { Util } from './sow-util';
 export interface IHttpMimeHandler {
     render( ctx: IContext, maybeDir?: string, checkFile?: boolean ): void;
     getMimeType( extension: string ): string;
@@ -26,7 +27,7 @@ interface ITaskDeff {
     cache: boolean; ext: string; gzip: boolean
 }
 let HttpMimeType: { [x: string]: string; } = {};
-//"exe", "zip", "doc", "docx", "pdf", "ppt", "pptx", "gz"
+// "exe", "zip", "doc", "docx", "pdf", "ppt", "pptx", "gz"
 const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "exe", gzip: false },
     { cache: false, ext: "zip", gzip: false },
@@ -41,7 +42,7 @@ class MimeHandler {
     static getCachePath( ctx: IContext ) {
         const dir = ctx.server.mapPath( `/web/temp/cache/` );
         if ( !_fs.existsSync( dir ) ) {
-            _fs.mkdirSync( dir, 1 );
+            Util.mkdirSync( ctx.server.getPublic(), "/web/temp/cache/" );
         }
         const path = `${dir}\\${Encryption.toMd5( ctx.path )}`;
         return _path.resolve( `${path}.${ctx.extension}.cache` );
@@ -142,7 +143,6 @@ class MimeHandler {
             }
             ctx.next( 200 );
         } ), void 0;
-        //return ctx.res.end( _fs.readFileSync( absPath ) ), ctx.next( 200 );
     }
     static servedFromFile(
         ctx: IContext, absPath: string,
@@ -231,8 +231,9 @@ class MimeHandler {
 }
 // tslint:disable-next-line: max-classes-per-file
 export class HttpMimeHandler implements IHttpMimeHandler {
-    constructor( appRoot: string ) {
-        const absPath = _path.resolve( `${appRoot}/mime-type.json` );
+    constructor( ) {
+        const parent = _path.resolve(__dirname, '..');
+        const absPath = _path.resolve( `${parent}/mime-type.json` );
         if ( !_fs.existsSync( absPath ) )
             throw new Error( `Unable to load mime-type from ${absPath}` );
         const types = _fs.readFileSync( absPath, "utf8" ).replace( /^\uFEFF/, '' );

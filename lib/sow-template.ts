@@ -199,7 +199,7 @@ class TemplateCore {
         if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
         return false;
     }
-    static compile( str: string, next?: ( str: string, isScript?: boolean ) => void ): ( server: ISowServer, ctx: IContext, next?: ( code: number | undefined, transfer?: boolean ) => void ) => void {
+    static compile( str: string, next?: ( str: string, isScript?: boolean ) => void ): ( server: ISowServer, ctx: IContext, next?: ( code?: number | undefined, transfer?: boolean ) => void ) => void {
         const context: { [x: string]: any; } = {
             thisNext: void 0
         };

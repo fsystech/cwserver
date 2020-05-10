@@ -11,7 +11,7 @@ import {
     App as sowAppCore, Apps
 } from './sow-server-core';
 import { Server } from 'http';
-import * as _fs from 'fs' ;
+import * as _fs from 'fs';
 import * as _path from 'path';
 import { Util } from './sow-util';
 import { Session } from './sow-static';
@@ -21,12 +21,8 @@ import { Encryption, ICryptoInfo } from "./sow-encryption";
 import { HttpStatus } from "./sow-http-status";
 import { Logger, ILogger } from "./sow-logger"
 import { ISowDatabaseType } from './sow-database-type';
-export interface CtxNext {
-    ( code: number | undefined, transfer?: boolean ): any;
-}
-export interface AppHandler {
-    ( ctx: IContext ): any;
-}
+export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => any;
+export type AppHandler = ( ctx: IContext ) => any;
 // -------------------------------------------------------
 export interface IContext {
     [key: string]: any;
@@ -77,13 +73,13 @@ export interface IServerConfig {
         key: ICryptoInfo;
         maxAge: number;
     };
-    mimeType: Array<string>;
+    mimeType: string[];
     defaultExt: string;
-    views: Array<string>;
+    views: string[];
     errorPage: { [x: string]: string; };
-    hiddenDirectory: Array<string>;
+    hiddenDirectory: string[];
     hostInfo: {
-        origin: Array<string>;
+        origin: string[];
         root: string;
         hostName: string;
         frameAncestors?: string;
@@ -91,7 +87,7 @@ export interface IServerConfig {
         cert: { [x: string]: string; };
         port: string | number
     };
-    database?: Array<IDatabaseConfig>;
+    database?: IDatabaseConfig[];
     templateCacheType: string;
     staticFile: {
         compression: boolean;
@@ -102,8 +98,8 @@ export interface IServerConfig {
         maxAge: number;
         serverRevalidate: boolean;
     };
-    liveStream: Array<string>;
-    noCache: Array<string>;
+    liveStream: string[];
+    noCache: string[];
     socketPath?: string;
     bundler: {
         enable: boolean;
@@ -145,11 +141,8 @@ export interface ISowServer {
     encryption: IServerEncryption;
     crypto: ICrypto;
     db: { [x: string]: ISowDatabaseType; };
-    // viewInitilizer( app: IApps, controller: IController, server: ISowServer ): void;
 }
-export interface IViewHandler {
-    ( app: IApps, controller: IController, server: ISowServer ): void;
-}
+export type IViewHandler = ( app: IApps, controller: IController, server: ISowServer ) => void;
 export interface ISowView {
     [key: string]: IViewHandler | any;
     __isRunOnly: boolean;
@@ -249,7 +242,7 @@ export class ServerEncryption implements IServerEncryption {
     decryptFromHex: ( encryptedText: string ) => string;
     encryptUri: ( plainText: string ) => string;
     decryptUri: ( encryptedText: string ) => string;
-    constructor( inf: ICryptoInfo) {
+    constructor( inf: ICryptoInfo ) {
         this.encrypt = ( plainText: string ): string => {
             return Encryption.encrypt( plainText, inf );
         };
@@ -292,7 +285,7 @@ export class Context implements IContext {
         this.res = _res; this.req = _req; this.server = _server;
         this.session = _session; this.extension = "";
     }
-    next( code: number | undefined, transfer?: boolean ) {
+    next( code?: number | undefined, transfer?: boolean ) {
         throw new Error( "Method not implemented." );
     }
     redirect( url: string ): void {
@@ -402,17 +395,17 @@ export class ServerConfig implements IServerConfig {
 export class Crypto implements ICrypto {
     // tslint:disable-next-line: no-empty
     constructor() { }
-    encryptStr(plainText: string): string {
-        throw new Error("Method not implemented.");
+    encryptStr( plainText: string ): string {
+        throw new Error( "Method not implemented." );
     }
-    encryptUri(plainText: string): string {
-        throw new Error("Method not implemented.");
+    encryptUri( plainText: string ): string {
+        throw new Error( "Method not implemented." );
     }
-    decryptStr(plainText: string): string {
-        throw new Error("Method not implemented.");
+    decryptStr( plainText: string ): string {
+        throw new Error( "Method not implemented." );
     }
-    decryptUri(plainText: string): string {
-        throw new Error("Method not implemented.");
+    decryptUri( plainText: string ): string {
+        throw new Error( "Method not implemented." );
     }
 }
 // tslint:disable-next-line: max-classes-per-file
@@ -451,10 +444,11 @@ ${appRoot}\\www_public
         this.public = wwwName?.toString();
         this.config = new ServerConfig();
         this.db = {};
+        const myParent = _path.resolve( __dirname, '..' );
         this.errorPage = {
-            "404": "$root/error_page/404.html",
-            "401": "$root/error_page/401.html",
-            "500": "$root/error_page/500.html"
+            "404": _path.resolve( `${myParent}/error_page/404.html` ),
+            "401": _path.resolve( `${myParent}/error_page/401.html` ),
+            "500": _path.resolve( `${myParent}/error_page/500.html` )
         }
         const absPath: string = _path.resolve( `${this.root}/${this.public}/config/app_config.json` );
         if ( !_fs.existsSync( absPath ) ) {
@@ -479,7 +473,7 @@ ${appRoot}\\www_public
         return;
     }
     getHttpServer(): Server {
-        throw new Error("Method not implemented.");
+        throw new Error( "Method not implemented." );
     }
     getRoot(): string {
         return this.root;
@@ -490,9 +484,6 @@ ${appRoot}\\www_public
     implimentConfig( config: { [x: string]: any; } ): void {
         if ( !config.encryptionKey )
             throw _Error( "Security risk... encryption key required...." );
-        if ( !_fs.existsSync( _path.resolve( `${this.root}/error_page/` ) ) ) {
-            throw _Error( `No found server error page directory ${_path.resolve( `${this.root}/error_page/` )} ` );
-        }
         if ( !Util.isArrayLike( config.hiddenDirectory ) ) {
             throw _Error( 'hidden_directory should be Array...' );
         }
@@ -520,22 +511,6 @@ ${appRoot}\\www_public
         this.config.cacheHeader.maxAge = parseMaxAge( config.cacheHeader.maxAge );
     }
     initilize() {
-        if ( Util.isPlainObject( this.config.errorPage ) === false )
-            throw _Error( "errorPage property should be Object." );
-        // tslint:disable-next-line: forin
-        for ( const prop in this.config.errorPage ) {
-            const path = this.config.errorPage[prop];
-            // tslint:disable-next-line: radix
-            const code = parseInt( prop );
-            // tslint:disable-next-line: variable-name
-            const status_code = HttpStatus.fromPath( path, code );
-            if ( !status_code || status_code !== code || !HttpStatus.isErrorCode( status_code ) ) {
-                throw _Error( `Invalid Server/Client error page... ${path} and code ${code}}` )
-            }
-        }
-        if ( !this.config.errorPage["500"] ) {
-            this.config.errorPage["500"] = this.error_page["500"]
-        }
         if ( isDefined( this.config.database ) ) {
             if ( !Util.isArrayLike( this.config.database ) )
                 throw _Error( "database cofig should be Array...." );
@@ -550,13 +525,31 @@ ${appRoot}\\www_public
                 this.db[conf.module] = new ( require( conf.path ) )( conf.dbConn )
             } );
         }
-        // tslint:disable-next-line: forin
-        for ( const property in this.config.errorPage ) {
-            this.config.errorPage[property] = this.formatPath( this.config.errorPage[property] );
-        }
-        // tslint:disable-next-line: forin
-        for ( const property in this.errorPage ) {
-            this.errorPage[property] = this.formatPath( this.errorPage[property] );
+        if ( !this.config.errorPage || ( this.config.errorPage && Object.keys( this.config.errorPage ).length === 0 ) ) {
+            if ( !this.config.errorPage ) this.config.errorPage = {};
+            for ( const property in this.errorPage ) {
+                if ( this.errorPage.hasOwnProperty( property ) ) {
+                    this.config.errorPage[property] = this.errorPage[property];
+                }
+            }
+        } else {
+            if ( Util.isPlainObject( this.config.errorPage ) === false )
+                throw _Error( "errorPage property should be Object." );
+            for ( const property in this.config.errorPage ) {
+                if ( !this.errorPage.hasOwnProperty( property ) ) continue;
+                const path = this.config.errorPage[property];
+                // tslint:disable-next-line: radix
+                const code = parseInt( property );
+                // tslint:disable-next-line: variable-name
+                const status_code = HttpStatus.fromPath( path, code );
+                if ( !status_code || status_code !== code || !HttpStatus.isErrorCode( status_code ) ) {
+                    throw _Error( `Invalid Server/Client error page... ${path} and code ${code}}` )
+                }
+                this.config.errorPage[property] = this.formatPath( path );
+            }
+            if ( !this.config.errorPage["500"] ) {
+                this.config.errorPage["500"] = this.errorPage["500"];
+            }
         }
         this.config.views.forEach( ( name: string, index: number ) => {
             this.config.views[index] = this.formatPath( name );
@@ -571,8 +564,8 @@ ${appRoot}\\www_public
     decryptStr( encryptedText: string ): string {
         return Encryption.decrypt( encryptedText, this.config.encryptionKey );
     }
-    createContext( req: IRequest, res: IResponse, next: NextFunction): IContext {
-        throw new Error("Method not implemented.");
+    createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext {
+        throw new Error( "Method not implemented." );
     }
     setHeader( res: IResponse ): void {
         res.setHeader( 'x-timestamp', Date.now() );
@@ -600,7 +593,7 @@ ${appRoot}\\www_public
         return cookies;
     }
     parseSession( cookies: string | { [x: string]: any; } ): ISession {
-        if(!this.config.session.cookie)
+        if ( !this.config.session.cookie )
             throw Error( "You are unable to add session without session config. see your app_config.json" )
         const session = new Session();
         cookies = this.parseCookie( cookies );
@@ -615,7 +608,7 @@ ${appRoot}\\www_public
         session.isAuthenticated = true;
         return session;
     }
-    setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
+    setSession( ctx: IContext, loginId: string, roleId: string, userData: any ): boolean {
         if ( !this.config.session )
             throw Error( "You are unable to add session without session config. see your app_config.json" )
         return ctx.res.cookie(
@@ -626,7 +619,7 @@ ${appRoot}\\www_public
             { maxAge: this.config.session.maxAge, httpOnly: true, sameSite: "strict" }
         ), true;
     }
-    passError(ctx: IContext): boolean {
+    passError( ctx: IContext ): boolean {
         if ( !ctx.error ) return false;
         ctx.res.writeHead( 500, { 'Content-Type': 'text/html' } );
         try {
@@ -637,14 +630,14 @@ ${appRoot}\\www_public
             return false;
         }
     }
-    transferRequest(ctx: IContext, path: string, status?: IResInfo): void {
+    transferRequest( ctx: IContext, path: string, status?: IResInfo ): void {
         if ( !ctx ) throw _Error( "No context argument defined..." );
         if ( !status ) status = HttpStatus.getResInfo( path, 200 );
         if ( status.isErrorCode && status.isInternalErrorCode === false ) {
             this.addError( ctx, `${status.code} ${HttpStatus.getDescription( status.code )}` );
         }
         const _next = ctx.next;
-        ctx.next = ( rcode: number | undefined, transfer?: boolean ): any => {
+        ctx.next = ( rcode?: number | undefined, transfer?: boolean ): any => {
             if ( typeof ( transfer ) === "boolean" && transfer === false ) {
                 return _next( rcode, false );
             }
@@ -658,10 +651,10 @@ ${appRoot}\\www_public
         };
         return Template.parse( this, ctx, path, status );
     }
-    render(ctx: IContext, path: string): void {
+    render( ctx: IContext, path: string ): void {
         return Template.parse( this, ctx, path );
     }
-    mapPath(path: string): string {
+    mapPath( path: string ): string {
         return _path.resolve( `${this.root}/${this.public}/${path}` );
     }
     pathToUrl( path: string ): string {
@@ -678,7 +671,7 @@ ${appRoot}\\www_public
         if ( index < 0 ) return path;
         return path.substring( 0, index ).replace( /\\/gi, "/" );
     }
-    addError(ctx: IContext, ex: string | Error): IContext {
+    addError( ctx: IContext, ex: string | Error ): IContext {
         ctx.path = this.pathToUrl( ctx.path );
         if ( !ctx.error ) {
             ctx.error = `Error occured in ${ctx.path}`;
@@ -702,16 +695,16 @@ ${appRoot}\\www_public
             .replace( /\r\n/gi, "<br/>" )
             .replace( /\n/gi, "<br/>" );
     }
-    addVirtualDir( route: string, root: string, evt?: HandlerFunc): void {
-        throw new Error("Method not implemented.");
+    addVirtualDir( route: string, root: string, evt?: HandlerFunc ): void {
+        throw new Error( "Method not implemented." );
     }
     virtualInfo( _route: string ): { route: string; root: string; } | void {
-        throw new Error("Method not implemented.");
+        throw new Error( "Method not implemented." );
     }
-    formatPath(name: string): string {
+    formatPath( name: string ): string {
         return _formatPath( this, name );
     }
-    createBundle(str: string): string {
+    createBundle( str: string ): string {
         if ( !str ) throw _Error( "No string found to create bundle..." )
         return Encryption.encryptUri( str, this.config.encryptionKey );
     }
@@ -823,7 +816,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                 return next();
             } );
         }
-        _server.virtualInfo = ( route: string ): { route: string; root: string; }| void => {
+        _server.virtualInfo = ( route: string ): { route: string; root: string; } | void => {
             const v = _virtualDir.find( ( a ) => a.route === route );
             if ( !v ) return void 0;
             return {
@@ -837,7 +830,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
             const _processHandler = ( req: IRequest, res: IResponse, next: NextFunction, forWord: ( ctx: IContext ) => void ) => {
                 const _ctx = _server.createContext( req, res, next );
                 const _next = next;
-                _ctx.next = ( code: number | undefined, transfer?: boolean ): any => {
+                _ctx.next = ( code?: number | undefined, transfer?: boolean ): any => {
                     if ( !code || code === 200 ) {
                         return _server.log.success( `Send ${code || 200} ${route}${_ctx.path}` ).reset(), cleanContext( _ctx );
                     }
@@ -868,7 +861,6 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                 root
             } ), void 0;
         };
-        _server.addVirtualDir( '/libs', _path.resolve( _server.root + "\\virtual_dir\\libs\\" ) );
         if ( _server.config.bundler && _server.config.bundler.enable ) {
             const { Bundler } = require( "./sow-bundler" );
             Bundler.Init( _app, _controller, _server );
@@ -878,15 +870,40 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                 const sowView: ISowView = require( a );
                 if ( sowView.__isRunOnly ) return;
                 if ( sowView.__esModule ) {
+                    if ( typeof ( sowView[sowView.__moduleName] ) !== "function" ) {
+                        throw new Error( `Invalid module name declear ${sowView.__moduleName} not found in ${a}` );
+                    }
+                    if ( typeof ( sowView[sowView.__moduleName].Init ) !== "function" ) {
+                        throw new Error( "Invalid __esModule Init Function not defined...." );
+                    }
                     return sowView[sowView.__moduleName].Init( _app, _controller, _server );
+                }
+                if ( typeof ( sowView.Init ) !== "function" ) {
+                    throw new Error( "Invalid module use module.export.Init Function()" );
                 }
                 return sowView.Init( _app, _controller, _server );
             } );
         }
+        _app.onError( ( req: IRequest, res: IResponse, err?: number | Error ): void => {
+            if ( res.headersSent ) return;
+            // tslint:disable-next-line: no-shadowed-variable
+            const _context = _server.createContext( req, res, ( err?: Error ): void => {
+                res.writeHead( 404, { 'Content-Type': 'text/html' } );
+                res.end( "Nothing found...." );
+            } );
+            if ( !err ) {
+                return _context.transferRequest( _server.config.errorPage["404"] );
+            }
+            if ( err instanceof Error ) {
+                _server.addError( _context, err );
+                return _context.transferRequest( _server.config.errorPage["500"] );
+            }
+        } );
         _app.use( ( req: IRequest, res: IResponse, next: NextFunction ) => {
             const _context = _server.createContext( req, res, next );
             const _next = _context.next;
-            _context.next = ( code: number | undefined, transfer?: boolean ): any => {
+            _context.next = ( code?: number | undefined, transfer?: boolean ): any => {
+                if ( code && code === -404 ) return next();
                 return _processNext.render( code, _context, _next, transfer );
             }
             if ( _server.config.hiddenDirectory.some( ( a ) => req.path.indexOf( a ) > -1 ) ) {

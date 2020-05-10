@@ -40,7 +40,10 @@ const _deepExtend = ( destination: any, source: any ): { [x: string]: any; } => 
 export namespace Util {
     export function guid(): string {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, ( c: string ) => {
-            let r = Math.random() * 16 | 0, v = c === 'x' ? r : ( r & 0x3 | 0x8 );
+            // tslint:disable-next-line: no-bitwise
+            const r = Math.random() * 16 | 0;
+            // tslint:disable-next-line: no-bitwise
+            const v = c === 'x' ? r : ( r & 0x3 | 0x8 );
             return v.toString( 16 );
         } );
     }
@@ -69,7 +72,23 @@ export namespace Util {
         if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
         return false;
     }
-    export function isExists( path: string, next?: ( code: number | undefined, transfer?: boolean ) => void ): string | boolean {
+    export function copySync( src: string, dest: string ): void {
+        if ( !_fs.existsSync( src ) ) return;
+        const stats: _fs.Stats = _fs.statSync( src );
+        if ( stats.isDirectory() ) {
+            if ( !_fs.existsSync( dest ) )
+                _fs.mkdirSync( dest );
+            _fs.readdirSync( src ).forEach( ( nextItem: string ) => {
+                copySync(
+                    _path.join( src, nextItem ),
+                    _path.join( dest, nextItem )
+                );
+            } );
+        } else {
+            _fs.copyFileSync( src, dest );
+        }
+    }
+    export function isExists( path: string, next?: ( code?: number | undefined, transfer?: boolean ) => void ): string | boolean {
         const url = _path.resolve( path );
         if ( !_fs.existsSync( url ) ) {
             // tslint:disable-next-line: no-unused-expression
@@ -77,7 +96,36 @@ export namespace Util {
         }
         return url;
     }
-    export function sendResponse( req: IRequest, res: IResponse, next: ( code: number | undefined, transfer?: boolean ) => void, reqPath: string ): void {
+    export function mkdirSync( rootDir: string, targetDir?: string ): boolean {
+        if ( !rootDir || typeof ( rootDir ) !== "string" )
+            throw new Error( "Invalid argument" );
+        let fullPath: string = "";
+        if ( targetDir && typeof ( targetDir ) !== "string" )
+            throw new Error( "Invalid argument" );
+        let sep: string = "";
+        if ( targetDir ) {
+            if ( targetDir.charAt( 0 ) === '.' ) throw new Error( "No need to defined start point...." );
+            fullPath = _path.resolve( rootDir, targetDir );
+            sep = "/";
+        } else {
+            fullPath = _path.resolve( rootDir );
+            // so we've to start form drive:\
+            targetDir = fullPath;
+            sep = _path.sep;
+            rootDir = _path.isAbsolute( targetDir ) ? sep : '';
+        }
+        if ( _fs.existsSync( fullPath ) ) return true;
+        targetDir.split( sep ).reduce( ( parentDir, childDir ) => {
+            if ( !childDir ) return parentDir;
+            const curDir = _path.resolve( parentDir, childDir );
+            if ( !_fs.existsSync( curDir ) ) {
+                _fs.mkdirSync( curDir );
+            }
+            return curDir;
+        }, rootDir );
+        return _fs.existsSync( fullPath );
+    }
+    export function sendResponse( req: IRequest, res: IResponse, next: ( code?: number | undefined, transfer?: boolean ) => void, reqPath: string ): void {
         const url = isExists( reqPath, next );
         if ( !url ) return;
         res.writeHead( 200, { 'Content-Type': 'text/html' } );

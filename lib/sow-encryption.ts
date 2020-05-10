@@ -10,13 +10,12 @@ import * as crypto from 'crypto';
 export interface ICryptoInfo {
     oldKey: string;
     md5?: string;
-    key: any;// CryptoJS.LibWordArray;
-    iv: any;//CryptoJS.LibWordArray
+    key: any;
+    iv: any;
 }
 export function md5( contents: string ): string {
     return crypto.createHash( 'md5' ).update( contents ).digest( "hex" );
 }
-
 export class CryptoInfo implements ICryptoInfo {
     oldKey: string;
     md5?: string;
@@ -27,7 +26,6 @@ export class CryptoInfo implements ICryptoInfo {
         this.key = void 0; this.iv = void 0;
     }
 }
-
 // tslint:disable-next-line: max-classes-per-file
 // tslint:disable-next-line: no-namespace
 export namespace Encryption {

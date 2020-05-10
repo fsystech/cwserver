@@ -31,7 +31,7 @@ export class Controller implements IController {
     public httpMimeHandler: IHttpMimeHandler;
     constructor( server: ISowServer ) {
         this._server = server;
-        this.httpMimeHandler = new HttpMimeHandler( server.getRoot() );
+        this.httpMimeHandler = new HttpMimeHandler();
     }
     public get( route: string, next: AppHandler ): IController {
         if ( routeInfo.get[route] )
@@ -74,13 +74,13 @@ export class Controller implements IController {
                 return Template.parse( this._server, ctx, path );
             }
         }
-        return ctx.next( 404 );
+        return ctx.next( -404 );
     }
     private processPost( ctx: IContext ): any {
         if ( routeInfo.post[ctx.req.path] ) {
             return routeInfo.post[ctx.req.path]( ctx );
         }
-        return ctx.next( 404 );
+        return ctx.next( -404 );
     }
     processAny( ctx: IContext ): any {
         if ( routeInfo.any[ctx.path] )

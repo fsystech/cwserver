@@ -11,7 +11,7 @@ import { Util } from './sow-util';
 export interface IWsClientInfo {
     next: ( session: ISession, socket: Socket ) => void | boolean;
     client: ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ) => { [x: string]: any; };
-    getServerEvent(): Array<{ [x: string]: any; }>;
+    getServerEvent(): { [x: string]: any; }[];
 }
 export interface ISowSocketInfo {
     token: string;
@@ -27,13 +27,13 @@ export interface ISowSocketInfo {
 }
 export interface ISowSocket {
     isActiveSocket( token: string ): boolean;
-    getOwners( group?: string ): Array<ISowSocketInfo>;
-    findByHash( hash: string ): Array<ISowSocketInfo>;
-    findByLogin( loginId: string ): Array<ISowSocketInfo>;
-    toList( sockets: Array<ISowSocketInfo> ): Array<{ [x: string]: any; }>;
-    getClientByExceptHash( exceptHash: string, group?: string ): Array<ISowSocketInfo>;
-    getClientByExceptLogin( exceptLoginId: string, group?: string ): Array<ISowSocketInfo>;
-    getClient( token: string, group?: string ): Array<ISowSocketInfo>;
+    getOwners( group?: string ): ISowSocketInfo[];
+    findByHash( hash: string ): ISowSocketInfo[];
+    findByLogin( loginId: string ): ISowSocketInfo[];
+    toList( sockets: ISowSocketInfo[] ): { [x: string]: any; }[];
+    getClientByExceptHash( exceptHash: string, group?: string ): ISowSocketInfo[];
+    getClientByExceptLogin( exceptLoginId: string, group?: string ): ISowSocketInfo[];
+    getClient( token: string, group?: string ): ISowSocketInfo[];
     getSocket( token: string ): ISowSocketInfo | void;
     removeSocket( token: string ): boolean;
     sendMsg( token: string, method: string, data?: any ): boolean;
@@ -236,7 +236,7 @@ export class SowSocket implements ISowSocket {
 
 export function SoketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
     isConnectd: boolean;
-    wsEvent: Array<{ [x: string]: any; }>;
+    wsEvent: { [x: string]: any; }[];
     create: () => void;
 } {
     if ( typeof ( wsClientInfo.getServerEvent ) !== "function" ) {
@@ -254,7 +254,7 @@ export function SoketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo
         get isConnectd(): boolean {
             return _ws.implimented;
         },
-        get wsEvent(): Array<{ [x: string]: any; }> {
+        get wsEvent(): { [x: string]: any; }[] {
             return _ws_event;
         },
         create(): void {

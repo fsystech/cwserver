@@ -9,6 +9,7 @@ import { IResponse } from './sow-server-core';
 import { ToResponseTime } from './sow-static';
 // tslint:disable-next-line: no-namespace
 export namespace SowHttpCache {
+    /** Gets value in millisecond of {If-Modified-Since} from header. */
     export function getIfModifiedSinceUTCTime( headers: IncomingHttpHeaders ): number | void {
         const ifModifiedSinceHeaderText = headers["If-Modified-Since"] || headers["if-modified-since"];
         if ( ifModifiedSinceHeaderText ) {
@@ -18,6 +19,7 @@ export namespace SowHttpCache {
         }
         return void 0;
     }
+    /** Gets the {sinceModify, etag} from given header {If-None-Match, If-Modified-Since}. */
     export function getChangedHeader( headers: IncomingHttpHeaders ): { sinceModify?: number | void, etag?: string } {
         const tag: string | string[] | undefined = headers["If-None-Match"] || headers["if-none-match"] || headers.ETag || headers.etag;
         return {
@@ -25,6 +27,10 @@ export namespace SowHttpCache {
             etag: tag ? tag.toString() : void 0
         };
     }
+    /**
+     * Write cache header
+     * e.g. {last-modified, expires, ETag, cache-control, x-server-revalidate}.
+     */
     export function writeCacheHeader(
         res: IResponse,
         obj: { lastChangeTime?: number | void, etag?: string },
@@ -47,6 +53,7 @@ export namespace SowHttpCache {
             res.setHeader( 'cache-control', `max-age=${cacheHeader.maxAge + Date.now()}, public, immutable` );
         }
     }
+    /** Create and Gets {etag} (timestamp ^ fsize). */
     export function getEtag( timestamp: number, fsize: number ): string {
         if ( typeof ( timestamp ) !== "number" )
             throw new Error( "Invalid argument defined. timestamp should be Number..." );

@@ -12,6 +12,7 @@ import { SowHttpCache } from './sow-http-cache';
 import { IApplication, IRequest } from './sow-server-core';
 import { ISowServer, IContext } from './sow-server';
 import { IController } from './sow-controller';
+import { Util } from './sow-util';
 enum ContentType {
     JS = 0,
     CSS= 1,
@@ -65,7 +66,7 @@ This 'Combiner' contains the following files:\n`;
     static getCachePath( server: ISowServer, str: string, ctEnum: ContentType, cacheKey: string ) {
         const dir = server.mapPath( `/web/temp/` );
         if ( !_fs.existsSync( dir ) ) {
-            _fs.mkdirSync( dir, 1 );
+            Util.mkdirSync( server.getPublic(), "/web/temp/" );
         }
         let path = `${dir}\\${cacheKey.replace( /[/\\?%*:|"<>]/g, "" )}_${Encryption.toMd5( str )}`;
         if ( ctEnum === ContentType.JS ) {

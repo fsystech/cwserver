@@ -10,6 +10,7 @@ import { IRequest } from './sow-server-core';
 import * as _fs from 'fs';
 import * as _path from 'path';
 import { ToNumber } from './sow-static';
+import { Util } from './sow-util';
 export interface IPostedFileInfo {
     getContentDisposition(): string;
     getFileSize(): number;
@@ -70,7 +71,7 @@ const getHeader = ( headers: IncomingHttpHeaders, key: string ): string => {
     return typeof ( result ) === "string" ? result?.toString() : "";
 }
 const createDir = ( tempDir: string ): void => {
-    if ( !_fs.existsSync( tempDir ) ) _fs.mkdirSync( tempDir, parseInt( '0777', 8 ) );
+    if ( !_fs.existsSync( tempDir ) ) Util.mkdirSync( tempDir );
 }
 const incomingContentType: {
     [key: string]: any;
@@ -201,7 +202,7 @@ class PayloadDataParser {
     private _errors: string;
     private _isDisposed: boolean;
     private _blockSize: number = 0;
-    private _maxBlockSize: number = 10485760;///*(Max block size (1024*1024)*10) = 10 MB*/
+    private _maxBlockSize: number = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
     constructor(
         tempDir: string, contentType: string, contentTypeEnum: ContentType
     ) {

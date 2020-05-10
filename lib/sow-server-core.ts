@@ -12,13 +12,8 @@ import { ToResponseTime, ISession } from './sow-static';
 import urlHelpers, { UrlWithParsedQuery } from 'url';
 import { Socket } from 'net';
 type ParsedUrlQuery = { [key: string]: string | string[] | undefined; };
-export interface NextFunction {
-    // tslint:disable-next-line callable-types (In ts2.1 it thinks the type alias has no call signatures)
-    ( err?: any ): void;
-}
-export interface HandlerFunc {
-    ( req: IRequest, res: IResponse, next: NextFunction ): void;
-}
+export type NextFunction = ( err?: any ) => void;
+export type HandlerFunc = ( req: IRequest, res: IResponse, next: NextFunction ) => void;
 export interface CookieOptions {
     maxAge?: number;
     signed?: boolean;
@@ -55,16 +50,18 @@ export interface IResponse extends ServerResponse {
 export interface IApplication {
     server: Server;
     use( ...args: any[] ): IApplication;
-    listen( handle: any, listeningListener?: Function ): IApplication;
+    listen( handle: any, listeningListener?: () => void ): IApplication;
     handleRequest( req: IRequest, res: IResponse ): void;
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApplication;
+    onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
 }
 export interface IApps {
     use( ...args: any[] ): IApps;
-    listen( handle: any, listeningListener?: Function ): IApps;
+    listen( handle: any, listeningListener?: () => void ): IApps;
     handleRequest( req: IRequest, res: IResponse ): IApps;
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps;
     getHttpServer(): Server;
+    onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
 }
 const getCook = ( cooks: string[] ): { [x: string]: string; } => {
     const cookies: { [x: string]: any; } = {};
@@ -167,10 +164,7 @@ export class Response extends ServerResponse implements IResponse {
 }
 const getRouteHandler = (
     reqPath: string,
-    handlers: {
-        route?: string; handler: HandlerFunc,
-        regexp: RegExp | undefined
-    }[]
+    handlers: IHandlers[]
 ): {
     route?: string; handler: HandlerFunc,
     regexp: RegExp | undefined
@@ -208,13 +202,18 @@ export class Application implements IApplication {
     public server: Server;
     private _appHandler: IHandlers[] = [];
     private _prerequisitesHandler: IHandlers[] = [];
+    private _onError?: ( req: IRequest, res: IResponse, err?: Error | number ) => void;
     constructor( server: Server ) {
         this.server = server;
+    }
+    onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void {
+        if ( this._onError ) delete this._onError;
+        this._onError = handler;
     }
     _handleRequest(
         req: IRequest, res: IResponse,
         handlers: IHandlers[],
-        next: ( err?: Error ) => void,
+        next: NextFunction,
         isPrerequisites: boolean
     ): void {
         if ( handlers.length === 0 ) return next();
@@ -248,6 +247,9 @@ export class Application implements IApplication {
         this._handleRequest( req, res, this._prerequisitesHandler, ( err?: Error ): void => {
             if ( err ) {
                 if ( res.headersSent ) return;
+                if ( this._onError ) {
+                    return this._onError( req, res, err );
+                }
                 res.writeHead( 500, { 'Content-Type': 'text/html' } );
                 res.end( "Error found...." + err.message );
                 return;
@@ -255,6 +257,9 @@ export class Application implements IApplication {
             // tslint:disable-next-line: no-shadowed-variable
             this._handleRequest( req, res, this._appHandler, ( err?: Error ): void => {
                 if ( res.headersSent ) return;
+                if ( this._onError ) {
+                    return this._onError( req, res, err );
+                }
                 res.writeHead( 200, { 'Content-Type': 'text/html' } );
                 res.end( `Can not ${req.method} ${req.path}....` );
             }, false );
@@ -269,15 +274,15 @@ export class Application implements IApplication {
         const argtype0 = typeof ( args[0] );
         const argtype1 = typeof ( args[1] );
         if ( argtype0 === "function" ) {
-            return this._prerequisitesHandler.push( { handler: args[0], regexp: void 0 } ), this;
+            return this._appHandler.push( { handler: args[0], regexp: void 0 } ), this;
         }
         if ( argtype0 === "string" && argtype1 === "function" ) {
-            return this._appHandler.push( { route: args[0], handler: args[1], regexp: getRouteExp(args[0]) } ), this;
+            return this._appHandler.push( { route: args[0], handler: args[1], regexp: getRouteExp( args[0] ) } ), this;
         }
         throw new Error( "Invalid arguments..." );
     }
     // tslint:disable-next-line: ban-types
-    listen( handle: any, listeningListener?: Function | undefined ): IApplication {
+    listen( handle: any, listeningListener?: () => void ): IApplication {
         this.server.listen( handle, listeningListener );
         return this;
     }
@@ -285,21 +290,24 @@ export class Application implements IApplication {
 }
 // tslint:disable-next-line: max-classes-per-file
 export class Apps implements IApps {
+    onError( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void {
+        throw new Error( "Method not implemented." );
+    }
     use( ..._args: any[] ): IApps {
-        throw new Error("Method not implemented.");
+        throw new Error( "Method not implemented." );
     }
     getHttpServer(): Server {
         throw new Error( "Method not implemented." );
     }
     // tslint:disable-next-line: ban-types
-    listen( _handle: any, listeningListener?: Function | undefined ): IApps {
-        throw new Error("Method not implemented.");
+    listen( _handle: any, listeningListener?: () => void ): IApps {
+        throw new Error( "Method not implemented." );
     }
     handleRequest( req: IRequest, res: IResponse ): IApps {
-        throw new Error("Method not implemented.");
+        throw new Error( "Method not implemented." );
     }
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps {
-        throw new Error("Method not implemented.");
+        throw new Error( "Method not implemented." );
     }
 }
 export function App(): IApps {
@@ -309,10 +317,10 @@ export function App(): IApps {
         req.init();
         _app.handleRequest( req, res );
     } ) );
-    //_app.server.on( "connection", ( socket: Socket ): void => {
-    //    socket.setNoDelay( true );
-    //} );
     const _apps: IApps = new Apps();
+    _apps.onError = ( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void => {
+        return _app.onError( handler );
+    }
     _apps.prerequisites = ( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps => {
         return _app.prerequisites( handler ), _apps;
     };
@@ -323,7 +331,7 @@ export function App(): IApps {
         return _app.use.apply( _app, Array.prototype.slice.call( args ) ), _apps;
     };
     // tslint:disable-next-line: ban-types
-    _apps.listen = ( handle: any, listeningListener?: Function | undefined ): IApps => {
+    _apps.listen = ( handle: any, listeningListener?: () => void ): IApps => {
         return _app.listen( handle, listeningListener ), _apps;
     };
     return _apps;

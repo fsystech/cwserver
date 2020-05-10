@@ -13,9 +13,10 @@ export class Gzip {
         return _zlib.gzip( buffer, next );
     }
 }
+// tslint:disable-next-line: max-classes-per-file
 export class Compression {
     static isAcceptedEncoding( req: IRequest, name: string ): boolean {
-        let acceptEncoding = req.headers['accept-encoding'];
+        const acceptEncoding = req.headers['accept-encoding'];
         if ( !acceptEncoding ) return false;
         return acceptEncoding.indexOf( name ) > -1;
     }

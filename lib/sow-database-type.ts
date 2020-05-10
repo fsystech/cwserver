@@ -1,3 +1,8 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 export interface ISowDatabaseType {
     getClient(): any;
     executeIo( sp: string, ctx: string, formObj: string, next: ( resp: { ret_val: number, ret_msg: string, ret_data_table?: { [key: string]: any } } ) => void ): any;
