@@ -321,8 +321,8 @@ declare global {
 }
 export declare function initilizeServer(appRoot: string, wwwName?: string): {
     init: () => IApps;
-    public: string;
-    port: string | number;
-    socketPath: string;
+    readonly public: string;
+    readonly port: string | number;
+    readonly socketPath: string;
     log: ILogger;
 };

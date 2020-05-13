@@ -35,7 +35,7 @@ function propertiValidate(dataPath, configProperties, schemaProperties, addition
         if (!svalue) {
             if (additionalProperties)
                 continue;
-            throw new Error(`ERROR: Configuration doesn't match the required schema. Data path "${dataPath}" should NOT have additional properties (${prop}).`);
+            throw new Error(`ERROR: Configuration doesn't match the required schema. Data path "${dataPath}" should NOT have additional property (${prop}).`);
         }
         const cvalue = configProperties[prop];
         if (svalue.type === "array") {

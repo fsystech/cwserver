@@ -23,6 +23,6 @@ process.on( 'SIGINT', () => {
 app.listen( server.port, () => server.log.write( `
     [+] Maintance      : https://www.safeonline.world
     [+] Server         : http://localhost:${server.port}
-    [+] Socket         : ws://localhost:${server.port}/app/hub/ws/
+    [+] Socket         : ws://localhost:${server.port}${server.socketPath}
     [~] Running Server...
 `, ConsoleColor.FgMagenta ) );

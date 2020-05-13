@@ -7,7 +7,7 @@
 import * as _fs from 'fs';
 import * as _path from 'path';
 import { Util } from './sow-util';
-interface IPropertiesDesception {
+interface IPropertiesDescription {
 	type?: string;
 	minLength: number;
 	enum?: string[];
@@ -19,7 +19,7 @@ interface IPropertiesDesception {
 	additionalProperties?: boolean;
 }
 interface IProperties {
-	[id: string]: IPropertiesDesception;
+	[id: string]: IPropertiesDescription;
 }
 interface ISchema {
 	$schema: string;
@@ -49,7 +49,7 @@ function propertiValidate(
 		const svalue = schemaProperties[prop];
 		if ( !svalue ) {
 			if ( additionalProperties ) continue;
-			throw new Error( `ERROR: Configuration doesn't match the required schema. Data path "${dataPath}" should NOT have additional properties (${prop}).` );
+			throw new Error( `ERROR: Configuration doesn't match the required schema. Data path "${dataPath}" should NOT have additional property (${prop}).` );
 		}
 		const cvalue = configProperties[prop];
 		if ( svalue.type === "array" ) {

@@ -19,7 +19,10 @@ function _generateRandomNumber( num ) {
 	return result;
 }
 global.sow.server.registerView( ( app, controller, server ) => {
-	const { PayloadParser, Encryption } = require( 'cwserver' );
+	const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
+	//const ws = socketInitilizer(server, require("../socket-client"));
+	//ws.create(require("socket.io"));
+	
 	// Create your virtual dir
 	// server.addVirtualDir( "/sow", _path.resolve( server.getRoot() + "\\sow\\" ) );
 	const tempDir = server.mapPath( "/upload/temp/" );
@@ -32,6 +35,15 @@ global.sow.server.registerView( ( app, controller, server ) => {
 		if ( mb <= 1024 ) return `${mb.toFixed( 2 )}MB`;
 		return `${( mb / 1024 ).toFixed( 2 )}GB`;
 	}
+	//controller.get('/ws', (ctx)=>{
+	//	ctx.res.json(ws.wsEvent,true, (err)=>{
+	//		if(err){
+	//			server.addError(err);
+	//			return ctx.next(500), void 0;
+	//		}
+	//		ctx.next(200);
+	//	});
+	//});
 	controller
 		.get( '/', ( ctx ) => {
 			return server.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );

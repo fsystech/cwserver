@@ -11,6 +11,7 @@ import {
 import { ToResponseTime, ISession } from './sow-static';
 import urlHelpers, { UrlWithParsedQuery } from 'url';
 import { Socket } from 'net';
+import _zlib = require( 'zlib' );
 type ParsedUrlQuery = { [key: string]: string | string[] | undefined; };
 export type NextFunction = ( err?: any ) => void;
 export type HandlerFunc = ( req: IRequest, res: IResponse, next: NextFunction ) => void;
@@ -35,12 +36,12 @@ export interface IRequest extends IncomingMessage {
     init(): IRequest;
     path: string;
     cookies: { [key: string]: string; };
-    query: ParsedUrlQuery;
+    readonly query: ParsedUrlQuery;
     session: ISession;
     ip: string;
 }
 export interface IResponse extends ServerResponse {
-    json( body: { [key: string]: any } ): void;
+    json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void;
     status( code: number ): IResponse;
     // isEnd: boolean;
     cookie( name: string, val: string, options: CookieOptions ): IResponse;
@@ -82,7 +83,10 @@ export function parseCookie(
 }
 export class Request extends IncomingMessage implements IRequest {
     public q: UrlWithParsedQuery = Object.create( null );
-    public cookies: { [key: string]: string; } = {};
+    private _cookies: { [key: string]: string; } = {};
+    public get cookies() {
+        return this._cookies;
+    }
     public session: ISession = Object.create( null );
     public path: string = "";
     public ip: string = "";
@@ -99,7 +103,7 @@ export class Request extends IncomingMessage implements IRequest {
             if ( remoteAddress )
                 this.ip = remoteAddress;
         }
-        this.cookies = parseCookie( this.headers.cookie );
+        this._cookies = parseCookie( this.headers.cookie );
         return this;
     }
 }
@@ -154,8 +158,25 @@ export class Response extends ServerResponse implements IResponse {
         this.setHeader( "Set-Cookie", sCookie );
         return this;
     }
-    json( body: { [key: string]: any } ): void {
+    json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void {
         const json = JSON.stringify( body );
+        if ( compress && compress === true ) {
+            return _zlib.gzip( Buffer.from(json), ( error: Error | null, buff: Buffer ) => {
+                if ( error ) {
+                    if ( next ) return next( error );
+                    this.writeHead( 500, {
+                        'Content-Type': 'text/plain'
+                    } );
+                    return this.end( `Runtime Error: ${error.message}` );
+                }
+                this.writeHead( 200, {
+                    'Content-Type': 'application/json',
+                    'Content-Encoding': 'gzip',
+                    'Content-Length': buff.length
+                } );
+                this.end( buff );
+            } );
+        }
         this.setHeader( 'Content-Type', 'application/json' );
         this.setHeader( 'Content-Length', Buffer.byteLength( json ) );
         return this.end( json );

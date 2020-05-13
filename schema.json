@@ -9,6 +9,7 @@
       "minLength": 1,
       "required": [ "Safe Online World Ltd." ],
       "const": "Safe Online World Ltd.",
+      "default": "Safe Online World Ltd.",
       "description": "cwserver Author Name"
     },
     "appName": {
@@ -242,7 +243,7 @@
     },
     "views": {
       "type": "array",
-      "minLength": 0,
+      "minLength": 1,
       "default": [],
       "items": {
         "type": "string"

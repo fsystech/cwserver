@@ -177,11 +177,7 @@ class ServerConfig {
         this.mimeType = ["css", "js", "png", "gif", "ico", "map"];
         this.defaultExt = ".html";
         this.views = [];
-        this.errorPage = {
-            "404": "$root/error_page/404.html",
-            "401": "$root/error_page/401.html",
-            "500": "$root/error_page/500.html"
-        };
+        this.errorPage = {};
         this.hiddenDirectory = [];
         this.template = {
             cache: true,

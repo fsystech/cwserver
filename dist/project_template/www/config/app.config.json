@@ -46,11 +46,6 @@
     "compress": true
   },
   "views": [ "$root/$public/lib/view/main.js" ],
-  "errorPage": {
-    "401": "$root/$public/error_page/401.html",
-    "404": "$root/$public/error_page/404.html",
-    "500": "$root/$public/error_page/500.html"
-  },
   "hiddenDirectory": [],
   "hostInfo": {
     "origin": [],

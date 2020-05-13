@@ -368,11 +368,7 @@ export class ServerConfig implements IServerConfig {
         this.mimeType = ["css", "js", "png", "gif", "ico", "map"];
         this.defaultExt = ".html";
         this.views = [];
-        this.errorPage = {
-            "404": "$root/error_page/404.html",
-            "401": "$root/error_page/401.html",
-            "500": "$root/error_page/500.html"
-        };
+        this.errorPage = {};
         this.hiddenDirectory = [];
         this.template = {
             cache: true,
@@ -745,9 +741,9 @@ declare global {
 }
 export function initilizeServer( appRoot: string, wwwName?: string ): {
     init: () => IApps;
-    public: string;
-    port: string | number,
-    socketPath: string,
+    readonly public: string;
+    readonly port: string | number,
+    readonly socketPath: string,
     log: ILogger
 } {
     if ( !global.sow || ( global.sow && !global.sow.server ) ) {

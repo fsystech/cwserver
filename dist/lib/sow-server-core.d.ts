@@ -32,14 +32,14 @@ export interface IRequest extends IncomingMessage {
     cookies: {
         [key: string]: string;
     };
-    query: ParsedUrlQuery;
+    readonly query: ParsedUrlQuery;
     session: ISession;
     ip: string;
 }
 export interface IResponse extends ServerResponse {
     json(body: {
         [key: string]: any;
-    }): void;
+    }, compress?: boolean, next?: (error: Error | null) => void): void;
     status(code: number): IResponse;
     cookie(name: string, val: string, options: CookieOptions): IResponse;
     set(field: string, value: number | string | string[]): IResponse;
@@ -68,7 +68,8 @@ export declare function parseCookie(cook: undefined | string[] | string | {
 };
 export declare class Request extends IncomingMessage implements IRequest {
     q: UrlWithParsedQuery;
-    cookies: {
+    private _cookies;
+    get cookies(): {
         [key: string]: string;
     };
     session: ISession;
@@ -83,7 +84,7 @@ export declare class Response extends ServerResponse implements IResponse {
     cookie(name: string, val: string, options: CookieOptions): IResponse;
     json(body: {
         [key: string]: any;
-    }): void;
+    }, compress?: boolean, next?: (error: Error | null) => void): void;
     status(code: number): IResponse;
 }
 export declare function getRouteExp(route: string): RegExp;

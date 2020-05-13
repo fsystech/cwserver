@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const http_1 = require("http");
 const sow_static_1 = require("./sow-static");
 const url_1 = __importDefault(require("url"));
+const _zlib = require("zlib");
 const getCook = (cooks) => {
     const cookies = {};
     cooks.forEach((value) => {
@@ -36,10 +37,13 @@ class Request extends http_1.IncomingMessage {
     constructor() {
         super(...arguments);
         this.q = Object.create(null);
-        this.cookies = {};
+        this._cookies = {};
         this.session = Object.create(null);
         this.path = "";
         this.ip = "";
+    }
+    get cookies() {
+        return this._cookies;
     }
     get query() {
         return this.q.query;
@@ -56,7 +60,7 @@ class Request extends http_1.IncomingMessage {
             if (remoteAddress)
                 this.ip = remoteAddress;
         }
-        this.cookies = parseCookie(this.headers.cookie);
+        this._cookies = parseCookie(this.headers.cookie);
         return this;
     }
 }
@@ -122,8 +126,26 @@ class Response extends http_1.ServerResponse {
         this.setHeader("Set-Cookie", sCookie);
         return this;
     }
-    json(body) {
+    json(body, compress, next) {
         const json = JSON.stringify(body);
+        if (compress && compress === true) {
+            return _zlib.gzip(Buffer.from(json), (error, buff) => {
+                if (error) {
+                    if (next)
+                        return next(error);
+                    this.writeHead(500, {
+                        'Content-Type': 'text/plain'
+                    });
+                    return this.end(`Runtime Error: ${error.message}`);
+                }
+                this.writeHead(200, {
+                    'Content-Type': 'application/json',
+                    'Content-Encoding': 'gzip',
+                    'Content-Length': buff.length
+                });
+                this.end(buff);
+            });
+        }
         this.setHeader('Content-Type', 'application/json');
         this.setHeader('Content-Length', Buffer.byteLength(json));
         return this.end(json);
