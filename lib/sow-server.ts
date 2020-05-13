@@ -50,12 +50,12 @@ export interface ICrypto {
     decryptUri( plainText: string ): string;
 }
 export interface IServerEncryption {
-    encrypt: ( plainText: string ) => string;
-    decrypt: ( encryptedText: string ) => string;
-    encryptToHex: ( plainText: string ) => string;
-    decryptFromHex: ( encryptedText: string ) => string;
-    encryptUri: ( plainText: string ) => string;
-    decryptUri: ( encryptedText: string ) => string;
+    encrypt( plainText: string ): string;
+    decrypt( encryptedText: string ): string;
+    encryptToHex( plainText: string ): string;
+    decryptFromHex( encryptedText: string ): string;
+    encryptUri( plainText: string ): string;
+    decryptUri( encryptedText: string ):string;
 }
 export interface IDatabaseConfig {
     module: string;
@@ -244,31 +244,27 @@ export class DatabaseConfig implements IDatabaseConfig {
 }
 // tslint:disable-next-line: max-classes-per-file
 export class ServerEncryption implements IServerEncryption {
-    encrypt: ( plainText: string ) => string;
-    decrypt: ( encryptedText: string ) => string;
-    encryptToHex: ( plainText: string ) => string;
-    decryptFromHex: ( encryptedText: string ) => string;
-    encryptUri: ( plainText: string ) => string;
-    decryptUri: ( encryptedText: string ) => string;
+    private cryptoInfo: ICryptoInfo;
     constructor( inf: ICryptoInfo ) {
-        this.encrypt = ( plainText: string ): string => {
-            return Encryption.encrypt( plainText, inf );
-        };
-        this.decrypt = ( encryptedText: string ): string => {
-            return Encryption.decrypt( encryptedText, inf );
-        };
-        this.encryptToHex = ( plainText: string ): string => {
-            return Encryption.encryptToHex( plainText, inf );
-        };
-        this.decryptFromHex = ( encryptedText: string ): string => {
-            return Encryption.decryptFromHex( encryptedText, inf );
-        };
-        this.encryptUri = ( plainText: string ): string => {
-            return Encryption.encryptUri( plainText, inf );
-        };
-        this.decryptUri = ( encryptedText: string ): string => {
-            return Encryption.decryptUri( encryptedText, inf );
-        };
+        this.cryptoInfo = inf;
+    }
+    encrypt( plainText: string ): string {
+        return Encryption.encrypt( plainText, this.cryptoInfo );
+    }
+    decrypt( encryptedText: string ): string {
+        return Encryption.decrypt( encryptedText, this.cryptoInfo );
+    }
+    encryptToHex( plainText: string ): string {
+        return Encryption.encryptToHex( plainText, this.cryptoInfo );
+    }
+    decryptFromHex( encryptedText: string ): string {
+        return Encryption.decryptFromHex( encryptedText, this.cryptoInfo );
+    }
+    encryptUri( plainText: string ): string {
+        return Encryption.encryptUri( plainText, this.cryptoInfo );
+    }
+    decryptUri( encryptedText: string ): string {
+        return Encryption.decryptUri( encryptedText, this.cryptoInfo );
     }
 }
 // tslint:disable-next-line: max-classes-per-file

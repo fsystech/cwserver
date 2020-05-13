@@ -31,12 +31,12 @@ export interface ICrypto {
     decryptUri(plainText: string): string;
 }
 export interface IServerEncryption {
-    encrypt: (plainText: string) => string;
-    decrypt: (encryptedText: string) => string;
-    encryptToHex: (plainText: string) => string;
-    decryptFromHex: (encryptedText: string) => string;
-    encryptUri: (plainText: string) => string;
-    decryptUri: (encryptedText: string) => string;
+    encrypt(plainText: string): string;
+    decrypt(encryptedText: string): string;
+    encryptToHex(plainText: string): string;
+    decryptFromHex(encryptedText: string): string;
+    encryptUri(plainText: string): string;
+    decryptUri(encryptedText: string): string;
 }
 export interface IDatabaseConfig {
     module: string;
@@ -161,13 +161,14 @@ export declare class DatabaseConfig implements IDatabaseConfig {
     constructor();
 }
 export declare class ServerEncryption implements IServerEncryption {
-    encrypt: (plainText: string) => string;
-    decrypt: (encryptedText: string) => string;
-    encryptToHex: (plainText: string) => string;
-    decryptFromHex: (encryptedText: string) => string;
-    encryptUri: (plainText: string) => string;
-    decryptUri: (encryptedText: string) => string;
+    private cryptoInfo;
     constructor(inf: ICryptoInfo);
+    encrypt(plainText: string): string;
+    decrypt(encryptedText: string): string;
+    encryptToHex(plainText: string): string;
+    decryptFromHex(encryptedText: string): string;
+    encryptUri(plainText: string): string;
+    decryptUri(encryptedText: string): string;
 }
 export declare class Context implements IContext {
     [key: string]: any;

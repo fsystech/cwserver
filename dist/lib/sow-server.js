@@ -111,24 +111,25 @@ exports.DatabaseConfig = DatabaseConfig;
 // tslint:disable-next-line: max-classes-per-file
 class ServerEncryption {
     constructor(inf) {
-        this.encrypt = (plainText) => {
-            return sow_encryption_1.Encryption.encrypt(plainText, inf);
-        };
-        this.decrypt = (encryptedText) => {
-            return sow_encryption_1.Encryption.decrypt(encryptedText, inf);
-        };
-        this.encryptToHex = (plainText) => {
-            return sow_encryption_1.Encryption.encryptToHex(plainText, inf);
-        };
-        this.decryptFromHex = (encryptedText) => {
-            return sow_encryption_1.Encryption.decryptFromHex(encryptedText, inf);
-        };
-        this.encryptUri = (plainText) => {
-            return sow_encryption_1.Encryption.encryptUri(plainText, inf);
-        };
-        this.decryptUri = (encryptedText) => {
-            return sow_encryption_1.Encryption.decryptUri(encryptedText, inf);
-        };
+        this.cryptoInfo = inf;
+    }
+    encrypt(plainText) {
+        return sow_encryption_1.Encryption.encrypt(plainText, this.cryptoInfo);
+    }
+    decrypt(encryptedText) {
+        return sow_encryption_1.Encryption.decrypt(encryptedText, this.cryptoInfo);
+    }
+    encryptToHex(plainText) {
+        return sow_encryption_1.Encryption.encryptToHex(plainText, this.cryptoInfo);
+    }
+    decryptFromHex(encryptedText) {
+        return sow_encryption_1.Encryption.decryptFromHex(encryptedText, this.cryptoInfo);
+    }
+    encryptUri(plainText) {
+        return sow_encryption_1.Encryption.encryptUri(plainText, this.cryptoInfo);
+    }
+    decryptUri(encryptedText) {
+        return sow_encryption_1.Encryption.decryptUri(encryptedText, this.cryptoInfo);
     }
 }
 exports.ServerEncryption = ServerEncryption;
