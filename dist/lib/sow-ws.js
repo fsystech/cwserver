@@ -1,25 +1,23 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 const sow_encryption_1 = require("./sow-encryption");
-const socket_io_1 = __importDefault(require("socket.io"));
 const sow_util_1 = require("./sow-util");
 class WsClientInfo {
-    constructor() {
-        this.client = (me, session, sowSocket, server) => {
-            throw new Error("Method not implemented.");
-        };
-        this.next = (session, socket) => {
-            throw new Error("Method not implemented.");
-        };
+    constructor(next, client) {
+        this.client = client;
+        this.next = next;
     }
     getServerEvent() {
         throw new Error("Method not implemented.");
     }
 }
 exports.WsClientInfo = WsClientInfo;
+// tslint:disable-next-line: max-classes-per-file
 class SowSocketInfo {
     constructor() {
         this.token = "";
@@ -36,11 +34,12 @@ class SowSocketInfo {
     }
 }
 exports.SowSocketInfo = SowSocketInfo;
+// tslint:disable-next-line: max-classes-per-file
 class SowSocket {
     constructor(server, wsClientInfo) {
-        if (!server.config.socketPath) {
-            throw new Error("Socket Path should not left blank...");
-        }
+        // if ( !server.config.socketPath ) {
+        //    throw new Error( "Socket Path should not left blank..." );
+        // }
         this.implimented = false;
         this.socket = [];
         this.connected = false;
@@ -98,15 +97,18 @@ class SowSocket {
             return false;
         return soc.sendMsg(method, data), true;
     }
-    create() {
+    create(ioserver) {
         if (this.implimented)
             return void 0;
         this.implimented = true;
-        const io = socket_io_1.default(this._server.getHttpServer(), {
+        const io = ioserver(this._server.getHttpServer(), {
             path: this._server.config.socketPath,
             pingTimeout: (1000 * 5),
             cookie: true
         });
+        if (!this._server.config.socketPath) {
+            this._server.config.socketPath = io._path;
+        }
         io.use((socket, next) => {
             if (!socket.request.session) {
                 socket.request.session = this._server.parseSession(socket.request.headers.cookie);
@@ -115,6 +117,7 @@ class SowSocket {
                 return void 0;
             return next();
         });
+        // _server.db.execute_io( "", "", "", () => { } );
         this._server.log.success(`Socket created...`);
         return io.on("connect", (socket) => {
             this.connected = socket.connected;
@@ -158,6 +161,7 @@ class SowSocket {
                 return void 0;
             });
             const client = this._wsClientInfo.client(_me, socket.request.session, this, this._server);
+            // tslint:disable-next-line: forin
             for (const method in client) {
                 socket.on(method, client[method]);
             }
@@ -185,7 +189,8 @@ class SowSocket {
     }
 }
 exports.SowSocket = SowSocket;
-function SoketInitilizer(server, wsClientInfo) {
+/** If you want to use it you've to install socket.io */
+function socketInitilizer(server, wsClientInfo) {
     if (typeof (wsClientInfo.getServerEvent) !== "function") {
         throw new Error("Invalid IWsClientInfo...");
     }
@@ -194,6 +199,7 @@ function SoketInitilizer(server, wsClientInfo) {
             return true;
         };
     }
+    // tslint:disable-next-line: variable-name
     const _ws_event = wsClientInfo.getServerEvent();
     const _ws = new SowSocket(server, wsClientInfo);
     return {
@@ -203,12 +209,12 @@ function SoketInitilizer(server, wsClientInfo) {
         get wsEvent() {
             return _ws_event;
         },
-        create() {
+        create(ioserver) {
             if (_ws.implimented)
                 return;
-            return _ws.create();
+            return _ws.create(ioserver);
         }
     };
 }
-exports.SoketInitilizer = SoketInitilizer;
+exports.socketInitilizer = socketInitilizer;
 //# sourceMappingURL=sow-ws.js.map

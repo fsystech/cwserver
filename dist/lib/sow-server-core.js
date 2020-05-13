@@ -3,6 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 2:40 PM 5/7/2020
 const http_1 = require("http");
 const sow_static_1 = require("./sow-static");
 const url_1 = __importDefault(require("url"));
@@ -89,8 +95,12 @@ const createCookie = (name, val, options) => {
                 break;
         }
     }
+    if (options.secure) {
+        str += ";Secure";
+    }
     return str;
 };
+// tslint:disable-next-line: max-classes-per-file
 class Response extends http_1.ServerResponse {
     redirect(url) {
         return this.writeHead(this.statusCode, {
@@ -133,6 +143,7 @@ const getRouteHandler = (reqPath, handlers) => {
     if (router.length === 0)
         return void 0;
     if (router.length > 1) {
+        // let handler: HandlerFunc | undefined;
         let higestLen = -1;
         let index = -1;
         for (const row of router) {
@@ -156,6 +167,7 @@ function getRouteExp(route) {
     return new RegExp(`^${route.replace(/\//gi, "\\/")}\/?(?=\/|$)`, "i");
 }
 exports.getRouteExp = getRouteExp;
+// tslint:disable-next-line: max-classes-per-file
 class Application {
     constructor(server) {
         this._appHandler = [];
@@ -210,6 +222,7 @@ class Application {
                 res.end("Error found...." + err.message);
                 return;
             }
+            // tslint:disable-next-line: no-shadowed-variable
             this._handleRequest(req, res, this._appHandler, (err) => {
                 if (res.headersSent)
                     return;
@@ -237,12 +250,14 @@ class Application {
         }
         throw new Error("Invalid arguments...");
     }
+    // tslint:disable-next-line: ban-types
     listen(handle, listeningListener) {
         this.server.listen(handle, listeningListener);
         return this;
     }
 }
 exports.Application = Application;
+// tslint:disable-next-line: max-classes-per-file
 class Apps {
     onError(handler) {
         throw new Error("Method not implemented.");
@@ -253,6 +268,7 @@ class Apps {
     getHttpServer() {
         throw new Error("Method not implemented.");
     }
+    // tslint:disable-next-line: ban-types
     listen(_handle, listeningListener) {
         throw new Error("Method not implemented.");
     }
@@ -284,6 +300,7 @@ function App() {
     _apps.use = (...args) => {
         return _app.use.apply(_app, Array.prototype.slice.call(args)), _apps;
     };
+    // tslint:disable-next-line: ban-types
     _apps.listen = (handle, listeningListener) => {
         return _app.listen(handle, listeningListener), _apps;
     };

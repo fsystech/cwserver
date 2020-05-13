@@ -8,7 +8,7 @@ if ( process.argv.length > 2 ) {
     }
 }
 const server = initilizeServer( __dirname, wwwName );
-const httpServer = server.init();
+const app = server.init();
 process.on( 'exit', () => {
     console.log( "Exited..." );
 } );
@@ -20,7 +20,7 @@ process.on( 'SIGINT', () => {
         process.exit( 0 );
     }, 200 );
 } );
-httpServer.listen( server.port, () => server.log.write( `
+app.listen( server.port, () => server.log.write( `
     [+] Maintance      : https://www.safeonline.world
     [+] Server         : http://localhost:${server.port}
     [+] Socket         : ws://localhost:${server.port}/app/hub/ws/

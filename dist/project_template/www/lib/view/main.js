@@ -60,7 +60,7 @@ global.sow.server.registerView( ( app, controller, server ) => {
 					//perform pgsql here with this incomming token
 					result.data = {
 						token: ctx.req.query.token,
-						hash: server.encryption.utf8ToHex( "rajib" ),
+						hash: Encryption.utf8ToHex( "rajib" ),
 						userInfo: {
 							loginId: void 0
 						},

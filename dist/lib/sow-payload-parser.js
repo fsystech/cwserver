@@ -22,7 +22,9 @@ const sow_static_1 = require("./sow-static");
 const sow_util_1 = require("./sow-util");
 const guid = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        // tslint:disable-next-line: no-bitwise
         const r = Math.random() * 16 | 0;
+        // tslint:disable-next-line: no-bitwise
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
@@ -45,7 +47,7 @@ const getLine = (socket, data) => {
                 c = socket.read(1);
                 if (!c)
                     return outstr;
-                outstr += c.toString();
+                outstr += c.toString(); // assume \n
                 data.push(c);
                 return outstr;
             default:
@@ -93,6 +95,8 @@ const parseHeader = (data) => {
     let filename = extractBetween(part, "filename=\"", "\"");
     part = data.substring(part.length + end.length);
     const cType = extractBetween(part, "Content-Type: ", "\r\n\r\n");
+    // This is hairy: Netscape and IE don't encode the filenames
+    // The RFC says they should be encoded, so I will assume they are.
     filename = decodeURIComponent(filename);
     return new PostedFileInfo(disposition, name, filename, cType);
 };
@@ -161,16 +165,18 @@ class PostedFileInfo {
     }
 }
 exports.PostedFileInfo = PostedFileInfo;
+// tslint:disable-next-line: max-classes-per-file
 class PayloadDataParser {
     constructor(tempDir, contentType, contentTypeEnum) {
         this._blockSize = 0;
-        this._maxBlockSize = 10485760;
+        this._maxBlockSize = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
         this._errors = "";
         this._contentTypeEnum = contentTypeEnum;
         this.files = [];
         this.payloadStr = "";
         this._tempDir = tempDir;
         if (this._contentTypeEnum === ContentType.MULTIPART) {
+            // multipart/form-data; boundary=----WebKitFormBoundarymAgyXMoeG3VgeNeR
             const bType = "boundary=";
             this._separator = `--${contentType.substring(contentType.indexOf(bType) + bType.length)}`.trim();
             this._sepLen = this._separator.length;
@@ -230,7 +236,7 @@ class PayloadDataParser {
         }
         if (this._waitCount > 2) {
             this._waitCount = 0;
-            this._headerInfo += line;
+            this._headerInfo += line; // skip crlf
             this._postedFile = parseHeader(this._headerInfo);
             this._headerInfo = "";
             if (this._postedFile.isEmptyHeader()) {
@@ -245,7 +251,7 @@ class PayloadDataParser {
             return;
         }
         if (this._waitCount === 0) {
-            this._headerInfo = "";
+            this._headerInfo = ""; // assume boundary
             this._waitCount++;
             return;
         }
@@ -299,6 +305,7 @@ class PayloadDataParser {
             delete this._errors;
     }
 }
+// tslint:disable-next-line: max-classes-per-file
 class PayloadParser {
     constructor(req, tempDir) {
         this._isDisposed = false;
@@ -443,4 +450,5 @@ class PayloadParser {
     }
 }
 exports.PayloadParser = PayloadParser;
+// 3:20 PM 5/6/2020
 //# sourceMappingURL=sow-payload-parser.js.map

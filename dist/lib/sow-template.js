@@ -7,6 +7,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 const _fs = __importStar(require("fs"));
 const _vm = __importStar(require("vm"));
 const sow_util_1 = require("./sow-util");
@@ -21,6 +26,7 @@ class ParserInfo {
         this.isLastTag = false;
     }
 }
+// tslint:disable-next-line: max-classes-per-file
 class ScriptTag {
     constructor(l, lre, r, rre, repre) {
         this.l = l;
@@ -30,24 +36,27 @@ class ScriptTag {
         this.repre = repre;
     }
 }
+// tslint:disable-next-line: max-classes-per-file
 class Tag {
     constructor() {
         this.script = new ScriptTag('{%', /{%/g, '%}', /%}/g, /{=(.+?)=}/g);
         this.write = new ScriptTag('{=', /{=/g, '=}', /=}/g, /{=(.+?)=}/g);
     }
 }
+// tslint:disable-next-line: max-classes-per-file
 class ScriptParser {
     constructor() {
         this.tag = new Tag();
     }
     startTage(parserInfo) {
         if (parserInfo.line.indexOf(parserInfo.tag) <= -1) {
+            // tslint:disable-next-line: no-unused-expression
             !parserInfo.isLastTag ? undefined : parserInfo.isTagEnd === true ? parserInfo.line = parserInfo.line + "\x0f; __RSP += \x0f" : '';
-            return parserInfo;
+            return;
         }
         parserInfo.isTagStart = true;
         switch (parserInfo.tag) {
-            case this.tag.script.l:
+            case this.tag.script.l: /*{%*/
                 (this.tag.script.rre.test(parserInfo.line) === true
                     ? (parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
                         parserInfo.line = parserInfo.line.replace(this.tag.script.lre, "\x0f;")
@@ -55,7 +64,7 @@ class ScriptParser {
                     : parserInfo.isTagEnd = false,
                     parserInfo.line = parserInfo.line.replace(this.tag.script.lre, "\x0f;\r\n").replace(/'/g, '\x0f'));
                 break;
-            case this.tag.write.l:
+            case this.tag.write.l: /*{=*/
                 (this.tag.write.rre.test(parserInfo.line) === true ?
                     (parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
                         parserInfo.line = parserInfo.line.replace(this.tag.write.repre, (match) => {
@@ -68,22 +77,21 @@ class ScriptParser {
             default: throw new Error(`Invalid script tag "${parserInfo.tag}" found...`);
         }
         parserInfo.startTageName = (!parserInfo.isTagEnd ? parserInfo.tag : void 0);
-        return parserInfo;
+        return;
     }
     endTage(parserInfo) {
-        if (parserInfo.isTagStart === false && parserInfo.isTagEnd === true) {
-            return parserInfo;
-        }
+        if (parserInfo.isTagStart === false && parserInfo.isTagEnd === true)
+            return;
         if (parserInfo.isTagStart !== false && parserInfo.isTagEnd !== true) {
             parserInfo.isTagStart = true;
             switch (parserInfo.tag) {
-                case this.tag.script.r:
+                case this.tag.script.r: /*%}*/
                     (this.tag.script.rre.test(parserInfo.line) === true ?
                         (parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
                             parserInfo.line = parserInfo.line.replace(this.tag.script.rre, " __RSP += \x0f"))
                         : parserInfo.isTagEnd = false);
                     break;
-                case this.tag.write.r:
+                case this.tag.write.r: /*=}*/
                     (this.tag.write.rre.test(parserInfo.line) === true ?
                         (parserInfo.isTagEnd = true, parserInfo.isTagStart = false, parserInfo.line = parserInfo.line.replace(this.tag.write.rre, "; __RSP += \x0f"))
                         : parserInfo.isTagEnd = false);
@@ -92,9 +100,10 @@ class ScriptParser {
             }
             parserInfo.startTageName = (!parserInfo.isTagEnd ? parserInfo.startTageName : void 0);
         }
-        return parserInfo;
+        return;
     }
 }
+// tslint:disable-next-line: max-classes-per-file
 class TemplateParser {
     static implimentAttachment(appRoot, str) {
         if (/#attach/gi.test(str) === false)
@@ -107,6 +116,27 @@ class TemplateParser {
             }
             return _fs.readFileSync(abspath, "utf8").replace(/^\uFEFF/, '');
         });
+    }
+    static margeTemplate(match, template, body) {
+        for (const key of match) {
+            const tmplArr = /<placeholder id=\"(.*)\">/gi.exec(key.trim());
+            if (!tmplArr) {
+                throw new Error(`Invalid template format... ${key}`);
+            }
+            const tmplId = tmplArr[1];
+            if (!tmplId) {
+                throw new Error(`Invalid template format... ${key}`);
+            }
+            let implStr = void 0;
+            template = template.replace(new RegExp(`<impl-placeholder id="${tmplId}">.+?<\/impl-placeholder>`, "gi"), (m) => {
+                implStr = m.replace(/<impl-placeholder[^>]*>/gi, "").replace(/<\/impl-placeholder>/gi, "");
+                return implStr;
+            });
+            body = body.replace(new RegExp(`<placeholder id="${tmplId}">.+?<\/placeholder>`, "gi"), () => {
+                return implStr;
+            });
+        }
+        return body;
     }
     static implimentTemplateExtend(appRoot, str) {
         if (/#extends/gi.test(str) === false)
@@ -130,28 +160,10 @@ class TemplateParser {
             templats.push(str.replace(match[0], ""));
             str = _fs.readFileSync(abspath, "utf8").replace(/^\uFEFF/, '');
         } while (true);
+        // tslint:disable-next-line: one-variable-per-declaration
         let len = templats.length, count = 0, body = "", parentTemplate = "";
+        // tslint:disable-next-line: one-variable-per-declaration
         const startTag = /<placeholder[^>]*>/gi, rnRegx = /\r\n/gi;
-        const margeTemplate = (match, template) => {
-            for (const key of match) {
-                const tmplArr = /<placeholder id=\"(.*)\">/gi.exec(key.trim());
-                if (!tmplArr) {
-                    throw new Error(`Invalid template format... ${key}`);
-                }
-                const tmplId = tmplArr[1];
-                if (!tmplId) {
-                    throw new Error(`Invalid template format... ${key}`);
-                }
-                let implStr = void 0;
-                template = template.replace(new RegExp(`<impl-placeholder id="${tmplId}">.+?<\/impl-placeholder>`, "gi"), (m) => {
-                    implStr = m.replace(/<impl-placeholder[^>]*>/gi, "").replace(/<\/impl-placeholder>/gi, "");
-                    return implStr;
-                });
-                body = body.replace(new RegExp(`<placeholder id="${tmplId}">.+?<\/placeholder>`, "gi"), () => {
-                    return implStr;
-                });
-            }
-        };
         do {
             len--;
             if (count === 0) {
@@ -164,7 +176,7 @@ class TemplateParser {
             if (match === null)
                 continue;
             parentTemplate = templats[len].replace(rnRegx, "8_r_n_gx_8");
-            margeTemplate(match, parentTemplate);
+            body = this.margeTemplate(match, parentTemplate, body);
         } while (len > 0);
         return body.replace(/8_r_n_gx_8/gi, "\r\n");
     }
@@ -175,13 +187,14 @@ class TemplateParser {
 const _tw = {
     cache: {}
 };
+// tslint:disable-next-line: max-classes-per-file
 class TemplateCore {
-    static compair(a, b) {
-        const astat = _fs.statSync(a), bstat = _fs.statSync(b);
-        if (astat.mtime.getTime() > bstat.mtime.getTime())
-            return true;
-        return false;
-    }
+    // private static compair( a: string, b: string ): boolean {
+    //    const astat: _fs.Stats = _fs.statSync( a );
+    //    const bstat: _fs.Stats = _fs.statSync( b );
+    //    if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
+    //    return false;
+    // }
     static compile(str, next) {
         const context = {
             thisNext: void 0
@@ -189,7 +202,9 @@ class TemplateCore {
         const script = new _vm.Script(`thisNext = function( _server, ctx, _next ){\n ${str} \n};`);
         _vm.createContext(context);
         script.runInContext(context);
-        return (next ? next(str, true) : void 0), context.thisNext;
+        if (next)
+            next(str, true);
+        return context.thisNext;
     }
     static parseScript(str) {
         str = str.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
@@ -202,15 +217,17 @@ class TemplateCore {
         out += 'ctx.write = function( str ) { __RSP += str; }';
         const scriptParser = new ScriptParser();
         const parserInfo = new ParserInfo();
-        for (let i = 0, len = script.length; i < len; i++) {
-            parserInfo.line = script[i];
-            out += "\r\n";
+        for (parserInfo.line of script) {
+            out += "\n";
             if (!parserInfo.line) {
                 out += "\r\n__RSP += '';";
                 continue;
             }
-            parserInfo.line = parserInfo.line.replace(/^\s*|\s*$/g, ' ');
-            parserInfo.isTagEnd === true ? parserInfo.line = "__RSP += \x0f" + parserInfo.line : void 0;
+            // parserInfo.line = parserInfo.line.replace( /^\s*|\s*$/g, ' ' );
+            parserInfo.line = parserInfo.line.replace(/(?:\r\n|\r|\n)/g, '');
+            if (parserInfo.isTagEnd === true) {
+                parserInfo.line = "__RSP += \x0f" + parserInfo.line;
+            }
             parserInfo.tag = scriptParser.tag.script.l;
             scriptParser.startTage(parserInfo);
             parserInfo.tag = scriptParser.tag.script.r;
@@ -219,7 +236,14 @@ class TemplateCore {
             scriptParser.startTage(parserInfo);
             parserInfo.tag = scriptParser.tag.write.r;
             scriptParser.endTage(parserInfo);
-            parserInfo.isTagEnd === true ? (parserInfo.line = parserInfo.line.replace(/'/g, '\\x27').replace(/\x0f/g, "'"), out += parserInfo.line + "\\n';") : (parserInfo.line = parserInfo.line.replace(/\x0f/g, "'"), out += parserInfo.line);
+            if (parserInfo.isTagEnd === true) {
+                parserInfo.line = parserInfo.line.replace(/'/g, '\\x27').replace(/\x0f/g, "'");
+                out += parserInfo.line + "\\n';";
+            }
+            else {
+                parserInfo.line = parserInfo.line.replace(/\x0f/g, "'");
+                out += parserInfo.line;
+            }
         }
         out = out.replace(/__RSP \+\= '';/g, '');
         out += "\nreturn _next( __RSP ), __RSP = void 0;\n";
@@ -253,7 +277,24 @@ class TemplateCore {
         if (this.isScript(str)) {
             return this.compile(this.parseScript(str), next);
         }
+        // tslint:disable-next-line: no-unused-expression
         return (isTemplate ? (next ? next(str, false) : void 0) : void 0), str;
+    }
+    static tryLive(server, ctx, path, status) {
+        const url = sow_util_1.Util.isExists(path, ctx.next);
+        if (!url)
+            return;
+        const result = this.run(server.getPublic(), _fs.readFileSync(String(url), "utf8").replace(/^\uFEFF/, ''));
+        if (typeof (result) === "function") {
+            return result(server, ctx, (body) => {
+                ctx.res.set('Cache-Control', 'no-store');
+                ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
+                return ctx.res.end(body), ctx.next(status.code, status.isErrorCode === false);
+            });
+        }
+        ctx.res.set('Cache-Control', 'no-store');
+        ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
+        return ctx.res.end(result), ctx.next(status.code, status.isErrorCode === false);
     }
     static tryMemCache(server, ctx, path, status) {
         const key = path.replace(/\//gi, "_").replace(/\./gi, "_");
@@ -288,7 +329,8 @@ class TemplateCore {
             return;
         let readCache = false;
         if (server.config.templateCache && sow_util_1.Util.isExists(cachePath)) {
-            readCache = this.compair(filePath, cachePath) === false;
+            // readCache = this.compair( filePath, cachePath ) === false;
+            readCache = sow_util_1.Util.compairFile(filePath, cachePath) === false;
             if (readCache === false) {
                 _fs.unlinkSync(cachePath);
             }
@@ -312,11 +354,13 @@ class TemplateCore {
                 return ctx.res.end(body), ctx.next(status.code, status.isErrorCode === false);
             });
         }
-        ctx.res.set('Cache-Control', 'no-store');
+        ctx.res.set('Cache-Control', 'no-store'); // res.setHeader( 'Cache-Control', 'public, max-age=0' )
         ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
         return ctx.res.end(cache), ctx.next(status.code, status.isErrorCode === false);
     }
 }
+// tslint:disable-next-line: max-classes-per-file
+// tslint:disable-next-line: no-namespace
 var Template;
 (function (Template) {
     function parse(server, ctx, path, status) {
@@ -324,7 +368,10 @@ var Template;
             status = sow_http_status_1.HttpStatus.getResInfo(path, 200);
         try {
             ctx.servedFrom = server.pathToUrl(path);
-            if (server.config.templateCache && server.config.templateCacheType === "MEM") {
+            if (!server.config.template.cache) {
+                return TemplateCore.tryLive(server, ctx, path, status);
+            }
+            if (server.config.template.cache && server.config.template.cacheType === "MEM") {
                 return TemplateCore.tryMemCache(server, ctx, path, status);
             }
             return TemplateCore.tryFileCacheOrLive(server, ctx, path, status);

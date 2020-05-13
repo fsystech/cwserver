@@ -7,6 +7,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 9:22 PM 5/4/2020
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const _zlib = require("zlib");
@@ -21,6 +27,7 @@ const isAcceptedEncoding = (req, name) => {
     return acceptEncoding.indexOf(name) > -1;
 };
 let HttpMimeType = {};
+// "exe", "zip", "doc", "docx", "pdf", "ppt", "pptx", "gz"
 const TaskDeff = [
     { cache: false, ext: "exe", gzip: false },
     { cache: false, ext: "zip", gzip: false },
@@ -44,6 +51,7 @@ class MimeHandler {
         const reqCacheHeader = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
         const cachePath = this.getCachePath(ctx);
         const existsCachFile = _fs.existsSync(cachePath);
+        // tslint:disable-next-line: one-variable-per-declaration
         let lastChangeTime = 0, cfileSize = 0;
         if (existsCachFile) {
             const stat = _fs.statSync(cachePath);
@@ -78,7 +86,7 @@ class MimeHandler {
             }, ctx.server.config.cacheHeader);
             ctx.res.setHeader('x-served-from', 'cach-file');
             ctx.res.writeHead(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
-            return ctx.res.end(_fs.readFileSync(cachePath)), ctx.next(200);
+            return sow_util_1.Util.pipeOutputStream(cachePath, ctx);
         }
         return _zlib.gzip(_fs.readFileSync(absPath), (error, buff) => {
             if (error) {
@@ -120,16 +128,7 @@ class MimeHandler {
         ctx.res.writeHead(200, {
             'Content-Type': mimeType, 'Content-Length': size
         });
-        let openenedFile = _fs.createReadStream(absPath);
-        openenedFile.pipe(ctx.res);
-        return ctx.res.on('close', () => {
-            if (openenedFile) {
-                openenedFile.unpipe(ctx.res);
-                openenedFile.close();
-                openenedFile = Object.create(null);
-            }
-            ctx.next(200);
-        }), void 0;
+        return sow_util_1.Util.pipeOutputStream(absPath, ctx);
     }
     static servedFromFile(ctx, absPath, mimeType, isGzip, fstat) {
         const reqCachHeader = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
@@ -157,7 +156,7 @@ class MimeHandler {
             }), void 0;
         }
         ctx.res.writeHead(200, { 'Content-Type': mimeType });
-        return ctx.res.end(_fs.readFileSync(absPath)), ctx.next(200);
+        return sow_util_1.Util.pipeOutputStream(absPath, ctx);
     }
     static render(ctx, mimeType, maybeDir, checkFile) {
         const absPath = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
@@ -174,8 +173,7 @@ class MimeHandler {
                 serverRevalidate: false
             });
             ctx.res.writeHead(200, { 'Content-Type': mimeType });
-            ctx.res.end(_fs.readFileSync(absPath));
-            return ctx.next(200);
+            return sow_util_1.Util.pipeOutputStream(absPath, ctx);
         }
         const stat = _fs.statSync(absPath);
         if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
@@ -207,6 +205,7 @@ class MimeHandler {
         return this.servedFromServerFileCache(ctx, absPath, mimeType, stat);
     }
 }
+// tslint:disable-next-line: max-classes-per-file
 class HttpMimeHandler {
     constructor() {
         const parent = _path.resolve(__dirname, '..');
@@ -241,4 +240,5 @@ class HttpMimeHandler {
     }
 }
 exports.HttpMimeHandler = HttpMimeHandler;
+// 11:38 PM 5/4/2020
 //# sourceMappingURL=sow-http-mime.js.map

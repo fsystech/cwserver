@@ -7,8 +7,15 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 11:26 PM 9/28/2019
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
+// tslint:disable-next-line: one-variable-per-declaration
 const dfo = (t) => {
     t = t === 0 ? 1 : t;
     return t <= 9 ? "0" + t : t;
@@ -16,9 +23,16 @@ const dfo = (t) => {
     t += 1;
     return t <= 9 ? "0" + t : t;
 }, getLocalDateTime = (offset) => {
+    // create Date object for current location
     const d = new Date();
+    // convert to msec
+    // subtract local time zone offset
+    // get UTC time in msec
     const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    // create new Date object for different city
+    // using supplied offset
     const nd = new Date(utc + (3600000 * offset));
+    // return time as a string
     return nd;
 }, getTime = (tz) => {
     const date = getLocalDateTime(tz);
@@ -52,6 +66,7 @@ ConsoleColor.BgBlue = '\x1b[44m';
 ConsoleColor.BgMagenta = '\x1b[45m';
 ConsoleColor.BgCyan = '\x1b[46m';
 ConsoleColor.BgWhite = '\x1b[47m';
+// tslint:disable-next-line: max-classes-per-file
 class Logger {
     constructor(dir, name, tz, userInteractive, isDebug) {
         this._userInteractive = typeof (userInteractive) !== "boolean" ? true : userInteractive;

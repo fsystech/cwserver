@@ -10,6 +10,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 const crypto_js_1 = __importDefault(require("crypto-js"));
 const js_base64_1 = require("js-base64");
 const crypto = __importStar(require("crypto"));
@@ -26,6 +31,8 @@ class CryptoInfo {
     }
 }
 exports.CryptoInfo = CryptoInfo;
+// tslint:disable-next-line: max-classes-per-file
+// tslint:disable-next-line: no-namespace
 var Encryption;
 (function (Encryption) {
     function convert(from, to) {

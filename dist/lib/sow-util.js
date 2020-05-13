@@ -3,6 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const _fs = require("fs");
 const _path = require("path");
 const _isPlainObject = (obj) => {
+    /// <summary>Tests whether a value is an object.</summary>
+    /// <param name="value">Value to test.</param>
+    /// <returns type="Boolean">True is the value is an object; false otherwise.</returns>
+    // return typeof value === "object";
     if (obj === null || obj === undefined)
         return false;
     return typeof (obj) === 'object';
@@ -19,6 +23,7 @@ const _deepExtend = (destination, source) => {
         source = source();
     if (!_isPlainObject(destination) || !_isPlainObject(source))
         throw new TypeError(`Invalid arguments defined. Arguments should be Object instance. destination type ${typeof (destination)} and source type ${typeof (source)}`);
+    // tslint:disable-next-line: forin
     for (const property in source) {
         const s = source[property];
         const d = destination[property];
@@ -30,11 +35,14 @@ const _deepExtend = (destination, source) => {
     }
     return destination;
 };
+// tslint:disable-next-line: no-namespace
 var Util;
 (function (Util) {
     function guid() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            // tslint:disable-next-line: no-bitwise
             const r = Math.random() * 16 | 0;
+            // tslint:disable-next-line: no-bitwise
             const v = c === 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
@@ -54,6 +62,9 @@ var Util;
         return _isPlainObject(obj);
     }
     Util.isPlainObject = isPlainObject;
+    /// <summary>Checks whether the specified value is an array object.</summary>
+    /// <param name="value">Value to check.</param>
+    /// <returns type="Boolean">true if the value is an array object; false otherwise.</returns>
     function isArrayLike(obj) {
         if (obj === null || obj === undefined)
             return false;
@@ -61,13 +72,38 @@ var Util;
         return result === "[object NodeList]" || result === "[object Array]" ? true : false;
     }
     Util.isArrayLike = isArrayLike;
-    function isFileModified(a, b) {
-        const astat = _fs.statSync(a), bstat = _fs.statSync(b);
+    /** compair a stat.mtime > b stat.mtime */
+    function compairFile(a, b) {
+        const astat = _fs.statSync(a);
+        const bstat = _fs.statSync(b);
         if (astat.mtime.getTime() > bstat.mtime.getTime())
             return true;
         return false;
     }
-    Util.isFileModified = isFileModified;
+    Util.compairFile = compairFile;
+    function pipeOutputStream(absPath, ctx) {
+        let openenedFile = _fs.createReadStream(absPath);
+        openenedFile.pipe(ctx.res);
+        return ctx.res.on('close', () => {
+            if (openenedFile) {
+                openenedFile.unpipe(ctx.res);
+                openenedFile.close();
+                openenedFile = Object.create(null);
+            }
+            ctx.next(200);
+        }), void 0;
+    }
+    Util.pipeOutputStream = pipeOutputStream;
+    function readJsonAsync(absPath) {
+        const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
+        try {
+            return JSON.parse(jsonstr);
+        }
+        catch (e) {
+            return void 0;
+        }
+    }
+    Util.readJsonAsync = readJsonAsync;
     function copySync(src, dest) {
         if (!_fs.existsSync(src))
             return;
@@ -87,6 +123,7 @@ var Util;
     function isExists(path, next) {
         const url = _path.resolve(path);
         if (!_fs.existsSync(url)) {
+            // tslint:disable-next-line: no-unused-expression
             return (next ? next(404, true) : undefined), false;
         }
         return url;
@@ -107,6 +144,7 @@ var Util;
         }
         else {
             fullPath = _path.resolve(rootDir);
+            // so we've to start form drive:\
             targetDir = fullPath;
             sep = _path.sep;
             rootDir = _path.isAbsolute(targetDir) ? sep : '';

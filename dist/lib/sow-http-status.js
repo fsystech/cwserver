@@ -93,6 +93,7 @@ class HttpStatus {
         if (index < 0)
             return outStatusCode;
         const code = file.substring(0, index);
+        // check is valid server status code here...
         statusCode = sow_static_1.ToNumber(code);
         if (statusCode === 0)
             return outStatusCode;

@@ -1,8 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const sow_static_1 = require("./sow-static");
+// tslint:disable-next-line: no-namespace
 var SowHttpCache;
 (function (SowHttpCache) {
+    /** Gets value in millisecond of {If-Modified-Since} from header. */
     function getIfModifiedSinceUTCTime(headers) {
         const ifModifiedSinceHeaderText = headers["If-Modified-Since"] || headers["if-modified-since"];
         if (ifModifiedSinceHeaderText) {
@@ -14,6 +16,7 @@ var SowHttpCache;
         return void 0;
     }
     SowHttpCache.getIfModifiedSinceUTCTime = getIfModifiedSinceUTCTime;
+    /** Gets the {sinceModify, etag} from given header {If-None-Match, If-Modified-Since}. */
     function getChangedHeader(headers) {
         const tag = headers["If-None-Match"] || headers["if-none-match"] || headers.ETag || headers.etag;
         return {
@@ -22,6 +25,10 @@ var SowHttpCache;
         };
     }
     SowHttpCache.getChangedHeader = getChangedHeader;
+    /**
+     * Write cache header
+     * e.g. {last-modified, expires, ETag, cache-control, x-server-revalidate}.
+     */
     function writeCacheHeader(res, obj, cacheHeader) {
         if (obj.lastChangeTime) {
             res.setHeader('last-modified', sow_static_1.ToResponseTime(obj.lastChangeTime));
@@ -39,9 +46,11 @@ var SowHttpCache;
         }
     }
     SowHttpCache.writeCacheHeader = writeCacheHeader;
+    /** Create and Gets {etag} (timestamp ^ fsize). */
     function getEtag(timestamp, fsize) {
         if (typeof (timestamp) !== "number")
             throw new Error("Invalid argument defined. timestamp should be Number...");
+        // tslint:disable-next-line: no-bitwise
         return `W/${(timestamp ^ fsize)}`;
     }
     SowHttpCache.getEtag = getEtag;

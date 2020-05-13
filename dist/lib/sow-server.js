@@ -11,12 +11,14 @@ const sow_server_core_1 = require("./sow-server-core");
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_util_1 = require("./sow-util");
+const sow_schema_validator_1 = require("./sow-schema-validator");
 const sow_static_1 = require("./sow-static");
 const sow_template_1 = require("./sow-template");
 const sow_controller_1 = require("./sow-controller");
 const sow_encryption_1 = require("./sow-encryption");
 const sow_http_status_1 = require("./sow-http-status");
 const sow_logger_1 = require("./sow-logger");
+// -------------------------------------------------------
 const _Error = (msg) => {
     if (process.env.IISNODE_VERSION || process.env.PORT) {
         console.log(msg);
@@ -44,9 +46,11 @@ function isDefined(a) {
 const parseMaxAge = (maxAge) => {
     if (typeof (maxAge) !== "string")
         throw _Error(`Invalid maxAage...`);
+    // tslint:disable-next-line: one-variable-per-declaration
     let add = 0, type = 'D';
     const length = maxAge.length;
     type = maxAge.charAt(length - 1).toUpperCase();
+    // tslint:disable-next-line: radix
     add = parseInt(maxAge.substring(0, length - 1));
     if (isNaN(add))
         throw _Error(`Invalid maxAage format ${maxAge}`);
@@ -63,6 +67,7 @@ const _formatPath = (() => {
             return { value: void 0 };
         const parts = name.split('.');
         let value = void 0;
+        // tslint:disable-next-line: no-conditional-assignment
         for (let part; parts.length && (part = parts.shift());) {
             if (value) {
                 if (part in value) {
@@ -103,6 +108,7 @@ class DatabaseConfig {
     }
 }
 exports.DatabaseConfig = DatabaseConfig;
+// tslint:disable-next-line: max-classes-per-file
 class ServerEncryption {
     constructor(inf) {
         this.encrypt = (plainText) => {
@@ -126,6 +132,7 @@ class ServerEncryption {
     }
 }
 exports.ServerEncryption = ServerEncryption;
+// tslint:disable-next-line: max-classes-per-file
 class Context {
     constructor(_server, _req, _res, _session) {
         this.error = void 0;
@@ -151,19 +158,20 @@ class Context {
     }
 }
 exports.Context = Context;
+// tslint:disable-next-line: max-classes-per-file
 class ServerConfig {
     constructor() {
         this.Author = "Safe Online World Ltd.";
         this.appName = "Sow Server";
-        this.version = "1.0.0.1";
+        this.version = "0.0.1";
         this.packageVersion = "101";
         this.isDebug = true;
-        this.templateCache = false;
         this.encryptionKey = Object.create(null);
         this.session = {
             "cookie": "_sow_session",
             "key": Object.create(null),
-            "maxAge": 100
+            "maxAge": 100,
+            isSecure: false
         };
         this.mimeType = ["css", "js", "png", "gif", "ico", "map"];
         this.defaultExt = ".html";
@@ -174,6 +182,10 @@ class ServerConfig {
             "500": "$root/error_page/500.html"
         };
         this.hiddenDirectory = [];
+        this.template = {
+            cache: true,
+            cacheType: "FILE"
+        };
         this.hostInfo = {
             "origin": [],
             "root": "www",
@@ -183,7 +195,6 @@ class ServerConfig {
             "cert": {},
             "port": 8080
         };
-        this.templateCacheType = "F";
         this.staticFile = {
             compression: true,
             minCompressionSize: 1024 * 5,
@@ -197,12 +208,17 @@ class ServerConfig {
         this.noCache = [];
         this.bundler = {
             enable: true,
-            fileCache: true
+            fileCache: true,
+            route: "/app/api/bundle/",
+            compress: true
         };
+        // this.database = [new DatabaseConfig()];
     }
 }
 exports.ServerConfig = ServerConfig;
+// tslint:disable-next-line: max-classes-per-file
 class Crypto {
+    // tslint:disable-next-line: no-empty
     constructor() { }
     encryptStr(plainText) {
         throw new Error("Method not implemented.");
@@ -218,6 +234,7 @@ class Crypto {
     }
 }
 exports.Crypto = Crypto;
+// tslint:disable-next-line: max-classes-per-file
 class SowServer {
     constructor(appRoot, wwwName) {
         this.port = 0;
@@ -239,26 +256,30 @@ ${appRoot}\\www_public
         this.public = wwwName === null || wwwName === void 0 ? void 0 : wwwName.toString();
         this.config = new ServerConfig();
         this.db = {};
+        const absPath = _path.resolve(`${this.root}/${this.public}/config/app.config.json`);
+        if (!_fs.existsSync(absPath)) {
+            throw _Error(`No config file found in ${absPath}`);
+        }
+        const config = sow_util_1.Util.readJsonAsync(absPath);
+        if (!config) {
+            throw _Error(`Invalid config file defined.\r\nConfig: ${absPath}`);
+        }
+        sow_schema_validator_1.Schema.Validate(config);
+        // if ( config.hasOwnProperty( "Author" ) ) throw _Error( "You should not set Author property..." );
+        if (this.public !== config.hostInfo.root) {
+            throw _Error(`Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
+        }
         const myParent = _path.resolve(__dirname, '..');
         this.errorPage = {
             "404": _path.resolve(`${myParent}/error_page/404.html`),
             "401": _path.resolve(`${myParent}/error_page/401.html`),
             "500": _path.resolve(`${myParent}/error_page/500.html`)
         };
-        const absPath = _path.resolve(`${this.root}/${this.public}/config/app_config.json`);
-        if (!_fs.existsSync(absPath)) {
-            throw _Error(`No config file found in ${absPath}`);
-        }
-        const config = JSON.parse(_fs.readFileSync(absPath, "utf8"));
-        if (config.hasOwnProperty("Author"))
-            throw _Error("You should not set Author property...");
-        if (this.public !== config.hostInfo.root) {
-            throw _Error(`Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
-        }
         sow_util_1.Util.extend(this.config, config, true);
         this.implimentConfig(config);
         this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
         this.publicregx = new RegExp(`${this.public}/`, "gi");
+        // _path.dirname( "node_modules" );
         this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/express/`, "gi");
         this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         this.initilize();
@@ -337,7 +358,9 @@ ${appRoot}\\www_public
                 if (!this.errorPage.hasOwnProperty(property))
                     continue;
                 const path = this.config.errorPage[property];
+                // tslint:disable-next-line: radix
                 const code = parseInt(property);
+                // tslint:disable-next-line: variable-name
                 const status_code = sow_http_status_1.HttpStatus.fromPath(path, code);
                 if (!status_code || status_code !== code || !sow_http_status_1.HttpStatus.isErrorCode(status_code)) {
                     throw _Error(`Invalid Server/Client error page... ${path} and code ${code}}`);
@@ -414,7 +437,11 @@ ${appRoot}\\www_public
             throw Error("You are unable to add session without session config. see your app_config.json");
         return ctx.res.cookie(this.config.session.cookie, sow_encryption_1.Encryption.encryptToHex(JSON.stringify({
             loginId, roleId, userData
-        }), this.config.session.key), { maxAge: this.config.session.maxAge, httpOnly: true, sameSite: "strict" }), true;
+        }), this.config.session.key), {
+            maxAge: this.config.session.maxAge,
+            httpOnly: true, sameSite: "strict",
+            secure: this.config.session.isSecure
+        }), true;
     }
     passError(ctx) {
         if (!ctx.error)
@@ -448,6 +475,7 @@ ${appRoot}\\www_public
                 this.log.error(`Active connection closed by client. Request path ${ctx.path}`).reset();
                 return cleanContext(ctx);
             }
+            // tslint:disable-next-line: no-unused-expression
             return (this.passError(ctx) ? void 0 : ctx.res.status(rcode).end('Page Not found 404')), _next(rcode, false);
         };
         return sow_template_1.Template.parse(this, ctx, path, status);
@@ -673,7 +701,7 @@ function initilizeServer(appRoot, wwwName) {
                 if (sowView.__isRunOnly)
                     return;
                 if (sowView.__esModule) {
-                    if (typeof (sowView[sowView.__moduleName]) !== "function") {
+                    if (!sowView[sowView.__moduleName]) {
                         throw new Error(`Invalid module name declear ${sowView.__moduleName} not found in ${a}`);
                     }
                     if (typeof (sowView[sowView.__moduleName].Init) !== "function") {
@@ -690,6 +718,7 @@ function initilizeServer(appRoot, wwwName) {
         _app.onError((req, res, err) => {
             if (res.headersSent)
                 return;
+            // tslint:disable-next-line: no-shadowed-variable
             const _context = _server.createContext(req, res, (err) => {
                 res.writeHead(404, { 'Content-Type': 'text/html' });
                 res.end("Nothing found....");
@@ -731,7 +760,8 @@ function initilizeServer(appRoot, wwwName) {
         init: initilize,
         get public() { return _server.public; },
         get port() { return _server.port; },
-        get log() { return _server.log; }
+        get log() { return _server.log; },
+        get socketPath() { return _server.config.socketPath || ""; }
     };
 }
 exports.initilizeServer = initilizeServer;

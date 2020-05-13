@@ -1,3 +1,4 @@
+import { IContext } from './sow-server';
 import { IRequest, IResponse } from './sow-server-core';
 export declare namespace Util {
     function guid(): string;
@@ -13,7 +14,12 @@ export declare namespace Util {
         [x: string]: any;
     };
     function isArrayLike(obj?: any): obj is [];
-    function isFileModified(a: string, b: string): boolean;
+    /** compair a stat.mtime > b stat.mtime */
+    function compairFile(a: string, b: string): boolean;
+    function pipeOutputStream(absPath: string, ctx: IContext): void;
+    function readJsonAsync(absPath: string): {
+        [id: string]: any;
+    } | void;
     function copySync(src: string, dest: string): void;
     function isExists(path: string, next?: (code?: number | undefined, transfer?: boolean) => void): string | boolean;
     function mkdirSync(rootDir: string, targetDir?: string): boolean;

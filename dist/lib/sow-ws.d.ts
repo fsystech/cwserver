@@ -1,6 +1,52 @@
+/// <reference types="node" />
 import { ISowServer } from './sow-server';
 import { ISession } from './sow-static';
-import { Socket } from 'socket.io';
+/** [socket.io blueprint] */
+interface Socket extends NodeJS.EventEmitter {
+    nsp: object;
+    server: object;
+    adapter: object;
+    id: string;
+    request: {
+        session?: ISession;
+        headers: any;
+    };
+    client: object;
+    conn: object;
+    rooms: {
+        [id: string]: string;
+    };
+    connected: boolean;
+    disconnected: boolean;
+    handshake: any;
+    json: Socket;
+    volatile: Socket;
+    broadcast: Socket;
+    to(room: string): Socket;
+    in(room: string): Socket;
+    use(fn: (packet: any[], next: (err?: any) => void) => void): Socket;
+    send(...args: any[]): Socket;
+    write(...args: any[]): Socket;
+    join(name: string | string[], fn?: (err?: any) => void): Socket;
+    leave(name: string, fn?: Function): Socket;
+    leaveAll(): void;
+    disconnect(close?: boolean): Socket;
+    listeners(event: string): Function[];
+    compress(compress: boolean): Socket;
+    error(err: any): void;
+}
+interface Namespace {
+    _path: string;
+    use(fn: (socket: Socket, fn: (err?: any) => void) => void): Namespace;
+    on(event: 'connect', listener: (socket: Socket) => void): Namespace;
+    on(event: 'connection', listener: (socket: Socket) => void): this;
+}
+declare type ioServer = (server: any, opt: {
+    path?: string;
+    pingTimeout?: number;
+    cookie?: boolean;
+}) => Namespace;
+/** [/socket.io blueprint] */
 export interface IWsClientInfo {
     next: (session: ISession, socket: Socket) => void | boolean;
     client: (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
@@ -37,12 +83,14 @@ export interface ISowSocket {
     removeSocket(token: string): boolean;
     sendMsg(token: string, method: string, data?: any): boolean;
 }
+declare type IWsNext = (session: ISession, socket: Socket) => void | boolean;
+declare type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
+    [x: string]: any;
+};
 export declare class WsClientInfo implements IWsClientInfo {
-    next: (session: ISession, socket: Socket) => void | boolean;
-    client: (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
-        [x: string]: any;
-    };
-    constructor();
+    next: IWsNext;
+    client: IWsClient;
+    constructor(next: IWsNext, client: IWsClient);
     getServerEvent(): {
         [x: string]: any;
     }[];
@@ -80,12 +128,14 @@ export declare class SowSocket implements ISowSocket {
     getSocket(token: string): ISowSocketInfo | void;
     removeSocket(token: string): boolean;
     sendMsg(token: string, method: string, data?: any): boolean;
-    create(): void;
+    create(ioserver: ioServer): void;
 }
-export declare function SoketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
+/** If you want to use it you've to install socket.io */
+export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
     isConnectd: boolean;
     wsEvent: {
         [x: string]: any;
     }[];
-    create: () => void;
+    create: (ioserver: ioServer) => void;
 };
+export {};

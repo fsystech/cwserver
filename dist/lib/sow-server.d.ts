@@ -53,12 +53,16 @@ export interface IServerConfig {
     version: string;
     packageVersion: string;
     isDebug: boolean;
-    templateCache: boolean;
+    template: {
+        cache: boolean;
+        cacheType: string;
+    };
     encryptionKey: ICryptoInfo;
     session: {
         cookie: string;
         key: ICryptoInfo;
         maxAge: number;
+        isSecure: boolean;
     };
     mimeType: string[];
     defaultExt: string;
@@ -79,7 +83,6 @@ export interface IServerConfig {
         port: string | number;
     };
     database?: IDatabaseConfig[];
-    templateCacheType: string;
     staticFile: {
         compression: boolean;
         minCompressionSize: number;
@@ -95,6 +98,8 @@ export interface IServerConfig {
     bundler: {
         enable: boolean;
         fileCache: boolean;
+        route: string;
+        compress: boolean;
     };
 }
 export interface ISowServer {
@@ -188,12 +193,12 @@ export declare class ServerConfig implements IServerConfig {
     version: string;
     packageVersion: string;
     isDebug: boolean;
-    templateCache: boolean;
     encryptionKey: ICryptoInfo;
     session: {
         cookie: string;
         key: ICryptoInfo;
         maxAge: number;
+        isSecure: boolean;
     };
     mimeType: string[];
     defaultExt: string;
@@ -214,7 +219,6 @@ export declare class ServerConfig implements IServerConfig {
         port: string | number;
     };
     database?: IDatabaseConfig[];
-    templateCacheType: string;
     staticFile: {
         compression: boolean;
         minCompressionSize: number;
@@ -230,6 +234,12 @@ export declare class ServerConfig implements IServerConfig {
     bundler: {
         enable: boolean;
         fileCache: boolean;
+        route: string;
+        compress: boolean;
+    };
+    template: {
+        cache: boolean;
+        cacheType: string;
     };
     constructor();
 }
@@ -312,5 +322,6 @@ export declare function initilizeServer(appRoot: string, wwwName?: string): {
     init: () => IApps;
     public: string;
     port: string | number;
+    socketPath: string;
     log: ILogger;
 };

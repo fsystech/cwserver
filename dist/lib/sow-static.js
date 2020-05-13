@@ -10,6 +10,7 @@ class Session {
     ;
 }
 exports.Session = Session;
+// tslint:disable-next-line: max-classes-per-file
 class ResInfo {
     constructor() {
         this.code = 0;
@@ -69,6 +70,7 @@ const dfm = (t) => {
     return _map.month[t];
 };
 function ToResponseTime(timestamp) {
+    // Thu, 01 May 2020 23:34:07 GMT
     const date = typeof (timestamp) === "number" && timestamp > 0 ? new Date(timestamp) : new Date();
     return `${dfo(date.getDay())}, ${dfon(date.getDate())} ${dfm(date.getMonth())} ${date.getFullYear()} ${dfon(date.getHours())}:${dfon(date.getMinutes())}:${dfon(date.getSeconds())} GMT`;
 }

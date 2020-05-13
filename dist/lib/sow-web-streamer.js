@@ -1,6 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 9:19 PM 5/8/2020
 const fs_1 = require("fs");
+// tslint:disable-next-line: no-namespace
 var Streamer;
 (function (Streamer) {
     function stream(ctx, absPath, mimeType, fstat) {

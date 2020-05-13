@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8" />
-    <title>Readme</title>
+    <title>Readme - {= _server.config.appName =}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css" />
     <style type="text/css">
         code {
@@ -61,7 +61,7 @@ if ( process.argv.length &gt; 2 ) {
     }
 }
 const server = initilizeServer( __dirname, wwwName );
-const httpServer = server.init();
+const app = server.init();
 process.on( 'exit', () =&gt; {
     console.log( "Exited..." );
 } );
@@ -73,7 +73,7 @@ process.on( 'SIGINT', () =&gt; {
         process.exit( 0 );
     }, 200 );
 } );
-httpServer.listen( server.port, () =&gt; server.log.write( `
+app.listen( server.port, () =&gt; server.log.write( `
     [+] Maintance      : https://www.safeonline.world
     [+] Server         : http://localhost:${server.port}
     [+] Socket         : ws://localhost:${server.port}/app/hub/ws/

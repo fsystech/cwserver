@@ -1,5 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 4:48 PM 5/3/2020
 const _fs = require("fs");
 const _path = require("path");
 const _zlib = require("zlib");
@@ -20,6 +26,7 @@ class BundleInfo {
         this.blocked = false;
     }
 }
+// tslint:disable-next-line: max-classes-per-file
 class Bundlew {
     static getInfo() {
         return `/*
@@ -79,7 +86,9 @@ This 'Combiner' contains the following files:\n`;
             lastChangeTime = 0;
         str = str.replace(/\r\n/gi, "").replace(/\s+/g, "");
         try {
+            // let files: Array<{ name: string, absolute: string, change_time: number, is_change: boolean, is_own: boolean }> = [];
             str.split(",").forEach(name => {
+                // tslint:disable-next-line: one-variable-per-declaration
                 let absolute = void 0, isOwn = false;
                 const partIndex = name.indexOf("|");
                 if (partIndex > 0) {
@@ -149,7 +158,7 @@ This 'Combiner' contains the following files:\n`;
             if (inf.isOwn === true) {
                 out.push(Buffer.from(copyBuff));
                 if (inf.name.indexOf(".min.") < 0) {
-                    out.push(Buffer.from(_fs.readFileSync(inf.absolute, "utf8").replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "")));
+                    out.push(Buffer.from(_fs.readFileSync(inf.absolute, "utf8").replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, ""))); /** Replace Comment and empty line */
                     return;
                 }
             }
@@ -191,7 +200,7 @@ This 'Combiner' contains the following files:\n`;
         }, server.config.cacheHeader);
         ctx.req.socket.setNoDelay(true);
         const buffer = this.readBuffer(bundleInfo, server.copyright());
-        if (isGzip === false) {
+        if (isGzip === false || !server.config.bundler.compress) {
             ctx.res.writeHead(200, {
                 'Content-Type': this.getResContentType(cte),
                 'Content-Length': buffer.length
@@ -223,8 +232,10 @@ This 'Combiner' contains the following files:\n`;
         if (cte === ContentType.UNKNOWN)
             return ctx.next(404);
         const cachpath = this.getCachePath(server, str.toString(), cte, cacheKey.toString());
+        // if ( !cachpath ) return ctx.next( 404 );
         const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
         const existsCachFile = _fs.existsSync(cachpath);
+        // tslint:disable-next-line: one-variable-per-declaration
         let lastChangeTime = 0, cfileSize = 0;
         if (existsCachFile) {
             const stat = _fs.statSync(cachpath);
@@ -267,12 +278,41 @@ This 'Combiner' contains the following files:\n`;
                 etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize)
             }, server.config.cacheHeader);
             ctx.res.setHeader('x-served-from', 'cach-file');
+            if (!server.config.bundler.compress) {
+                ctx.res.writeHead(200, {
+                    'Content-Type': this.getResContentType(cte),
+                    'Content-Length': cfileSize
+                });
+            }
+            else {
+                ctx.res.writeHead(200, {
+                    'Content-Type': this.getResContentType(cte),
+                    'Content-Encoding': 'gzip',
+                    'Content-Length': cfileSize
+                });
+            }
+            return sow_util_1.Util.pipeOutputStream(cachpath, ctx);
+        }
+        if (!server.config.bundler.compress) {
+            ctx.res.writeHead(200, {
+                'Content-Type': this.getResContentType(cte),
+                'Content-Length': cfileSize
+            });
+            const buff = this.readBuffer(bundleInfo, server.copyright());
+            _fs.writeFileSync(cachpath, buff);
+            const stat = _fs.statSync(cachpath);
+            lastChangeTime = stat.mtime.getTime();
+            sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
+                lastChangeTime,
+                etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, stat.size)
+            }, server.config.cacheHeader);
             ctx.res.writeHead(200, {
                 'Content-Type': this.getResContentType(cte),
                 'Content-Encoding': 'gzip',
-                'Content-Length': cfileSize
+                'Content-Length': buff.length
             });
-            return ctx.res.end(_fs.readFileSync(cachpath)), ctx.next(200);
+            ctx.res.end(buff);
+            return ctx.next(200), void 0;
         }
         return _zlib.gzip(this.readBuffer(bundleInfo, server.copyright()), (error, buff) => {
             if (error) {
@@ -302,10 +342,12 @@ const isAcceptedEncoding = (req, name) => {
         return false;
     return acceptEncoding.indexOf(name) > -1;
 };
+// tslint:disable-next-line: variable-name
 exports.__moduleName = "Bundler";
+// tslint:disable-next-line: max-classes-per-file
 class Bundler {
     static Init(app, controller, server) {
-        controller.get('/app/api/bundle/', (ctx) => {
+        controller.get(server.config.bundler.route, (ctx) => {
             const isGzip = isAcceptedEncoding(ctx.req, "gzip");
             if (!isGzip || server.config.bundler.fileCache === false)
                 return Bundlew.createMemmory(server, ctx, isGzip);

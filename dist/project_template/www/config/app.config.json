@@ -1,11 +1,15 @@
 {
+  "$schema": "./node_modules/cwserver/config/schema.json",
+  "Author": "Safe Online World Ltd.",
   "appName": "cwserver",
-  "version": "0.0.4",
+  "version": "0.0.1",
   "packageVersion": "1",
   "isDebug": true,
-  "templateCache": true,
-  "encryptionKey": "123$#132",
-  "templateCacheType": "FILE",
+  "template": {
+    "cache": true,
+    "cacheType": "FILE"
+  },
+  "encryptionKey": "a123$A",
   "socketPath": "",
   "staticFile": {
     "fileCache": true,
@@ -16,28 +20,40 @@
     "maxAge": "7d",
     "serverRevalidate": true
   },
-  "liveStream": [ "mp4", "3gp", "3gpp" ],
-  "noCache": [ "pdf" ],
+  "liveStream": [],
+  "noCache": [],
   "session": {
     "cookie": "_session",
     "maxAge": "1d",
-    "key": "abc$#123"
+    "key": "abc$#123",
+    "isSecure": false
   },
-  "mimeType": [ "css", "js", "png", "gif", "ico", "map", "mp4", "pdf" ],
+  "mimeType": [
+    "css",
+    "js",
+    "png",
+    "gif",
+    "ico",
+    "map",
+    "mp4",
+    "pdf"
+  ],
   "defaultExt": ".html",
   "bundler": {
     "enable": true,
-    "fileCache": true
+    "fileCache": true,
+    "route": "/app/api/bundle/",
+    "compress": true
   },
-  "views": [ "$root/$public/lib/view/main.js" ],
+  "views": [],
   "errorPage": {
-    "404": "$root/$public/error_page/404.html",
     "401": "$root/$public/error_page/401.html",
+    "404": "$root/$public/error_page/404.html",
     "500": "$root/$public/error_page/500.html"
   },
-  "hiddenDirectory": [ "/lib/", "/config/", "/error_page/" ],
+  "hiddenDirectory": [],
   "hostInfo": {
-    "origin": [ ],
+    "origin": [],
     "root": "www",
     "hostName": "",
     "frameAncestors": "",
@@ -45,5 +61,6 @@
     "cert": {},
     "port": 8080
   },
-  "database": []
+  "database": [],
+  "myprop":{}
 }

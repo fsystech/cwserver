@@ -1,5 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 3:56 PM 5/9/2020
 var sow_server_core_1 = require("./lib/sow-server-core");
 exports.Application = sow_server_core_1.Application;
 exports.Apps = sow_server_core_1.Apps;
@@ -44,7 +50,7 @@ exports.Util = sow_util_1.Util;
 var sow_web_streamer_1 = require("./lib/sow-web-streamer");
 exports.Streamer = sow_web_streamer_1.Streamer;
 var sow_ws_1 = require("./lib/sow-ws");
-exports.SoketInitilizer = sow_ws_1.SoketInitilizer;
+exports.socketInitilizer = sow_ws_1.socketInitilizer;
 exports.WsClientInfo = sow_ws_1.WsClientInfo;
 exports.SowSocketInfo = sow_ws_1.SowSocketInfo;
 exports.SowSocket = sow_ws_1.SowSocket;
