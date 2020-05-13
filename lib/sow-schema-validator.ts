@@ -9,7 +9,7 @@ import * as _path from 'path';
 import { Util } from './sow-util';
 interface IPropertiesDesception {
 	type?: string;
-	exclusiveMinimum: number;
+	minLength: number;
 	enum?: string[];
 	description: string;
 	properties?: IProperties;
@@ -92,19 +92,22 @@ function schemaValidate(
 			}
 			continue;
 		}
-		if ( !cvalue && svalue.exclusiveMinimum > 0 ) {
+		if ( cvalue === undefined && svalue.minLength > 0 ) {
 			if ( !hasProp ) {
 				throw new Error( `ERROR: Configuration doesn't match the required schema. Data path "${dataPath}" required properties (${prop}).` );
 			}
 			throw new Error( `ERROR: Data path "${dataPath}.${prop}" value should not left blank` );
 		}
-		if ( !cvalue ) {
+		if ( cvalue === undefined ) {
 			configProperties[prop] = fillUpType( svalue.type );
 			continue;
 		}
 		if ( svalue.type === "array" ) {
 			if ( !Util.isArrayLike( cvalue ) ) {
 				throw new Error( `ERROR: Data path "${dataPath}.${prop}" should be value type ${svalue.type}` );
+			}
+			if ( cvalue.length < svalue.minLength ) {
+				throw new Error( `ERROR: Data path "${dataPath}.${prop}" minmum length required ${svalue.minLength}` );
 			}
 			if ( svalue.items ) {
 				const itemType = svalue.items.type;
@@ -134,7 +137,7 @@ function schemaValidate(
 		}
 		if ( svalue.const ) {
 			if ( svalue.const !== cvalue )
-				throw new Error( `ERROR: Data path "${dataPath}.${prop}" should not change ${svalue.const}` );
+				throw new Error( `ERROR: Data path "${dataPath}.${prop}" should not change '${svalue.const}' to '${cvalue}'` );
 			continue;
 		}
 		if ( svalue.type === "string" ) {
@@ -142,6 +145,10 @@ function schemaValidate(
 				if ( svalue.enum.indexOf( cvalue ) < 0 ) {
 					throw new Error( `ERROR: Data path "${dataPath}.${prop}" should be between ${svalue.enum}` );
 				}
+			}
+			if ( svalue.minLength > 0 ) {
+				if ( cvalue.length < svalue.minLength )
+					throw new Error( `ERROR: Data path "${dataPath}.${prop}" minmum length required ${svalue.minLength}` );
 			}
 		}
 	}

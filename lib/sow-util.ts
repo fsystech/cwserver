@@ -56,12 +56,11 @@ export namespace Util {
     export function clone( source: { [x: string]: any; } ) {
         return _extend( {}, source );
     }
+    /** Checks whether the specified value is an object. true if the value is an object; false otherwise.*/
     export function isPlainObject( obj?: any ): obj is { [x: string]: any; } {
         return _isPlainObject( obj );
     }
-    /// <summary>Checks whether the specified value is an array object.</summary>
-    /// <param name="value">Value to check.</param>
-    /// <returns type="Boolean">true if the value is an array object; false otherwise.</returns>
+    /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise.*/
     export function isArrayLike( obj?: any ): obj is [] {
         if ( obj === null || obj === undefined ) return false;
         const result = Object.prototype.toString.call( obj );
