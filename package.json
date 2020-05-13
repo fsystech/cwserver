@@ -1,6 +1,6 @@
 {
   "name": "cwserver",
-  "version": "0.0.5",
+  "version": "1.0.0",
   "description": "Sow Web Server for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,17 +14,26 @@
     "url": "https://github.com/safeonlineworld/cwserver.git"
   },
   "homepage": "https://github.com/safeonlineworld/cwserver#readme",
-  "license": "Creative Commons Attribution 4.0 International",
+  "license": "CC-BY-4.0",
   "scripts": {
     "start": "node clean.js && tsc && node dist/server.js o_conference",
     "test": "node dist/test.js",
     "dev": "nodemon server.ts"
   },
+  "keywords": [
+    "web",
+    "app",
+    "application",
+    "framework",
+    "middleware",
+    "template",
+    "engine",
+    "parser"
+  ],
   "devDependencies": {
     "@types/crypto-js": "^3.1.45",
     "@types/js-base64": "^2.3.1",
     "@types/node": "^8.0.14",
-    "@types/socket.io": "^2.1.4",
     "nodemon": "^2.0.3",
     "ts-node": "^8.10.1",
     "tslint": "^6.1.2",
@@ -32,7 +41,6 @@
   },
   "dependencies": {
     "crypto-js": "^4.0.0",
-    "js-base64": "^2.5.2",
-    "socket.io": "^2.3.0"
+    "js-base64": "^2.5.2"
   }
 }
