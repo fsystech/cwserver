@@ -57,4 +57,3 @@ node server ${projectDef.projectRoot}`);
     return true;
 }
 exports.createProjectTemplate = createProjectTemplate;
-//# sourceMappingURL=sow-project-template.js.map

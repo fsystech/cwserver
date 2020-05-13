@@ -1,5 +1,5 @@
 {
-  "$schema": "./node_modules/cwserver/config/schema.json",
+  "$schema": "../../node_modules/cwserver/schema.json",
   "Author": "Safe Online World Ltd.",
   "appName": "cwserver",
   "version": "0.0.1",
@@ -9,7 +9,7 @@
     "cache": true,
     "cacheType": "FILE"
   },
-  "encryptionKey": "a123$A",
+  "encryptionKey": "aaa$a",
   "socketPath": "",
   "staticFile": {
     "fileCache": true,
@@ -25,7 +25,7 @@
   "session": {
     "cookie": "_session",
     "maxAge": "1d",
-    "key": "abc$#123",
+    "key": "adfasf$aa",
     "isSecure": false
   },
   "mimeType": [
@@ -45,7 +45,7 @@
     "route": "/app/api/bundle/",
     "compress": true
   },
-  "views": [],
+  "views": [ "$root/$public/lib/view/main.js" ],
   "errorPage": {
     "401": "$root/$public/error_page/401.html",
     "404": "$root/$public/error_page/404.html",
@@ -61,6 +61,5 @@
     "cert": {},
     "port": 8080
   },
-  "database": [],
-  "myprop":{}
+  "database": []
 }

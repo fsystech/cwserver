@@ -55,4 +55,3 @@ var SowHttpCache;
     }
     SowHttpCache.getEtag = getEtag;
 })(SowHttpCache = exports.SowHttpCache || (exports.SowHttpCache = {}));
-//# sourceMappingURL=sow-http-cache.js.map

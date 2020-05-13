@@ -51,4 +51,3 @@ var Streamer;
     }
     Streamer.stream = stream;
 })(Streamer = exports.Streamer || (exports.Streamer = {}));
-//# sourceMappingURL=sow-web-streamer.js.map

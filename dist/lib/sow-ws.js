@@ -217,4 +217,3 @@ function socketInitilizer(server, wsClientInfo) {
     };
 }
 exports.socketInitilizer = socketInitilizer;
-//# sourceMappingURL=sow-ws.js.map

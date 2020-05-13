@@ -328,8 +328,7 @@ class TemplateCore {
         if (!filePath)
             return;
         let readCache = false;
-        if (server.config.templateCache && sow_util_1.Util.isExists(cachePath)) {
-            // readCache = this.compair( filePath, cachePath ) === false;
+        if (server.config.template.cache && sow_util_1.Util.isExists(cachePath)) {
             readCache = sow_util_1.Util.compairFile(filePath, cachePath) === false;
             if (readCache === false) {
                 _fs.unlinkSync(cachePath);
@@ -337,7 +336,7 @@ class TemplateCore {
         }
         let cache;
         if (!readCache) {
-            cache = this.run(server.getPublic(), _fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, ''), !server.config.templateCache ? void 0 : (str) => {
+            cache = this.run(server.getPublic(), _fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, ''), !server.config.template.cache ? void 0 : (str) => {
                 _fs.writeFileSync(cachePath, str);
             });
         }
@@ -393,4 +392,3 @@ var Template;
     }
     Template.parse = parse;
 })(Template = exports.Template || (exports.Template = {}));
-//# sourceMappingURL=sow-template.js.map

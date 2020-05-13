@@ -75,4 +75,3 @@ function ToResponseTime(timestamp) {
     return `${dfo(date.getDay())}, ${dfon(date.getDate())} ${dfm(date.getMonth())} ${date.getFullYear()} ${dfon(date.getHours())}:${dfon(date.getMinutes())}:${dfon(date.getSeconds())} GMT`;
 }
 exports.ToResponseTime = ToResponseTime;
-//# sourceMappingURL=sow-static.js.map

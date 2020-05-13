@@ -1,6 +1,6 @@
 {
   "name": "cwserver",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sow Web Server for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,7 +28,8 @@
     "middleware",
     "template",
     "engine",
-    "parser"
+    "parser",
+    "cwserver"
   ],
   "devDependencies": {
     "@types/crypto-js": "^3.1.45",

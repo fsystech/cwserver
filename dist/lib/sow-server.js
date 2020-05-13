@@ -765,4 +765,3 @@ function initilizeServer(appRoot, wwwName) {
     };
 }
 exports.initilizeServer = initilizeServer;
-//# sourceMappingURL=sow-server.js.map

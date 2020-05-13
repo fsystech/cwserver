@@ -12,4 +12,3 @@ class SowDatabaseType {
     }
 }
 exports.SowDatabaseType = SowDatabaseType;
-//# sourceMappingURL=sow-database-type.js.map

@@ -10,9 +10,11 @@ export declare namespace Util {
     }): {
         [x: string]: any;
     };
+    /** Checks whether the specified value is an object. true if the value is an object; false otherwise.*/
     function isPlainObject(obj?: any): obj is {
         [x: string]: any;
     };
+    /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise.*/
     function isArrayLike(obj?: any): obj is [];
     /** compair a stat.mtime > b stat.mtime */
     function compairFile(a: string, b: string): boolean;

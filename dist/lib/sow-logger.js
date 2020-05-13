@@ -169,4 +169,3 @@ class Logger {
     }
 }
 exports.Logger = Logger;
-//# sourceMappingURL=sow-logger.js.map

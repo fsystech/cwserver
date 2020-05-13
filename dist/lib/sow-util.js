@@ -58,13 +58,12 @@ var Util;
         return _extend({}, source);
     }
     Util.clone = clone;
+    /** Checks whether the specified value is an object. true if the value is an object; false otherwise.*/
     function isPlainObject(obj) {
         return _isPlainObject(obj);
     }
     Util.isPlainObject = isPlainObject;
-    /// <summary>Checks whether the specified value is an array object.</summary>
-    /// <param name="value">Value to check.</param>
-    /// <returns type="Boolean">true if the value is an array object; false otherwise.</returns>
+    /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise.*/
     function isArrayLike(obj) {
         if (obj === null || obj === undefined)
             return false;
@@ -180,4 +179,3 @@ var Util;
     }
     Util.getExtension = getExtension;
 })(Util = exports.Util || (exports.Util = {}));
-//# sourceMappingURL=sow-util.js.map
