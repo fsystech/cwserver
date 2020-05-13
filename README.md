@@ -10,7 +10,7 @@ createProjectTemplate( {
 ```
 Then run this commmand ```node createProjectTemplate```<br/>
 It will create default project template for ```cwserver``` in your application root.<br/>
-After run this command ```node server www /**your project root*/```<br/><br/><br/>
+After, run this command ```node server www /**your project root*/```<br/><br/><br/>
 Or you may create by yourself as following:<br/>
 Create server.js file:
 ```
@@ -39,9 +39,9 @@ process.on( 'SIGINT', () => {
 app.listen( server.port, () => server.log.write( `
     [+] Maintance      : https://www.safeonline.world
     [+] Server         : http://localhost:${server.port}
-    [+] Socket         : ws://localhost:${server.port}/app/hub/ws/
+    [+] Socket         : ws://localhost:${server.port}${server.socketPath}
     [~] Running Server...
 `, ConsoleColor.FgMagenta ) );
 ```
-follow ```app_config.json``` and 
-run ```node server your_app_dir_name```
+Read more about [app.config.json](https://github.com/safeonlineworld/cwserver/blob/master/schema.json)<br/> 
+run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
