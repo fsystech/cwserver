@@ -202,7 +202,7 @@ This 'Combiner' contains the following files:\n`;
         }, server.config.cacheHeader );
         ctx.req.socket.setNoDelay( true );
         const buffer: Buffer = this.readBuffer( bundleInfo, server.copyright() );
-        if ( isGzip === false ) {
+        if ( isGzip === false || !server.config.bundler.compress ) {
             ctx.res.writeHead( 200, {
                 'Content-Type': this.getResContentType( cte ),
                 'Content-Length': buffer.length
@@ -280,12 +280,40 @@ This 'Combiner' contains the following files:\n`;
                 etag: SowHttpCache.getEtag( lastChangeTime, cfileSize )
             }, server.config.cacheHeader );
             ctx.res.setHeader( 'x-served-from', 'cach-file' );
+            if ( !server.config.bundler.compress ) {
+                ctx.res.writeHead( 200, {
+                    'Content-Type': this.getResContentType( cte ),
+                    'Content-Length': cfileSize
+                } );
+            } else {
+                ctx.res.writeHead( 200, {
+                    'Content-Type': this.getResContentType( cte ),
+                    'Content-Encoding': 'gzip',
+                    'Content-Length': cfileSize
+                } );
+            }
+            return Util.pipeOutputStream( cachpath, ctx );
+        }
+        if ( !server.config.bundler.compress ) {
+            ctx.res.writeHead( 200, {
+                'Content-Type': this.getResContentType( cte ),
+                'Content-Length': cfileSize
+            } );
+            const buff: Buffer = this.readBuffer( bundleInfo, server.copyright() );
+            _fs.writeFileSync( cachpath, buff );
+            const stat = _fs.statSync( cachpath );
+            lastChangeTime = stat.mtime.getTime();
+            SowHttpCache.writeCacheHeader( ctx.res, {
+                lastChangeTime,
+                etag: SowHttpCache.getEtag( lastChangeTime, stat.size )
+            }, server.config.cacheHeader );
             ctx.res.writeHead( 200, {
                 'Content-Type': this.getResContentType( cte ),
                 'Content-Encoding': 'gzip',
-                'Content-Length': cfileSize
+                'Content-Length': buff.length
             } );
-            return ctx.res.end( _fs.readFileSync( cachpath ) ), ctx.next( 200 );
+            ctx.res.end( buff );
+            return ctx.next( 200 ), void 0;
         }
         return _zlib.gzip( this.readBuffer( bundleInfo, server.copyright() ), ( error, buff ) => {
             if ( error ) {
@@ -307,6 +335,7 @@ This 'Combiner' contains the following files:\n`;
             ctx.res.end( buff );
             ctx.next( 200 );
         } ), void 0;
+        
     }
 }
 const isAcceptedEncoding = ( req: IRequest, name: string ): boolean => {
@@ -319,7 +348,7 @@ export const __moduleName: string = "Bundler";
 // tslint:disable-next-line: max-classes-per-file
 export class Bundler {
     public static Init( app: IApplication, controller: IController, server: ISowServer ): void {
-        controller.get( '/app/api/bundle/', ( ctx: IContext ): any => {
+        controller.get( server.config.bundler.route, ( ctx: IContext ): any => {
             const isGzip = isAcceptedEncoding( ctx.req, "gzip" );
             if ( !isGzip || server.config.bundler.fileCache === false ) return Bundlew.createMemmory( server, ctx, isGzip );
             return Bundlew.createServerFileCache( server, ctx );

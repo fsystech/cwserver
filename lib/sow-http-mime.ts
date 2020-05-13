@@ -89,7 +89,7 @@ class MimeHandler {
             }, ctx.server.config.cacheHeader );
             ctx.res.setHeader( 'x-served-from', 'cach-file' );
             ctx.res.writeHead( 200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' } );
-            return ctx.res.end( _fs.readFileSync( cachePath ) ), ctx.next( 200 );
+            return Util.pipeOutputStream( cachePath, ctx );
         }
         return _zlib.gzip( _fs.readFileSync( absPath ), ( error, buff ) => {
             if ( error ) {
@@ -133,16 +133,7 @@ class MimeHandler {
         ctx.res.writeHead( 200, {
             'Content-Type': mimeType, 'Content-Length': size
         } );
-        let openenedFile: _fs.ReadStream = _fs.createReadStream( absPath );
-        openenedFile.pipe( ctx.res );
-        return ctx.res.on( 'close', () => {
-            if ( openenedFile ) {
-                openenedFile.unpipe( ctx.res );
-                openenedFile.close();
-                openenedFile = Object.create( null );
-            }
-            ctx.next( 200 );
-        } ), void 0;
+        return Util.pipeOutputStream( absPath, ctx );
     }
     static servedFromFile(
         ctx: IContext, absPath: string,
@@ -175,7 +166,7 @@ class MimeHandler {
             } ), void 0;
         }
         ctx.res.writeHead( 200, { 'Content-Type': mimeType } );
-        return ctx.res.end( _fs.readFileSync( absPath ) ), ctx.next( 200 );
+        return Util.pipeOutputStream( absPath, ctx );
     }
     static render(
         ctx: IContext,
@@ -196,8 +187,7 @@ class MimeHandler {
                 serverRevalidate: false
             } );
             ctx.res.writeHead( 200, { 'Content-Type': mimeType } );
-            ctx.res.end( _fs.readFileSync( absPath ) );
-            return ctx.next( 200 );
+            return Util.pipeOutputStream( absPath, ctx );
         }
         const stat = _fs.statSync( absPath );
         if ( ctx.server.config.liveStream.indexOf( ctx.extension ) > -1 ) {

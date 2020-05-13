@@ -3,6 +3,7 @@
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
+import { IContext } from './sow-server';
 import { IRequest, IResponse } from './sow-server-core';
 import _fs = require( 'fs' );
 import _path = require( 'path' );
@@ -58,19 +59,40 @@ export namespace Util {
     export function isPlainObject( obj?: any ): obj is { [x: string]: any; } {
         return _isPlainObject( obj );
     }
+    /// <summary>Checks whether the specified value is an array object.</summary>
+    /// <param name="value">Value to check.</param>
+    /// <returns type="Boolean">true if the value is an array object; false otherwise.</returns>
     export function isArrayLike( obj?: any ): obj is [] {
-        /// <summary>Checks whether the specified value is an array object.</summary>
-        /// <param name="value">Value to check.</param>
-        /// <returns type="Boolean">true if the value is an array object; false otherwise.</returns>
         if ( obj === null || obj === undefined ) return false;
         const result = Object.prototype.toString.call( obj );
         return result === "[object NodeList]" || result === "[object Array]" ? true : false;
     }
-    export function isFileModified( a: string, b: string ): boolean {
-        // tslint:disable-next-line: one-variable-per-declaration
-        const astat = _fs.statSync( a ), bstat = _fs.statSync( b );
+    /** compair a stat.mtime > b stat.mtime */
+    export function compairFile( a: string, b: string ): boolean {
+        const astat = _fs.statSync( a );
+        const bstat = _fs.statSync( b );
         if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
         return false;
+    }
+    export function pipeOutputStream( absPath: string, ctx: IContext ): void {
+        let openenedFile: _fs.ReadStream = _fs.createReadStream( absPath );
+        openenedFile.pipe( ctx.res );
+        return ctx.res.on( 'close', () => {
+            if ( openenedFile ) {
+                openenedFile.unpipe( ctx.res );
+                openenedFile.close();
+                openenedFile = Object.create( null );
+            }
+            ctx.next( 200 );
+        } ), void 0;
+    }
+    export function readJsonAsync( absPath: string ): { [id: string]: any } | void {
+        const jsonstr = _fs.readFileSync( absPath, "utf8" ).replace( /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "" ).replace( /^\s*$(?:\r\n?|\n)/gm, "" );
+        try {
+            return JSON.parse( jsonstr );
+        } catch ( e ) {
+            return void 0;
+        }
     }
     export function copySync( src: string, dest: string ): void {
         if ( !_fs.existsSync( src ) ) return;

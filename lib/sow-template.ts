@@ -9,13 +9,37 @@ import { Util } from './sow-util';
 import { HttpStatus } from './sow-http-status';
 import { IResInfo } from './sow-static';
 import { ISowServer, IContext } from './sow-server';
-class ParserInfo {
+interface IScriptTag {
+    l: string;
+    lre: RegExp;
+    r: string;
+    rre: RegExp;
+    repre: RegExp;
+}
+interface IParserInfo {
     line: string;
     tag: string;
     isTagStart: boolean;
     isTagEnd: boolean;
     startTageName?: string;
     isLastTag: boolean;
+}
+interface ITag {
+    script: IScriptTag;
+    write: IScriptTag;
+}
+interface IScriptParser {
+    tag: ITag;
+    startTage( parserInfo: IParserInfo ): void;
+    endTage( parserInfo: IParserInfo ): void;
+}
+class ParserInfo implements IParserInfo {
+    public line: string;
+    public tag: string;
+    public isTagStart: boolean;
+    public isTagEnd: boolean;
+    public startTageName?: string;
+    public isLastTag: boolean;
     constructor() {
         this.line = ""; this.tag = ""; this.isTagStart = false;
         this.isTagEnd = true; this.startTageName = void 0;
@@ -23,12 +47,12 @@ class ParserInfo {
     }
 }
 // tslint:disable-next-line: max-classes-per-file
-class ScriptTag {
-    l: string;
-    lre: RegExp;
-    r: string;
-    rre: RegExp;
-    repre: RegExp;
+class ScriptTag implements IScriptTag {
+    public l: string;
+    public lre: RegExp;
+    public r: string;
+    public rre: RegExp;
+    public repre: RegExp;
     constructor(
         l: string, lre: RegExp, r: string,
         rre: RegExp, repre: RegExp ) {
@@ -37,25 +61,25 @@ class ScriptTag {
     }
 }
 // tslint:disable-next-line: max-classes-per-file
-class Tag {
-    script: ScriptTag;
-    write: ScriptTag;
+class Tag implements ITag {
+    public script: IScriptTag;
+    public write: IScriptTag;
     constructor() {
         this.script = new ScriptTag( '{%', /{%/g, '%}', /%}/g, /{=(.+?)=}/g );
         this.write = new ScriptTag( '{=', /{=/g, '=}', /=}/g, /{=(.+?)=}/g );
     }
 }
 // tslint:disable-next-line: max-classes-per-file
-class ScriptParser {
-    tag: Tag;
+class ScriptParser implements IScriptParser {
+    tag: ITag;
     constructor() {
         this.tag = new Tag();
     }
-    startTage( parserInfo: ParserInfo ): ParserInfo {
+    startTage( parserInfo: IParserInfo ): void {
         if ( parserInfo.line.indexOf( parserInfo.tag ) <= -1 ) {
             // tslint:disable-next-line: no-unused-expression
             !parserInfo.isLastTag ? undefined : parserInfo.isTagEnd === true ? parserInfo.line = parserInfo.line + "\x0f; __RSP += \x0f" : '';
-            return parserInfo;
+            return;
         }
         parserInfo.isTagStart = true;
         switch ( parserInfo.tag ) {
@@ -80,12 +104,10 @@ class ScriptParser {
             default: throw new Error( `Invalid script tag "${parserInfo.tag}" found...` );
         }
         parserInfo.startTageName = ( !parserInfo.isTagEnd ? parserInfo.tag : void 0 );
-        return parserInfo;
+        return;
     }
-    endTage( parserInfo: ParserInfo ): ParserInfo {
-        if ( parserInfo.isTagStart === false && parserInfo.isTagEnd === true ) {
-            return parserInfo;
-        }
+    endTage( parserInfo: IParserInfo ): void {
+        if ( parserInfo.isTagStart === false && parserInfo.isTagEnd === true ) return;
         if ( parserInfo.isTagStart !== false && parserInfo.isTagEnd !== true ) {
             parserInfo.isTagStart = true;
             switch ( parserInfo.tag ) {
@@ -104,12 +126,12 @@ class ScriptParser {
             }
             parserInfo.startTageName = ( !parserInfo.isTagEnd ? parserInfo.startTageName : void 0 );
         }
-        return parserInfo;
+        return;
     }
 }
 // tslint:disable-next-line: max-classes-per-file
 class TemplateParser {
-    static implimentAttachment( appRoot: string, str: string ): string {
+    public static implimentAttachment( appRoot: string, str: string ): string {
         if ( /#attach/gi.test( str ) === false ) return str;
         return str.replace( /#attach([\s\S]+?)\r\n/gi, ( match ) => {
             const path = match.replace( /#attach/gi, "" ).replace( /\r\n/gi, "" ).trim();
@@ -120,7 +142,28 @@ class TemplateParser {
             return _fs.readFileSync( abspath, "utf8" ).replace( /^\uFEFF/, '' );
         } );
     }
-    static implimentTemplateExtend( appRoot: string, str: string ): string {
+    private static margeTemplate( match: string[], template: string, body: string ): string {
+        for ( const key of match ) {
+            const tmplArr = /<placeholder id=\"(.*)\">/gi.exec( key.trim() );
+            if ( !tmplArr ) {
+                throw new Error( `Invalid template format... ${key}` );
+            }
+            const tmplId = tmplArr[1];
+            if ( !tmplId ) {
+                throw new Error( `Invalid template format... ${key}` );
+            }
+            let implStr: any = void 0;
+            template = template.replace( new RegExp( `<impl-placeholder id="${tmplId}">.+?<\/impl-placeholder>`, "gi" ), ( m ) => {
+                implStr = m.replace( /<impl-placeholder[^>]*>/gi, "" ).replace( /<\/impl-placeholder>/gi, "" );
+                return implStr;
+            } );
+            body = body.replace( new RegExp( `<placeholder id="${tmplId}">.+?<\/placeholder>`, "gi" ), () => {
+                return implStr;
+            } );
+        }
+        return body;
+    }
+    public static implimentTemplateExtend( appRoot: string, str: string ): string {
         if ( /#extends/gi.test( str ) === false ) return str;
         const templats = [];
         do {
@@ -148,26 +191,6 @@ class TemplateParser {
         const startTag = /<placeholder[^>]*>/gi,
             rnRegx = /\r\n/gi
             ;
-        const margeTemplate = ( match: string[], template: string ): void => {
-            for ( const key of match ) {
-                const tmplArr = /<placeholder id=\"(.*)\">/gi.exec( key.trim() );
-                if ( !tmplArr ) {
-                    throw new Error( `Invalid template format... ${key}` );
-                }
-                const tmplId = tmplArr[1];
-                if ( !tmplId ) {
-                    throw new Error( `Invalid template format... ${key}` );
-                }
-                let implStr: any = void 0;
-                template = template.replace( new RegExp( `<impl-placeholder id="${tmplId}">.+?<\/impl-placeholder>`, "gi" ), ( m ) => {
-                    implStr = m.replace( /<impl-placeholder[^>]*>/gi, "" ).replace( /<\/impl-placeholder>/gi, "" );
-                    return implStr;
-                } );
-                body = body.replace( new RegExp( `<placeholder id="${tmplId}">.+?<\/placeholder>`, "gi" ), ( ) => {
-                    return implStr;
-                } );
-            }
-        }
         do {
             len--;
             if ( count === 0 ) {
@@ -177,39 +200,39 @@ class TemplateParser {
             const match = parentTemplate.match( startTag );
             if ( match === null ) continue;
             parentTemplate = templats[len].replace( rnRegx, "8_r_n_gx_8" );
-            margeTemplate( match, parentTemplate );
+            body = this.margeTemplate( match, parentTemplate, body );
         } while ( len > 0 );
         return body.replace( /8_r_n_gx_8/gi, "\r\n" );
     }
-    static parse( appRoot: string, str: string ): string {
+    public static parse( appRoot: string, str: string ): string {
         return this.implimentAttachment(
             appRoot,
             this.implimentTemplateExtend( appRoot, str )
         ).replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
     }
 }
-const _tw: { [x: string]: any; } = {
+const _tw: { [x: string]: any } = {
     cache: {}
 }
 // tslint:disable-next-line: max-classes-per-file
 class TemplateCore {
-    static compair( a: string, b: string ): boolean {
-        // tslint:disable-next-line: one-variable-per-declaration
-        const astat = _fs.statSync( a ), bstat = _fs.statSync( b );
-        if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
-        return false;
-    }
-    static compile( str: string, next?: ( str: string, isScript?: boolean ) => void ): ( server: ISowServer, ctx: IContext, next?: ( code?: number | undefined, transfer?: boolean ) => void ) => void {
+    // private static compair( a: string, b: string ): boolean {
+    //    const astat: _fs.Stats = _fs.statSync( a );
+    //    const bstat: _fs.Stats = _fs.statSync( b );
+    //    if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
+    //    return false;
+    // }
+    private static compile( str: string, next?: ( str: string, isScript?: boolean ) => void ): ( server: ISowServer, ctx: IContext, next?: ( code?: number | undefined, transfer?: boolean ) => void ) => void {
         const context: { [x: string]: any; } = {
             thisNext: void 0
         };
         const script = new _vm.Script( `thisNext = function( _server, ctx, _next ){\n ${str} \n};` );
         _vm.createContext( context );
         script.runInContext( context );
-        // tslint:disable-next-line: no-unused-expression
-        return ( next ? next( str, true ) : void 0 ), context.thisNext;
+        if( next ) next(str, true);
+        return context.thisNext;
     }
-    static parseScript( str: string ): string | any {
+    private static parseScript( str: string ): string | any {
         str = str.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
         const script = str.split( '\n' );
         if ( script.length === 0 || script === null ) return void 0;
@@ -217,14 +240,18 @@ class TemplateCore {
         out = '/*__sow_template_script__*/\n';
         out += 'let __RSP = "";\r\n';
         out += 'ctx.write = function( str ) { __RSP += str; }';
-        const scriptParser = new ScriptParser();
-        const parserInfo = new ParserInfo();
-        for ( let i = 0, len = script.length; i < len; i++ ) {
-            parserInfo.line = script[i]; out += "\r\n";
-            if ( !parserInfo.line ) { out += "\r\n__RSP += '';"; continue; }
-            parserInfo.line = parserInfo.line.replace( /^\s*|\s*$/g, ' ' );
-            // tslint:disable-next-line: no-unused-expression
-            parserInfo.isTagEnd === true ? parserInfo.line = "__RSP += \x0f" + parserInfo.line : void 0;
+        const scriptParser: IScriptParser = new ScriptParser();
+        const parserInfo: IParserInfo = new ParserInfo();
+        for ( parserInfo.line of script ) {
+            out += "\n";
+            if ( !parserInfo.line ) {
+                out += "\r\n__RSP += '';"; continue;
+            }
+            // parserInfo.line = parserInfo.line.replace( /^\s*|\s*$/g, ' ' );
+            parserInfo.line = parserInfo.line.replace(/(?:\r\n|\r|\n)/g, '');
+            if ( parserInfo.isTagEnd === true ) {
+                parserInfo.line = "__RSP += \x0f" + parserInfo.line;
+            }
             parserInfo.tag = scriptParser.tag.script.l;
             scriptParser.startTage( parserInfo );
             parserInfo.tag = scriptParser.tag.script.r;
@@ -233,32 +260,38 @@ class TemplateCore {
             scriptParser.startTage( parserInfo );
             parserInfo.tag = scriptParser.tag.write.r;
             scriptParser.endTage( parserInfo );
-            parserInfo.isTagEnd === true ? ( parserInfo.line = parserInfo.line.replace( /'/g, '\\x27' ).replace( /\x0f/g, "'" ), out += parserInfo.line + "\\n';" ) : ( parserInfo.line = parserInfo.line.replace( /\x0f/g, "'" ), out += parserInfo.line );
+            if ( parserInfo.isTagEnd === true ) {
+                parserInfo.line = parserInfo.line.replace( /'/g, '\\x27' ).replace( /\x0f/g, "'" );
+                out += parserInfo.line + "\\n';";
+            } else {
+                parserInfo.line = parserInfo.line.replace( /\x0f/g, "'" );
+                out += parserInfo.line;
+            }
         }
         out = out.replace( /__RSP \+\= '';/g, '' );
         out += "\nreturn _next( __RSP ), __RSP = void 0;\n";
         return out.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
     }
-    static isScript( str: string ): boolean {
+    private static isScript( str: string ): boolean {
         if ( /{%/gi.test( str ) === true
             || /{=/gi.test( str ) === true ) {
             return true;
         }
         return false;
     }
-    static isTemplate( str: string ): boolean {
+    private static isTemplate( str: string ): boolean {
         if ( /#attach/gi.test( str ) === true
             || /#extends/gi.test( str ) === true ) {
             return true;
         }
         return false;
     }
-    static isScriptTemplate( str: string ): boolean {
+    private static isScriptTemplate( str: string ): boolean {
         const index = str.indexOf( "\n" );
         if ( index < 0 ) return false;
         return str.substring( 0, index ).indexOf( "__sow_template_script__" ) > -1;
     }
-    static run( appRoot: string, str: string, next?: ( str: string, isScript?: boolean ) => void ): any {
+    private static run( appRoot: string, str: string, next?: ( str: string, isScript?: boolean ) => void ): any {
         const isTemplate = this.isTemplate( str );
         if ( isTemplate ) {
             str = TemplateParser.parse( appRoot, str );
@@ -269,7 +302,22 @@ class TemplateCore {
         // tslint:disable-next-line: no-unused-expression
         return ( isTemplate ? ( next ? next( str, false ) : void 0 ) : void 0 ), str;
     }
-    static tryMemCache( server: ISowServer, ctx: IContext, path: string, status: IResInfo ): any {
+    public static tryLive( server: ISowServer, ctx: IContext, path: string, status: IResInfo) {
+        const url = Util.isExists( path, ctx.next );
+        if ( !url ) return;
+        const result = this.run( server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
+        if ( typeof ( result ) === "function" ) {
+            return result( server, ctx, ( body: any ) => {
+                ctx.res.set( 'Cache-Control', 'no-store' );
+                ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
+                return ctx.res.end( body ), ctx.next( status.code, status.isErrorCode === false );
+            } );
+        }
+        ctx.res.set( 'Cache-Control', 'no-store' );
+        ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
+        return ctx.res.end( result ), ctx.next( status.code, status.isErrorCode === false );
+    }
+    public static tryMemCache( server: ISowServer, ctx: IContext, path: string, status: IResInfo ): any {
         const key = path.replace( /\//gi, "_" ).replace( /\./gi, "_" );
         let cache = _tw.cache[key];
         if ( !cache ) {
@@ -289,7 +337,7 @@ class TemplateCore {
         ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
         return ctx.res.end( cache ), ctx.next( status.code, status.isErrorCode === false );
     }
-    static tryFileCacheOrLive( server: ISowServer, ctx: IContext, path: string, status: IResInfo): any {
+    public static tryFileCacheOrLive( server: ISowServer, ctx: IContext, path: string, status: IResInfo): any {
         const fsp = Util.isExists( path, ctx.next );
         if ( !fsp ) {
             return void 0;
@@ -299,7 +347,8 @@ class TemplateCore {
         if ( !filePath ) return;
         let readCache = false;
         if ( server.config.templateCache && Util.isExists( cachePath ) ) {
-            readCache = this.compair( filePath, cachePath ) === false;
+            // readCache = this.compair( filePath, cachePath ) === false;
+            readCache = Util.compairFile( filePath, cachePath ) === false;
             if ( readCache === false ) {
                 _fs.unlinkSync( cachePath );
             }
@@ -334,7 +383,10 @@ export namespace Template {
         if ( !status ) status = HttpStatus.getResInfo( path, 200 );
         try {
             ctx.servedFrom = server.pathToUrl( path );
-            if ( server.config.templateCache && server.config.templateCacheType === "MEM" ) {
+            if ( !server.config.template.cache ) {
+                return TemplateCore.tryLive( server, ctx, path, status );
+            }
+            if ( server.config.template.cache && server.config.template.cacheType === "MEM" ) {
                 return TemplateCore.tryMemCache( server, ctx, path, status );
             }
             return TemplateCore.tryFileCacheOrLive( server, ctx, path, status );

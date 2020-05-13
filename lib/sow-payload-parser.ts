@@ -389,7 +389,7 @@ export class PayloadParser implements IPayloadParser {
             throw new Error( "Invalid request defiend...." );
         if ( !this._isReadEnd )
             throw new Error( "Data did not read finished yet..." );
-        this._payloadDataParser.files.forEach( ( pf ) => next(pf) );
+        this._payloadDataParser.files.forEach( ( pf ) => next( pf ) );
         return void 0;
     }
     public getJson(): { [key: string]: any; } {

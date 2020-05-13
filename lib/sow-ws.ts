@@ -6,8 +6,44 @@
 import { Encryption } from './sow-encryption';
 import { ISowServer } from './sow-server';
 import { ISession } from './sow-static';
-import ioserver, { Socket } from 'socket.io';
 import { Util } from './sow-util';
+/** [socket.io blueprint] */
+interface Socket extends NodeJS.EventEmitter {
+    nsp: object;
+    server: object;
+    adapter: object;
+    id: string;
+    request: { session?: ISession, headers: any };
+    client: object;
+    conn: object;
+    rooms: { [id: string]: string };
+    connected: boolean;
+    disconnected: boolean;
+    handshake: any;
+    json: Socket;
+    volatile: Socket;
+    broadcast: Socket;
+    to( room: string ): Socket;
+    in( room: string ): Socket;
+    use( fn: ( packet: any[], next: ( err?: any ) => void ) => void ): Socket;
+    send( ...args: any[] ): Socket;
+    write( ...args: any[] ): Socket;
+    join( name: string | string[], fn?: ( err?: any ) => void ): Socket;
+    leave( name: string, fn?: Function ): Socket;
+    leaveAll(): void;
+    disconnect( close?: boolean ): Socket;
+    listeners( event: string ): Function[];
+    compress( compress: boolean ): Socket;
+    error( err: any ): void;
+}
+interface Namespace {
+    _path: string;
+    use( fn: ( socket: Socket, fn: ( err?: any ) => void ) => void ): Namespace
+    on( event: 'connect', listener: ( socket: Socket ) => void ): Namespace;
+    on( event: 'connection', listener: ( socket: Socket ) => void ): this;
+}
+type ioServer = ( server: any, opt: { path?: string, pingTimeout?: number, cookie?: boolean } ) => Namespace;
+/** [/socket.io blueprint] */
 export interface IWsClientInfo {
     next: ( session: ISession, socket: Socket ) => void | boolean;
     client: ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ) => { [x: string]: any; };
@@ -38,16 +74,14 @@ export interface ISowSocket {
     removeSocket( token: string ): boolean;
     sendMsg( token: string, method: string, data?: any ): boolean;
 }
+type IWsNext = ( session: ISession, socket: Socket ) => void | boolean;
+type IWsClient = ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ) => { [x: string]: any; };
 export class WsClientInfo implements IWsClientInfo {
-    next: ( session: ISession, socket: Socket ) => void | boolean;
-    client: ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ) => { [x: string]: any; };
-    constructor() {
-        this.client = ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ): { [x: string]: any; } => {
-            throw new Error( "Method not implemented." );
-        }
-        this.next = ( session: ISession, socket: Socket ): void | boolean => {
-            throw new Error( "Method not implemented." );
-        }
+    next: IWsNext;
+    client: IWsClient;
+    constructor( next: IWsNext, client: IWsClient) {
+        this.client = client;
+        this.next = next;
     }
     getServerEvent(): { [x: string]: any; }[] {
         throw new Error("Method not implemented.");
@@ -83,9 +117,9 @@ export class SowSocket implements ISowSocket {
     socket: ISowSocketInfo[];
     connected: boolean;
     constructor( server: ISowServer, wsClientInfo: IWsClientInfo ) {
-        if ( !server.config.socketPath ) {
-            throw new Error( "Socket Path should not left blank..." );
-        }
+        // if ( !server.config.socketPath ) {
+        //    throw new Error( "Socket Path should not left blank..." );
+        // }
         this.implimented = false; this.socket = [];
         this.connected = false;
         this._server = server; this._wsClientInfo = wsClientInfo;
@@ -150,7 +184,7 @@ export class SowSocket implements ISowSocket {
         if ( !soc ) return false;
         return soc.sendMsg( method, data ), true;
     }
-    create(  ): void {
+    create( ioserver: ioServer ): void {
         if ( this.implimented ) return void 0;
         this.implimented = true;
         const io = ioserver( this._server.getHttpServer(), {
@@ -158,6 +192,9 @@ export class SowSocket implements ISowSocket {
             pingTimeout: ( 1000 * 5 ),
             cookie: true
         } );
+        if ( !this._server.config.socketPath ) {
+            this._server.config.socketPath = io._path;
+        }
         io.use( ( socket: Socket, next: ( err?: any ) => void ) => {
             if ( !socket.request.session ) {
                 socket.request.session = this._server.parseSession( socket.request.headers.cookie );
@@ -233,11 +270,11 @@ export class SowSocket implements ISowSocket {
         } ), void 0;
     }
 }
-
-export function SoketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
+/** If you want to use it you've to install socket.io */
+export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
     isConnectd: boolean;
     wsEvent: { [x: string]: any; }[];
-    create: () => void;
+    create: ( ioserver: ioServer ) => void;
 } {
     if ( typeof ( wsClientInfo.getServerEvent ) !== "function" ) {
         throw new Error( "Invalid IWsClientInfo..." );
@@ -257,9 +294,9 @@ export function SoketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo
         get wsEvent(): { [x: string]: any; }[] {
             return _ws_event;
         },
-        create(): void {
+        create( ioserver: ioServer ): void {
             if ( _ws.implimented ) return;
-            return _ws.create();
+            return _ws.create( ioserver );
         }
     };
 }

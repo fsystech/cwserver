@@ -4,7 +4,9 @@
 * See the accompanying LICENSE file for terms.
 */
 // 10:13 PM 5/2/2020
-import { ISession, IResInfo } from "./sow-static";
+import {
+    ISession, IResInfo
+} from "./sow-static";
 import {
     NextFunction, IApps, HandlerFunc,
     IRequest, IResponse,
@@ -14,6 +16,7 @@ import { Server } from 'http';
 import * as _fs from 'fs';
 import * as _path from 'path';
 import { Util } from './sow-util';
+import { Schema } from './sow-schema-validator';
 import { Session } from './sow-static';
 import { Template } from './sow-template';
 import { Controller, IController } from './sow-controller';
@@ -66,12 +69,16 @@ export interface IServerConfig {
     version: string;
     packageVersion: string;
     isDebug: boolean;
-    templateCache: boolean;
+    template: {
+        cache: boolean;
+        cacheType: string;
+    };
     encryptionKey: ICryptoInfo;
     session: {
         cookie: string;
         key: ICryptoInfo;
         maxAge: number;
+        isSecure: boolean;
     };
     mimeType: string[];
     defaultExt: string;
@@ -88,7 +95,6 @@ export interface IServerConfig {
         port: string | number
     };
     database?: IDatabaseConfig[];
-    templateCacheType: string;
     staticFile: {
         compression: boolean;
         minCompressionSize: number;
@@ -104,6 +110,8 @@ export interface IServerConfig {
     bundler: {
         enable: boolean;
         fileCache: boolean;
+        route: string;
+        compress: boolean;
     };
 }
 export interface ISowServer {
@@ -306,9 +314,11 @@ export class ServerConfig implements IServerConfig {
     version: string;
     packageVersion: string;
     isDebug: boolean;
-    templateCache: boolean;
     encryptionKey: ICryptoInfo;
-    session: { cookie: string; key: ICryptoInfo; maxAge: number; };
+    session: {
+        cookie: string; key: ICryptoInfo; maxAge: number;
+        isSecure: boolean;
+    };
     mimeType: string[];
     defaultExt: string;
     views: string[];
@@ -324,7 +334,6 @@ export class ServerConfig implements IServerConfig {
         port: string | number;
     };
     database?: IDatabaseConfig[];
-    templateCacheType: string;
     staticFile: {
         compression: boolean;
         minCompressionSize: number;
@@ -340,19 +349,25 @@ export class ServerConfig implements IServerConfig {
     bundler: {
         enable: boolean;
         fileCache: boolean;
+        route: string;
+        compress: boolean;
+    };
+    template: {
+        cache: boolean;
+        cacheType: string;
     };
     constructor() {
         this.Author = "Safe Online World Ltd.";
         this.appName = "Sow Server";
-        this.version = "1.0.0.1";
+        this.version = "0.0.1";
         this.packageVersion = "101";
         this.isDebug = true;
-        this.templateCache = false;
         this.encryptionKey = Object.create( null );
         this.session = {
             "cookie": "_sow_session",
             "key": Object.create( null ),
-            "maxAge": 100
+            "maxAge": 100,
+            isSecure: false
         };
         this.mimeType = ["css", "js", "png", "gif", "ico", "map"];
         this.defaultExt = ".html";
@@ -363,6 +378,10 @@ export class ServerConfig implements IServerConfig {
             "500": "$root/error_page/500.html"
         };
         this.hiddenDirectory = [];
+        this.template = {
+            cache: true,
+            cacheType: "FILE"
+        };
         this.hostInfo = {
             "origin": [],
             "root": "www",
@@ -372,7 +391,6 @@ export class ServerConfig implements IServerConfig {
             "cert": {},
             "port": 8080
         };
-        this.templateCacheType = "F";
         this.staticFile = {
             compression: true,
             minCompressionSize: 1024 * 5,
@@ -386,7 +404,9 @@ export class ServerConfig implements IServerConfig {
         this.noCache = [];
         this.bundler = {
             enable: true,
-            fileCache: true
+            fileCache: true,
+            route: "/app/api/bundle/",
+            compress: true
         }
         // this.database = [new DatabaseConfig()];
     }
@@ -444,20 +464,24 @@ ${appRoot}\\www_public
         this.public = wwwName?.toString();
         this.config = new ServerConfig();
         this.db = {};
+        const absPath: string = _path.resolve( `${this.root}/${this.public}/config/app.config.json` );
+        if ( !_fs.existsSync( absPath ) ) {
+            throw _Error( `No config file found in ${absPath}` );
+        }
+        const config = Util.readJsonAsync( absPath );
+        if ( !config ) {
+            throw _Error( `Invalid config file defined.\r\nConfig: ${absPath}` );
+        }
+        Schema.Validate( config );
+        // if ( config.hasOwnProperty( "Author" ) ) throw _Error( "You should not set Author property..." );
+        if ( this.public !== config.hostInfo.root ) {
+            throw _Error( `Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...` );
+        }
         const myParent = _path.resolve( __dirname, '..' );
         this.errorPage = {
             "404": _path.resolve( `${myParent}/error_page/404.html` ),
             "401": _path.resolve( `${myParent}/error_page/401.html` ),
             "500": _path.resolve( `${myParent}/error_page/500.html` )
-        }
-        const absPath: string = _path.resolve( `${this.root}/${this.public}/config/app_config.json` );
-        if ( !_fs.existsSync( absPath ) ) {
-            throw _Error( `No config file found in ${absPath}` );
-        }
-        const config = JSON.parse( _fs.readFileSync( absPath, "utf8" ) );
-        if ( config.hasOwnProperty( "Author" ) ) throw _Error( "You should not set Author property..." );
-        if ( this.public !== config.hostInfo.root ) {
-            throw _Error( `Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...` );
         }
         Util.extend( this.config, config, true );
         this.implimentConfig( config );
@@ -615,9 +639,11 @@ ${appRoot}\\www_public
             this.config.session.cookie,
             Encryption.encryptToHex( JSON.stringify( {
                 loginId, roleId, userData
-            } ), this.config.session.key ),
-            { maxAge: this.config.session.maxAge, httpOnly: true, sameSite: "strict" }
-        ), true;
+            } ), this.config.session.key ), {
+            maxAge: this.config.session.maxAge,
+            httpOnly: true, sameSite: "strict",
+            secure: this.config.session.isSecure
+        } ), true;
     }
     passError( ctx: IContext ): boolean {
         if ( !ctx.error ) return false;
@@ -725,6 +751,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
     init: () => IApps;
     public: string;
     port: string | number,
+    socketPath: string,
     log: ILogger
 } {
     if ( !global.sow || ( global.sow && !global.sow.server ) ) {
@@ -870,7 +897,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                 const sowView: ISowView = require( a );
                 if ( sowView.__isRunOnly ) return;
                 if ( sowView.__esModule ) {
-                    if ( typeof ( sowView[sowView.__moduleName] ) !== "function" ) {
+                    if ( !sowView[sowView.__moduleName] ) {
                         throw new Error( `Invalid module name declear ${sowView.__moduleName} not found in ${a}` );
                     }
                     if ( typeof ( sowView[sowView.__moduleName].Init ) !== "function" ) {
@@ -925,6 +952,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
         init: initilize,
         get public() { return _server.public; },
         get port() { return _server.port; },
-        get log() { return _server.log; }
+        get log() { return _server.log; },
+        get socketPath() { return _server.config.socketPath || ""; }
     }
 }

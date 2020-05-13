@@ -128,6 +128,9 @@ const createCookie = ( name: string, val: string, options: CookieOptions ): stri
             case 'none': str += ';SameSite=None'; break;
         }
     }
+    if ( options.secure ) {
+        str += ";Secure";
+    }
     return str;
 }
 // tslint:disable-next-line: max-classes-per-file

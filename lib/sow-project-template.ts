@@ -1,3 +1,8 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 // 3:15 PM 5/10/2020
 import _fs = require( 'fs' );
 import _path = require( 'path' );
@@ -6,6 +11,7 @@ import { Util } from './sow-util';
 export function createProjectTemplate( projectDef: {
 	appRoot: string;
 	projectRoot: string;
+	allExample?: boolean
 } ): boolean {
 	console.log( ConsoleColor.FgGreen, `Please wait creating your project ${projectDef.projectRoot}` );
 	const myRoot: string = _path.resolve( __dirname, '..' );
@@ -31,10 +37,18 @@ export function createProjectTemplate( projectDef: {
 	// Blank directory ignore both of npm and git
 	// So, we've to check before complete project creation
 	const temp = '/web/temp/cache/';
-	if ( !_fs.existsSync( _path.resolve( `${projectRoot}${temp}`) ) ) {
+	if ( !_fs.existsSync( _path.resolve( `${projectRoot}${temp}` ) ) ) {
 		Util.mkdirSync( projectRoot, temp );
 		// Create blank directory in project_template/www/ for further use
 		Util.mkdirSync( _path.resolve( `${templateRoot}/www` ), temp );
+	}
+	if ( projectDef.allExample === true ) {
+		Util.mkdirSync( projectRoot, "/example/jsTemplate/" );
+		Util.mkdirSync( projectRoot, "/example/template/" );
+		console.log( ConsoleColor.FgYellow, `Copying to ${projectDef.projectRoot}/example/jsTemplate/` );
+		Util.copySync( _path.resolve( `${templateRoot}/jsTemplate/` ), _path.resolve( `${projectRoot}/example/jsTemplate/` ) );
+		console.log( ConsoleColor.FgYellow, `Copying to ${projectDef.projectRoot}/example/template/` );
+		Util.copySync( _path.resolve( `${templateRoot}/template/` ), _path.resolve( `${projectRoot}/example/template/` ) );
 	}
 	console.log( ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${projectDef.projectRoot} in\r\n${projectRoot}\\config\\` );
 	console.log( ConsoleColor.FgGreen, `
