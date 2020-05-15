@@ -9,6 +9,8 @@ createProjectTemplate( {
     allExample: false
 } );
 ```
+Then run this commmand ```node createProjectTemplate```<br/>
+It will create default project template for ```cwserver``` in your application root.<br/>
 Now your appRoot look like this
 ```
 appRoot 
@@ -23,8 +25,6 @@ appRoot
 ├─ package.json
 └─ README.md
 ```
-Then run this commmand ```node createProjectTemplate```<br/>
-It will create default project template for ```cwserver``` in your application root.<br/>
 After, run this command ```node server www /**your project root*/```<br/>
 # Template Engine<br/>
 Template can run ```config.defaultExt``` file extension or ```ctx.res.render( ctx, to_file_path )``` <br/>
