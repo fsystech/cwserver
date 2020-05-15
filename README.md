@@ -71,7 +71,9 @@ Response write: ```{= myVar =}``` or ```ctx.write(myVar)```<br/>
 </table>
 {% } %}
 ```
-# Nested Master Template <br/>
+# Nested Master Template<br/>
+```#extends``` keyword define master template<br/>
+You can add multiple file by ```#attach``` keyword
 ```
 www
 ├─┬ template
