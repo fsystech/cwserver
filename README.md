@@ -10,7 +10,54 @@ createProjectTemplate( {
 ```
 Then run this commmand ```node createProjectTemplate```<br/>
 It will create default project template for ```cwserver``` in your application root.<br/>
-After, run this command ```node server www /**your project root*/```<br/><br/><br/>
+After, run this command ```node server www /**your project root*/```<br/>
+# Template Engine<br/>
+Template can run ```config.defaultExt``` file extension or ```ctx.res.render( ctx, to_file_path )``` <br/>
+Example of server-side script in ```config.defaultExt``` or ```.htm|.html```<br/>
+Code block:
+```
+{%
+    if( !ctx.session.isAuthenticated ){
+       return ctx.next( 401, true );
+    } else {
+       ctx.write( JSON.stringify( ctx.session ) );
+    }
+%}
+```
+Response write: ```{= myVar =}``` or ```ctx.write(myVar)```<br/>
+```
+{%
+    const result = await ctx.server.db.pgsql.executeIoAsync( "my_shcema.__get_dataset", JSON.stringify( {
+        login_id: ctx.req.session.loginId
+    } ), JSON.stringify( {
+        trade_date: "2020-02-03"
+    } ) );
+%}
+{% if ( result.ret_val < 0) { %}
+    <span style="color:red">No Data Found...</span>
+{% } else { %}
+<table style="width:100%">
+   <thead>
+      <tr>
+         <th>Firstname</th>
+         <th>Lastname</th>
+         <th>Age</th>
+      </tr>
+   </thead>
+   <tbody>
+   {% for( const row of result.ret_data_table ){ %}
+        <tr>
+            <td>{= row.first_name =}</td>
+            <td>{= row.last_name =}</td>
+            <td>{= row.age_name =}</td>
+        </tr>
+   {% } %}
+   </tbody>
+</table>
+{% } %}
+```
+
+
 Or you may create by yourself as following:<br/>
 Create server.js file:
 ```
