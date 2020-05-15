@@ -1,10 +1,10 @@
-const {WsClientInfo} =  require("cwserver")
-const clientInfo = new WsClientInfo((session,socket)=>{
+const { WsClientInfo } = require( "cwserver" )
+const clientInfo = new WsClientInfo( ( session, socket ) => {
     if ( !session.isAuthenticated ) {
         return socket.emit( "unauthorized", "Authentication failed" ), socket.disconnect( true ), false;
     }
     return true;
-},(_me, session, _ws, _server)=>{
+}, ( _me, session, _ws, _server ) => {
     var _client = {
         'register': data => {
             if ( _me.isAuthenticated === false ) return void 0;
@@ -70,7 +70,7 @@ const clientInfo = new WsClientInfo((session,socket)=>{
             } );
         }
     };
-    if ( _server  ) {
+    if ( _server ) {
         _client["get-owner"] = data => {
             if ( !_me.isAuthenticated || !_me.group ) return;
             let owner = _ws.getOwners( _me.group )[0];
@@ -86,8 +86,8 @@ const clientInfo = new WsClientInfo((session,socket)=>{
         server: Object.keys( _client ),
         client: []
     } : _client;
-});
-clientInfo.getServerEvent = function(){
+} );
+clientInfo.getServerEvent = function () {
     return this.client();
 }
 module.exports = clientInfo;

@@ -4,7 +4,6 @@
 * See the accompanying LICENSE file for terms.
 */
 import CryptoJS from 'crypto-js';
-import { Base64 } from 'js-base64';
 import * as crypto from 'crypto';
 
 export interface ICryptoInfo {
@@ -52,7 +51,6 @@ export namespace Encryption {
     };
     export function encrypt( plainText: string, inf: ICryptoInfo ): string {
         if ( !inf.key ) throw new Error( "Invalid iv and key...." );
-        CryptoJS.SHA3( "Message", undefined, { outputLength: 512 } );
         return CryptoJS.AES.encrypt( plainText, inf.key, { iv: inf.iv } ).toString();
     }
     export function decrypt( encryptedText: string, inf: ICryptoInfo ): string {
@@ -85,11 +83,5 @@ export namespace Encryption {
     export function decryptUri( encryptedText: string, inf: ICryptoInfo ): string {
         encryptedText = decodeURIComponent( encryptedText );
         return decrypt( encryptedText, inf );
-    }
-    export function base64Encode( decoded: string ): string {
-        return Base64.atob( decoded );
-    }
-    export function base64Decode( encoded: string ): string {
-        return Base64.btoa( encoded );
     }
 }

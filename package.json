@@ -1,7 +1,7 @@
 {
   "name": "cwserver",
-  "version": "1.0.1",
-  "description": "Sow Web Server for NodeJS",
+  "version": "1.0.2",
+  "description": "SOW Web Server (All in one) for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": {
@@ -33,7 +33,6 @@
   ],
   "devDependencies": {
     "@types/crypto-js": "^3.1.45",
-    "@types/js-base64": "^2.3.1",
     "@types/node": "^8.0.14",
     "nodemon": "^2.0.3",
     "ts-node": "^8.10.1",
@@ -41,7 +40,6 @@
     "typescript": "^3.8.3"
   },
   "dependencies": {
-    "crypto-js": "^4.0.0",
-    "js-base64": "^2.5.2"
+    "crypto-js": "^4.0.0"
   }
 }

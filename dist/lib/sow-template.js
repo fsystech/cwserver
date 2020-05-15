@@ -14,6 +14,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 */
 const _fs = __importStar(require("fs"));
 const _vm = __importStar(require("vm"));
+const _zlib = __importStar(require("zlib"));
 const sow_util_1 = require("./sow-util");
 const sow_http_status_1 = require("./sow-http-status");
 class ParserInfo {
@@ -145,6 +146,7 @@ class TemplateParser {
         do {
             const match = /#extends([\s\S]+?)\r\n/gi.exec(str);
             if (!match || match === null) {
+                // no more master template extends
                 templats.push(str);
                 break;
             }
@@ -160,10 +162,12 @@ class TemplateParser {
             templats.push(str.replace(match[0], ""));
             str = _fs.readFileSync(abspath, "utf8").replace(/^\uFEFF/, '');
         } while (true);
-        // tslint:disable-next-line: one-variable-per-declaration
-        let len = templats.length, count = 0, body = "", parentTemplate = "";
-        // tslint:disable-next-line: one-variable-per-declaration
-        const startTag = /<placeholder[^>]*>/gi, rnRegx = /\r\n/gi;
+        let count = 0;
+        let body = "";
+        let parentTemplate = "";
+        const startTag = /<placeholder[^>]*>/gi;
+        const rnRegx = /\r\n/gi;
+        let len = templats.length;
         do {
             len--;
             if (count === 0) {
@@ -173,8 +177,9 @@ class TemplateParser {
                 continue;
             }
             const match = parentTemplate.match(startTag);
-            if (match === null)
-                continue;
+            if (match === null || (match && match.length === 0)) {
+                throw new Error("Invalid master template... No placeholder tag found....");
+            }
             parentTemplate = templats[len].replace(rnRegx, "8_r_n_gx_8");
             body = this.margeTemplate(match, parentTemplate, body);
         } while (len > 0);
@@ -189,17 +194,38 @@ const _tw = {
 };
 // tslint:disable-next-line: max-classes-per-file
 class TemplateCore {
-    // private static compair( a: string, b: string ): boolean {
-    //    const astat: _fs.Stats = _fs.statSync( a );
-    //    const bstat: _fs.Stats = _fs.statSync( b );
-    //    if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
-    //    return false;
-    // }
+    static processResponse(status) {
+        return (ctx, body, isCompressed) => {
+            ctx.res.set('Cache-Control', 'no-store');
+            if (isCompressed && isCompressed === true) {
+                return _zlib.gzip(Buffer.from(body), (error, buff) => {
+                    if (error) {
+                        ctx.server.addError(ctx, error);
+                        return ctx.next(500, true);
+                    }
+                    ctx.res.writeHead(status.code, {
+                        'Content-Type': 'text/html',
+                        'Content-Encoding': 'gzip',
+                        'Content-Length': buff.length
+                    });
+                    ctx.res.end(buff);
+                    ctx.next(status.code, status.isErrorCode === false);
+                }), void 0;
+            }
+            ctx.res.writeHead(status.code, {
+                'Content-Type': 'text/html',
+                'Content-Length': Buffer.byteLength(body)
+            });
+            return ctx.res.end(body), ctx.next(status.code, status.isErrorCode === false);
+        };
+    }
     static compile(str, next) {
         const context = {
-            thisNext: void 0
+            thisNext: function (ctx, next, isCompressed) {
+                throw new Error("Method not implemented.");
+            }
         };
-        const script = new _vm.Script(`thisNext = function( _server, ctx, _next ){\n ${str} \n};`);
+        const script = new _vm.Script(`thisNext = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};`);
         _vm.createContext(context);
         script.runInContext(context);
         if (next)
@@ -212,9 +238,7 @@ class TemplateCore {
         if (script.length === 0 || script === null)
             return void 0;
         let out = "";
-        out = '/*__sow_template_script__*/\n';
-        out += 'let __RSP = "";\r\n';
-        out += 'ctx.write = function( str ) { __RSP += str; }';
+        out = '/*__sow_template_script__*/';
         const scriptParser = new ScriptParser();
         const parserInfo = new ParserInfo();
         for (parserInfo.line of script) {
@@ -246,7 +270,6 @@ class TemplateCore {
             }
         }
         out = out.replace(/__RSP \+\= '';/g, '');
-        out += "\nreturn _next( __RSP ), __RSP = void 0;\n";
         return out.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
     }
     static isScript(str) {
@@ -280,44 +303,36 @@ class TemplateCore {
         // tslint:disable-next-line: no-unused-expression
         return (isTemplate ? (next ? next(str, false) : void 0) : void 0), str;
     }
-    static tryLive(server, ctx, path, status) {
+    static tryLive(ctx, path, status) {
         const url = sow_util_1.Util.isExists(path, ctx.next);
         if (!url)
             return;
-        const result = this.run(server.getPublic(), _fs.readFileSync(String(url), "utf8").replace(/^\uFEFF/, ''));
+        const result = this.run(ctx.server.getPublic(), _fs.readFileSync(String(url), "utf8").replace(/^\uFEFF/, ''));
         if (typeof (result) === "function") {
-            return result(server, ctx, (body) => {
-                ctx.res.set('Cache-Control', 'no-store');
-                ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
-                return ctx.res.end(body), ctx.next(status.code, status.isErrorCode === false);
-            });
+            return result(ctx, this.processResponse(status));
         }
         ctx.res.set('Cache-Control', 'no-store');
         ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
         return ctx.res.end(result), ctx.next(status.code, status.isErrorCode === false);
     }
-    static tryMemCache(server, ctx, path, status) {
+    static tryMemCache(ctx, path, status) {
         const key = path.replace(/\//gi, "_").replace(/\./gi, "_");
         let cache = _tw.cache[key];
         if (!cache) {
             const url = sow_util_1.Util.isExists(path, ctx.next);
             if (!url)
                 return;
-            cache = this.run(server.getPublic(), _fs.readFileSync(String(url), "utf8").replace(/^\uFEFF/, ''));
+            cache = this.run(ctx.server.getPublic(), _fs.readFileSync(String(url), "utf8").replace(/^\uFEFF/, ''));
             _tw.cache[key] = cache;
         }
         if (typeof (cache) === "function") {
-            return cache(server, ctx, (body) => {
-                ctx.res.set('Cache-Control', 'no-store');
-                ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
-                return ctx.res.end(body), ctx.next(status.code, status.isErrorCode === false);
-            });
+            return cache(ctx, this.processResponse(status));
         }
         ctx.res.set('Cache-Control', 'no-store');
         ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
         return ctx.res.end(cache), ctx.next(status.code, status.isErrorCode === false);
     }
-    static tryFileCacheOrLive(server, ctx, path, status) {
+    static tryFileCacheOrLive(ctx, path, status) {
         const fsp = sow_util_1.Util.isExists(path, ctx.next);
         if (!fsp) {
             return void 0;
@@ -328,7 +343,7 @@ class TemplateCore {
         if (!filePath)
             return;
         let readCache = false;
-        if (server.config.template.cache && sow_util_1.Util.isExists(cachePath)) {
+        if (ctx.server.config.template.cache && sow_util_1.Util.isExists(cachePath)) {
             readCache = sow_util_1.Util.compairFile(filePath, cachePath) === false;
             if (readCache === false) {
                 _fs.unlinkSync(cachePath);
@@ -336,7 +351,7 @@ class TemplateCore {
         }
         let cache;
         if (!readCache) {
-            cache = this.run(server.getPublic(), _fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, ''), !server.config.template.cache ? void 0 : (str) => {
+            cache = this.run(ctx.server.getPublic(), _fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, ''), !ctx.server.config.template.cache ? void 0 : (str) => {
                 _fs.writeFileSync(cachePath, str);
             });
         }
@@ -347,11 +362,7 @@ class TemplateCore {
             }
         }
         if (typeof (cache) === "function") {
-            return cache(server, ctx, (body) => {
-                ctx.res.set('Cache-Control', 'no-store');
-                ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
-                return ctx.res.end(body), ctx.next(status.code, status.isErrorCode === false);
-            });
+            return cache(ctx, this.processResponse(status));
         }
         ctx.res.set('Cache-Control', 'no-store'); // res.setHeader( 'Cache-Control', 'public, max-age=0' )
         ctx.res.writeHead(status.code, { 'Content-Type': 'text/html' });
@@ -362,32 +373,32 @@ class TemplateCore {
 // tslint:disable-next-line: no-namespace
 var Template;
 (function (Template) {
-    function parse(server, ctx, path, status) {
+    function parse(ctx, path, status) {
         if (!status)
             status = sow_http_status_1.HttpStatus.getResInfo(path, 200);
         try {
-            ctx.servedFrom = server.pathToUrl(path);
-            if (!server.config.template.cache) {
-                return TemplateCore.tryLive(server, ctx, path, status);
+            ctx.servedFrom = ctx.server.pathToUrl(path);
+            if (!ctx.server.config.template.cache) {
+                return TemplateCore.tryLive(ctx, path, status);
             }
-            if (server.config.template.cache && server.config.template.cacheType === "MEM") {
-                return TemplateCore.tryMemCache(server, ctx, path, status);
+            if (ctx.server.config.template.cache && ctx.server.config.template.cacheType === "MEM") {
+                return TemplateCore.tryMemCache(ctx, path, status);
             }
-            return TemplateCore.tryFileCacheOrLive(server, ctx, path, status);
+            return TemplateCore.tryFileCacheOrLive(ctx, path, status);
         }
         catch (ex) {
             ctx.path = path;
             if (status.code === 500) {
                 if (status.tryServer === true) {
-                    server.addError(ctx, ex);
-                    return server.passError(ctx);
+                    ctx.server.addError(ctx, ex);
+                    return ctx.server.passError(ctx);
                 }
                 status.tryServer = true;
             }
-            server.log.error(`Send 500 ${server.pathToUrl(ctx.path)}`).reset();
+            ctx.server.log.error(`Send 500 ${ctx.server.pathToUrl(ctx.path)}`).reset();
             status.code = 500;
             status.isErrorCode = true;
-            return parse(server, server.addError(ctx, ex), status.tryServer ? `${server.errorPage["500"]}` : `${server.config.errorPage["500"]}`, status);
+            return parse(ctx.server.addError(ctx, ex), status.tryServer ? `${ctx.server.errorPage["500"]}` : `${ctx.server.config.errorPage["500"]}`, status);
         }
     }
     Template.parse = parse;

@@ -1,4 +1,11 @@
 "use strict";
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
@@ -6,9 +13,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 * See the accompanying LICENSE file for terms.
 */
 // 4:48 PM 5/3/2020
-const _fs = require("fs");
-const _path = require("path");
-const _zlib = require("zlib");
+const _fs = __importStar(require("fs"));
+const _path = __importStar(require("path"));
+const _zlib = __importStar(require("zlib"));
 const sow_encryption_1 = require("./sow-encryption");
 const sow_http_cache_1 = require("./sow-http-cache");
 const sow_util_1 = require("./sow-util");

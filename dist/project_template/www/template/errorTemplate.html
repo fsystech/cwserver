@@ -1,8 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8" />
-    <title> 401 - {= ctx.server.config.appName =}</title>
+    <placeholder id="title">
+    </placeholder>
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>
     <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
     <style type="text/css">
@@ -17,14 +18,8 @@
     </style>
 </head>
 <body>
-    <h1>401 Unauthorized</h1>
-    <p class="zoom-area"><a href="/"><img style="width: 100px;" src="/logo/logo_blue.png?v={= ctx.server.config.packageVersion =}" alt="{=ctx.server.config.appName=}" /></a></p>
-    <h1 style="color:red; font-size:10px;" class="error-description">Unauthorized to access {= ( ctx.root || ctx.path ) =}</h1>
-    <section class="error-container">
-        <span><span>4</span></span>
-        <span>0</span>
-        <span><span>1</span></span>
-    </section>
+    <placeholder id="body">
+    </placeholder>
     <div class="link-container">
         <a href="{= ( ctx.root || ctx.path ) =}" class="more-link">Go Back</a>
     </div>

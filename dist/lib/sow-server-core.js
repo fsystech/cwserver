@@ -11,6 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // 2:40 PM 5/7/2020
 const http_1 = require("http");
 const sow_static_1 = require("./sow-static");
+const sow_template_1 = require("./sow-template");
 const url_1 = __importDefault(require("url"));
 const _zlib = require("zlib");
 const getCook = (cooks) => {
@@ -106,6 +107,9 @@ const createCookie = (name, val, options) => {
 };
 // tslint:disable-next-line: max-classes-per-file
 class Response extends http_1.ServerResponse {
+    render(ctx, path, status) {
+        return sow_template_1.Template.parse(ctx, path, status);
+    }
     redirect(url) {
         return this.writeHead(this.statusCode, {
             'Location': url

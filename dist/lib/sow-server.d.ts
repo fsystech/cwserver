@@ -5,9 +5,26 @@ import { Server } from 'http';
 import { IController } from './sow-controller';
 import { ICryptoInfo } from "./sow-encryption";
 import { ILogger } from "./sow-logger";
-import { ISowDatabaseType } from './sow-database-type';
 export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => any;
 export declare type AppHandler = (ctx: IContext) => any;
+export interface ISowDatabaseType {
+    [id: string]: (...args: any[]) => any;
+    getClient(): any;
+    executeIo(sp: string, ctx: string, formObj: string, next: (resp: {
+        ret_val: number;
+        ret_msg: string;
+        ret_data_table?: {
+            [key: string]: any;
+        };
+    }) => void): any;
+    executeIoAsync(sp: string, ctx: string, formObj: string): Promise<{
+        ret_val: number;
+        ret_msg: string;
+        ret_data_table?: {
+            [key: string]: any;
+        };
+    }>;
+}
 export interface IContext {
     [key: string]: any;
     error?: string;
@@ -122,7 +139,6 @@ export interface ISowServer {
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
     passError(ctx: IContext): boolean;
     transferRequest(ctx: IContext, path: string, status?: IResInfo): void;
-    render(ctx: IContext, path: string): void;
     mapPath(path: string): string;
     pathToUrl(path: string): string;
     addError(ctx: IContext, ex: Error | string): IContext;
@@ -294,7 +310,6 @@ export declare class SowServer implements ISowServer {
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
     passError(ctx: IContext): boolean;
     transferRequest(ctx: IContext, path: string, status?: IResInfo): void;
-    render(ctx: IContext, path: string): void;
     mapPath(path: string): string;
     pathToUrl(path: string): string;
     addError(ctx: IContext, ex: string | Error): IContext;

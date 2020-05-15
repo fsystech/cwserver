@@ -16,7 +16,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 * See the accompanying LICENSE file for terms.
 */
 const crypto_js_1 = __importDefault(require("crypto-js"));
-const js_base64_1 = require("js-base64");
 const crypto = __importStar(require("crypto"));
 function md5(contents) {
     return crypto.createHash('md5').update(contents).digest("hex");
@@ -65,7 +64,6 @@ var Encryption;
     function encrypt(plainText, inf) {
         if (!inf.key)
             throw new Error("Invalid iv and key....");
-        crypto_js_1.default.SHA3("Message", undefined, { outputLength: 512 });
         return crypto_js_1.default.AES.encrypt(plainText, inf.key, { iv: inf.iv }).toString();
     }
     Encryption.encrypt = encrypt;
@@ -107,12 +105,4 @@ var Encryption;
         return decrypt(encryptedText, inf);
     }
     Encryption.decryptUri = decryptUri;
-    function base64Encode(decoded) {
-        return js_base64_1.Base64.atob(decoded);
-    }
-    Encryption.base64Encode = base64Encode;
-    function base64Decode(encoded) {
-        return js_base64_1.Base64.btoa(encoded);
-    }
-    Encryption.base64Decode = base64Decode;
 })(Encryption = exports.Encryption || (exports.Encryption = {}));

@@ -8,7 +8,9 @@ import {
     createServer,
     Server, IncomingMessage, ServerResponse
 } from 'http';
-import { ToResponseTime, ISession } from './sow-static';
+import { ToResponseTime, ISession, IResInfo } from './sow-static';
+import { IContext } from './sow-server';
+import { Template } from './sow-template';
 import urlHelpers, { UrlWithParsedQuery } from 'url';
 import { Socket } from 'net';
 import _zlib = require( 'zlib' );
@@ -47,6 +49,7 @@ export interface IResponse extends ServerResponse {
     cookie( name: string, val: string, options: CookieOptions ): IResponse;
     set( field: string, value: number | string | string[] ): IResponse;
     redirect( url: string ): void;
+    render( ctx: IContext, path: string, status?: IResInfo ): void;
 }
 export interface IApplication {
     server: Server;
@@ -139,6 +142,9 @@ const createCookie = ( name: string, val: string, options: CookieOptions ): stri
 }
 // tslint:disable-next-line: max-classes-per-file
 export class Response extends ServerResponse implements IResponse {
+    render( ctx: IContext, path: string, status?: IResInfo ): void {
+        return Template.parse( ctx, path, status );
+    }
     redirect( url: string ): void {
         return this.writeHead( this.statusCode, {
             'Location': url

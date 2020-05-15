@@ -1,0 +1,38 @@
+﻿#extends /template/master.html
+<impl-placeholder id="header">
+    <head>
+        <meta charset="utf-8" />
+        <title> - {= ctx.server.config.appName =}</title>
+    </head>
+</impl-placeholder>
+<placeholder id="container">
+    {%
+        const result = await ctx.server.db.pgsql.executeIoAsync( "my_shcema.__get_dataset", JSON.stringify( {
+            login_id: ctx.req.session.loginId
+        } ), JSON.stringify( {
+            trade_date: "2020-02-03"
+        } ) );
+    %}
+    {% if ( result.ret_val < 0) { %}
+    <span style="color:red">No Data Found...</span>
+    {% } else { %}
+    <table style="width:100%">
+        <thead>
+            <tr>
+                <th>Firstname</th>
+                <th>Lastname</th>
+                <th>Age</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for( const row of result.ret_data_table ){ %}
+            <tr>
+                <td>{= row.first_name =}</td>
+                <td>{= row.last_name =}</td>
+                <td>{= row.age_name =}</td>
+            </tr>
+            {% } %}
+        </tbody>
+    </table>
+    {% } %}
+</placeholder>

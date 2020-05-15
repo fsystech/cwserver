@@ -8,23 +8,23 @@ import _fs = require( 'fs' );
 import _path = require( 'path' );
 import { ConsoleColor } from './sow-logger';
 import { Util } from './sow-util';
-export function createProjectTemplate( projectDef: {
+export function createProjectTemplate( settings: {
 	appRoot: string;
 	projectRoot: string;
 	allExample?: boolean
 } ): boolean {
-	console.log( ConsoleColor.FgGreen, `Please wait creating your project ${projectDef.projectRoot}` );
+	console.log( ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}` );
 	const myRoot: string = _path.resolve( __dirname, '..' );
 	const templateRoot: string = _path.resolve( `${myRoot}/project_template` );
 	if ( !_fs.existsSync( templateRoot ) )
 		throw new Error( `Project template not found in ${templateRoot}\r\nPlease uninstall and install again 'cwserver'` );
-	const appRoot: string = _path.resolve( projectDef.appRoot );
+	const appRoot: string = _path.resolve( settings.appRoot );
 	if ( !_fs.existsSync( appRoot ) )
 		throw new Error( `App Root not found ${appRoot}\r\nprojectDef.projectRoot like as __dirname` );
-	const projectRoot: string = _path.resolve( `${appRoot}/${projectDef.projectRoot}` );
+	const projectRoot: string = _path.resolve( `${appRoot}/${settings.projectRoot}` );
 	if ( _fs.existsSync( projectRoot ) )
-		throw new Error( `Project Root already exists in ${projectRoot}\r\nPlease delete first ${projectDef.projectRoot}.` );
-	Util.mkdirSync( appRoot, projectDef.projectRoot );
+		throw new Error( `Project Root already exists in ${projectRoot}\r\nPlease delete first ${settings.projectRoot}.` );
+	Util.mkdirSync( appRoot, settings.projectRoot );
 	Util.copySync( _path.resolve( `${templateRoot}/www` ), projectRoot );
 	const serverJs: string = _path.resolve( `${appRoot}/server.js` );
 	if ( !_fs.existsSync( serverJs ) ) {
@@ -42,19 +42,19 @@ export function createProjectTemplate( projectDef: {
 		// Create blank directory in project_template/www/ for further use
 		Util.mkdirSync( _path.resolve( `${templateRoot}/www` ), temp );
 	}
-	if ( projectDef.allExample === true ) {
+	if ( settings.allExample === true ) {
+		console.log( ConsoleColor.FgYellow, `Add all example to your project root ${settings.projectRoot}` );
 		Util.mkdirSync( projectRoot, "/example/jsTemplate/" );
-		Util.mkdirSync( projectRoot, "/example/template/" );
-		console.log( ConsoleColor.FgYellow, `Copying to ${projectDef.projectRoot}/example/jsTemplate/` );
+		console.log( ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/example/jsTemplate/` );
 		Util.copySync( _path.resolve( `${templateRoot}/jsTemplate/` ), _path.resolve( `${projectRoot}/example/jsTemplate/` ) );
-		console.log( ConsoleColor.FgYellow, `Copying to ${projectDef.projectRoot}/example/template/` );
-		Util.copySync( _path.resolve( `${templateRoot}/template/` ), _path.resolve( `${projectRoot}/example/template/` ) );
+		console.log( ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/lib/` );
+		Util.copySync( _path.resolve( `${templateRoot}/lib/` ), _path.resolve( `${projectRoot}/lib/` ) );
 	}
-	console.log( ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${projectDef.projectRoot} in\r\n${projectRoot}\\config\\` );
+	console.log( ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${projectRoot}\\config\\` );
 	console.log( ConsoleColor.FgGreen, `
-Your project ${projectDef.projectRoot} created.
+Your project ${settings.projectRoot} created.
 run your project by this command
-node server ${projectDef.projectRoot}` );
+node server ${settings.projectRoot}` );
 	console.log( ConsoleColor.Reset );
 	return true;
 }

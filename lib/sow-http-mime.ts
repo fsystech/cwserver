@@ -6,7 +6,7 @@
 // 9:22 PM 5/4/2020
 import * as _fs from 'fs';
 import * as _path from 'path';
-import _zlib = require( 'zlib' );
+import * as _zlib from 'zlib';
 import { IRequest } from './sow-server-core';
 import { IContext } from './sow-server';
 import { SowHttpCache } from './sow-http-cache';

@@ -1,4 +1,4 @@
-export declare function createProjectTemplate(projectDef: {
+export declare function createProjectTemplate(settings: {
     appRoot: string;
     projectRoot: string;
     allExample?: boolean;

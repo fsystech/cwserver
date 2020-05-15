@@ -4,9 +4,9 @@
 * See the accompanying LICENSE file for terms.
 */
 // 4:48 PM 5/3/2020
-import _fs = require( 'fs' );
-import _path = require( 'path' );
-import _zlib = require( 'zlib' );
+import * as _fs from 'fs';
+import * as _path from 'path';
+import * as _zlib from 'zlib';
 import { Encryption } from './sow-encryption';
 import { SowHttpCache } from './sow-http-cache';
 import { IApplication, IRequest } from './sow-server-core';

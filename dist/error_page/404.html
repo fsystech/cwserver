@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8" />
-    <title> 404 - {= _server.config.app_name =}</title>
+    <title> 404 - {= ctx.server.config.appName =}</title>
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>
     <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
     <style type="text/css">
@@ -18,7 +18,7 @@
 </head>
 <body>
     <h1>404 Not Found</h1>
-    <p class="zoom-area"><a href="/"><img style="width: 100px;" src="/logo/logo_blue.png?v={= _server.config.package_version =}" alt="{=_server.config.app_name=}" /></a></p>
+    <p class="zoom-area"><a href="/"><img style="width: 100px;" src="/logo/logo_blue.png?v={= ctx.server.config.packageVersion =}" alt="{=ctx.server.config.appName=}" /></a></p>
     <h1 style="color:red; font-size:10px;" class="error-description">No file found in {= ( ctx.root || ctx.path ) =}</h1>
     <section class="error-container">
         <span><span>4</span></span>
@@ -31,7 +31,7 @@
     <div class="page-footer">
         <div class="row" style="float:right;">
             <div class="col-xs-12 col-sm-12 txt-color-white">
-                <span style="font-size:10px;float:right;" data-footer-info="cust">Copyright © 2015- {= new Date().getFullYear().toString( ) =} <a href="https://www.safeonline.world" target="_blank">Sow<span class="sup">®</span></a> All rights reserved. <span class="hidden-xs"> - {= _server.config.app_name =} - {= _server.config.version =}</span></span>
+                <span style="font-size:10px;float:right;" data-footer-info="cust">Copyright © 2015- {= new Date().getFullYear().toString( ) =} <a href="https://www.safeonline.world" target="_blank">Sow<span class="sup">®</span></a> All rights reserved. <span class="hidden-xs"> - {= ctx.server.config.appName =} - {= ctx.server.config.version =}</span></span>
             </div>
             <div class="col-xs-6 col-sm-6 text-right hidden-xs">
                 <div class="txt-color-white inline-block">

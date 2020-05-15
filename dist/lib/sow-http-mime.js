@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // 9:22 PM 5/4/2020
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
-const _zlib = require("zlib");
+const _zlib = __importStar(require("zlib"));
 const sow_http_cache_1 = require("./sow-http-cache");
 const sow_web_streamer_1 = require("./sow-web-streamer");
 const sow_encryption_1 = require("./sow-encryption");

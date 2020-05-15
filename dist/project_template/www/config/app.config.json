@@ -46,7 +46,7 @@
     "compress": true
   },
   "views": [ "$root/$public/lib/view/main.js" ],
-  "hiddenDirectory": [],
+  "hiddenDirectory": [ "/lib/", "/config/", "/template/", "/web/" ],
   "hostInfo": {
     "origin": [],
     "root": "www",

@@ -4,12 +4,10 @@
 * See the accompanying LICENSE file for terms.
 */
 // 11:16 PM 5/2/2020
-import { getRouteExp } from './sow-server-core';
 import { HttpMimeHandler } from './sow-http-mime';
 import { IHttpMimeHandler } from './sow-http-mime';
-import { ISowServer, IContext, AppHandler } from './sow-server';
+import { IContext, AppHandler } from './sow-server';
 import { Util } from './sow-util';
-import { Template } from './sow-template';
 export interface IController {
     httpMimeHandler: IHttpMimeHandler;
     any( route: string, next: ( ctx: IContext ) => any ): IController;
@@ -27,10 +25,8 @@ const routeInfo: {
     post: {}
 }
 export class Controller implements IController {
-    private _server: ISowServer;
     public httpMimeHandler: IHttpMimeHandler;
-    constructor( server: ISowServer ) {
-        this._server = server;
+    constructor( ) {
         this.httpMimeHandler = new HttpMimeHandler();
     }
     public get( route: string, next: AppHandler ): IController {
@@ -58,29 +54,29 @@ export class Controller implements IController {
         }
         if ( ctx.extension ) {
             if ( ['htm', 'html'].indexOf( ctx.extension ) > -1 ) {
-                if ( this._server.config.defaultExt ) {
+                if ( ctx.server.config.defaultExt ) {
                     return ctx.next( 404 );
                 }
-                return Template.parse( this._server, ctx, this._server.mapPath( ctx.req.path ) );
+                return ctx.res.render( ctx, ctx.server.mapPath( ctx.req.path ) );
             }
-            if ( this._server.config.mimeType.indexOf( ctx.extension ) > -1 ) {
+            if ( ctx.server.config.mimeType.indexOf( ctx.extension ) > -1 ) {
                 return this.httpMimeHandler.render( ctx, void 0, true );
             }
             return ctx.next( 404, true );
         } else {
-            if ( this._server.config.defaultExt ) {
-                const path = this._server.mapPath( `/${ctx.req.path}${this._server.config.defaultExt}` );
+            if ( ctx.server.config.defaultExt ) {
+                const path = ctx.server.mapPath( `/${ctx.req.path}${ctx.server.config.defaultExt}` );
                 if ( !Util.isExists( path, ctx.next ) ) return;
-                return Template.parse( this._server, ctx, path );
+                return ctx.res.render( ctx, path );
             }
         }
-        return ctx.next( -404 );
+        return ctx.next( 404 );
     }
     private processPost( ctx: IContext ): any {
         if ( routeInfo.post[ctx.req.path] ) {
             return routeInfo.post[ctx.req.path]( ctx );
         }
-        return ctx.next( -404 );
+        return ctx.next( 404 );
     }
     processAny( ctx: IContext ): any {
         if ( routeInfo.any[ctx.path] )

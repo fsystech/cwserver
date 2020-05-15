@@ -1,5 +1,5 @@
 import { IHttpMimeHandler } from './sow-http-mime';
-import { ISowServer, IContext, AppHandler } from './sow-server';
+import { IContext, AppHandler } from './sow-server';
 export interface IController {
     httpMimeHandler: IHttpMimeHandler;
     any(route: string, next: (ctx: IContext) => any): IController;
@@ -8,9 +8,8 @@ export interface IController {
     processAny(ctx: IContext): any;
 }
 export declare class Controller implements IController {
-    private _server;
     httpMimeHandler: IHttpMimeHandler;
-    constructor(server: ISowServer);
+    constructor();
     get(route: string, next: AppHandler): IController;
     post(route: string, next: AppHandler): IController;
     any(route: string, next: AppHandler): IController;

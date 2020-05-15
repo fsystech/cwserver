@@ -46,7 +46,7 @@ global.sow.server.registerView( ( app, controller, server ) => {
 	//});
 	controller
 		.get( '/', ( ctx ) => {
-			return server.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );
+			return ctx.res.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );
 		} ).get( '/authenticate', ( ctx ) => {
 			let result = {
 				code: 200,

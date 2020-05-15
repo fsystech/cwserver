@@ -18,15 +18,19 @@ import * as _path from 'path';
 import { Util } from './sow-util';
 import { Schema } from './sow-schema-validator';
 import { Session } from './sow-static';
-import { Template } from './sow-template';
 import { Controller, IController } from './sow-controller';
 import { Encryption, ICryptoInfo } from "./sow-encryption";
 import { HttpStatus } from "./sow-http-status";
 import { Logger, ILogger } from "./sow-logger"
-import { ISowDatabaseType } from './sow-database-type';
 export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => any;
 export type AppHandler = ( ctx: IContext ) => any;
 // -------------------------------------------------------
+export interface ISowDatabaseType {
+    [id: string]: ( ...args: any[] ) => any;
+    getClient(): any;
+    executeIo( sp: string, ctx: string, formObj: string, next: ( resp: { ret_val: number, ret_msg: string, ret_data_table?: { [key: string]: any } } ) => void ): any;
+    executeIoAsync( sp: string, ctx: string, formObj: string ): Promise<{ ret_val: number, ret_msg: string, ret_data_table?: { [key: string]: any } }>;
+}
 export interface IContext {
     [key: string]: any;
     error?: string;
@@ -128,7 +132,6 @@ export interface ISowServer {
     setSession( ctx: IContext, loginId: string, roleId: string, userData: any ): boolean;
     passError( ctx: IContext ): boolean;
     transferRequest( ctx: IContext, path: string, status?: IResInfo ): void;
-    render( ctx: IContext, path: string ): void;
     mapPath( path: string ): string;
     pathToUrl( path: string ): string;
     addError( ctx: IContext, ex: Error | string ): IContext;
@@ -667,10 +670,7 @@ ${appRoot}\\www_public
             // tslint:disable-next-line: no-unused-expression
             return ( this.passError( ctx ) ? void 0 : ctx.res.status( rcode ).end( 'Page Not found 404' ) ), _next( rcode, false );
         };
-        return Template.parse( this, ctx, path, status );
-    }
-    render( ctx: IContext, path: string ): void {
-        return Template.parse( this, ctx, path );
+        return ctx.res.render( ctx, path, status );
     }
     mapPath( path: string ): string {
         return _path.resolve( `${this.root}/${this.public}/${path}` );
@@ -777,6 +777,11 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
         _context.redirect = ( url: string ): void => {
             return res.status( 301 ).redirect( url ), void 0;
         }
+        // Util.extend( _context, {
+        //    get server() {
+        //        return _server;
+        //    }
+        // } );
         _context.transferRequest = ( path: string ): void => {
             const status = HttpStatus.getResInfo( path, 200 );
             _server.log[status.isErrorCode ? "error" : "success"]( `Send ${status.code} ${req.path}` ).reset();
@@ -814,7 +819,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
             return ctx.res.status( code ).end( `No description found for ${code}` ), next();
         }
     }
-    const _controller: IController = new Controller( _server );
+    const _controller: IController = new Controller( );
     function initilize(): IApps {
         const _app: IApps = sowAppCore();
         global.sow.server.registerView = ( next: ( app: IApps, controller: IController, server: ISowServer ) => void ): void => {

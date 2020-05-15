@@ -24,6 +24,4 @@ export declare namespace Encryption {
     function decryptFromHex(encryptedText: string, inf: ICryptoInfo): string;
     function encryptUri(plainText: string, inf: ICryptoInfo): string;
     function decryptUri(encryptedText: string, inf: ICryptoInfo): string;
-    function base64Encode(decoded: string): string;
-    function base64Decode(encoded: string): string;
 }

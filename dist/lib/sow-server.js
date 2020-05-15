@@ -13,7 +13,6 @@ const _path = __importStar(require("path"));
 const sow_util_1 = require("./sow-util");
 const sow_schema_validator_1 = require("./sow-schema-validator");
 const sow_static_1 = require("./sow-static");
-const sow_template_1 = require("./sow-template");
 const sow_controller_1 = require("./sow-controller");
 const sow_encryption_1 = require("./sow-encryption");
 const sow_http_status_1 = require("./sow-http-status");
@@ -475,10 +474,7 @@ ${appRoot}\\www_public
             // tslint:disable-next-line: no-unused-expression
             return (this.passError(ctx) ? void 0 : ctx.res.status(rcode).end('Page Not found 404')), _next(rcode, false);
         };
-        return sow_template_1.Template.parse(this, ctx, path, status);
-    }
-    render(ctx, path) {
-        return sow_template_1.Template.parse(this, ctx, path);
+        return ctx.res.render(ctx, path, status);
     }
     mapPath(path) {
         return _path.resolve(`${this.root}/${this.public}/${path}`);
@@ -579,6 +575,11 @@ function initilizeServer(appRoot, wwwName) {
         _context.redirect = (url) => {
             return res.status(301).redirect(url), void 0;
         };
+        // Util.extend( _context, {
+        //    get server() {
+        //        return _server;
+        //    }
+        // } );
         _context.transferRequest = (path) => {
             const status = sow_http_status_1.HttpStatus.getResInfo(path, 200);
             _server.log[status.isErrorCode ? "error" : "success"](`Send ${status.code} ${req.path}`).reset();
@@ -619,7 +620,7 @@ function initilizeServer(appRoot, wwwName) {
             return ctx.res.status(code).end(`No description found for ${code}`), next();
         }
     };
-    const _controller = new sow_controller_1.Controller(_server);
+    const _controller = new sow_controller_1.Controller();
     function initilize() {
         const _app = sow_server_core_1.App();
         global.sow.server.registerView = (next) => {

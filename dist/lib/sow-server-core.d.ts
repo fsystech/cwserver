@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { Server, IncomingMessage, ServerResponse } from 'http';
-import { ISession } from './sow-static';
+import { ISession, IResInfo } from './sow-static';
+import { IContext } from './sow-server';
 import { UrlWithParsedQuery } from 'url';
 import { Socket } from 'net';
 declare type ParsedUrlQuery = {
@@ -44,6 +45,7 @@ export interface IResponse extends ServerResponse {
     cookie(name: string, val: string, options: CookieOptions): IResponse;
     set(field: string, value: number | string | string[]): IResponse;
     redirect(url: string): void;
+    render(ctx: IContext, path: string, status?: IResInfo): void;
 }
 export interface IApplication {
     server: Server;
@@ -79,6 +81,7 @@ export declare class Request extends IncomingMessage implements IRequest {
     init(): Request;
 }
 export declare class Response extends ServerResponse implements IResponse {
+    render(ctx: IContext, path: string, status?: IResInfo): void;
     redirect(url: string): void;
     set(field: string, value: number | string | string[]): IResponse;
     cookie(name: string, val: string, options: CookieOptions): IResponse;
