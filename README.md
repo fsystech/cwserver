@@ -5,8 +5,23 @@ Create ```createProjectTemplate.js``` as following
 const { createProjectTemplate } = require( 'cwserver' );
 createProjectTemplate( {
     appRoot: __dirname,
-    projectRoot: "www" /** Your project root folder name*/
+    projectRoot: "www" /** Your project root folder name*/,
+    allExample: false
 } );
+```
+Now your appRoot look like this
+```
+appRoot 
+├─┬ wwww ( projectRoot )
+│ └─┬ config
+│   ├ lib
+│   ├ template (this contains master template file)
+│   ├ web (this contains temp and cache files)
+│   └ index.html
+├─ node_modules
+├─ server.js
+├─ package.json
+└─ README.md
 ```
 Then run this commmand ```node createProjectTemplate```<br/>
 It will create default project template for ```cwserver``` in your application root.<br/>
@@ -56,10 +71,53 @@ Response write: ```{= myVar =}``` or ```ctx.write(myVar)```<br/>
 </table>
 {% } %}
 ```
+# Nested Master Template <br/>
+```
+www
+├─┬ template
+│ └─┬ master.html 
+│   ├ footer.html
+│   ├ header.html
+│   └ readme.html
+├─ index.html
 
-
-Or you may create by yourself as following:<br/>
-Create server.js file:
+index.html  ==> #extends /template/readme.html
+==> index.html impliment placeholder id of readme.html (parent master)
+-------------------------------------------
+#extends /template/readme.html
+<impl-placeholder id="container">
+    container here
+</impl-placeholder>
+-------------------------------------------
+readme.html ==> #extends /template/master.html (parent master)
+==> readme.html like as master template and its contains own placeholder and impliment placeholder id of master.html
+-------------------------------------------
+#extends /template/master.html
+<impl-placeholder id="body">
+    <!--Here create new placeholder-->
+    <placeholder id="container">
+    </placeholder>
+</impl-placeholder>
+<impl-placeholder id="header">
+    #attach /template/header.html
+</impl-placeholder>
+-------------------------------------------
+master.html ==> root master template
+--------------------------------------------
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<placeholder id="header">
+</placeholder>
+<body>
+    <placeholder id="body">
+    </placeholder>
+    #attach /template/footer.html
+</body>
+</html>
+--------------------------------------------
+```
+see more about template /dist/project_template/www <br/><br/>
+You may create server.js file by you:
 ```
 const { ConsoleColor, initilizeServer } = require( 'cwserver' );
 let wwwName = void 0;
