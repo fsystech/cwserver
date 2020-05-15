@@ -72,7 +72,7 @@ Response write: ```{= myVar =}``` or ```ctx.write(myVar)```<br/>
 {% } %}
 ```
 # Nested Master Template<br/>
-```#extends``` keyword define master template<br/>
+```#extends``` keyword define my master template<br/>
 You can add multiple file by ```#attach``` keyword
 ```
 www
@@ -119,6 +119,7 @@ master.html ==> root master template
 --------------------------------------------
 ```
 see more about template /dist/project_template/www <br/><br/>
+# server.js
 You may create server.js file by you:
 ```
 const { ConsoleColor, initilizeServer } = require( 'cwserver' );
