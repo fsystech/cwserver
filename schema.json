@@ -139,6 +139,15 @@
       },
       "description": "Static file can be stream if browser support or sent range header"
     },
+    "defaultDoc": {
+      "type": "array",
+      "minLength": 1,
+      "default": [ "index", "default" ],
+      "items": {
+        "type": "string"
+      },
+      "description": "Default document of Array. e.g. [\"index\", \"default\"]; If you've config.defaultExt you dont need extension here..."
+    },
     "noCache": {
       "type": "array",
       "minLength": 0,

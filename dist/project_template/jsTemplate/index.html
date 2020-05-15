@@ -5,34 +5,38 @@
         <title> - {= ctx.server.config.appName =}</title>
     </head>
 </impl-placeholder>
-<placeholder id="container">
+<impl-placeholder id="body">
     {%
-        const result = await ctx.server.db.pgsql.executeIoAsync( "my_shcema.__get_dataset", JSON.stringify( {
+        isCompressed = true; //this body will be gzip compressed
+        const result = await ctx.server.db.pgsql.executeIoAsync( "data_storage.__get__live_market_price", JSON.stringify( {
             login_id: ctx.req.session.loginId
         } ), JSON.stringify( {
-            trade_date: "2020-02-03"
+            trade_date: "2020-02-03",
+            exchange : "DSE"
         } ) );
     %}
     {% if ( result.ret_val < 0) { %}
     <span style="color:red">No Data Found...</span>
+    <span style="color:red">{=result.ret_msg=}</span>
     {% } else { %}
     <table style="width:100%">
         <thead>
             <tr>
-                <th>Firstname</th>
-                <th>Lastname</th>
-                <th>Age</th>
+                {% const hrow = result.ret_data_table.detail[0]; %}
+                {% for( const prop in hrow ){ %}
+                <th>{=prop=}</th>
+                {% } %}
             </tr>
         </thead>
         <tbody>
-            {% for( const row of result.ret_data_table ){ %}
+            {% for( const row of result.ret_data_table.detail ){ %}
             <tr>
-                <td>{= row.first_name =}</td>
-                <td>{= row.last_name =}</td>
-                <td>{= row.age_name =}</td>
+                {% for (const prop in row){ %}
+                <td>{= row[prop] =}</td>
+                {%}%}
             </tr>
             {% } %}
         </tbody>
     </table>
     {% } %}
-</placeholder>
+</impl-placeholder>

@@ -13,6 +13,12 @@ const routeInfo = {
     get: {},
     post: {}
 };
+const getFileName = (path) => {
+    const index = path.lastIndexOf("/");
+    if (index < 0)
+        return void 0;
+    return path.substring(index + 1);
+};
 class Controller {
     constructor() {
         this.httpMimeHandler = new sow_http_mime_1.HttpMimeHandler();
@@ -54,10 +60,40 @@ class Controller {
         }
         else {
             if (ctx.server.config.defaultExt) {
-                const path = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
-                if (!sow_util_1.Util.isExists(path, ctx.next))
-                    return;
+                let path = "";
+                if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
+                    for (const name of ctx.server.config.defaultDoc) {
+                        path = ctx.server.mapPath(`/${ctx.req.path}${name}${ctx.server.config.defaultExt}`);
+                        if (sow_util_1.Util.isExists(path))
+                            break;
+                    }
+                    if (!path || path.length === 0)
+                        return ctx.next(404);
+                }
+                else {
+                    const fileName = getFileName(ctx.req.path);
+                    if (!fileName)
+                        return ctx.next(404);
+                    if (ctx.server.config.defaultDoc.indexOf(fileName) > -1)
+                        return ctx.next(404);
+                    path = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
+                    if (!sow_util_1.Util.isExists(path, ctx.next))
+                        return;
+                }
                 return ctx.res.render(ctx, path);
+            }
+            else {
+                if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
+                    let path = "";
+                    for (const name of ctx.server.config.defaultDoc) {
+                        path = ctx.server.mapPath(`/${ctx.req.path}${name}`);
+                        if (sow_util_1.Util.isExists(path))
+                            break;
+                    }
+                    if (!path || path.length === 0)
+                        return ctx.next(404);
+                    return ctx.res.render(ctx, path);
+                }
             }
         }
         return ctx.next(404);

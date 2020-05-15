@@ -85,6 +85,7 @@ export interface IServerConfig {
         isSecure: boolean;
     };
     mimeType: string[];
+    defaultDoc: string[];
     defaultExt: string;
     views: string[];
     errorPage: { [x: string]: string; };
@@ -319,6 +320,7 @@ export class ServerConfig implements IServerConfig {
         isSecure: boolean;
     };
     mimeType: string[];
+    defaultDoc: string[];
     defaultExt: string;
     views: string[];
     errorPage: { [x: string]: any; };
@@ -368,8 +370,9 @@ export class ServerConfig implements IServerConfig {
             "maxAge": 100,
             isSecure: false
         };
+        this.defaultDoc = [];
         this.mimeType = ["css", "js", "png", "gif", "ico", "map"];
-        this.defaultExt = ".html";
+        this.defaultExt = "";
         this.views = [];
         this.errorPage = {};
         this.hiddenDirectory = [];

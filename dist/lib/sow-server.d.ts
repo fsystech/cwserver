@@ -82,6 +82,7 @@ export interface IServerConfig {
         isSecure: boolean;
     };
     mimeType: string[];
+    defaultDoc: string[];
     defaultExt: string;
     views: string[];
     errorPage: {
@@ -218,6 +219,7 @@ export declare class ServerConfig implements IServerConfig {
         isSecure: boolean;
     };
     mimeType: string[];
+    defaultDoc: string[];
     defaultExt: string;
     views: string[];
     errorPage: {

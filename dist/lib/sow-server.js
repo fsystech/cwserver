@@ -173,8 +173,9 @@ class ServerConfig {
             "maxAge": 100,
             isSecure: false
         };
+        this.defaultDoc = [];
         this.mimeType = ["css", "js", "png", "gif", "ico", "map"];
-        this.defaultExt = ".html";
+        this.defaultExt = "";
         this.views = [];
         this.errorPage = {};
         this.hiddenDirectory = [];

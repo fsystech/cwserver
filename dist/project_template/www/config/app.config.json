@@ -39,6 +39,7 @@
     "pdf"
   ],
   "defaultExt": ".html",
+  "defaultDoc": [ "index", "default" ],
   "bundler": {
     "enable": true,
     "fileCache": true,

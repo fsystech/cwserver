@@ -24,6 +24,11 @@ const routeInfo: {
     get: {},
     post: {}
 }
+const getFileName = ( path: string ): string | void => {
+    const index = path.lastIndexOf( "/" );
+    if ( index < 0 ) return void 0;
+    return path.substring( index + 1 );
+}
 export class Controller implements IController {
     public httpMimeHandler: IHttpMimeHandler;
     constructor( ) {
@@ -65,9 +70,31 @@ export class Controller implements IController {
             return ctx.next( 404, true );
         } else {
             if ( ctx.server.config.defaultExt ) {
-                const path = ctx.server.mapPath( `/${ctx.req.path}${ctx.server.config.defaultExt}` );
-                if ( !Util.isExists( path, ctx.next ) ) return;
+                let path: string = "";
+                if ( ctx.req.path.charAt( ctx.req.path.length - 1 ) === "/" ) {
+                    for ( const name of ctx.server.config.defaultDoc ) {
+                        path = ctx.server.mapPath( `/${ctx.req.path}${name}${ctx.server.config.defaultExt}` );
+                        if ( Util.isExists( path ) ) break;
+                    }
+                    if ( !path || path.length === 0 ) return ctx.next( 404 );
+                } else {
+                    const fileName = getFileName( ctx.req.path );
+                    if ( !fileName ) return ctx.next( 404 );
+                    if ( ctx.server.config.defaultDoc.indexOf( fileName ) > -1 ) return ctx.next( 404 );
+                    path = ctx.server.mapPath( `/${ctx.req.path}${ctx.server.config.defaultExt}` );
+                    if ( !Util.isExists( path, ctx.next ) ) return;
+                }
                 return ctx.res.render( ctx, path );
+            } else {
+                if ( ctx.req.path.charAt( ctx.req.path.length - 1 ) === "/" ) {
+                    let path: string = "";
+                    for ( const name of ctx.server.config.defaultDoc ) {
+                        path = ctx.server.mapPath( `/${ctx.req.path}${name}` );
+                        if ( Util.isExists( path ) ) break;
+                    }
+                    if ( !path || path.length === 0 ) return ctx.next( 404 );
+                    return ctx.res.render( ctx, path );
+                }
             }
         }
         return ctx.next( 404 );
