@@ -10,13 +10,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const _isPlainObject = (obj) => {
-    /// <summary>Tests whether a value is an object.</summary>
-    /// <param name="value">Value to test.</param>
-    /// <returns type="Boolean">True is the value is an object; false otherwise.</returns>
-    // return typeof value === "object";
     if (obj === null || obj === undefined)
         return false;
-    return typeof (obj) === 'object';
+    return typeof (obj) === 'object' && Object.prototype.toString.call(obj) === "[object Object]";
 };
 const _extend = (destination, source) => {
     if (!_isPlainObject(destination) || !_isPlainObject(source))
@@ -110,6 +106,13 @@ var Util;
         }
     }
     Util.readJsonAsync = readJsonAsync;
+    function copyFileSync(src, dest) {
+        if (_fs.existsSync(dest)) {
+            _fs.unlinkSync(dest);
+        }
+        _fs.copyFileSync(src, dest);
+    }
+    Util.copyFileSync = copyFileSync;
     function rmdirSync(path) {
         if (!_fs.existsSync(path))
             return;

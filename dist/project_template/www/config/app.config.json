@@ -46,7 +46,7 @@
     "route": "/app/api/bundle/",
     "compress": true
   },
-  "views": [ "$root/$public/lib/view/test.js" ],
+  "views": [ "$root/$public/lib/view/main.js" ],
   "hiddenDirectory": [ "/lib/", "/config/", "/template/", "/web/" ],
   "hostInfo": {
     "origin": [],

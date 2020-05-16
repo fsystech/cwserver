@@ -8,12 +8,8 @@ import { IRequest, IResponse } from './sow-server-core';
 import * as _fs from 'fs';
 import * as _path from  'path';
 const _isPlainObject = ( obj: any ): obj is { [x: string]: any; } => {
-    /// <summary>Tests whether a value is an object.</summary>
-    /// <param name="value">Value to test.</param>
-    /// <returns type="Boolean">True is the value is an object; false otherwise.</returns>
-    // return typeof value === "object";
     if ( obj === null || obj === undefined ) return false;
-    return typeof ( obj ) === 'object';
+    return typeof ( obj ) === 'object' && Object.prototype.toString.call( obj ) === "[object Object]";
 }
 const _extend = ( destination: any, source: any ): { [x: string]: any; } => {
     if ( !_isPlainObject( destination ) || !_isPlainObject( source ) )
@@ -92,6 +88,12 @@ export namespace Util {
         } catch ( e ) {
             return void 0;
         }
+    }
+    export function copyFileSync( src: string, dest: string ): void {
+        if ( _fs.existsSync( dest ) ) {
+            _fs.unlinkSync( dest );
+        }
+        _fs.copyFileSync( src, dest );
     }
     export function rmdirSync( path: string ): void {
         if ( !_fs.existsSync( path ) ) return;

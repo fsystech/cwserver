@@ -55,6 +55,8 @@ export interface IWsClientInfo {
     getServerEvent(): {
         [x: string]: any;
     }[];
+    on(name: string, handler: IEvtHandler): void;
+    fire(name: string, me: ISowSocketInfo, wsServer: ISowSocket): void;
 }
 export interface ISowSocketInfo {
     token: string;
@@ -78,11 +80,12 @@ export interface ISowSocket {
     }[];
     getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[];
     getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[];
-    getClient(token: string, group?: string): ISowSocketInfo[];
+    getClientByExceptToken(token: string, group?: string): ISowSocketInfo[];
     getSocket(token: string): ISowSocketInfo | void;
     removeSocket(token: string): boolean;
     sendMsg(token: string, method: string, data?: any): boolean;
 }
+declare type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocket) => void;
 declare type IWsNext = (session: ISession, socket: Socket) => void | boolean;
 declare type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
     [x: string]: any;
@@ -90,45 +93,15 @@ declare type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISow
 export declare class WsClientInfo implements IWsClientInfo {
     next: IWsNext;
     client: IWsClient;
+    event: {
+        [id: string]: IEvtHandler;
+    };
     constructor(next: IWsNext, client: IWsClient);
     getServerEvent(): {
         [x: string]: any;
     }[];
-}
-export declare class SowSocketInfo implements ISowSocketInfo {
-    token: string;
-    loginId?: string;
-    hash?: string;
-    socketId: string;
-    isOwner: boolean;
-    isAuthenticated: boolean;
-    isReconnectd: boolean;
-    group?: string;
-    constructor();
-    getSocket(): Socket;
-    sendMsg(method: string, data: any): any;
-}
-export declare class SowSocket implements ISowSocket {
-    _server: ISowServer;
-    _wsClientInfo: IWsClientInfo;
-    implimented: boolean;
-    socket: ISowSocketInfo[];
-    connected: boolean;
-    constructor(server: ISowServer, wsClientInfo: IWsClientInfo);
-    isActiveSocket(token: string): boolean;
-    getOwners(group?: string): ISowSocketInfo[];
-    findByHash(hash: string): ISowSocketInfo[];
-    findByLogin(loginId: string): ISowSocketInfo[];
-    toList(sockets: ISowSocketInfo[]): {
-        [x: string]: any;
-    }[];
-    getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[];
-    getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[];
-    getClient(token: string, group?: string): ISowSocketInfo[];
-    getSocket(token: string): ISowSocketInfo | void;
-    removeSocket(token: string): boolean;
-    sendMsg(token: string, method: string, data?: any): boolean;
-    create(ioserver: ioServer): void;
+    on(name: string, handler: IEvtHandler): void;
+    fire(name: string, me: ISowSocketInfo, wsServer: ISowSocket): void;
 }
 /** If you want to use it you've to install socket.io */
 export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {

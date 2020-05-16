@@ -7,7 +7,7 @@ describe( "cwserver", function () {
             projectRoot: "www",
             allExample: false,
             force: true, // Delete if projectRoot exists 
-            isTest: false // add test view
+            isTest: true // add test view
         } );
     } );
     it( "initilizeServer", function () {
@@ -21,7 +21,6 @@ describe( "cwserver", function () {
             server.log.write( `
 [+] Maintance      : https://www.safeonline.world
 [+] Server         : http://localhost:${server.port}
-[+] Socket         : ws://localhost:${server.port}${server.socketPath}
 [~] Running Server...
             `, cwserver.ConsoleColor.FgMagenta );
             app.getHttpServer().close();

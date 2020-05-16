@@ -22,6 +22,7 @@ export declare namespace Util {
     function readJsonAsync(absPath: string): {
         [id: string]: any;
     } | void;
+    function copyFileSync(src: string, dest: string): void;
     function rmdirSync(path: string): void;
     function copySync(src: string, dest: string): void;
     function isExists(path: string, next?: (code?: number | undefined, transfer?: boolean) => void): string | boolean;

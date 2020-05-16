@@ -174,7 +174,7 @@ class ServerConfig {
             isSecure: false
         };
         this.defaultDoc = [];
-        this.mimeType = ["css", "js", "png", "gif", "ico", "map"];
+        this.mimeType = [];
         this.defaultExt = "";
         this.views = [];
         this.errorPage = {};

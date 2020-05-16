@@ -57,8 +57,8 @@ export function createProjectTemplate( settings: {
 		Util.copySync( _path.resolve( `${templateRoot}/lib/` ), _path.resolve( `${projectRoot}/lib/` ) );
 	}
 	if ( settings.isTest === true ) {
-		_fs.copyFileSync( _path.resolve( `${templateRoot}/test/app.config.json` ), _path.resolve( `${templateRoot}/www/config/app.config.json` ) );
-		_fs.copyFileSync( _path.resolve( `${templateRoot}/test/test.js` ), _path.resolve( `${templateRoot}/www/lib/view/test.js` ) );
+		Util.copyFileSync( _path.resolve( `${templateRoot}/test/app.config.json` ), _path.resolve( `${projectRoot}/config/app.config.json` ) );
+		Util.copyFileSync( _path.resolve( `${templateRoot}/test/test.js` ), _path.resolve( `${projectRoot}/lib/view/test.js` ) );
 	}
 	console.log( ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${projectRoot}\\config\\` );
 	console.log( ConsoleColor.FgGreen, `

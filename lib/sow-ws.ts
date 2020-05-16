@@ -48,6 +48,8 @@ export interface IWsClientInfo {
     next: ( session: ISession, socket: Socket ) => void | boolean;
     client: ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ) => { [x: string]: any; };
     getServerEvent(): { [x: string]: any; }[];
+    on( name: string, handler: IEvtHandler ): void;
+    fire( name: string, me: ISowSocketInfo, wsServer: ISowSocket ): void;
 }
 export interface ISowSocketInfo {
     token: string;
@@ -69,57 +71,41 @@ export interface ISowSocket {
     toList( sockets: ISowSocketInfo[] ): { [x: string]: any; }[];
     getClientByExceptHash( exceptHash: string, group?: string ): ISowSocketInfo[];
     getClientByExceptLogin( exceptLoginId: string, group?: string ): ISowSocketInfo[];
-    getClient( token: string, group?: string ): ISowSocketInfo[];
+    getClientByExceptToken( token: string, group?: string ): ISowSocketInfo[];
     getSocket( token: string ): ISowSocketInfo | void;
     removeSocket( token: string ): boolean;
     sendMsg( token: string, method: string, data?: any ): boolean;
 }
+type IEvtHandler = ( me: ISowSocketInfo, wsServer: ISowSocket ) => void;
 type IWsNext = ( session: ISession, socket: Socket ) => void | boolean;
 type IWsClient = ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ) => { [x: string]: any; };
 export class WsClientInfo implements IWsClientInfo {
     next: IWsNext;
     client: IWsClient;
-    constructor( next: IWsNext, client: IWsClient) {
+    event: { [id: string]: IEvtHandler } = {};
+    constructor( next: IWsNext, client: IWsClient ) {
         this.client = client;
         this.next = next;
     }
     getServerEvent(): { [x: string]: any; }[] {
-        throw new Error("Method not implemented.");
+        throw new Error( "Method not implemented." );
+    }
+    on( name: string, handler: IEvtHandler ): void {
+        this.event[name] = handler;
+    }
+    fire( name: string, me: ISowSocketInfo, wsServer: ISowSocket ): void {
+        if ( !this.event[name] ) return void 0;
+        return this.event[name]( me, wsServer );
     }
 }
 // tslint:disable-next-line: max-classes-per-file
-export class SowSocketInfo implements ISowSocketInfo {
-    token: string;
-    loginId?: string;
-    hash?: string;
-    socketId: string;
-    isOwner: boolean;
-    isAuthenticated: boolean;
-    isReconnectd: boolean;
-    group?: string;
-    constructor() {
-        this.token = ""; this.socketId = "";
-        this.isOwner = false; this.isAuthenticated = false;
-        this.isReconnectd = false;
-    }
-    getSocket(): Socket {
-        throw new Error( "Method not implemented." );
-    }
-    sendMsg( method: string, data: any ): any {
-        throw new Error( "Method not implemented." );
-    }
-}
-// tslint:disable-next-line: max-classes-per-file
-export class SowSocket implements ISowSocket {
+class SowSocket implements ISowSocket {
     _server: ISowServer;
     _wsClientInfo: IWsClientInfo;
     implimented: boolean;
     socket: ISowSocketInfo[];
     connected: boolean;
     constructor( server: ISowServer, wsClientInfo: IWsClientInfo ) {
-        // if ( !server.config.socketPath ) {
-        //    throw new Error( "Socket Path should not left blank..." );
-        // }
         this.implimented = false; this.socket = [];
         this.connected = false;
         this._server = server; this._wsClientInfo = wsClientInfo;
@@ -160,7 +146,7 @@ export class SowSocket implements ISowSocket {
             soc => soc.loginId !== exceptLoginId && soc.group === group
         );
     }
-    getClient( token: string, group?: string ): ISowSocketInfo[] {
+    getClientByExceptToken( token: string, group?: string ): ISowSocketInfo[] {
         return !group ? this.socket.filter(
             soc => soc.token !== token
         ) : this.socket.filter(
@@ -202,8 +188,6 @@ export class SowSocket implements ISowSocket {
             if ( !this._wsClientInfo.next( socket.request.session, socket ) ) return void 0;
             return next();
         } );
-        // _server.db.execute_io( "", "", "", () => { } );
-        this._server.log.success( `Socket created...` );
         return io.on( "connect", ( socket ) => {
             this.connected = socket.connected;
         } ).on( 'connection', ( socket ) => {
@@ -233,39 +217,16 @@ export class SowSocket implements ISowSocket {
                     throw new Error( "Should not here..." );
                 return socketInfo;
             } )();
-            this._server.log.success( `New Socket connected... Token# ${_me.token}` );
             socket.on( 'disconnect', () => {
                 if ( !this.removeSocket( _me.token ) ) return;
-                socket.broadcast.emit( "on-disconnect-user", {
-                    token: _me.token, hash: _me.hash, loginId: _me.loginId
-                } );
-                this._server.log.info( `User disconnected==>${_me.token}` );
-                return void 0;
+                this._wsClientInfo.fire( "onDisConnected", _me, this );
             } );
             const client = this._wsClientInfo.client( _me, socket.request.session, this, this._server );
             // tslint:disable-next-line: forin
             for ( const method in client ) {
                 socket.on( method, client[method] );
             }
-            _me.sendMsg( _me.isReconnectd ? "on-re-connected" : "on-connected", {
-                token: _me.token, hash: _me.hash, loginId: _me.loginId
-            } );
-            socket.broadcast.emit( "update-user-list", {
-                users: [{
-                    token: _me.token, hash: _me.hash, loginId: _me.loginId
-                }]
-            } );
-            socket.emit( "update-user-list", {
-                users: this.toList( this.getClient( _me.token ) )
-            } );
-            if ( _me.isReconnectd && _me.group ) {
-                this._server.log.info( "Re-connected..." )
-                this.getClient( _me.token, _me.group ).forEach( soc => {
-                    soc.sendMsg( "on-re-connected-client", {
-                        socket: _me.token
-                    } );
-                } )
-            }
+            this._wsClientInfo.fire( "onConnected", _me, this );
             return void 0;
         } ), void 0;
     }
