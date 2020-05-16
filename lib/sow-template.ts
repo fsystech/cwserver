@@ -9,7 +9,7 @@ import * as _zlib from 'zlib';
 import { Util } from './sow-util';
 import { HttpStatus } from './sow-http-status';
 import { IResInfo } from './sow-static';
-import { ISowServer, IContext } from './sow-server';
+import { IContext } from './sow-server';
 interface IScriptTag {
     l: string;
     lre: RegExp;

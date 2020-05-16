@@ -1,7 +1,14 @@
 "use strict";
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const _fs = require("fs");
-const _path = require("path");
+const _fs = __importStar(require("fs"));
+const _path = __importStar(require("path"));
 const _isPlainObject = (obj) => {
     /// <summary>Tests whether a value is an object.</summary>
     /// <param name="value">Value to test.</param>
@@ -103,6 +110,21 @@ var Util;
         }
     }
     Util.readJsonAsync = readJsonAsync;
+    function rmdirSync(path) {
+        if (!_fs.existsSync(path))
+            return;
+        const stats = _fs.statSync(path);
+        if (stats.isDirectory()) {
+            _fs.readdirSync(path).forEach((nextItem) => {
+                rmdirSync(_path.join(path, nextItem));
+            });
+            _fs.rmdirSync(path);
+        }
+        else {
+            _fs.unlinkSync(path);
+        }
+    }
+    Util.rmdirSync = rmdirSync;
     function copySync(src, dest) {
         if (!_fs.existsSync(src))
             return;

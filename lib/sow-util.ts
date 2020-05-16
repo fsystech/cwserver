@@ -5,8 +5,8 @@
 */
 import { IContext } from './sow-server';
 import { IRequest, IResponse } from './sow-server-core';
-import _fs = require( 'fs' );
-import _path = require( 'path' );
+import * as _fs from 'fs';
+import * as _path from  'path';
 const _isPlainObject = ( obj: any ): obj is { [x: string]: any; } => {
     /// <summary>Tests whether a value is an object.</summary>
     /// <param name="value">Value to test.</param>
@@ -91,6 +91,20 @@ export namespace Util {
             return JSON.parse( jsonstr );
         } catch ( e ) {
             return void 0;
+        }
+    }
+    export function rmdirSync( path: string ): void {
+        if ( !_fs.existsSync( path ) ) return;
+        const stats: _fs.Stats = _fs.statSync( path );
+        if ( stats.isDirectory() ) {
+            _fs.readdirSync( path ).forEach( ( nextItem: string ) => {
+                rmdirSync(
+                    _path.join( path, nextItem )
+                );
+            } );
+            _fs.rmdirSync( path );
+        } else {
+            _fs.unlinkSync( path );
         }
     }
     export function copySync( src: string, dest: string ): void {

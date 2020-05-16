@@ -20,8 +20,12 @@ function createProjectTemplate(settings) {
     if (!_fs.existsSync(appRoot))
         throw new Error(`App Root not found ${appRoot}\r\nprojectDef.projectRoot like as __dirname`);
     const projectRoot = _path.resolve(`${appRoot}/${settings.projectRoot}`);
-    if (_fs.existsSync(projectRoot))
-        throw new Error(`Project Root already exists in ${projectRoot}\r\nPlease delete first ${settings.projectRoot}.`);
+    if (_fs.existsSync(projectRoot)) {
+        if (settings.force !== true) {
+            throw new Error(`Project Root already exists in ${projectRoot}\r\nPlease delete first ${settings.projectRoot}.`);
+        }
+        sow_util_1.Util.rmdirSync(projectRoot);
+    }
     sow_util_1.Util.mkdirSync(appRoot, settings.projectRoot);
     sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/www`), projectRoot);
     const serverJs = _path.resolve(`${appRoot}/server.js`);
@@ -47,6 +51,10 @@ function createProjectTemplate(settings) {
         sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/jsTemplate/`), _path.resolve(`${projectRoot}/example/jsTemplate/`));
         console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/lib/`);
         sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/lib/`), _path.resolve(`${projectRoot}/lib/`));
+    }
+    if (settings.isTest === true) {
+        _fs.copyFileSync(_path.resolve(`${templateRoot}/test/app.config.json`), _path.resolve(`${templateRoot}/www/config/app.config.json`));
+        _fs.copyFileSync(_path.resolve(`${templateRoot}/test/test.js`), _path.resolve(`${templateRoot}/www/lib/view/test.js`));
     }
     console.log(sow_logger_1.ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${projectRoot}\\config\\`);
     console.log(sow_logger_1.ConsoleColor.FgGreen, `

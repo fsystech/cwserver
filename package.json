@@ -1,6 +1,6 @@
 {
   "name": "cwserver",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "SOW Web Server (All in one) for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,7 +18,8 @@
   "scripts": {
     "start": "node clean.js && tsc && node dist/server.js o_conference",
     "test": "node dist/test.js",
-    "dev": "nodemon server.ts"
+    "dev": "nodemon server.ts",
+    "test:mocha": "mocha dist/test.js"
   },
   "keywords": [
     "web",
@@ -41,5 +42,11 @@
   },
   "dependencies": {
     "crypto-js": "^4.0.0"
-  }
+  },
+  "contributors": [
+    {
+      "name": "Rajib Chy",
+      "email": "mysuccessstairs@hotmail.com"
+    }
+  ]
 }
