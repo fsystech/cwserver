@@ -1,6 +1,7 @@
 # ```cwserver``` Complete Node Web Server (All in one)<br/>
 [![Build Status](https://api.travis-ci.org/safeonlineworld/cwserver.svg?branch=master)](https://travis-ci.org/github/safeonlineworld/cwserver)
 [![npm version](https://badge.fury.io/js/cwserver.svg)](https://badge.fury.io/js/cwserver)
+![Downloads](https://img.shields.io/npm/dt/cwserver)
 
 Install ```cwserver``` by this command ```npm i cwserver```<br/>
 Create ```createProjectTemplate.js``` as following
