@@ -45,10 +45,9 @@ function isDefined(a) {
 const parseMaxAge = (maxAge) => {
     if (typeof (maxAge) !== "string")
         throw _Error(`Invalid maxAage...`);
-    // tslint:disable-next-line: one-variable-per-declaration
-    let add = 0, type = 'D';
+    let add = 0;
     const length = maxAge.length;
-    type = maxAge.charAt(length - 1).toUpperCase();
+    let type = maxAge.charAt(length - 1).toUpperCase();
     // tslint:disable-next-line: radix
     add = parseInt(maxAge.substring(0, length - 1));
     if (isNaN(add))
@@ -87,8 +86,8 @@ const _formatPath = (() => {
         if (/\$/gi.test(name) === false)
             return name;
         const absPath = _path.resolve(name.replace(/\$.+?\//gi, (m) => {
-            m = m.replace('$', "").replace('/', "");
-            const rs = _exportObj(server, m.replace('$', "").replace('/', ""));
+            m = m.replace(/\$/gi, "").replace(/\//gi, "");
+            const rs = _exportObj(server, m.replace(/\$/gi, "").replace(/\//gi, ""));
             if (!rs.value) {
                 throw _Error(`Invalid key ${m}`);
             }
@@ -250,7 +249,7 @@ ${appRoot}\\www_public
             throw _Error(`Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root`);
         }
         this.root = appRoot;
-        this.public = wwwName === null || wwwName === void 0 ? void 0 : wwwName.toString();
+        this.public = wwwName.toString();
         this.config = new ServerConfig();
         this.db = {};
         const absPath = _path.resolve(`${this.root}/${this.public}/config/app.config.json`);
@@ -468,7 +467,7 @@ ${appRoot}\\www_public
             }
             if (!rcode || rcode === 200)
                 return cleanContext(ctx);
-            if (rcode && rcode < 0) {
+            if (rcode < 0) {
                 this.log.error(`Active connection closed by client. Request path ${ctx.path}`).reset();
                 return cleanContext(ctx);
             }
@@ -600,7 +599,7 @@ function initilizeServer(appRoot, wwwName) {
                         code = code * -1;
                     }
                     else if (code && sow_http_status_1.HttpStatus.isErrorCode(code)) {
-                        _server.log.error(`Send ${code || 200} ${ctx.path}`).reset();
+                        _server.log.error(`Send ${code} ${ctx.path}`).reset();
                     }
                     else {
                         _server.log.success(`Send ${code || 200} ${ctx.path}`).reset();
@@ -611,7 +610,7 @@ function initilizeServer(appRoot, wwwName) {
                     return void 0;
                 return next();
             }
-            _server.log.error(`Send ${code || 404} ${ctx.path}`).reset();
+            _server.log.error(`Send ${code} ${ctx.path}`).reset();
             if (_server.config.errorPage[code]) {
                 return _server.transferRequest(ctx, _server.config.errorPage[code]);
             }

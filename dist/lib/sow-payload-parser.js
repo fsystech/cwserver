@@ -29,10 +29,10 @@ const guid = () => {
         return v.toString(16);
     });
 };
-const getLine = (socket, data) => {
+const getLine = (req, data) => {
     let outstr = '';
     for (;;) {
-        let c = socket.read(1);
+        let c = req.read(1);
         if (!c)
             return outstr;
         const str = c.toString();
@@ -44,7 +44,7 @@ const getLine = (socket, data) => {
             case '\r':
                 outstr += str;
                 data.push(c);
-                c = socket.read(1);
+                c = req.read(1);
                 if (!c)
                     return outstr;
                 outstr += c.toString(); // assume \n
@@ -58,7 +58,7 @@ const getLine = (socket, data) => {
 };
 const getHeader = (headers, key) => {
     const result = headers[key];
-    return typeof (result) === "string" ? result === null || result === void 0 ? void 0 : result.toString() : "";
+    return typeof (result) === "string" ? result.toString() : "";
 };
 const createDir = (tempDir) => {
     if (!_fs.existsSync(tempDir))
@@ -66,12 +66,14 @@ const createDir = (tempDir) => {
 };
 const incomingContentType = {
     URL_ENCODE: "application/x-www-form-urlencoded",
+    APP_JSON: "application/json",
     MULTIPART: "multipart/form-data"
 };
 var ContentType;
 (function (ContentType) {
     ContentType[ContentType["URL_ENCODE"] = 1] = "URL_ENCODE";
-    ContentType[ContentType["MULTIPART"] = 2] = "MULTIPART";
+    ContentType[ContentType["APP_JSON"] = 2] = "APP_JSON";
+    ContentType[ContentType["MULTIPART"] = 3] = "MULTIPART";
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
 })(ContentType = exports.ContentType || (exports.ContentType = {}));
 const extractBetween = (data, separator1, separator2) => {
@@ -98,7 +100,7 @@ const parseHeader = (data) => {
     // This is hairy: Netscape and IE don't encode the filenames
     // The RFC says they should be encoded, so I will assume they are.
     filename = decodeURIComponent(filename);
-    return new PostedFileInfo(disposition, name, filename, cType);
+    return new PostedFileInfo(disposition, name ? name.replace(/"/gi, "") : name, filename, cType);
 };
 class PostedFileInfo {
     constructor(disposition, fname, fileName, fcontentType) {
@@ -321,6 +323,9 @@ class PayloadParser {
         else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1) {
             this._contentTypeEnum = ContentType.URL_ENCODE;
         }
+        else if (this._contentType.indexOf(incomingContentType.APP_JSON) > -1) {
+            this._contentTypeEnum = ContentType.APP_JSON;
+        }
         else {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
@@ -338,6 +343,9 @@ class PayloadParser {
     isUrlEncoded() {
         return this._contentTypeEnum === ContentType.URL_ENCODE;
     }
+    isAppJson() {
+        return this._contentTypeEnum === ContentType.APP_JSON;
+    }
     isMultipart() {
         return this._contentTypeEnum === ContentType.MULTIPART;
     }
@@ -349,6 +357,8 @@ class PayloadParser {
             throw new Error("Invalid request defiend....");
         if (!this._isReadEnd)
             throw new Error("Data did not read finished yet...");
+        if (this._contentTypeEnum !== ContentType.MULTIPART)
+            throw new Error("Multipart form data required....");
         createDir(outdir);
         if (!_fs.statSync(outdir).isDirectory()) {
             throw new Error(`Invalid outdir dir ${outdir}`);
@@ -362,11 +372,16 @@ class PayloadParser {
             throw new Error("Invalid request defiend....");
         if (!this._isReadEnd)
             throw new Error("Data did not read finished yet...");
+        if (this._contentTypeEnum !== ContentType.MULTIPART)
+            throw new Error("Multipart form data required....");
         this._payloadDataParser.files.forEach((pf) => next(pf));
         return void 0;
     }
     getJson() {
         const payLoadStr = this.getData();
+        if (this._contentTypeEnum === ContentType.APP_JSON) {
+            return JSON.parse(payLoadStr);
+        }
         const outObj = {};
         payLoadStr.split("&").forEach(part => {
             const kv = part.split("=");
@@ -382,9 +397,9 @@ class PayloadParser {
             throw new Error("Invalid request defiend....");
         if (!this._isReadEnd)
             throw new Error("Data did not read finished yet...");
-        if (this._contentTypeEnum !== ContentType.URL_ENCODE)
-            throw new Error("You can invoke this method only URL_ENCODE content type...");
-        return this._payloadDataParser.payloadStr;
+        if (this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON)
+            return this._payloadDataParser.payloadStr;
+        throw new Error("You can invoke this method only URL_ENCODE | APP_JSON content type...");
     }
     readDataAsync() {
         return new Promise((resolve, reject) => {
@@ -398,18 +413,28 @@ class PayloadParser {
     readData(onReadEnd) {
         if (!this.isValidRequest())
             throw new Error("Invalid request defiend....");
-        if (this._contentTypeEnum === ContentType.URL_ENCODE) {
-            this._req.socket.on("data", (chunk) => {
-                return this._payloadDataParser.onRawData(chunk.toString());
-            });
-        }
-        else {
-            this._req.socket.on("readable", (...args) => __awaiter(this, void 0, void 0, function* () {
+        if (this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON) {
+            this._req.on("readable", (...args) => {
                 while (true) {
                     if (!this._clientConnected)
                         break;
                     const buffer = [];
-                    const data = getLine(this._req.socket, buffer);
+                    const data = getLine(this._req, buffer);
+                    if (data === '') {
+                        break;
+                    }
+                    this._payloadDataParser.onRawData(data);
+                    buffer.length = 0;
+                }
+            });
+        }
+        else {
+            this._req.on("readable", (...args) => __awaiter(this, void 0, void 0, function* () {
+                while (true) {
+                    if (!this._clientConnected)
+                        break;
+                    const buffer = [];
+                    const data = getLine(this._req, buffer);
                     if (data === '') {
                         break;
                     }
@@ -421,7 +446,7 @@ class PayloadParser {
                 }
             }));
         }
-        this._req.socket.on("close", () => {
+        this._req.on("close", () => {
             this._clientConnected = false;
             if (!this._isReadEnd) {
                 this._isReadEnd = true;
@@ -429,7 +454,7 @@ class PayloadParser {
                 return onReadEnd("CLIENET_DISCONNECTED");
             }
         });
-        this._req.socket.on("end", () => {
+        this._req.on("end", () => {
             this._payloadDataParser.onEnd();
             this._isReadEnd = true;
             const error = this._payloadDataParser.getError();

@@ -59,6 +59,7 @@ export function createProjectTemplate( settings: {
 	if ( settings.isTest === true ) {
 		Util.copyFileSync( _path.resolve( `${templateRoot}/test/app.config.json` ), _path.resolve( `${projectRoot}/config/app.config.json` ) );
 		Util.copyFileSync( _path.resolve( `${templateRoot}/test/test.js` ), _path.resolve( `${projectRoot}/lib/view/test.js` ) );
+		Util.copyFileSync( _path.resolve( `${templateRoot}/test/socket-client.js` ), _path.resolve( `${projectRoot}/lib/socket-client.js` ) );
 	}
 	console.log( ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${projectRoot}\\config\\` );
 	console.log( ConsoleColor.FgGreen, `

@@ -19,8 +19,9 @@ function _generateRandomNumber( num ) {
 	return result;
 }
 global.sow.server.registerView( ( app, controller, server ) => {
-	const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
-	//const ws = socketInitilizer(server, require("../socket-client"));
+	const { PayloadParser, Encryption } = require( 'cwserver' );
+	// const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
+	// const ws = socketInitilizer(server, require("../socket-client"));
 	//ws.create(require("socket.io"));
 	
 	// Create your virtual dir

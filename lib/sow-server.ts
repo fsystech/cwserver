@@ -10,7 +10,7 @@ import {
 import {
     NextFunction, IApps, HandlerFunc,
     IRequest, IResponse,
-    App as sowAppCore, Apps
+    App as sowAppCore
 } from './sow-server-core';
 import { Server } from 'http';
 import * as _fs from 'fs';
@@ -184,10 +184,9 @@ function isDefined<T>( a: T | null | undefined ): a is T {
 }
 const parseMaxAge = ( maxAge: any ): number => {
     if ( typeof ( maxAge ) !== "string" ) throw _Error( `Invalid maxAage...` );
-    // tslint:disable-next-line: one-variable-per-declaration
-    let add = 0, type = 'D';
-    const length = maxAge.length;
-    type = maxAge.charAt( length - 1 ).toUpperCase();
+    let add: number = 0;
+    const length: number = maxAge.length;
+    let type: string = maxAge.charAt( length - 1 ).toUpperCase();
     // tslint:disable-next-line: radix
     add = parseInt( maxAge.substring( 0, length - 1 ) );
     if ( isNaN( add ) ) throw _Error( `Invalid maxAage format ${maxAge}` );
@@ -225,8 +224,8 @@ const _formatPath = ( () => {
     return ( server: ISowServer, name: string ): string => {
         if ( /\$/gi.test( name ) === false ) return name;
         const absPath: string = _path.resolve( name.replace( /\$.+?\//gi, ( m ) => {
-            m = m.replace( '$', "" ).replace( '/', "" );
-            const rs = _exportObj( server, m.replace( '$', "" ).replace( '/', "" ) );
+            m = m.replace( /\$/gi, "" ).replace( /\//gi, "" );
+            const rs = _exportObj( server, m.replace( /\$/gi, "" ).replace( /\//gi, "" ) );
             if ( !rs.value ) {
                 throw _Error( `Invalid key ${m}` );
             }
@@ -405,7 +404,7 @@ export class ServerConfig implements IServerConfig {
             fileCache: true,
             route: "/app/api/bundle/",
             compress: true
-        }
+        };
         // this.database = [new DatabaseConfig()];
     }
 }
@@ -456,10 +455,10 @@ your-app-root | directory name should be exists here
 ${appRoot}\\www_public
 ` );
             }
-            throw _Error( `Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root` )
+            throw _Error( `Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root` );
         }
         this.root = appRoot;
-        this.public = wwwName?.toString();
+        this.public = wwwName.toString();
         this.config = new ServerConfig();
         this.db = {};
         const absPath: string = _path.resolve( `${this.root}/${this.public}/config/app.config.json` );
@@ -480,7 +479,7 @@ ${appRoot}\\www_public
             "404": _path.resolve( `${myParent}/error_page/404.html` ),
             "401": _path.resolve( `${myParent}/error_page/401.html` ),
             "500": _path.resolve( `${myParent}/error_page/500.html` )
-        }
+        };
         Util.extend( this.config, config, true );
         this.implimentConfig( config );
         this.rootregx = new RegExp( this.root.replace( /\\/gi, '/' ), "gi" );
@@ -565,7 +564,7 @@ ${appRoot}\\www_public
                 // tslint:disable-next-line: variable-name
                 const status_code = HttpStatus.fromPath( path, code );
                 if ( !status_code || status_code !== code || !HttpStatus.isErrorCode( status_code ) ) {
-                    throw _Error( `Invalid Server/Client error page... ${path} and code ${code}}` )
+                    throw _Error( `Invalid Server/Client error page... ${path} and code ${code}}` );
                 }
                 this.config.errorPage[property] = this.formatPath( path );
             }
@@ -616,7 +615,7 @@ ${appRoot}\\www_public
     }
     parseSession( cookies: string | { [x: string]: any; } ): ISession {
         if ( !this.config.session.cookie )
-            throw Error( "You are unable to add session without session config. see your app_config.json" )
+            throw Error( "You are unable to add session without session config. see your app_config.json" );
         const session = new Session();
         cookies = this.parseCookie( cookies );
         if ( !cookies ) return session;
@@ -666,7 +665,7 @@ ${appRoot}\\www_public
                 return _next( rcode, false );
             }
             if ( !rcode || rcode === 200 ) return cleanContext( ctx );
-            if ( rcode && rcode < 0 ) {
+            if ( rcode < 0 ) {
                 this.log.error( `Active connection closed by client. Request path ${ctx.path}` ).reset();
                 return cleanContext( ctx );
             }
@@ -803,7 +802,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                         _server.log.error( `Active connection closed by client. Request path ${ctx.path}` ).reset();
                         code = code * -1;
                     } else if ( code && HttpStatus.isErrorCode( code ) ) {
-                        _server.log.error( `Send ${code || 200} ${ctx.path}` ).reset();
+                        _server.log.error( `Send ${code} ${ctx.path}` ).reset();
                     } else {
                         _server.log.success( `Send ${code || 200} ${ctx.path}` ).reset();
                     }
@@ -812,7 +811,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                 if ( code ) return void 0;
                 return next();
             }
-            _server.log.error( `Send ${code || 404} ${ctx.path}` ).reset();
+            _server.log.error( `Send ${code} ${ctx.path}` ).reset();
             if ( _server.config.errorPage[code] ) {
                 return _server.transferRequest( ctx, _server.config.errorPage[code] );
             }

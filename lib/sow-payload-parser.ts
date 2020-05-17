@@ -26,6 +26,7 @@ export interface IPostedFileInfo {
 }
 export interface IPayloadParser {
     isUrlEncoded(): boolean;
+    isAppJson(): boolean;
     isMultipart(): boolean;
     isValidRequest(): boolean;
     getFiles( next: ( file: IPostedFileInfo ) => void ): void;
@@ -42,10 +43,10 @@ const guid = (): string => {
         return v.toString( 16 );
     } );
 }
-const getLine = ( socket: Socket, data: Buffer[] ): string => {
+const getLine = ( req: IRequest, data: Buffer[] ): string => {
     let outstr = '';
     for ( ; ; ) {
-        let c = socket.read( 1 );
+        let c = req.read( 1 );
         if ( !c ) return outstr;
         const str = c.toString();
         switch ( str ) {
@@ -55,7 +56,7 @@ const getLine = ( socket: Socket, data: Buffer[] ): string => {
                 return outstr;
             case '\r':
                 outstr += str; data.push( c );
-                c = socket.read( 1 );
+                c = req.read( 1 );
                 if ( !c ) return outstr;
                 outstr += c.toString();// assume \n
                 data.push( c );
@@ -68,22 +69,25 @@ const getLine = ( socket: Socket, data: Buffer[] ): string => {
 }
 const getHeader = ( headers: IncomingHttpHeaders, key: string ): string => {
     const result = headers[key];
-    return typeof ( result ) === "string" ? result?.toString() : "";
+    return typeof ( result ) === "string" ? result.toString() : "";
 }
 const createDir = ( tempDir: string ): void => {
     if ( !_fs.existsSync( tempDir ) ) Util.mkdirSync( tempDir );
 }
 const incomingContentType: {
     [key: string]: any;
-    URL_ENCODE: string,
-    MULTIPART: string
+    URL_ENCODE: string;
+    APP_JSON: string;
+    MULTIPART: string;
 } = {
     URL_ENCODE: "application/x-www-form-urlencoded",
+    APP_JSON: "application/json",
     MULTIPART: "multipart/form-data"
 }
 export enum ContentType {
     URL_ENCODE = 1,
-    MULTIPART = 2,
+    APP_JSON = 2,
+    MULTIPART = 3,
     UNKNOWN = -1
 }
 const extractBetween = (
@@ -108,13 +112,14 @@ const parseHeader = ( data: string ): IPostedFileInfo => {
     let part = data.substring( 0, data.indexOf( end ) );
     const disposition = extractBetween( part, "Content-Disposition: ", ";" );
     const name = extractBetween( part, "name=\"", ";" );
+    
     let filename = extractBetween( part, "filename=\"", "\"" );
     part = data.substring( part.length + end.length );
     const cType = extractBetween( part, "Content-Type: ", "\r\n\r\n" );
     // This is hairy: Netscape and IE don't encode the filenames
     // The RFC says they should be encoded, so I will assume they are.
     filename = decodeURIComponent( filename );
-    return new PostedFileInfo( disposition, name, filename, cType );
+    return new PostedFileInfo( disposition, name ? name.replace( /"/gi, "" ) : name, filename, cType );
 }
 export class PostedFileInfo implements IPostedFileInfo {
     _fcontentDisposition: string;
@@ -350,6 +355,8 @@ export class PayloadParser implements IPayloadParser {
             this._contentTypeEnum = ContentType.MULTIPART;
         } else if ( this._contentType.indexOf( incomingContentType.URL_ENCODE ) > -1 ) {
             this._contentTypeEnum = ContentType.URL_ENCODE;
+        } else if ( this._contentType.indexOf( incomingContentType.APP_JSON ) > -1 ) {
+            this._contentTypeEnum = ContentType.APP_JSON;
         } else {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
@@ -365,6 +372,9 @@ export class PayloadParser implements IPayloadParser {
     public isUrlEncoded(): boolean {
         return this._contentTypeEnum === ContentType.URL_ENCODE;
     }
+    public isAppJson(): boolean {
+        return this._contentTypeEnum === ContentType.APP_JSON;
+    }
     public isMultipart(): boolean {
         return this._contentTypeEnum === ContentType.MULTIPART;
     }
@@ -376,6 +386,8 @@ export class PayloadParser implements IPayloadParser {
             throw new Error( "Invalid request defiend...." );
         if ( !this._isReadEnd )
             throw new Error( "Data did not read finished yet..." );
+        if ( this._contentTypeEnum !== ContentType.MULTIPART )
+            throw new Error( "Multipart form data required...." );
         createDir( outdir );
         if ( !_fs.statSync( outdir ).isDirectory() ) {
             throw new Error( `Invalid outdir dir ${outdir}` );
@@ -389,11 +401,16 @@ export class PayloadParser implements IPayloadParser {
             throw new Error( "Invalid request defiend...." );
         if ( !this._isReadEnd )
             throw new Error( "Data did not read finished yet..." );
+        if ( this._contentTypeEnum !== ContentType.MULTIPART )
+            throw new Error( "Multipart form data required...." );
         this._payloadDataParser.files.forEach( ( pf ) => next( pf ) );
         return void 0;
     }
     public getJson(): { [key: string]: any; } {
         const payLoadStr = this.getData();
+        if ( this._contentTypeEnum === ContentType.APP_JSON ) {
+            return JSON.parse( payLoadStr );
+        }
         const outObj: { [key: string]: any; } = {};
         payLoadStr.split( "&" ).forEach( part => {
             const kv = part.split( "=" );
@@ -408,9 +425,9 @@ export class PayloadParser implements IPayloadParser {
             throw new Error( "Invalid request defiend...." );
         if ( !this._isReadEnd )
             throw new Error( "Data did not read finished yet..." );
-        if ( this._contentTypeEnum !== ContentType.URL_ENCODE )
-            throw new Error( "You can invoke this method only URL_ENCODE content type..." );
-        return this._payloadDataParser.payloadStr;
+        if ( this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON )
+            return this._payloadDataParser.payloadStr;
+        throw new Error( "You can invoke this method only URL_ENCODE | APP_JSON content type..." );
     }
     public readDataAsync(): Promise<void> {
         return new Promise( ( resolve, reject ) => {
@@ -423,16 +440,23 @@ export class PayloadParser implements IPayloadParser {
     public readData( onReadEnd: ( err?: Error | string ) => void ): void {
         if ( !this.isValidRequest() )
             throw new Error( "Invalid request defiend...." );
-        if ( this._contentTypeEnum === ContentType.URL_ENCODE ) {
-            this._req.socket.on( "data", ( chunk: Buffer ): void => {
-                return this._payloadDataParser.onRawData( chunk.toString() );
-            } );
-        } else {
-            this._req.socket.on( "readable", async ( ...args: any[] ) => {
+        if ( this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON ) {
+            this._req.on( "readable", ( ...args: any[] ): void => {
                 while ( true ) {
                     if ( !this._clientConnected ) break;
                     const buffer: Buffer[] = [];
-                    const data = getLine( this._req.socket, buffer );
+                    const data = getLine( this._req, buffer );
+                    if ( data === '' ) { break; }
+                    this._payloadDataParser.onRawData( data );
+                    buffer.length = 0;
+                }
+            } );
+        } else {
+            this._req.on( "readable", async ( ...args: any[] ) => {
+                while ( true ) {
+                    if ( !this._clientConnected ) break;
+                    const buffer: Buffer[] = [];
+                    const data = getLine( this._req, buffer );
                     if ( data === '' ) { break; }
                     const promise = this._payloadDataParser.onData( data, Buffer.concat( buffer ) );
                     buffer.length = 0;
@@ -442,7 +466,7 @@ export class PayloadParser implements IPayloadParser {
                 }
             } );
         }
-        this._req.socket.on( "close", () => {
+        this._req.on( "close", () => {
             this._clientConnected = false;
             if ( !this._isReadEnd ) {
                 this._isReadEnd = true;
@@ -450,7 +474,7 @@ export class PayloadParser implements IPayloadParser {
                 return onReadEnd( "CLIENET_DISCONNECTED" )
             }
         } );
-        this._req.socket.on( "end", () => {
+        this._req.on( "end", () => {
             this._payloadDataParser.onEnd();
             this._isReadEnd = true;
             const error = this._payloadDataParser.getError();

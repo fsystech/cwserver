@@ -96,11 +96,11 @@ class ScriptParser implements IScriptParser {
                 ( this.tag.write.rre.test( parserInfo.line ) === true ?
                     ( parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
                         parserInfo.line = parserInfo.line.replace( this.tag.write.repre, ( match ) => {
-                            return !match ? '' : match.replace( /'/, '\x0f' );
+                            return !match ? '' : match.replace( /'/gi, '\x0f' );
                         } ).replace( this.tag.write.lre, "\x0f; __RSP +=" )
                             .replace( this.tag.write.rre, "; __RSP += \x0f" ) )
                     : parserInfo.isTagEnd = false,
-                    parserInfo.line = parserInfo.line.replace( /'/, '\x0f' ).replace( this.tag.write.lre, "\x0f; __RSP +=" ) );
+                    parserInfo.line = parserInfo.line.replace( /'/gi, '\x0f' ).replace( this.tag.write.lre, "\x0f; __RSP +=" ) );
                 break;
             default: throw new Error( `Invalid script tag "${parserInfo.tag}" found...` );
         }
@@ -168,7 +168,7 @@ class TemplateParser {
         if ( /#extends/gi.test( str ) === false ) return str;
         const templats = [];
         do {
-            const match = /#extends([\s\S]+?)\r\n/gi.exec( str );
+            const match: RegExpExecArray | null = /#extends([\s\S]+?)\r\n/gi.exec( str );
             if ( !match || match === null ) {
                 // no more master template extends
                 templats.push( str ); break;
@@ -180,7 +180,7 @@ class TemplateParser {
             const path = found.replace( /#extends/gi, "" ).replace( /\r\n/gi, "" ).trim();
             const abspath = `${appRoot}${path}`.replace( /\//gi, "\\" );
             if ( !Util.isExists( abspath ) ) {
-                throw new Error( `Template ${path} not found...` )
+                throw new Error( `Template ${path} not found...` );
             }
             templats.push( str.replace( match[0], "" ) );
             str = _fs.readFileSync( abspath, "utf8" ).replace( /^\uFEFF/, '' );

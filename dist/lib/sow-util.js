@@ -17,8 +17,13 @@ const _isPlainObject = (obj) => {
 const _extend = (destination, source) => {
     if (!_isPlainObject(destination) || !_isPlainObject(source))
         throw new TypeError(`Invalid arguments defined. Arguments should be Object instance. destination type ${typeof (destination)} and source type ${typeof (source)}`);
-    for (const property in source)
+    for (const property in source) {
+        if (property === "__proto__" || property === "constructor")
+            continue;
+        if (!source.hasOwnProperty(property))
+            continue;
         destination[property] = source[property];
+    }
     return destination;
 };
 const _deepExtend = (destination, source) => {
@@ -28,6 +33,10 @@ const _deepExtend = (destination, source) => {
         throw new TypeError(`Invalid arguments defined. Arguments should be Object instance. destination type ${typeof (destination)} and source type ${typeof (source)}`);
     // tslint:disable-next-line: forin
     for (const property in source) {
+        if (property === "__proto__" || property === "constructor")
+            continue;
+        if (!source.hasOwnProperty(property))
+            continue;
         const s = source[property];
         const d = destination[property];
         if (_isPlainObject(d) && _isPlainObject(s)) {

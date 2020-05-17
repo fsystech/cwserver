@@ -6,6 +6,10 @@ node_js:
   - 'stable'
 before_script:
   - npm install mocha
+  - npm install superagent
+  - npm install expect.js
+  - npm install socket.io-client
+  - npm install socket.io
 script:
   - npm run test:mocha
 git:

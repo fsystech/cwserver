@@ -69,11 +69,11 @@ class ScriptParser {
                 (this.tag.write.rre.test(parserInfo.line) === true ?
                     (parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
                         parserInfo.line = parserInfo.line.replace(this.tag.write.repre, (match) => {
-                            return !match ? '' : match.replace(/'/, '\x0f');
+                            return !match ? '' : match.replace(/'/gi, '\x0f');
                         }).replace(this.tag.write.lre, "\x0f; __RSP +=")
                             .replace(this.tag.write.rre, "; __RSP += \x0f"))
                     : parserInfo.isTagEnd = false,
-                    parserInfo.line = parserInfo.line.replace(/'/, '\x0f').replace(this.tag.write.lre, "\x0f; __RSP +="));
+                    parserInfo.line = parserInfo.line.replace(/'/gi, '\x0f').replace(this.tag.write.lre, "\x0f; __RSP +="));
                 break;
             default: throw new Error(`Invalid script tag "${parserInfo.tag}" found...`);
         }

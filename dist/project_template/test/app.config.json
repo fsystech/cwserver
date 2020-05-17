@@ -4,7 +4,7 @@
   "appName": "cwserver",
   "version": "0.0.1",
   "packageVersion": "1",
-  "isDebug": true,
+  "isDebug": false,
   "template": {
     "cache": true,
     "cacheType": "FILE"

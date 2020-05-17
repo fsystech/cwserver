@@ -15,6 +15,7 @@ export interface IPostedFileInfo {
 }
 export interface IPayloadParser {
     isUrlEncoded(): boolean;
+    isAppJson(): boolean;
     isMultipart(): boolean;
     isValidRequest(): boolean;
     getFiles(next: (file: IPostedFileInfo) => void): void;
@@ -24,7 +25,8 @@ export interface IPayloadParser {
 }
 export declare enum ContentType {
     URL_ENCODE = 1,
-    MULTIPART = 2,
+    APP_JSON = 2,
+    MULTIPART = 3,
     UNKNOWN = -1
 }
 export declare class PostedFileInfo implements IPostedFileInfo {
@@ -60,6 +62,7 @@ export declare class PayloadParser implements IPayloadParser {
     private _clientConnected;
     constructor(req: IRequest, tempDir: string);
     isUrlEncoded(): boolean;
+    isAppJson(): boolean;
     isMultipart(): boolean;
     isValidRequest(): boolean;
     saveAs(outdir: string): void;
