@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const _fs = __importStar(require("fs"));
 const _vm = __importStar(require("vm"));
 const _zlib = __importStar(require("zlib"));
+const _path = __importStar(require("path"));
 const sow_util_1 = require("./sow-util");
 const sow_http_status_1 = require("./sow-http-status");
 class ParserInfo {
@@ -111,8 +112,8 @@ class TemplateParser {
             return str;
         return str.replace(/#attach([\s\S]+?)\r\n/gi, (match) => {
             const path = match.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
-            const abspath = `${appRoot}${path}`.replace(/\//gi, "\\");
-            if (!sow_util_1.Util.isExists(abspath)) {
+            const abspath = _path.resolve(`${appRoot}${path}`);
+            if (!_fs.existsSync(abspath)) {
                 throw new Error(`Attachement ${path} not found...`);
             }
             return _fs.readFileSync(abspath, "utf8").replace(/^\uFEFF/, '');
@@ -155,8 +156,10 @@ class TemplateParser {
                 throw new Error("Invalid template format...");
             }
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").trim();
-            const abspath = `${appRoot}${path}`.replace(/\//gi, "\\");
+            const abspath = _path.resolve(`${appRoot}${path}`);
+            // const abspath = `${appRoot}${path}`.replace( /\//gi, "\\" );
             if (!_fs.existsSync(abspath)) {
+                console.log(`Template ${path} and ${abspath} not found...`);
                 throw new Error(`Template ${path} and ${abspath} not found...`);
             }
             templats.push(str.replace(match[0], ""));
@@ -387,7 +390,7 @@ var Template;
             return TemplateCore.tryFileCacheOrLive(ctx, path, status);
         }
         catch (ex) {
-            console.log(ex);
+            // console.log( ex );
             ctx.path = path;
             if (status.code === 500) {
                 if (status.tryServer === true) {
