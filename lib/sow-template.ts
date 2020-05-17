@@ -405,6 +405,7 @@ export namespace Template {
             }
             return TemplateCore.tryFileCacheOrLive( ctx, path, status );
         } catch ( ex ) {
+            console.log( ex );
             ctx.path = path;
             if ( status.code === 500 ) {
                 if ( status.tryServer === true ) {
