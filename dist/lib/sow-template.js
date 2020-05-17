@@ -156,7 +156,7 @@ class TemplateParser {
             }
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = `${appRoot}${path}`.replace(/\//gi, "\\");
-            if (!sow_util_1.Util.isExists(abspath)) {
+            if (!_fs.existsSync(abspath)) {
                 throw new Error(`Template ${path} and ${abspath} not found...`);
             }
             templats.push(str.replace(match[0], ""));
