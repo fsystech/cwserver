@@ -97,8 +97,7 @@ class HttpStatus {
         statusCode = sow_static_1.ToNumber(code);
         if (statusCode === 0)
             return outStatusCode;
-        if (this.isValidCode(statusCode))
-            return outStatusCode;
+        // if ( this.isValidCode( statusCode ) ) return outStatusCode;
         return statusCode;
     }
     static isValidCode(statusCode) {

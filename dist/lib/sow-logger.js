@@ -70,7 +70,7 @@ ConsoleColor.BgWhite = '\x1b[47m';
 class Logger {
     constructor(dir, name, tz, userInteractive, isDebug) {
         this._userInteractive = typeof (userInteractive) !== "boolean" ? true : userInteractive;
-        this._isDebug = typeof (isDebug) !== "boolean" ? true : userInteractive === true;
+        this._isDebug = typeof (isDebug) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false;
         this._stream = void 0;
         this._tz = "+6";

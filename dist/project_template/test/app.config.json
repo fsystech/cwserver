@@ -6,8 +6,8 @@
   "packageVersion": "1",
   "isDebug": false,
   "template": {
-    "cache": true,
-    "cacheType": "FILE"
+    "cache": false,
+    "cacheType": "MEM"
   },
   "encryptionKey": "aaa$a",
   "socketPath": "",

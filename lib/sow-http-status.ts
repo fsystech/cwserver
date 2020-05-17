@@ -98,7 +98,7 @@ export class HttpStatus {
         // check is valid server status code here...
         statusCode = ToNumber( code );
         if ( statusCode === 0 ) return outStatusCode;
-        if ( this.isValidCode( statusCode ) ) return outStatusCode;
+        // if ( this.isValidCode( statusCode ) ) return outStatusCode;
         return statusCode;
     }
     static isValidCode( statusCode: number ): boolean {

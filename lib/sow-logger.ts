@@ -77,7 +77,7 @@ export class Logger implements ILogger {
     private _buffer?: string;
     constructor( dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean ) {
         this._userInteractive = typeof ( userInteractive ) !== "boolean" ? true : userInteractive;
-        this._isDebug = typeof ( isDebug ) !== "boolean" ? true : userInteractive === true;
+        this._isDebug = typeof ( isDebug ) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug; 
         this._canWrite = false;
         this._stream = void 0; this._tz = "+6";
         this._isWaiting = false;
