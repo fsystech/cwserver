@@ -157,9 +157,7 @@ class TemplateParser {
             }
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
-            // const abspath = `${appRoot}${path}`.replace( /\//gi, "\\" );
             if (!_fs.existsSync(abspath)) {
-                console.log(`Template ${path} and ${abspath} not found...`);
                 throw new Error(`Template ${path} and ${abspath} not found...`);
             }
             templats.push(str.replace(match[0], ""));
@@ -390,7 +388,6 @@ var Template;
             return TemplateCore.tryFileCacheOrLive(ctx, path, status);
         }
         catch (ex) {
-            // console.log( ex );
             ctx.path = path;
             if (status.code === 500) {
                 if (status.tryServer === true) {
