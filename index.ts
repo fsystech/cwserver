@@ -14,6 +14,6 @@ export { PayloadParser } from './lib/sow-payload-parser';
 export { Template } from './lib/sow-template';
 export { Util } from './lib/sow-util';
 export { Streamer } from './lib/sow-web-streamer';
-export { socketInitilizer, WsClientInfo } from './lib/sow-ws';
+export { socketInitilizer, wsClient } from './lib/sow-ws';
 export { Compression } from './lib/sow-zlib-compression';
 export { createProjectTemplate } from './lib/sow-project-template';
