@@ -18,6 +18,7 @@ import * as _path from 'path';
 import { Util } from './sow-util';
 import { Schema } from './sow-schema-validator';
 import { Session } from './sow-static';
+import { ISowDatabaseType } from './sow-db-type';
 import { Controller, IController } from './sow-controller';
 import { Encryption, ICryptoInfo } from "./sow-encryption";
 import { HttpStatus } from "./sow-http-status";
@@ -25,12 +26,6 @@ import { Logger, ILogger } from "./sow-logger"
 export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => any;
 export type AppHandler = ( ctx: IContext ) => any;
 // -------------------------------------------------------
-export interface ISowDatabaseType {
-    [id: string]: ( ...args: any[] ) => any;
-    getClient(): any;
-    executeIo( sp: string, ctx: string, formObj: string, next: ( resp: { ret_val: number, ret_msg: string, ret_data_table?: { [key: string]: any } } ) => void ): any;
-    executeIoAsync( sp: string, ctx: string, formObj: string ): Promise<{ ret_val: number, ret_msg: string, ret_data_table?: { [key: string]: any } }>;
-}
 export interface IContext {
     [key: string]: any;
     error?: string;
@@ -153,6 +148,7 @@ export interface ISowServer {
     encryption: IServerEncryption;
     crypto: ICrypto;
     db: { [x: string]: ISowDatabaseType; };
+    on( ev: 'shutdown', handler: Function ): void;
 }
 export type IViewHandler = ( app: IApps, controller: IController, server: ISowServer ) => void;
 export interface ISowView {
@@ -493,6 +489,9 @@ ${appRoot}\\www_public
         this.encryption = new ServerEncryption( this.config.encryptionKey );
         return;
     }
+    on(ev: "shutdown", handler: Function): void {
+        throw new Error("Method not implemented.");
+    }
     getHttpServer(): Server {
         throw new Error( "Method not implemented." );
     }
@@ -829,7 +828,10 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
         };
         _server.getHttpServer = (): Server => {
             return _app.getHttpServer();
-        }
+        };
+        _server.on = ( ev: "shutdown", handler: Function ): void => {
+            _app.on( ev, handler );
+        };
         _app.prerequisites( ( req: IRequest, res: IResponse, next: NextFunction ): void => {
             req.session = _server.parseSession( req.cookies );
             _server.setHeader( res );

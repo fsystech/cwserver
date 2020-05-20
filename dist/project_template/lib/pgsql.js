@@ -4,7 +4,7 @@
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
-//10:48 PM 4/24/2020
+// 10:48 PM 4/24/2020
 /**
  CREATE OR REPLACE FUNCTION my_shcema.__get_dataset(
     IN _ct jsonb,
@@ -91,31 +91,56 @@ class PgSQL {
         this.connectionInfo = Util.clone( _default_config );
         Util.extend( this.connectionInfo, connectionInfo );
     }
-    getClient() {
+    getConn() {
         return new ( _pg.Client )( this.connectionInfo );
     }
+    query( queryText, values, callback) {
+        const conn = this.getConn();
+        return conn.connect( cerr => {
+            if ( cerr ) return callback( { isError: true, err: err } );
+            return conn.query( queryText, values, ( err, res ) => {
+                if ( err ) return callback( { isError: true, err: err } );
+                conn.end( function ( err ) {
+                    return callback( { isError: false, res: res } );
+                } );
+            } );
+        } );
+    }
+    queryAsync( queryText, values ) {
+        return new Promise( async ( resolve, reject ) => {
+            const conn = this.getConn();
+            try {
+                await conn.connect();
+                let res = await conn.query( queryText, values );
+                await conn.end();
+                return resolve( { isError: false, res: res } );
+            } catch ( err ) {
+                return resolve( { isError: true, err: err } );
+            }
+        } );
+    }
     executeIo( sp, ctx, form_obj, next ) {
-        var client = new ( _pg.Client )( this.connectionInfo );
-        return client.connect( cerr => {
-            if ( cerr ) return client = void 0, next( { ret_val: -1, ret_msg: cerr.message } );
-            client.query( `${_sp_q} ${sp}($1::jsonb, $2::jsonb)`, [ctx, form_obj], ( err, rs ) => {
+        const conn = this.getConn();
+        return conn.connect( cerr => {
+            if ( cerr ) return next( { ret_val: -1, ret_msg: cerr.message } );
+            conn.query( `${_sp_q} ${sp}($1::jsonb, $2::jsonb)`, [ctx, form_obj], ( err, rs ) => {
                 if ( err ) return next( { ret_val: -1, ret_msg: err.message } );
-                client.end( function ( err ) {
-                    return client = void 0, next( parse_result( rs ) );
+                conn.end( function ( err ) {
+                    return  next( parse_result( rs ) );
                 } );
             } );
         } ), void 0;
     }
     executeIoAsync( sp, ctx, form_obj ) {
         return new Promise( async ( resolve, reject ) => {
-            var client = new ( _pg.Client )( this.connectionInfo );
             try {
-                await client.connect();
-                let res = await client.query( `${_sp_q} ${sp}($1::jsonb, $2::jsonb)`, [ctx, form_obj] );
-                await client.end();
-                return client = void 0, resolve( parse_result( res ) );
+                const conn = this.getConn();
+                await conn.connect();
+                let res = await conn.query( `${_sp_q} ${sp}($1::jsonb, $2::jsonb)`, [ctx, form_obj] );
+                await conn.end();
+                return resolve( parse_result( res ) );
             } catch ( e ) {
-                return client = void 0, resolve( { ret_val: -1, ret_msg: e.message } );
+                return resolve( { ret_val: -1, ret_msg: e.message } );
             }
         } );
     }

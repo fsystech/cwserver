@@ -10,8 +10,8 @@ const expect = require( "expect.js" );
 const fs = require( "fs" );
 const path = require( "path" );
 let server, app;
-describe( "cwserver", function () {
-    it( "create project template", function ( done ) {
+describe( "cwserver-default-project-template", () => {
+    it( "create project template", ( done ) => {
         cwserver.createProjectTemplate( {
             appRoot: __dirname,
             projectRoot: "www",
@@ -21,17 +21,19 @@ describe( "cwserver", function () {
         } );
         done();
     } );
-    it( "initilize server", function ( done ) {
+} );
+describe( "cwserver-core", () => {
+    it( "initilize server", ( done ) => {
         server = cwserver.initilizeServer( __dirname, "www" );
         expect( server ).not.empty();
         done();
     } );
-    it( "initilize application", function ( done ) {
+    it( "initilize application", ( done ) => {
         app = server.init();
         expect( app ).not.empty();
         done();
     } );
-    it( "application listen", function ( done ) {
+    it( "application listen", ( done ) => {
         app.listen( server.port, () => {
             server.log.write( `
     [+] Maintance      : https://www.safeonline.world
@@ -39,68 +41,83 @@ describe( "cwserver", function () {
     [+] Socket         : ws://localhost:${server.port}${server.socketPath}
     [~] Running Server...
             `, cwserver.ConsoleColor.FgMagenta );
-            app.getHttpServer().close();
-            done();
+            app.shutdown( ( err ) => {
+                done();
+            } );
         } );
     } );
-    it( 'send get request to application', function ( done ) {
+} );
+describe( "cwserver-get", () => {
+    it( 'send get request to application', ( done ) => {
         app.listen( server.port, () => {
             request
                 .get( `http://localhost:${server.port}/` )
                 .end( function ( err, res ) {
-                    app.getHttpServer().close();
                     expect( err ).not.an( Error );
                     expect( res.status ).to.be( 200 );
                     expect( res.header["content-type"] ).to.be( "text/html" );
-                    done();
+                    app.shutdown( ( err ) => {
+                        done();
+                    } );
                 } );
         } );
     } );
-    it( 'send post request to application', function ( done ) {
+} );
+describe( "cwserver-post", () => {
+    it( 'send post request to application', ( done ) => {
         app.listen( server.port, () => {
             request
                 .post( `http://localhost:${server.port}/post` )
                 .send( JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) )
                 .set( 'Content-Type', 'application/json' )
                 .end( function ( err, res ) {
-                    app.getHttpServer().close();
                     expect( err ).not.an( Error );
                     expect( res.status ).to.be( 200 );
                     expect( res.header["content-type"] ).to.be( "application/json" );
                     expect( res.body.name ).to.be( 'rajibs' );
-                    done();
+                    app.shutdown( ( err ) => {
+                        done();
+                    } );
                 } );
         } );
     } );
-    it( 'should be response type gzip', function ( done ) {
+} );
+describe( "cwserver-gzip-response", () => {
+    it( 'should be response type gzip', ( done ) => {
         app.listen( server.port, () => {
             request
                 .get( `http://localhost:${server.port}/response` )
                 .query( { task: "gzip", data: JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) } )
                 .end( function ( err, res ) {
-                    app.getHttpServer().close();
                     expect( err ).not.an( Error );
                     expect( res.status ).to.be( 200 );
                     expect( res.header["content-encoding"] ).to.be( "gzip" );
-                    done();
+                    app.shutdown( ( err ) => {
+                        done();
+                    } );
                 } );
         } );
     } );
-    it( 'should be mime type encoding gzip', function ( done ) {
+} );
+describe( "cwserver-mime-type", () => {
+    it( 'should be mime type encoding gzip', ( done ) => {
         app.listen( server.port, () => {
             request
                 .get( `http://localhost:${server.port}/logo/logo.png` )
                 .end( function ( err, res ) {
-                    app.getHttpServer().close();
                     expect( err ).not.an( Error );
                     expect( res.status ).to.be( 200 );
                     expect( res.header["content-type"] ).to.be( "image/png" );
                     expect( res.header["content-encoding"] ).to.be( "gzip" );
-                    done();
+                    app.shutdown( ( err ) => {
+                        done();
+                    } );
                 } );
         } );
     } );
-    it( 'should post multipart post file', function ( done ) {
+} );
+describe( "cwserver-multipart-paylod-parser", () => {
+    it( 'should post multipart post file', ( done ) => {
         app.listen( server.port, () => {
             const readStream = fs.createReadStream( path.resolve( "./dist/test.js" ) );
             request
@@ -108,28 +125,32 @@ describe( "cwserver", function () {
                 .field( 'post-file', readStream )
                 .end( function ( err, res ) {
                     readStream.close();
-                    app.getHttpServer().close();
                     expect( err ).not.an( Error );
                     expect( res.status ).to.be( 200 );
                     expect( res.header["content-type"] ).to.be( "application/json" );
                     expect( res.body["content_type"] ).to.be( "application/javascript" );
                     expect( res.body["file_name"] ).to.be( "test.js" );
                     expect( res.body["name"] ).to.be( "post-file" );
-                    done();
+                    app.shutdown( ( err ) => {
+                        done();
+                    } );
                 } );
         } );
     } );
-    it( 'should be send n receive data over socket-io', function ( done ) {
+} );
+describe( "cwserver-socket-io-implementation", () => {
+    it( 'should be send n receive data over socket-io', ( done ) => {
         app.listen( server.port, () => {
             const socket = require( 'socket.io-client' ).connect( `http://localhost:${server.port}`, { 'reconnect': true } );
-            socket.on( 'connect', ( ) => {
+            socket.on( 'connect', () => {
                 socket.emit( 'test-msg', { name: 'rajibs', occupation: 'kutukutu' } );
             } );
             socket.on( 'on-test-msg', data => {
                 socket.close();
-                app.getHttpServer().close();
                 expect( data.name ).to.be( 'rajibs' );
-                done();
+                app.shutdown( ( err ) => {
+                    done();
+                } );
             } );
         } );
     } );

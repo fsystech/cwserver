@@ -4,10 +4,15 @@
 * See the accompanying LICENSE file for terms.
 */
 // 3:15 PM 5/10/2020
-import _fs = require( 'fs' );
-import _path = require( 'path' );
+import * as _fs from 'fs';
+import * as _path from 'path';
 import { ConsoleColor } from './sow-logger';
 import { Util } from './sow-util';
+const formatPath = ( path: string ): string => {
+	if ( process.platform === "win32" )
+		return path.replace( /\//gi, "\\" );
+	return path.replace( /\\/gi, "/" );
+}
 export function createProjectTemplate( settings: {
 	appRoot: string;
 	projectRoot: string;
@@ -15,7 +20,9 @@ export function createProjectTemplate( settings: {
 	force?: boolean;
 	isTest?: boolean;
 } ): boolean {
-	console.log( ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}` );
+	if ( settings.isTest === false ) {
+		console.log( ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}` );
+	}
 	const myRoot: string = _path.resolve( __dirname, '..' );
 	const templateRoot: string = _path.resolve( `${myRoot}/project_template` );
 	if ( !_fs.existsSync( templateRoot ) )
@@ -61,11 +68,13 @@ export function createProjectTemplate( settings: {
 		Util.copyFileSync( _path.resolve( `${templateRoot}/test/test.js` ), _path.resolve( `${projectRoot}/lib/view/test.js` ) );
 		Util.copyFileSync( _path.resolve( `${templateRoot}/test/socket-client.js` ), _path.resolve( `${projectRoot}/lib/socket-client.js` ) );
 	}
-	console.log( ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${projectRoot}\\config\\` );
-	console.log( ConsoleColor.FgGreen, `
+	if ( settings.isTest === false ) {
+		console.log( ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${formatPath( projectRoot + '/config/' )}` );
+		console.log( ConsoleColor.FgGreen, `
 Your project ${settings.projectRoot} created.
 run your project by this command
 node server ${settings.projectRoot}` );
-	console.log( ConsoleColor.Reset );
+		console.log( ConsoleColor.Reset );
+	}
 	return true;
 }

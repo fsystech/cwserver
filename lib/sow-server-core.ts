@@ -58,6 +58,7 @@ export interface IApplication {
     handleRequest( req: IRequest, res: IResponse ): void;
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApplication;
     onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
+    shutdown(): Promise<void>;
 }
 export interface IApps {
     use( ...args: any[] ): IApps;
@@ -66,6 +67,8 @@ export interface IApps {
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps;
     getHttpServer(): Server;
     onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
+    on( ev: 'shutdown', handler: Function ): void;
+    shutdown( next?: ( err?: Error ) => void ): Promise<void> | void;
 }
 const getCook = ( cooks: string[] ): { [x: string]: string; } => {
     const cookies: { [x: string]: any; } = {};
@@ -233,8 +236,23 @@ export class Application implements IApplication {
     private _appHandler: IHandlers[] = [];
     private _prerequisitesHandler: IHandlers[] = [];
     private _onError?: ( req: IRequest, res: IResponse, err?: Error | number ) => void;
+    //sockets: SetConstructor = new Set();
     constructor( server: Server ) {
         this.server = server;
+    }
+    shutdown(): Promise<void> {
+        let resolveTerminating: { (): void; (value?: void | PromiseLike<void> | undefined): void; };
+        // let rejectTerminating: { (arg0: Error): void; (reason?: any): void; };
+        const promise = new Promise<void>( ( resolve, reject ) => {
+            resolveTerminating = resolve;
+        } );
+        this.server.on( 'request', ( incomingMessage, outgoingMessage ) => {
+            if ( !outgoingMessage.headersSent ) {
+                outgoingMessage.setHeader( 'connection', 'close' );
+            }
+        } );
+        this.server.close().once( 'close', () => resolveTerminating() );
+        return promise;
     }
     onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void {
         if ( this._onError ) delete this._onError;
@@ -320,6 +338,19 @@ export class Application implements IApplication {
 }
 // tslint:disable-next-line: max-classes-per-file
 export class Apps implements IApps {
+    event: Function[] = [];
+    constructor() { }
+    shutdown(next?: (err?: Error | undefined) => void): void | Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    emit( ev: 'shutdown' ): void;
+    emit( ev: string ): void {
+        this.event.forEach( handler => handler() );
+    }
+    on( ev: 'shutdown', handler: Function ): void {
+        this.event.push( handler );
+        return void 0;
+    }
     onError( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void {
         throw new Error( "Method not implemented." );
     }
@@ -347,7 +378,12 @@ export function App(): IApps {
         req.init();
         _app.handleRequest( req, res );
     } ) );
-    const _apps: IApps = new Apps();
+    const _apps: Apps = new Apps();
+    _apps.shutdown = ( next?: ( err?: Error | undefined ) => void ): void | Promise<void> => {
+        _apps.emit( "shutdown" );
+        if ( typeof ( next ) !== "function" ) return _app.shutdown();
+        return _app.shutdown().then( () => next() ).catch( ( err ) => next( err ) ), void 0;
+    }
     _apps.onError = ( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void => {
         return _app.onError( handler );
     }

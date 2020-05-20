@@ -195,10 +195,25 @@ function getRouteExp(route) {
 exports.getRouteExp = getRouteExp;
 // tslint:disable-next-line: max-classes-per-file
 class Application {
+    //sockets: SetConstructor = new Set();
     constructor(server) {
         this._appHandler = [];
         this._prerequisitesHandler = [];
         this.server = server;
+    }
+    shutdown() {
+        let resolveTerminating;
+        // let rejectTerminating: { (arg0: Error): void; (reason?: any): void; };
+        const promise = new Promise((resolve, reject) => {
+            resolveTerminating = resolve;
+        });
+        this.server.on('request', (incomingMessage, outgoingMessage) => {
+            if (!outgoingMessage.headersSent) {
+                outgoingMessage.setHeader('connection', 'close');
+            }
+        });
+        this.server.close().once('close', () => resolveTerminating());
+        return promise;
     }
     onError(handler) {
         if (this._onError)
@@ -285,6 +300,19 @@ class Application {
 exports.Application = Application;
 // tslint:disable-next-line: max-classes-per-file
 class Apps {
+    constructor() {
+        this.event = [];
+    }
+    shutdown(next) {
+        throw new Error("Method not implemented.");
+    }
+    emit(ev) {
+        this.event.forEach(handler => handler());
+    }
+    on(ev, handler) {
+        this.event.push(handler);
+        return void 0;
+    }
     onError(handler) {
         throw new Error("Method not implemented.");
     }
@@ -314,6 +342,12 @@ function App() {
         _app.handleRequest(req, res);
     }));
     const _apps = new Apps();
+    _apps.shutdown = (next) => {
+        _apps.emit("shutdown");
+        if (typeof (next) !== "function")
+            return _app.shutdown();
+        return _app.shutdown().then(() => next()).catch((err) => next(err)), void 0;
+    };
     _apps.onError = (handler) => {
         return _app.onError(handler);
     };

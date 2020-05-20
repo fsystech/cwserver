@@ -8,24 +8,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const sow_encryption_1 = require("./sow-encryption");
 const sow_util_1 = require("./sow-util");
 class WsClientInfo {
-    constructor(next, client) {
+    constructor() {
+        this.beforeInitiateConnection = Object.create(null);
+        this.client = Object.create(null);
         this.event = {};
-        this.client = client;
-        this.next = next;
     }
     getServerEvent() {
-        throw new Error("Method not implemented.");
+        if (!this.event["getClient"])
+            throw new Error("`getClient` event did not registered...");
+        const obj = this.event["getClient"]();
+        if (obj instanceof Array)
+            return obj;
+        return [];
     }
-    on(name, handler) {
-        this.event[name] = handler;
+    on(ev, handler) {
+        if (ev === "getClient") {
+            this.event[ev] = handler;
+            return this.client = handler, void 0;
+        }
+        if (ev === 'beforeInitiateConnection') {
+            return this.beforeInitiateConnection = handler, void 0;
+        }
+        this.event[ev] = handler;
     }
-    fire(name, me, wsServer) {
-        if (!this.event[name])
+    emit(ev, me, wsServer) {
+        if (!this.event[ev])
             return void 0;
-        return this.event[name](me, wsServer);
+        return this.event[ev](me, wsServer);
     }
 }
-exports.WsClientInfo = WsClientInfo;
+function wsClient() {
+    return new WsClientInfo();
+}
+exports.wsClient = wsClient;
 // tslint:disable-next-line: max-classes-per-file
 class SowSocket {
     constructor(server, wsClientInfo) {
@@ -33,7 +48,7 @@ class SowSocket {
         this.socket = [];
         this.connected = false;
         this._server = server;
-        this._wsClientInfo = wsClientInfo;
+        this._wsClients = wsClientInfo;
     }
     isActiveSocket(token) {
         return this.socket.some((a) => { return a.token === token; });
@@ -95,6 +110,9 @@ class SowSocket {
             pingTimeout: (1000 * 5),
             cookie: true
         });
+        this._server.on("shutdown", () => {
+            io.close();
+        });
         if (!this._server.config.socketPath) {
             this._server.config.socketPath = io._path;
         }
@@ -102,7 +120,7 @@ class SowSocket {
             if (!socket.request.session) {
                 socket.request.session = this._server.parseSession(socket.request.headers.cookie);
             }
-            if (!this._wsClientInfo.next(socket.request.session, socket))
+            if (!this._wsClients.beforeInitiateConnection(socket.request.session, socket))
                 return void 0;
             return next();
         });
@@ -111,9 +129,9 @@ class SowSocket {
         }).on('connection', (socket) => {
             if (!socket.request.session) {
                 socket.request.session = this._server.parseSession(socket.handshake.headers.cookie);
-                if (!this._wsClientInfo.next(socket.request.session, socket))
-                    return void 0;
             }
+            if (!this._wsClients.beforeInitiateConnection(socket.request.session, socket))
+                return void 0;
             const _me = (() => {
                 const token = sow_util_1.Util.guid();
                 this.socket.push({
@@ -140,37 +158,33 @@ class SowSocket {
             socket.on('disconnect', () => {
                 if (!this.removeSocket(_me.token))
                     return;
-                this._wsClientInfo.fire("onDisConnected", _me, this);
+                return this._wsClients.emit("disConnected", _me, this), void 0;
             });
-            const client = this._wsClientInfo.client(_me, socket.request.session, this, this._server);
+            const client = this._wsClients.client(_me, socket.request.session, this, this._server);
             // tslint:disable-next-line: forin
             for (const method in client) {
                 socket.on(method, client[method]);
             }
-            this._wsClientInfo.fire("onConnected", _me, this);
-            return void 0;
+            return this._wsClients.emit("connected", _me, this), void 0;
         }), void 0;
     }
 }
 /** If you want to use it you've to install socket.io */
 function socketInitilizer(server, wsClientInfo) {
-    if (typeof (wsClientInfo.getServerEvent) !== "function") {
-        throw new Error("Invalid IWsClientInfo...");
+    if (typeof (wsClientInfo.client) !== "function") {
+        throw new Error("`getClient` event did not registered...");
     }
-    if (typeof (wsClientInfo.next) !== "function") {
-        wsClientInfo.next = (session, socket) => {
-            return true;
-        };
+    if (typeof (wsClientInfo.beforeInitiateConnection) !== "function") {
+        throw new Error("`beforeInitiateConnection` event did not registered...");
     }
-    // tslint:disable-next-line: variable-name
-    const _ws_event = wsClientInfo.getServerEvent();
+    let _ws_event = void 0;
     const _ws = new SowSocket(server, wsClientInfo);
     return {
         get isConnectd() {
             return _ws.implimented;
         },
         get wsEvent() {
-            return _ws_event;
+            return _ws_event ? _ws_event : (_ws_event = wsClientInfo.getServerEvent(), _ws_event);
         },
         create(ioserver) {
             if (_ws.implimented)

@@ -2,29 +2,12 @@
 import { ISession, IResInfo } from "./sow-static";
 import { NextFunction, IApps, HandlerFunc, IRequest, IResponse } from './sow-server-core';
 import { Server } from 'http';
+import { ISowDatabaseType } from './sow-db-type';
 import { IController } from './sow-controller';
 import { ICryptoInfo } from "./sow-encryption";
 import { ILogger } from "./sow-logger";
 export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => any;
 export declare type AppHandler = (ctx: IContext) => any;
-export interface ISowDatabaseType {
-    [id: string]: (...args: any[]) => any;
-    getClient(): any;
-    executeIo(sp: string, ctx: string, formObj: string, next: (resp: {
-        ret_val: number;
-        ret_msg: string;
-        ret_data_table?: {
-            [key: string]: any;
-        };
-    }) => void): any;
-    executeIoAsync(sp: string, ctx: string, formObj: string): Promise<{
-        ret_val: number;
-        ret_msg: string;
-        ret_data_table?: {
-            [key: string]: any;
-        };
-    }>;
-}
 export interface IContext {
     [key: string]: any;
     error?: string;
@@ -159,6 +142,7 @@ export interface ISowServer {
     db: {
         [x: string]: ISowDatabaseType;
     };
+    on(ev: 'shutdown', handler: Function): void;
 }
 export declare type IViewHandler = (app: IApps, controller: IController, server: ISowServer) => void;
 export interface ISowView {
@@ -289,6 +273,7 @@ export declare class SowServer implements ISowServer {
         [x: string]: string;
     };
     constructor(appRoot: string, wwwName?: string);
+    on(ev: "shutdown", handler: Function): void;
     getHttpServer(): Server;
     getRoot(): string;
     getPublic(): string;

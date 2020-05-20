@@ -1,18 +1,14 @@
-const { WsClientInfo } = require( "cwserver" )
-const clientInfo = new WsClientInfo( ( session, socket ) => {
-    if ( !session.isAuthenticated ) {
-        return socket.emit( "unauthorized", "Authentication failed" ), socket.disconnect( true ), false;
-    }
-    return true;
-}, ( me, session, wsServer, _server ) => {
+const { wsClient } = require( "cwserver" )
+const clientInfo = wsClient();
+clientInfo.on( "getClient", ( me, session, wsServer, server ) => {
     var _client = {
-        'private-msg': data => {
-            return me.sendMsg( "private-msg", {
-                group: me.group
+        'private-msg': ( hash, msg ) => {
+            wsServer.findByHash( hash ).forEach( soc => {
+                soc.sendMsg( "on-private-msg", me.hash, msg );
             } );
         },
         'public-msg': data => {
-            me.getSocket().broadcast.emit( "on-public-msg", data );
+            me.getSocket().broadcast.emit( "on-public-msg", me.token, data.msg );
         },
     };
     return !me ? {
@@ -20,9 +16,12 @@ const clientInfo = new WsClientInfo( ( session, socket ) => {
         client: []
     } : _client;
 } );
-clientInfo.getServerEvent = function () {
-    return this.client();
-}
+clientInfo.on( "beforeInitiateConnection", ( session, socket ) => {
+    if ( !session.isAuthenticated ) {
+        return socket.emit( "unauthorized", "Authentication failed" ), socket.disconnect( true ), false;
+    }
+    return true;
+} );
 clientInfo.on( "onConnected", ( me, wsServer ) => {
     const method = me.isReconnectd ? "on-re-connected-user" : "on-connected-user";
     wsServer.getClientByExceptToken( me.token ).forEach( conn => {

@@ -284,6 +284,9 @@ ${appRoot}\\www_public
         this.encryption = new ServerEncryption(this.config.encryptionKey);
         return;
     }
+    on(ev, handler) {
+        throw new Error("Method not implemented.");
+    }
     getHttpServer() {
         throw new Error("Method not implemented.");
     }
@@ -628,6 +631,9 @@ function initilizeServer(appRoot, wwwName) {
         };
         _server.getHttpServer = () => {
             return _app.getHttpServer();
+        };
+        _server.on = (ev, handler) => {
+            _app.on(ev, handler);
         };
         _app.prerequisites((req, res, next) => {
             req.session = _server.parseSession(req.cookies);

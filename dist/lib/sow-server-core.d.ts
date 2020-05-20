@@ -54,6 +54,7 @@ export interface IApplication {
     handleRequest(req: IRequest, res: IResponse): void;
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApplication;
     onError(handler: (req: IRequest, res: IResponse, err?: Error | number) => void): void;
+    shutdown(): Promise<void>;
 }
 export interface IApps {
     use(...args: any[]): IApps;
@@ -62,6 +63,8 @@ export interface IApps {
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApps;
     getHttpServer(): Server;
     onError(handler: (req: IRequest, res: IResponse, err?: Error | number) => void): void;
+    on(ev: 'shutdown', handler: Function): void;
+    shutdown(next?: (err?: Error) => void): Promise<void> | void;
 }
 export declare function parseCookie(cook: undefined | string[] | string | {
     [x: string]: string;
@@ -97,6 +100,7 @@ export declare class Application implements IApplication {
     private _prerequisitesHandler;
     private _onError?;
     constructor(server: Server);
+    shutdown(): Promise<void>;
     onError(handler: (req: IRequest, res: IResponse, err?: Error | number) => void): void;
     _handleRequest(req: IRequest, res: IResponse, handlers: IHandlers[], next: NextFunction, isPrerequisites: boolean): void;
     handleRequest(req: IRequest, res: IResponse): void;
@@ -105,6 +109,11 @@ export declare class Application implements IApplication {
     listen(handle: any, listeningListener?: () => void): IApplication;
 }
 export declare class Apps implements IApps {
+    event: Function[];
+    constructor();
+    shutdown(next?: (err?: Error | undefined) => void): void | Promise<void>;
+    emit(ev: 'shutdown'): void;
+    on(ev: 'shutdown', handler: Function): void;
     onError(handler: (req: IRequest, res: IResponse, err?: number | Error | undefined) => void): void;
     use(..._args: any[]): IApps;
     getHttpServer(): Server;

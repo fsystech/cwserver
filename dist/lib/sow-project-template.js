@@ -1,4 +1,11 @@
 "use strict";
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
@@ -6,12 +13,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 * See the accompanying LICENSE file for terms.
 */
 // 3:15 PM 5/10/2020
-const _fs = require("fs");
-const _path = require("path");
+const _fs = __importStar(require("fs"));
+const _path = __importStar(require("path"));
 const sow_logger_1 = require("./sow-logger");
 const sow_util_1 = require("./sow-util");
+const formatPath = (path) => {
+    if (process.platform === "win32")
+        return path.replace(/\//gi, "\\");
+    return path.replace(/\\/gi, "/");
+};
 function createProjectTemplate(settings) {
-    console.log(sow_logger_1.ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}`);
+    if (settings.isTest === false) {
+        console.log(sow_logger_1.ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}`);
+    }
     const myRoot = _path.resolve(__dirname, '..');
     const templateRoot = _path.resolve(`${myRoot}/project_template`);
     if (!_fs.existsSync(templateRoot))
@@ -57,12 +71,14 @@ function createProjectTemplate(settings) {
         sow_util_1.Util.copyFileSync(_path.resolve(`${templateRoot}/test/test.js`), _path.resolve(`${projectRoot}/lib/view/test.js`));
         sow_util_1.Util.copyFileSync(_path.resolve(`${templateRoot}/test/socket-client.js`), _path.resolve(`${projectRoot}/lib/socket-client.js`));
     }
-    console.log(sow_logger_1.ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${projectRoot}\\config\\`);
-    console.log(sow_logger_1.ConsoleColor.FgGreen, `
+    if (settings.isTest === false) {
+        console.log(sow_logger_1.ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${formatPath(projectRoot + '/config/')}`);
+        console.log(sow_logger_1.ConsoleColor.FgGreen, `
 Your project ${settings.projectRoot} created.
 run your project by this command
 node server ${settings.projectRoot}`);
-    console.log(sow_logger_1.ConsoleColor.Reset);
+        console.log(sow_logger_1.ConsoleColor.Reset);
+    }
     return true;
 }
 exports.createProjectTemplate = createProjectTemplate;

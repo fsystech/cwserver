@@ -10,12 +10,12 @@ if ( process.argv.length > 2 ) {
 const server = initilizeServer( __dirname, wwwName );
 const app = server.init();
 process.on( 'exit', () => {
-    console.log( "Exited..." );
+    app.shutdown();
+    server.log.success( "Application Exited..." );
+    server.log.reset(); server.log.dispose();
 } );
 process.on( 'SIGINT', () => {
     server.log.error( "Caught interrupt signal" );
-    server.log.error( "Application Exited..." );
-    server.log.reset(); server.log.dispose();
     setTimeout( () => {
         process.exit( 0 );
     }, 200 );

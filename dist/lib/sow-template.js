@@ -158,7 +158,7 @@ class TemplateParser {
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
             if (!_fs.existsSync(abspath)) {
-                throw new Error(`Template ${path} and ${abspath} not found...`);
+                throw new Error(`Template ${path} not found...`);
             }
             templats.push(str.replace(match[0], ""));
             str = _fs.readFileSync(abspath, "utf8").replace(/^\uFEFF/, '');

@@ -37,6 +37,7 @@ interface Socket extends NodeJS.EventEmitter {
 }
 interface Namespace {
     _path: string;
+    close(...args: any[]): void;
     use(fn: (socket: Socket, fn: (err?: any) => void) => void): Namespace;
     on(event: 'connect', listener: (socket: Socket) => void): Namespace;
     on(event: 'connection', listener: (socket: Socket) => void): this;
@@ -48,15 +49,10 @@ declare type ioServer = (server: any, opt: {
 }) => Namespace;
 /** [/socket.io blueprint] */
 export interface IWsClientInfo {
-    next: (session: ISession, socket: Socket) => void | boolean;
-    client: (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
-        [x: string]: any;
-    };
-    getServerEvent(): {
-        [x: string]: any;
-    }[];
-    on(name: string, handler: IEvtHandler): void;
-    fire(name: string, me: ISowSocketInfo, wsServer: ISowSocket): void;
+    on(ev: 'getClient', handler: IWsClient): void;
+    on(ev: 'disConnected', handler: IEvtHandler): void;
+    on(ev: 'connected', handler: IEvtHandler): void;
+    on(ev: 'beforeInitiateConnection', handler: IWsNext): void;
 }
 export interface ISowSocketInfo {
     token: string;
@@ -90,21 +86,25 @@ declare type IWsNext = (session: ISession, socket: Socket) => void | boolean;
 declare type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
     [x: string]: any;
 };
-export declare class WsClientInfo implements IWsClientInfo {
-    next: IWsNext;
+declare class WsClientInfo implements IWsClientInfo {
+    beforeInitiateConnection: IWsNext;
     client: IWsClient;
     event: {
-        [id: string]: IEvtHandler;
+        [id: string]: any;
     };
-    constructor(next: IWsNext, client: IWsClient);
+    constructor();
     getServerEvent(): {
         [x: string]: any;
     }[];
-    on(name: string, handler: IEvtHandler): void;
-    fire(name: string, me: ISowSocketInfo, wsServer: ISowSocket): void;
+    on(ev: string, handler: any): void;
+    emit(ev: 'getClient', me: ISowSocketInfo, wsServer: ISowSocket): void;
+    emit(ev: 'disConnected', me: ISowSocketInfo, wsServer: ISowSocket): void;
+    emit(ev: 'connected', me: ISowSocketInfo, wsServer: ISowSocket): void;
+    emit(ev: 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket): void;
 }
+export declare function wsClient(): IWsClientInfo;
 /** If you want to use it you've to install socket.io */
-export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
+export declare function socketInitilizer(server: ISowServer, wsClientInfo: WsClientInfo): {
     isConnectd: boolean;
     wsEvent: {
         [x: string]: any;
