@@ -23,8 +23,8 @@ import { Controller, IController } from './sow-controller';
 import { Encryption, ICryptoInfo } from "./sow-encryption";
 import { HttpStatus } from "./sow-http-status";
 import { Logger, ILogger } from "./sow-logger"
-export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => any;
-export type AppHandler = ( ctx: IContext ) => any;
+export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => void;
+export type AppHandler = ( ctx: IContext ) => void;
 // -------------------------------------------------------
 export interface IContext {
     [key: string]: any;

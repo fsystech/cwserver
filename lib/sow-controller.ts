@@ -10,10 +10,10 @@ import { IContext, AppHandler } from './sow-server';
 import { Util } from './sow-util';
 export interface IController {
     httpMimeHandler: IHttpMimeHandler;
-    any( route: string, next: ( ctx: IContext ) => any ): IController;
-    get( route: string, next: ( ctx: IContext ) => any ): IController;
-    post( route: string, next: ( ctx: IContext ) => any ): IController;
-    processAny( ctx: IContext ): any;
+    any( route: string, next: AppHandler ): IController;
+    get( route: string, next: AppHandler ): IController;
+    post( route: string, next: AppHandler ): IController;
+    processAny( ctx: IContext ): void;
 }
 const routeInfo: {
     any: { [x: string]: AppHandler };
@@ -53,7 +53,7 @@ export class Controller implements IController {
             throw new Error( `Duplicate any route defined ${route}` );
         return routeInfo.any[route] = next, this;
     }
-    private processGet( ctx: IContext ): any {
+    private processGet( ctx: IContext ): void {
         if ( routeInfo.get[ctx.req.path] ) {
             return routeInfo.get[ctx.req.path]( ctx );
         }
@@ -99,13 +99,13 @@ export class Controller implements IController {
         }
         return ctx.next( 404 );
     }
-    private processPost( ctx: IContext ): any {
+    private processPost( ctx: IContext ): void {
         if ( routeInfo.post[ctx.req.path] ) {
             return routeInfo.post[ctx.req.path]( ctx );
         }
         return ctx.next( 404 );
     }
-    processAny( ctx: IContext ): any {
+    public processAny( ctx: IContext ): void {
         if ( routeInfo.any[ctx.path] )
             return routeInfo.any[ctx.req.path]( ctx );
         if ( ctx.req.method === "POST" )

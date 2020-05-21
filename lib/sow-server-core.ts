@@ -8,6 +8,7 @@ import {
     createServer,
     Server, IncomingMessage, ServerResponse
 } from 'http';
+import { EventEmitter } from 'events';
 import { ToResponseTime, ISession, IResInfo } from './sow-static';
 import { IContext } from './sow-server';
 import { Template } from './sow-template';
@@ -15,6 +16,7 @@ import urlHelpers, { UrlWithParsedQuery } from 'url';
 import { Socket } from 'net';
 import _zlib = require( 'zlib' );
 type ParsedUrlQuery = { [key: string]: string | string[] | undefined; };
+type onError = ( req: IRequest, res: IResponse, err?: Error | number ) => void;
 export type NextFunction = ( err?: any ) => void;
 export type HandlerFunc = ( req: IRequest, res: IResponse, next: NextFunction ) => void;
 export interface CookieOptions {
@@ -57,8 +59,9 @@ export interface IApplication {
     listen( handle: any, listeningListener?: () => void ): IApplication;
     handleRequest( req: IRequest, res: IResponse ): void;
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApplication;
-    onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
     shutdown(): Promise<void>;
+    on( ev: 'error', handler: onError ): IApplication;
+    emit( ev: 'prepare' ): boolean;
 }
 export interface IApps {
     use( ...args: any[] ): IApps;
@@ -67,7 +70,7 @@ export interface IApps {
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps;
     getHttpServer(): Server;
     onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
-    on( ev: 'shutdown', handler: Function ): void;
+    on( ev: 'shutdown', handler: Function ): IApps;
     shutdown( next?: ( err?: Error ) => void ): Promise<void> | void;
 }
 const getCook = ( cooks: string[] ): { [x: string]: string; } => {
@@ -228,17 +231,23 @@ function getRouteExp( route: string ): RegExp {
     if ( route.charAt( route.length - 1 ) === '/' ) {
         route = route.substring( 0, route.length - 2 );
     }
-    return new RegExp( `^${route.replace( /\//gi, "\\/" )}\/?(?=\/|$)`, "gi" );
+    route = route.replace( /\//gi, "\\/" );
+    return new RegExp( `^${route}\/?(?=\/|$)`, "gi" );
 }
 // tslint:disable-next-line: max-classes-per-file
-class Application implements IApplication {
+class Application extends EventEmitter implements IApplication {
     public server: Server;
     private _appHandler: IHandlers[] = [];
     private _prerequisitesHandler: IHandlers[] = [];
-    private _onError?: ( req: IRequest, res: IResponse, err?: Error | number ) => void;
-    //sockets: SetConstructor = new Set();
+    private _hasErrorEvnt: boolean = false;
     constructor( server: Server ) {
+        super();
         this.server = server;
+        this.once( "prepare", () => {
+            if ( this.listenerCount( "error" ) > 0 ) {
+                this._hasErrorEvnt = true;
+            }
+        } );
     }
     shutdown(): Promise<void> {
         let resolveTerminating: { (): void; (value?: void | PromiseLike<void> | undefined): void; };
@@ -253,10 +262,6 @@ class Application implements IApplication {
         } );
         this.server.close().once( 'close', () => resolveTerminating() );
         return promise;
-    }
-    onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void {
-        if ( this._onError ) delete this._onError;
-        this._onError = handler;
     }
     _handleRequest(
         req: IRequest, res: IResponse,
@@ -295,8 +300,8 @@ class Application implements IApplication {
         this._handleRequest( req, res, this._prerequisitesHandler, ( err?: Error ): void => {
             if ( err ) {
                 if ( res.headersSent ) return;
-                if ( this._onError ) {
-                    return this._onError( req, res, err );
+                if ( this._hasErrorEvnt ) {
+                    return this.emit( "error", req, res, err ), void 0;
                 }
                 res.writeHead( 500, { 'Content-Type': 'text/html' } );
                 res.end( "Error found...." + err.message );
@@ -305,8 +310,8 @@ class Application implements IApplication {
             // tslint:disable-next-line: no-shadowed-variable
             this._handleRequest( req, res, this._appHandler, ( err?: Error ): void => {
                 if ( res.headersSent ) return;
-                if ( this._onError ) {
-                    return this._onError( req, res, err );
+                if ( this._hasErrorEvnt ) {
+                    return this.emit( "error", req, res, err ), void 0;
                 }
                 res.writeHead( 200, { 'Content-Type': 'text/html' } );
                 res.end( `Can not ${req.method} ${req.path}....` );
@@ -337,19 +342,9 @@ class Application implements IApplication {
 
 }
 // tslint:disable-next-line: max-classes-per-file
-class Apps implements IApps {
-    event: Function[] = [];
-    constructor() { }
+class Apps extends EventEmitter implements IApps {
     shutdown(next?: (err?: Error | undefined) => void): void | Promise<void> {
-        throw new Error("Method not implemented.");
-    }
-    emit( ev: 'shutdown' ): void;
-    emit( ev: string ): void {
-        this.event.forEach( handler => handler() );
-    }
-    on( ev: 'shutdown', handler: Function ): void {
-        this.event.push( handler );
-        return void 0;
+        throw new Error( "Method not implemented." );
     }
     onError( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void {
         throw new Error( "Method not implemented." );
@@ -385,7 +380,7 @@ export function App(): IApps {
         return _app.shutdown().then( () => next() ).catch( ( err ) => next( err ) ), void 0;
     }
     _apps.onError = ( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void => {
-        return _app.onError( handler );
+        return _app.on( "error", handler ), void 0;
     }
     _apps.prerequisites = ( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps => {
         return _app.prerequisites( handler ), _apps;
@@ -398,7 +393,7 @@ export function App(): IApps {
     };
     // tslint:disable-next-line: ban-types
     _apps.listen = ( handle: any, listeningListener?: () => void ): IApps => {
-        return _app.listen( handle, listeningListener ), _apps;
+        return _app.emit( "prepare" ), _app.listen( handle, listeningListener ), _apps;
     };
     return _apps;
 }

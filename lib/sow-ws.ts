@@ -7,8 +7,9 @@ import { Encryption } from './sow-encryption';
 import { ISowServer } from './sow-server';
 import { ISession } from './sow-static';
 import { Util } from './sow-util';
+import { EventEmitter } from 'events';
 /** [socket.io blueprint] */
-interface Socket extends NodeJS.EventEmitter {
+interface Socket extends EventEmitter {
     nsp: object;
     server: object;
     adapter: object;
@@ -101,7 +102,6 @@ class WsClientInfo implements IWsClientInfo {
         }
         this.event[ev] = handler;
     }
-    emit( ev: 'getClient', me: ISowSocketInfo, wsServer: ISowSocket ): void;
     emit( ev: 'disConnected', me: ISowSocketInfo, wsServer: ISowSocket ): void;
     emit( ev: 'connected', me: ISowSocketInfo, wsServer: ISowSocket ): void;
     emit( ev: 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket ): void;

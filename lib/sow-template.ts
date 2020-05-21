@@ -11,6 +11,7 @@ import { Util } from './sow-util';
 import { HttpStatus } from './sow-http-status';
 import { IResInfo } from './sow-static';
 import { IContext } from './sow-server';
+type SendBox = ( ctx: IContext, next: ( ctx: IContext, body: string, isCompressed?: boolean ) => void, isCompressed?: boolean ) => void;
 interface IScriptTag {
     l: string;
     lre: RegExp;
@@ -217,7 +218,6 @@ class TemplateParser {
 const _tw: { [x: string]: any } = {
     cache: {}
 }
-type SendBox = ( ctx: IContext, next: ( ctx: IContext, body: string, isCompressed?: boolean ) => void, isCompressed?: boolean ) => void;
 // tslint:disable-next-line: max-classes-per-file
 class TemplateCore {
     private static processResponse( status: IResInfo ): ( ctx: IContext, body: string, isCompressed?: boolean ) => void {
@@ -246,8 +246,11 @@ class TemplateCore {
         }
     } 
     private static compile(
-        str: string, next?: ( str: string, isScript?: boolean ) => void
+        str?: string, next?: ( str: string, isScript?: boolean ) => void
     ): SendBox {
+        if ( !str ) {
+            throw new Error("No script found to compile....");
+        }
         const context: { [x: string]: SendBox; } = {
             thisNext: function (
                 ctx: IContext,
@@ -263,7 +266,7 @@ class TemplateCore {
         if( next ) next(str, true);
         return context.thisNext;
     }
-    private static parseScript( str: string ): string | any {
+    private static parseScript( str: string ): string | undefined {
         str = str.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
         const script = str.split( '\n' );
         if ( script.length === 0 || script === null ) return void 0;
@@ -330,18 +333,18 @@ class TemplateCore {
         // tslint:disable-next-line: no-unused-expression
         return ( isTemplate ? ( next ? next( str, false ) : void 0 ) : void 0 ), str;
     }
-    public static tryLive( ctx: IContext, path: string, status: IResInfo) {
+    public static tryLive( ctx: IContext, path: string, status: IResInfo ): void {
         const url = Util.isExists( path, ctx.next );
         if ( !url ) return;
         const result = this.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
         if ( typeof ( result ) === "function" ) {
-            return result( ctx, this.processResponse( status ) );
+            return result( ctx, this.processResponse( status ), false );
         }
         ctx.res.set( 'Cache-Control', 'no-store' );
         ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
         return ctx.res.end( result ), ctx.next( status.code, status.isErrorCode === false );
     }
-    public static tryMemCache( ctx: IContext, path: string, status: IResInfo ): any {
+    public static tryMemCache( ctx: IContext, path: string, status: IResInfo ): void {
         const key = path.replace( /\//gi, "_" ).replace( /\./gi, "_" );
         let cache = _tw.cache[key];
         if ( !cache ) {
@@ -357,7 +360,7 @@ class TemplateCore {
         ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
         return ctx.res.end( cache ), ctx.next( status.code, status.isErrorCode === false );
     }
-    public static tryFileCacheOrLive( ctx: IContext, path: string, status: IResInfo): any {
+    public static tryFileCacheOrLive( ctx: IContext, path: string, status: IResInfo ): void {
         const fsp = Util.isExists( path, ctx.next );
         if ( !fsp ) {
             return void 0;
@@ -394,7 +397,7 @@ class TemplateCore {
 // tslint:disable-next-line: max-classes-per-file
 // tslint:disable-next-line: no-namespace
 export namespace Template {
-    export function parse( ctx: IContext, path: string, status?: IResInfo ): any {
+    export function parse( ctx: IContext, path: string, status?: IResInfo ): void {
         if ( !status ) status = HttpStatus.getResInfo( path, 200 );
         try {
             ctx.servedFrom = ctx.server.pathToUrl( path );
@@ -410,7 +413,7 @@ export namespace Template {
             if ( status.code === 500 ) {
                 if ( status.tryServer === true ) {
                     ctx.server.addError( ctx, ex );
-                    return ctx.server.passError( ctx );
+                    return ctx.server.passError( ctx ), void 0;
                 }
                 status.tryServer = true;
             }

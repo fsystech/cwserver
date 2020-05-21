@@ -1,3 +1,8 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 export { initilizeServer } from './lib/sow-server';
 export { Encryption, md5, CryptoInfo } from './lib/sow-encryption';
 export { SowHttpCache } from './lib/sow-http-cache';

@@ -90,6 +90,8 @@ export class Logger implements ILogger {
             name = `${name || String( Math.random().toString( 36 ).slice( 2 ) + Date.now() )}_${date.getFullYear()}_${dfm( date.getMonth() )}_${dfo( date.getDate() )}.log`;
             const path = _path.resolve( `${dir}/${name}` );
             const exists = _fs.existsSync( path );
+            // const fd = _fs.openSync( path, 'a' );
+            // _fs.appendFileSync( fd, `\n`);
             this._stream = _fs.createWriteStream( path, exists ? { flags: 'a', encoding: 'utf-8' } : { flags: 'w', encoding: 'utf-8' } );
             this._canWrite = true;
             if ( exists === false ) {

@@ -1,10 +1,15 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 export interface ILogger {
     newLine(): any;
-    write(msg: string, color?: string): ILogger;
-    log(msg: string, color?: string): ILogger;
-    info(msg: string): ILogger;
-    success(msg: string): ILogger;
-    error(msg: string): ILogger;
+    write( msg: string, color?: string ): ILogger;
+    log( msg: string, color?: string ): ILogger;
+    info( msg: string ): ILogger;
+    success( msg: string ): ILogger;
+    error( msg: string ): ILogger;
     reset(): ILogger;
     dispose(): any;
 }
@@ -43,16 +48,16 @@ export declare class Logger implements ILogger {
     private _stream?;
     private _isWaiting;
     private _buffer?;
-    constructor(dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean);
+    constructor( dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean );
     private _writeToStream;
     newLine(): void;
     private _write;
     private _log;
-    write(msg: any, color?: string): ILogger;
-    log(msg: any, color?: string): ILogger;
-    info(msg: any): ILogger;
-    success(msg: any): ILogger;
-    error(msg: any): ILogger;
+    write( msg: any, color?: string ): ILogger;
+    log( msg: any, color?: string ): ILogger;
+    info( msg: any ): ILogger;
+    success( msg: any ): ILogger;
+    error( msg: any ): ILogger;
     reset(): ILogger;
     dispose(): void;
 }

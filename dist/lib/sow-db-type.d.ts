@@ -1,3 +1,8 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 export interface FieldDef {
     name: string;
     tableID: number;
@@ -20,28 +25,28 @@ export interface QueryResult<R extends QueryResultRow = any> extends QueryResult
     rows: R[];
 }
 export interface ISowDatabaseType {
-    [id: string]: (...args: any[]) => any;
+    [id: string]: ( ...args: any[] ) => any;
     getConn(): any;
-    executeIo(sp: string, ctx: string, formObj: string, next: (resp: {
+    executeIo( sp: string, ctx: string, formObj: string, next: ( resp: {
         ret_val: number;
         ret_msg: string;
         ret_data_table?: {
             [key: string]: any;
         };
-    }) => void): void;
-    executeIoAsync(sp: string, ctx: string, formObj: string): Promise<{
+    } ) => void ): void;
+    executeIoAsync( sp: string, ctx: string, formObj: string ): Promise<{
         ret_val: number;
         ret_msg: string;
         ret_data_table?: {
             [key: string]: any;
         };
     }>;
-    query<R extends QueryResultRow = any, I extends any[] = any[]>(queryText: string, values: any[], callback: (result: {
+    query<R extends QueryResultRow = any, I extends any[] = any[]>( queryText: string, values: any[], callback: ( result: {
         isError: boolean;
         err?: Error;
         res?: QueryResult<R>;
-    }) => void): void;
-    queryAsync<R extends QueryResultRow = any, I extends any[] = any[]>(queryText: string, values: any[]): Promise<{
+    } ) => void ): void;
+    queryAsync<R extends QueryResultRow = any, I extends any[] = any[]>( queryText: string, values: any[] ): Promise<{
         isError: boolean;
         err?: Error;
         res?: QueryResult<R>;

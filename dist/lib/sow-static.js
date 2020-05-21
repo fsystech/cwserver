@@ -1,5 +1,5 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty( exports, "__esModule", { value: true } );
 class Session {
     constructor() {
         this.isAuthenticated = false;
@@ -22,14 +22,14 @@ class ResInfo {
     ;
 }
 exports.ResInfo = ResInfo;
-function ToNumber(obj) {
-    if (!obj)
+function ToNumber( obj ) {
+    if ( !obj )
         return 0;
-    if (typeof (obj) === "number")
+    if ( typeof ( obj ) === "number" )
         return obj;
-    if (isNaN(obj))
+    if ( isNaN( obj ) )
         return 0;
-    return parseFloat(obj);
+    return parseFloat( obj );
 }
 exports.ToNumber = ToNumber;
 const _map = {
@@ -57,21 +57,21 @@ const _map = {
         6: "Sat"
     }
 };
-const dfo = (t) => {
+const dfo = ( t ) => {
     t = t === 0 ? 1 : t;
     return _map.day[t];
 };
-const dfon = (t) => {
+const dfon = ( t ) => {
     t = t === 0 ? 1 : t;
     return t <= 9 ? "0" + t : t;
 };
-const dfm = (t) => {
+const dfm = ( t ) => {
     t += 1;
     return _map.month[t];
 };
-function ToResponseTime(timestamp) {
+function ToResponseTime( timestamp ) {
     // Thu, 01 May 2020 23:34:07 GMT
-    const date = typeof (timestamp) === "number" && timestamp > 0 ? new Date(timestamp) : new Date();
-    return `${dfo(date.getDay())}, ${dfon(date.getDate())} ${dfm(date.getMonth())} ${date.getFullYear()} ${dfon(date.getHours())}:${dfon(date.getMinutes())}:${dfon(date.getSeconds())} GMT`;
+    const date = typeof ( timestamp ) === "number" && timestamp > 0 ? new Date( timestamp ) : new Date();
+    return `${dfo( date.getDay() )}, ${dfon( date.getDate() )} ${dfm( date.getMonth() )} ${date.getFullYear()} ${dfon( date.getHours() )}:${dfon( date.getMinutes() )}:${dfon( date.getSeconds() )} GMT`;
 }
 exports.ToResponseTime = ToResponseTime;
