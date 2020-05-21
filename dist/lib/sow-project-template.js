@@ -60,9 +60,9 @@ function createProjectTemplate(settings) {
     }
     if (settings.allExample === true) {
         console.log(sow_logger_1.ConsoleColor.FgYellow, `Add all example to your project root ${settings.projectRoot}`);
-        sow_util_1.Util.mkdirSync(projectRoot, "/example/jsTemplate/");
-        console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/example/jsTemplate/`);
-        sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/jsTemplate/`), _path.resolve(`${projectRoot}/example/jsTemplate/`));
+        sow_util_1.Util.mkdirSync(projectRoot, "/example/");
+        console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/example/`);
+        sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/example/`), _path.resolve(`${projectRoot}/example/`));
         console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/lib/`);
         sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/lib/`), _path.resolve(`${projectRoot}/lib/`));
     }

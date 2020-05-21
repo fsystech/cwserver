@@ -232,15 +232,6 @@ const _formatPath = ( () => {
         return absPath;
     };
 } )();
-export class DatabaseConfig implements IDatabaseConfig {
-    module: string;
-    path: string;
-    dbConn: { database: string; password: string; };
-    constructor() {
-        this.module = ""; this.path = "";
-        this.dbConn = { database: "", password: "" };
-    }
-}
 // tslint:disable-next-line: max-classes-per-file
 export class ServerEncryption implements IServerEncryption {
     private cryptoInfo: ICryptoInfo;
@@ -401,7 +392,6 @@ export class ServerConfig implements IServerConfig {
             route: "/app/api/bundle/",
             compress: true
         };
-        // this.database = [new DatabaseConfig()];
     }
 }
 // tslint:disable-next-line: max-classes-per-file

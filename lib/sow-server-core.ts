@@ -87,7 +87,7 @@ export function parseCookie(
     if ( cook instanceof Object ) return cook;
     return getCook( cook.split( ";" ) );
 }
-export class Request extends IncomingMessage implements IRequest {
+class Request extends IncomingMessage implements IRequest {
     public q: UrlWithParsedQuery = Object.create( null );
     private _cookies: { [key: string]: string; } = {};
     public get cookies() {
@@ -144,7 +144,7 @@ const createCookie = ( name: string, val: string, options: CookieOptions ): stri
     return str;
 }
 // tslint:disable-next-line: max-classes-per-file
-export class Response extends ServerResponse implements IResponse {
+class Response extends ServerResponse implements IResponse {
     render( ctx: IContext, path: string, status?: IResInfo ): void {
         return Template.parse( ctx, path, status );
     }
@@ -224,14 +224,14 @@ const getRouteHandler = (
     }
     return router[0];
 }
-export function getRouteExp( route: string ): RegExp {
+function getRouteExp( route: string ): RegExp {
     if ( route.charAt( route.length - 1 ) === '/' ) {
         route = route.substring( 0, route.length - 2 );
     }
-    return new RegExp( `^${route.replace( /\//gi, "\\/" )}\/?(?=\/|$)`, "i" );
+    return new RegExp( `^${route.replace( /\//gi, "\\/" )}\/?(?=\/|$)`, "gi" );
 }
 // tslint:disable-next-line: max-classes-per-file
-export class Application implements IApplication {
+class Application implements IApplication {
     public server: Server;
     private _appHandler: IHandlers[] = [];
     private _prerequisitesHandler: IHandlers[] = [];
@@ -337,7 +337,7 @@ export class Application implements IApplication {
 
 }
 // tslint:disable-next-line: max-classes-per-file
-export class Apps implements IApps {
+class Apps implements IApps {
     event: Function[] = [];
     constructor() { }
     shutdown(next?: (err?: Error | undefined) => void): void | Promise<void> {
@@ -354,14 +354,14 @@ export class Apps implements IApps {
     onError( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void {
         throw new Error( "Method not implemented." );
     }
-    use( ..._args: any[] ): IApps {
+    use( ...args: any[] ): IApps {
         throw new Error( "Method not implemented." );
     }
     getHttpServer(): Server {
         throw new Error( "Method not implemented." );
     }
     // tslint:disable-next-line: ban-types
-    listen( _handle: any, listeningListener?: () => void ): IApps {
+    listen( handle: any, listeningListener?: () => void ): IApps {
         throw new Error( "Method not implemented." );
     }
     handleRequest( req: IRequest, res: IResponse ): IApps {

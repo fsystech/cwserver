@@ -98,14 +98,6 @@ const _formatPath = (() => {
         return absPath;
     };
 })();
-class DatabaseConfig {
-    constructor() {
-        this.module = "";
-        this.path = "";
-        this.dbConn = { database: "", password: "" };
-    }
-}
-exports.DatabaseConfig = DatabaseConfig;
 // tslint:disable-next-line: max-classes-per-file
 class ServerEncryption {
     constructor(inf) {
@@ -208,7 +200,6 @@ class ServerConfig {
             route: "/app/api/bundle/",
             compress: true
         };
-        // this.database = [new DatabaseConfig()];
     }
 }
 exports.ServerConfig = ServerConfig;

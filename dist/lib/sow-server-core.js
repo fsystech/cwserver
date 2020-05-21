@@ -65,7 +65,6 @@ class Request extends http_1.IncomingMessage {
         return this;
     }
 }
-exports.Request = Request;
 const createCookie = (name, val, options) => {
     let str = `${name}=${val}`;
     if (options.domain)
@@ -159,7 +158,6 @@ class Response extends http_1.ServerResponse {
         return this;
     }
 }
-exports.Response = Response;
 const getRouteHandler = (reqPath, handlers) => {
     const router = handlers.filter(a => {
         if (a.regexp)
@@ -190,9 +188,8 @@ function getRouteExp(route) {
     if (route.charAt(route.length - 1) === '/') {
         route = route.substring(0, route.length - 2);
     }
-    return new RegExp(`^${route.replace(/\//gi, "\\/")}\/?(?=\/|$)`, "i");
+    return new RegExp(`^${route.replace(/\//gi, "\\/")}\/?(?=\/|$)`, "gi");
 }
-exports.getRouteExp = getRouteExp;
 // tslint:disable-next-line: max-classes-per-file
 class Application {
     //sockets: SetConstructor = new Set();
@@ -297,7 +294,6 @@ class Application {
         return this;
     }
 }
-exports.Application = Application;
 // tslint:disable-next-line: max-classes-per-file
 class Apps {
     constructor() {
@@ -316,14 +312,14 @@ class Apps {
     onError(handler) {
         throw new Error("Method not implemented.");
     }
-    use(..._args) {
+    use(...args) {
         throw new Error("Method not implemented.");
     }
     getHttpServer() {
         throw new Error("Method not implemented.");
     }
     // tslint:disable-next-line: ban-types
-    listen(_handle, listeningListener) {
+    listen(handle, listeningListener) {
         throw new Error("Method not implemented.");
     }
     handleRequest(req, res) {
@@ -333,7 +329,6 @@ class Apps {
         throw new Error("Method not implemented.");
     }
 }
-exports.Apps = Apps;
 function App() {
     const _app = new Application(http_1.createServer((request, response) => {
         const req = Object.setPrototypeOf(request, Request.prototype);

@@ -152,15 +152,6 @@ export interface ISowView {
     __moduleName: string;
     Init: IViewHandler;
 }
-export declare class DatabaseConfig implements IDatabaseConfig {
-    module: string;
-    path: string;
-    dbConn: {
-        database: string;
-        password: string;
-    };
-    constructor();
-}
 export declare class ServerEncryption implements IServerEncryption {
     private cryptoInfo;
     constructor(inf: ICryptoInfo);
