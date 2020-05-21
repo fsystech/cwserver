@@ -2,6 +2,7 @@
 [![Build Status](https://api.travis-ci.org/safeonlineworld/cwserver.svg?branch=master)](https://travis-ci.org/github/safeonlineworld/cwserver)
 [![npm version](https://badge.fury.io/js/cwserver.svg)](https://badge.fury.io/js/cwserver)
 ![Downloads](https://img.shields.io/npm/dt/cwserver)
+[![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/safeonlineworld/cwserver.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/safeonlineworld/cwserver/context:javascript)
 
 Install ```cwserver``` by this command ```npm i cwserver```<br/>
 Create ```createProjectTemplate.js``` as following
