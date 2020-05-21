@@ -22,7 +22,7 @@ clientInfo.on( "beforeInitiateConnection", ( session, socket ) => {
     }
     return true;
 } );
-clientInfo.on( "onConnected", ( me, wsServer ) => {
+clientInfo.on( "connected", ( me, wsServer ) => {
     const method = me.isReconnectd ? "on-re-connected-user" : "on-connected-user";
     wsServer.getClientByExceptToken( me.token ).forEach( conn => {
         conn.sendMsg( method, {
@@ -34,7 +34,7 @@ clientInfo.on( "onConnected", ( me, wsServer ) => {
         token: me.token, hash: me.hash, loginId: me.loginId
     } );
 } );
-clientInfo.on( "onDisConnected", ( me, wsServer ) => {
+clientInfo.on( "disConnected", ( me, wsServer ) => {
     //Here disconnect any user
     wsServer.getClientByExceptToken( me.token ).forEach( conn => {
         conn.sendMsg( "on-disconnected-user", {
