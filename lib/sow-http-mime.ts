@@ -223,12 +223,9 @@ class MimeHandler {
 export class HttpMimeHandler implements IHttpMimeHandler {
     constructor() {
         let part: string = "";
-        let parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ) : _path.resolve( __dirname, '../..' );
+        const parent: string = _path.resolve( __dirname, '..' );
         if ( process.env.SCRIPT === "TS" ) {
-            parent = _path.resolve( __dirname, '..' );
             part = "/dist";
-        } else {
-            parent = _path.resolve( __dirname, '../..' )
         }
         // const parent = _path.resolve(__dirname, '..');
         const absPath = _path.resolve( `${parent}${part}/mime-type.json` );

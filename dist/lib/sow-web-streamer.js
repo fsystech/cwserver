@@ -50,4 +50,4 @@ const fs_1 = require( "fs" );
         } ), void 0;
     }
     Streamer.stream = stream;
-} )( Streamer = exports.Streamer || ( exports.Streamer = {} ) );
+} )( exports.Streamer || ( exports.Streamer = {} ) );
