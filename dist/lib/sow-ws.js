@@ -118,9 +118,7 @@ class SowSocket {
             this._server.config.socketPath = io._path;
         }
         io.use((socket, next) => {
-            if (!socket.request.session) {
-                socket.request.session = this._server.parseSession(socket.request.headers.cookie);
-            }
+            socket.request.session = this._server.parseSession(socket.request.headers.cookie);
             if (!this._wsClients.beforeInitiateConnection(socket.request.session, socket))
                 return void 0;
             return next();
@@ -128,9 +126,9 @@ class SowSocket {
         return io.on("connect", (socket) => {
             this.connected = socket.connected;
         }).on('connection', (socket) => {
-            if (!socket.request.session) {
-                socket.request.session = this._server.parseSession(socket.handshake.headers.cookie);
-            }
+            // if ( !socket.request.session ) {
+            //    socket.request.session = this._server.parseSession( socket.handshake.headers.cookie );
+            // }
             if (!this._wsClients.beforeInitiateConnection(socket.request.session, socket))
                 return void 0;
             const _me = (() => {

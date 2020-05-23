@@ -14,7 +14,7 @@ interface Socket extends EventEmitter {
     server: object;
     adapter: object;
     id: string;
-    request: { session?: ISession, headers: any };
+    request: { session: ISession, headers: any };
     client: object;
     conn: object;
     rooms: { [id: string]: string };
@@ -200,18 +200,16 @@ class SowSocket implements ISowSocket {
             this._server.config.socketPath = io._path;
         }
         io.use( ( socket: Socket, next: ( err?: any ) => void ) => {
-            if ( !socket.request.session ) {
-                socket.request.session = this._server.parseSession( socket.request.headers.cookie );
-            }
+            socket.request.session = this._server.parseSession( socket.request.headers.cookie );
             if ( !this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) return void 0;
             return next();
         } );
         return io.on( "connect", ( socket ) => {
             this.connected = socket.connected;
         } ).on( 'connection', ( socket ) => {
-            if ( !socket.request.session ) {
-                socket.request.session = this._server.parseSession( socket.handshake.headers.cookie );
-            }
+            // if ( !socket.request.session ) {
+            //    socket.request.session = this._server.parseSession( socket.handshake.headers.cookie );
+            // }
             if ( !this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) return void 0;
             const _me: ISowSocketInfo = ( () => {
                 const token = Util.guid();

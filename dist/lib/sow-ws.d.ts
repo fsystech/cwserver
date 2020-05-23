@@ -9,7 +9,7 @@ interface Socket extends EventEmitter {
     adapter: object;
     id: string;
     request: {
-        session?: ISession;
+        session: ISession;
         headers: any;
     };
     client: object;
