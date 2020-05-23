@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -111,7 +111,6 @@ const parseHeader = ( data: string ): IPostedFileInfo => {
     let part = data.substring( 0, data.indexOf( end ) );
     const disposition = extractBetween( part, "Content-Disposition: ", ";" );
     const name = extractBetween( part, "name=\"", ";" );
-    
     let filename = extractBetween( part, "filename=\"", "\"" );
     part = data.substring( part.length + end.length );
     const cType = extractBetween( part, "Content-Type: ", "\r\n\r\n" );

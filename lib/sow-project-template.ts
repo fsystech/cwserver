@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -24,12 +24,20 @@ export function createProjectTemplate( settings: {
 		console.log( ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}` );
 	}
 	const myRoot: string = _path.resolve( __dirname, '..' );
-	const templateRoot: string = _path.resolve( `${myRoot}/project_template` );
+	let template = "/project_template";
+	if ( process.env.TASK_TYPE === "TEST" && process.env.SCRIPT === "TS" && settings.isTest === true ) {
+		template = "/dist" + template;
+	}
+	const templateRoot: string = _path.resolve( `${myRoot}${template}` );
 	if ( !_fs.existsSync( templateRoot ) )
 		throw new Error( `Project template not found in ${templateRoot}\r\nPlease uninstall and install again 'cwserver'` );
 	const appRoot: string = _path.resolve( settings.appRoot );
-	if ( !_fs.existsSync( appRoot ) )
-		throw new Error( `App Root not found ${appRoot}\r\nprojectDef.projectRoot like as __dirname` );
+	if ( !_fs.existsSync( appRoot ) ) {
+		if ( !settings.isTest ) {
+			throw new Error( `App Root not found ${appRoot}\r\nprojectDef.projectRoot like as __dirname` );
+		}
+		Util.mkdirSync( appRoot );
+	}
 	const projectRoot: string = _path.resolve( `${appRoot}/${settings.projectRoot}` );
 	if ( _fs.existsSync( projectRoot ) ) {
 		if ( settings.force !== true ) {

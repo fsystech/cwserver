@@ -1,12 +1,25 @@
 "use strict";
+var __createBinding = ( this && this.__createBinding ) || ( Object.create ? ( function ( o, m, k, k2 ) {
+    if ( k2 === undefined ) k2 = k;
+    Object.defineProperty( o, k2, { enumerable: true, get: function () { return m[k]; } } );
+} ) : ( function ( o, m, k, k2 ) {
+    if ( k2 === undefined ) k2 = k;
+    o[k2] = m[k];
+} ) );
+var __setModuleDefault = ( this && this.__setModuleDefault ) || ( Object.create ? ( function ( o, v ) {
+    Object.defineProperty( o, "default", { enumerable: true, value: v } );
+} ) : function ( o, v ) {
+    o["default"] = v;
+} );
 var __importStar = ( this && this.__importStar ) || function ( mod ) {
     if ( mod && mod.__esModule ) return mod;
     var result = {};
-    if ( mod != null ) for ( var k in mod ) if ( Object.hasOwnProperty.call( mod, k ) ) result[k] = mod[k];
-    result["default"] = mod;
+    if ( mod != null ) for ( var k in mod ) if ( Object.hasOwnProperty.call( mod, k ) ) __createBinding( result, mod, k );
+    __setModuleDefault( result, mod );
     return result;
 };
 Object.defineProperty( exports, "__esModule", { value: true } );
+exports.Util = void 0;
 const _fs = __importStar( require( "fs" ) );
 const _path = __importStar( require( "path" ) );
 const _isPlainObject = ( obj ) => {
@@ -69,12 +82,12 @@ const _deepExtend = ( destination, source ) => {
         return _extend( {}, source );
     }
     Util.clone = clone;
-    /** Checks whether the specified value is an object. true if the value is an object; false otherwise.*/
+    /** Checks whether the specified value is an object. true if the value is an object; false otherwise. */
     function isPlainObject( obj ) {
         return _isPlainObject( obj );
     }
     Util.isPlainObject = isPlainObject;
-    /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise.*/
+    /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise. */
     function isArrayLike( obj ) {
         if ( obj === null || obj === undefined )
             return false;

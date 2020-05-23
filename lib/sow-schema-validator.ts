@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -156,7 +156,7 @@ function schemaValidate(
 // tslint:disable-next-line: no-namespace
 export namespace Schema {
 	export function Validate( config: { [id: string]: any } ): void {
-		const parent = _path.resolve( __dirname, '../..' );
+		const parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ): _path.resolve( __dirname, '../..' );
 		const absPath = _path.resolve( `${parent}/schema.json` );
 		const schema: ISchema = readSchemaAsync( absPath );
 		const schemaRoot = _supportSchema[schema.$schema];

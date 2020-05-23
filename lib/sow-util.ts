@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -57,11 +57,11 @@ export namespace Util {
     export function clone( source: { [x: string]: any; } ) {
         return _extend( {}, source );
     }
-    /** Checks whether the specified value is an object. true if the value is an object; false otherwise.*/
+    /** Checks whether the specified value is an object. true if the value is an object; false otherwise. */
     export function isPlainObject( obj?: any ): obj is { [x: string]: any; } {
         return _isPlainObject( obj );
     }
-    /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise.*/
+    /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise. */
     export function isArrayLike( obj?: any ): obj is [] {
         if ( obj === null || obj === undefined ) return false;
         const result = Object.prototype.toString.call( obj );

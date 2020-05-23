@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -221,9 +221,17 @@ class MimeHandler {
 }
 // tslint:disable-next-line: max-classes-per-file
 export class HttpMimeHandler implements IHttpMimeHandler {
-    constructor( ) {
-        const parent = _path.resolve(__dirname, '..');
-        const absPath = _path.resolve( `${parent}/mime-type.json` );
+    constructor() {
+        let part: string = "";
+        let parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ) : _path.resolve( __dirname, '../..' );
+        if ( process.env.SCRIPT === "TS" ) {
+            parent = _path.resolve( __dirname, '..' );
+            part = "/dist";
+        } else {
+            parent = _path.resolve( __dirname, '../..' )
+        }
+        // const parent = _path.resolve(__dirname, '..');
+        const absPath = _path.resolve( `${parent}${part}/mime-type.json` );
         if ( !_fs.existsSync( absPath ) )
             throw new Error( `Unable to load mime-type from ${absPath}` );
         const types = _fs.readFileSync( absPath, "utf8" ).replace( /^\uFEFF/, '' );
@@ -237,7 +245,7 @@ export class HttpMimeHandler implements IHttpMimeHandler {
     getMimeType( extension: string ): string {
         const mimeType = HttpMimeType[extension];
         if ( !mimeType )
-            throw new Error( "Method not implemented." );
+            throw new Error( `Unsupported extension =>${extension}` );
         return mimeType;
     }
     isValidExtension( extension: string ): boolean {

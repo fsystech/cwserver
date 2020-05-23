@@ -20,7 +20,7 @@
     "maxAge": "7d",
     "serverRevalidate": true
   },
-  "liveStream": [],
+  "liveStream": ["mp3"],
   "noCache": [],
   "session": {
     "cookie": "_session",

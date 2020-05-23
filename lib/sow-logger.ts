@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -77,7 +77,7 @@ export class Logger implements ILogger {
     private _buffer?: string;
     constructor( dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean ) {
         this._userInteractive = typeof ( userInteractive ) !== "boolean" ? true : userInteractive;
-        this._isDebug = typeof ( isDebug ) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug; 
+        this._isDebug = typeof ( isDebug ) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false;
         this._stream = void 0; this._tz = "+6";
         this._isWaiting = false;

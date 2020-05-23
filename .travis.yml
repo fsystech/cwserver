@@ -12,7 +12,17 @@ before_script:
   - npm install socket.io-client
   - npm install socket.io
 script:
-  - npm run test:mocha
+  # npm run test:mocha
+  # npm run lint
+  # Run test script
+  - npm run test:cov
+  # Run linting
+  - npm run lint
+after_script:
+  - |
+    # Upload coverage to coveralls
+    npm install --save-dev coveralls
+    coveralls < ./coverage/lcov.info
 git:
   depth: 1
 cache:

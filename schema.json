@@ -252,7 +252,7 @@
     },
     "views": {
       "type": "array",
-      "minLength": 1,
+      "minLength": 0,
       "default": [],
       "items": {
         "type": "string"

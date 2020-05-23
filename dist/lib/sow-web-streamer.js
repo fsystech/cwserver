@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty( exports, "__esModule", { value: true } );
+exports.Streamer = void 0;
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -40,13 +41,13 @@ const fs_1 = require( "fs" );
             } );
             openenedFile.pipe( ctx.res );
         }
-        ctx.res.on( 'close', () => {
+        return ctx.res.on( 'close', () => {
             if ( openenedFile ) {
                 openenedFile.unpipe( ctx.res );
                 openenedFile.close();
             }
             ctx.next( 200 );
-        } );
+        } ), void 0;
     }
     Streamer.stream = stream;
-} )( exports.Streamer || ( exports.Streamer = {} ) );
+} )( Streamer = exports.Streamer || ( exports.Streamer = {} ) );

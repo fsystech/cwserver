@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -168,14 +168,14 @@ class TemplateParser {
     }
     private static implimentTemplateExtend( appRoot: string, str: string ): string {
         if ( /#extends/gi.test( str ) === false ) return str;
-        const templats = [];
+        const templats: string[] = [];
         do {
             const match: RegExpExecArray | null = /#extends([\s\S]+?)\r\n/gi.exec( str );
-            if ( !match || match === null ) {
+            if ( !match ) {
                 // no more master template extends
                 templats.push( str ); break;
             }
-            const found = match[1];
+            const found: string | undefined = match[1];
             if ( !found ) {
                 throw new Error( "Invalid template format..." );
             }
@@ -190,16 +190,16 @@ class TemplateParser {
         let count: number = 0;
         let body: string = "";
         let parentTemplate: string = "";
-        const startTag = /<placeholder[^>]*>/gi;
-        const rnRegx = /\r\n/gi;
-        let len = templats.length;
+        const startTag: RegExp = /<placeholder[^>]*>/gi;
+        const rnRegx: RegExp = /\r\n/gi;
+        let len: number = templats.length;
         do {
             len--;
             if ( count === 0 ) {
                 parentTemplate = templats[len].replace( rnRegx, "8_r_n_gx_8" );
                 body += parentTemplate; count++; continue;
             }
-            const match = parentTemplate.match( startTag );
+            const match: RegExpMatchArray | null = parentTemplate.match( startTag );
             if ( match === null || ( match && match.length === 0 ) ) {
                 throw new Error( "Invalid master template... No placeholder tag found...." );
             }
@@ -244,7 +244,7 @@ class TemplateCore {
             } );
             return ctx.res.end( body ), ctx.next( status.code, status.isErrorCode === false );
         }
-    } 
+    }
     private static compile(
         str?: string, next?: ( str: string, isScript?: boolean ) => void
     ): SendBox {
@@ -252,11 +252,11 @@ class TemplateCore {
             throw new Error("No script found to compile....");
         }
         const context: { [x: string]: SendBox; } = {
-            thisNext: function (
+            thisNext: (
                 ctx: IContext,
-                next: ( ctx: IContext, body: string, isCompressed?: boolean ) => void,
+                _next: ( ctx: IContext, body: string, isCompressed?: boolean ) => void,
                 isCompressed?: boolean
-            ): void {
+            ): void => {
                 throw new Error( "Method not implemented." );
             }
         };

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -42,12 +42,6 @@ export interface IContext {
     transferRequest( toPath: string ): void;
     write( str: string ): void;
 }
-export interface ICrypto {
-    encryptStr( plainText: string ): string;
-    encryptUri( plainText: string ): string;
-    decryptStr( plainText: string ): string;
-    decryptUri( plainText: string ): string;
-}
 export interface IServerEncryption {
     encrypt( plainText: string ): string;
     decrypt( encryptedText: string ): string;
@@ -62,6 +56,7 @@ export interface IDatabaseConfig {
     dbConn: { database: string, password: string };
 }
 export interface IServerConfig {
+    // [Symbol.iterator](): Iterator<IServerConfig>;
     [key: string]: any;
     Author: string;
     appName: string;
@@ -117,11 +112,11 @@ export interface IServerConfig {
 export interface ISowServer {
     [key: string]: any;
     copyright(): string;
-    encryptStr( plainText: string ): string;
-    decryptStr( encryptedText: string ): string;
     log: ILogger;
     createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext;
     config: IServerConfig;
+    initilize(): void;
+    implimentConfig( config: { [x: string]: any; } ): void;
     setHeader( res: IResponse ): void;
     parseCookie( cook: { [x: string]: string; } | string ): { [x: string]: string; };
     parseSession( cookies: { [x: string]: string; } | string ): ISession;
@@ -134,7 +129,7 @@ export interface ISowServer {
     escape( unsafe?: string ): string;
     addVirtualDir(
         route: string, root: string,
-        evt?: HandlerFunc
+        evt?: ( ctx: IContext ) => void
     ): void;
     virtualInfo( route: string ): {
         route: string;
@@ -146,9 +141,8 @@ export interface ISowServer {
     getRoot(): string;
     getPublic(): string;
     encryption: IServerEncryption;
-    crypto: ICrypto;
     db: { [x: string]: ISowDatabaseType; };
-    on( ev: 'shutdown', handler: Function ): void;
+    on( ev: 'shutdown', handler: ()=>void ): void;
 }
 export type IViewHandler = ( app: IApps, controller: IController, server: ISowServer ) => void;
 export interface ISowView {
@@ -159,15 +153,16 @@ export interface ISowView {
     Init: IViewHandler;
 }
 // -------------------------------------------------------
-const _Error = ( msg: string ): Error => {
-    if ( process.env.IISNODE_VERSION || process.env.PORT ) {
-        console.log( msg );
-    } else {
-        console.log( '\x1b[31m', msg );
-        console.log( '\x1b[0m' );
-    }
-    return new Error( msg );
-}
+// const _Error = ( msg: string ): Error => {
+//    if ( process.env.SCRIPT === "TS" ) return new Error( msg );
+//    if ( process.env.IISNODE_VERSION || process.env.PORT ) {
+//        console.log( msg );
+//    } else {
+//        console.log( '\x1b[31m', msg );
+//        console.log( '\x1b[0m' );
+//    }
+//    return new Error( msg );
+// }
 const cleanContext = ( ctx: IContext ): void => {
     delete ctx.server; delete ctx.res;
     delete ctx.req; delete ctx.path;
@@ -179,18 +174,18 @@ function isDefined<T>( a: T | null | undefined ): a is T {
     return a !== null && a !== undefined;
 }
 const parseMaxAge = ( maxAge: any ): number => {
-    if ( typeof ( maxAge ) !== "string" ) throw _Error( `Invalid maxAage...` );
+    if ( typeof ( maxAge ) !== "string" ) throw new Error( `Invalid maxAage...` );
     let add: number = 0;
     const length: number = maxAge.length;
-    let type: string = maxAge.charAt( length - 1 ).toUpperCase();
+    const type: string = maxAge.charAt( length - 1 ).toUpperCase();
     // tslint:disable-next-line: radix
     add = parseInt( maxAge.substring( 0, length - 1 ) );
-    if ( isNaN( add ) ) throw _Error( `Invalid maxAage format ${maxAge}` );
+    if ( isNaN( add ) ) throw new Error( `Invalid maxAage format ${maxAge}` );
     switch ( type ) {
         case "D": return ( ( 24 * add ) * 60 * 60 * 1000 );
         case "H": return ( add * 60 * 60 * 1000 );
         case "M": return ( add * 60 * 1000 );
-        default: throw _Error( `Invalid maxAage format ${maxAge}` );
+        default: throw new Error( `Invalid maxAage format ${maxAge}` );
     }
 }
 const _formatPath = ( () => {
@@ -223,12 +218,12 @@ const _formatPath = ( () => {
             m = m.replace( /\$/gi, "" ).replace( /\//gi, "" );
             const rs = _exportObj( server, m.replace( /\$/gi, "" ).replace( /\//gi, "" ) );
             if ( !rs.value ) {
-                throw _Error( `Invalid key ${m}` );
+                throw new Error( `Invalid key ${m}` );
             }
             return `${rs.value}/`;
         } ) );
         if ( !_fs.existsSync( absPath ) )
-            throw _Error( `No file found\r\nPath:${absPath}\r\nName:${name}` );
+            throw new Error( `No file found\r\nPath:${absPath}\r\nName:${name}` );
         return absPath;
     };
 } )();
@@ -395,23 +390,6 @@ export class ServerConfig implements IServerConfig {
     }
 }
 // tslint:disable-next-line: max-classes-per-file
-export class Crypto implements ICrypto {
-    // tslint:disable-next-line: no-empty
-    constructor() { }
-    encryptStr( plainText: string ): string {
-        throw new Error( "Method not implemented." );
-    }
-    encryptUri( plainText: string ): string {
-        throw new Error( "Method not implemented." );
-    }
-    decryptStr( plainText: string ): string {
-        throw new Error( "Method not implemented." );
-    }
-    decryptUri( plainText: string ): string {
-        throw new Error( "Method not implemented." );
-    }
-}
-// tslint:disable-next-line: max-classes-per-file
 export class SowServer implements ISowServer {
     [key: string]: any;
     config: IServerConfig;
@@ -421,7 +399,6 @@ export class SowServer implements ISowServer {
     publicregx: RegExp;
     nodeModuleregx: RegExp;
     log: ILogger;
-    crypto: ICrypto;
     userInteractive: boolean;
     port: string | number;
     db: { [x: string]: ISowDatabaseType; };
@@ -431,7 +408,7 @@ export class SowServer implements ISowServer {
         this.port = 0;
         if ( !wwwName ) {
             if ( process.env.IISNODE_VERSION ) {
-                throw _Error( `
+                throw new Error( `
 web.config error.\r\nInvalid web.config defined.
 Behind the <configuration> tag in your web.config add this
   <appSettings>
@@ -441,7 +418,7 @@ your-app-root | directory name should be exists here
 ${appRoot}\\www_public
 ` );
             }
-            throw _Error( `Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root` );
+            throw new Error( `Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root` );
         }
         this.root = appRoot;
         this.public = wwwName.toString();
@@ -449,18 +426,18 @@ ${appRoot}\\www_public
         this.db = {};
         const absPath: string = _path.resolve( `${this.root}/${this.public}/config/app.config.json` );
         if ( !_fs.existsSync( absPath ) ) {
-            throw _Error( `No config file found in ${absPath}` );
+            throw new Error( `No config file found in ${absPath}` );
         }
         const config = Util.readJsonAsync( absPath );
         if ( !config ) {
-            throw _Error( `Invalid config file defined.\r\nConfig: ${absPath}` );
+            throw new Error( `Invalid config file defined.\r\nConfig: ${absPath}` );
         }
         Schema.Validate( config );
         // if ( config.hasOwnProperty( "Author" ) ) throw _Error( "You should not set Author property..." );
         if ( this.public !== config.hostInfo.root ) {
-            throw _Error( `Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...` );
+            throw new Error( `Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...` );
         }
-        const myParent = _path.resolve( __dirname, '..' );
+        const myParent = process.env.SCRIPT === "TS" ? _path.join( _path.resolve( __dirname, '..' ), "/dist/" ) : _path.resolve( __dirname, '..' );
         this.errorPage = {
             "404": _path.resolve( `${myParent}/error_page/404.html` ),
             "401": _path.resolve( `${myParent}/error_page/401.html` ),
@@ -475,11 +452,10 @@ ${appRoot}\\www_public
         this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         this.initilize();
         this.log = new Logger( `./log/`, this.public, void 0, this.userInteractive, this.config.isDebug );
-        this.crypto = new Crypto();
         this.encryption = new ServerEncryption( this.config.encryptionKey );
         return;
     }
-    on(ev: "shutdown", handler: Function): void {
+    on(ev: "shutdown", handler: ()=>void): void {
         throw new Error("Method not implemented.");
     }
     getHttpServer(): Server {
@@ -493,44 +469,44 @@ ${appRoot}\\www_public
     }
     implimentConfig( config: { [x: string]: any; } ): void {
         if ( !config.encryptionKey )
-            throw _Error( "Security risk... encryption key required...." );
+            throw new Error( "Security risk... encryption key required...." );
         if ( !Util.isArrayLike( config.hiddenDirectory ) ) {
-            throw _Error( 'hidden_directory should be Array...' );
+            throw new Error( 'hidden_directory should be Array...' );
         }
         if ( process.env.IISNODE_VERSION && process.env.PORT ) {
             this.port = process.env.PORT || 8080;
         } else {
             if ( !this.config.hostInfo.port )
-                throw _Error( 'Listener port required...' );
+                throw new Error( 'Listener port required...' );
             this.port = this.config.hostInfo.port;
         }
         this.config.encryptionKey = Encryption.updateCryptoKeyIV( config.encryptionKey );
         if ( this.config.session ) {
             if ( !this.config.session.key )
-                throw _Error( "Security risk... Session encryption key required...." );
+                throw new Error( "Security risk... Session encryption key required...." );
             this.config.session.key = Encryption.updateCryptoKeyIV( config.session.key );
             if ( !this.config.session.maxAge )
                 config.session.maxAge = "1d";
             if ( typeof ( this.config.session.maxAge ) !== "string" )
-                throw _Error( `Invalid maxAage format ${config.session.maxAge}. maxAge should "1d|1h|1m" formatted...` );
+                throw new Error( `Invalid maxAage format ${config.session.maxAge}. maxAge should "1d|1h|1m" formatted...` );
             this.config.session.maxAge = parseMaxAge( config.session.maxAge );
         }
         if ( !this.config.cacheHeader ) {
-            throw _Error( "cacheHeader information required..." );
+            throw new Error( "cacheHeader information required..." );
         }
         this.config.cacheHeader.maxAge = parseMaxAge( config.cacheHeader.maxAge );
     }
-    initilize() {
+    initilize(): void {
         if ( isDefined( this.config.database ) ) {
             if ( !Util.isArrayLike( this.config.database ) )
-                throw _Error( "database cofig should be Array...." );
+                throw new Error( "database cofig should be Array...." );
             this.config.database.forEach( ( conf: IDatabaseConfig ): void => {
                 if ( !conf.module )
-                    throw _Error( "database module name requeired." );
+                    throw new Error( "database module name requeired." );
                 if ( this.db[conf.module] )
-                    throw _Error( `database module ${conf.module} already exists.` );
+                    throw new Error( `database module ${conf.module} already exists.` );
                 if ( !conf.path )
-                    throw _Error( `No path defined for module ${conf.module}` );
+                    throw new Error( `No path defined for module ${conf.module}` );
                 conf.path = this.formatPath( conf.path );
                 this.db[conf.module] = new ( require( conf.path ) )( conf.dbConn )
             } );
@@ -544,7 +520,7 @@ ${appRoot}\\www_public
             }
         } else {
             if ( Util.isPlainObject( this.config.errorPage ) === false )
-                throw _Error( "errorPage property should be Object." );
+                throw new Error( "errorPage property should be Object." );
             for ( const property in this.config.errorPage ) {
                 if ( !this.errorPage.hasOwnProperty( property ) ) continue;
                 const path = this.config.errorPage[property];
@@ -553,7 +529,7 @@ ${appRoot}\\www_public
                 // tslint:disable-next-line: variable-name
                 const status_code = HttpStatus.fromPath( path, code );
                 if ( !status_code || status_code !== code || !HttpStatus.isErrorCode( status_code ) ) {
-                    throw _Error( `Invalid Server/Client error page... ${path} and code ${code}}` );
+                    throw new Error( `Invalid Server/Client error page... ${path} and code ${code}}` );
                 }
                 this.config.errorPage[property] = this.formatPath( path );
             }
@@ -566,13 +542,7 @@ ${appRoot}\\www_public
         } );
     }
     copyright(): string {
-        return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/rktuxyn). All rights reserved*/\r\n';
-    }
-    encryptStr( plainText: string ): string {
-        return Encryption.encrypt( plainText, this.config.encryptionKey );
-    }
-    decryptStr( encryptedText: string ): string {
-        return Encryption.decrypt( encryptedText, this.config.encryptionKey );
+        return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext {
         throw new Error( "Method not implemented." );
@@ -643,7 +613,7 @@ ${appRoot}\\www_public
         }
     }
     transferRequest( ctx: IContext, path: string, status?: IResInfo ): void {
-        if ( !ctx ) throw _Error( "No context argument defined..." );
+        if ( !ctx ) throw new Error( "No context argument defined..." );
         if ( !status ) status = HttpStatus.getResInfo( path, 200 );
         if ( status.isErrorCode && status.isInternalErrorCode === false ) {
             this.addError( ctx, `${status.code} ${HttpStatus.getDescription( status.code )}` );
@@ -704,7 +674,7 @@ ${appRoot}\\www_public
             .replace( /\r\n/gi, "<br/>" )
             .replace( /\n/gi, "<br/>" );
     }
-    addVirtualDir( route: string, root: string, evt?: HandlerFunc ): void {
+    addVirtualDir( route: string, root: string, evt?: ( ctx: IContext ) => void ): void {
         throw new Error( "Method not implemented." );
     }
     virtualInfo( _route: string ): { route: string; root: string; } | void {
@@ -714,7 +684,7 @@ ${appRoot}\\www_public
         return _formatPath( this, name );
     }
     createBundle( str: string ): string {
-        if ( !str ) throw _Error( "No string found to create bundle..." )
+        if ( !str ) throw new Error( "No string found to create bundle..." )
         return Encryption.encryptUri( str, this.config.encryptionKey );
     }
 }
@@ -730,13 +700,15 @@ declare global {
         }
     }
 }
-export function initilizeServer( appRoot: string, wwwName?: string ): {
-    init: () => IApps;
+export interface IAppUtility {
+    init: ( afterViewReg?: () => void ) => IApps;
     readonly public: string;
-    readonly port: string | number,
-    readonly socketPath: string,
-    log: ILogger
-} {
+    readonly port: string | number;
+    readonly socketPath: string;
+    readonly log: ILogger;
+    readonly server: ISowServer;
+}
+export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtility {
     if ( !global.sow || ( global.sow && !global.sow.server ) ) {
         global.sow = {
             server: {
@@ -748,18 +720,6 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
     if ( global.sow.server.isInitilized ) throw new Error( "Server instance can initilize 1 time..." );
     global.sow.server.isInitilized = true;
     const _server: SowServer = new SowServer( appRoot, wwwName );
-    _server.crypto.encryptStr = ( plainText: string ): string => {
-        return Encryption.encrypt( plainText, _server.config.encryptionKey );
-    };
-    _server.crypto.encryptUri = ( plainText: string ): string => {
-        return Encryption.encryptUri( plainText, _server.config.encryptionKey );
-    };
-    _server.crypto.decryptStr = ( plainText: string ): string => {
-        return Encryption.decrypt( plainText, _server.config.encryptionKey );
-    };
-    _server.crypto.decryptUri = ( plainText: string ): string => {
-        return Encryption.decryptUri( plainText, _server.config.encryptionKey );
-    };
     _server.createContext = ( req: IRequest, res: IResponse, next: NextFunction ): IContext => {
         const _context = new Context( _server, req, res, req.session );
         _context.path = decodeURIComponent( req.path ); _context.root = _context.path;
@@ -768,11 +728,6 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
         _context.redirect = ( url: string ): void => {
             return res.status( 301 ).redirect( url ), void 0;
         }
-        // Util.extend( _context, {
-        //    get server() {
-        //        return _server;
-        //    }
-        // } );
         _context.transferRequest = ( path: string ): void => {
             const status = HttpStatus.getResInfo( path, 200 );
             _server.log[status.isErrorCode ? "error" : "success"]( `Send ${status.code} ${req.path}` ).reset();
@@ -783,7 +738,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
     const _processNext = {
         render: ( code: number | undefined, ctx: IContext, next: NextFunction, transfer?: boolean ): any => {
             if ( transfer && typeof ( transfer ) !== "boolean" ) {
-                throw _Error( "transfer argument should be ?boolean...." );
+                throw new Error( "transfer argument should be ?boolean...." );
             }
             if ( !code || code < 0 || code === 200 || code === 304 || ( typeof ( transfer ) === "boolean" && transfer === false ) ) {
                 if ( _server.config.isDebug ) {
@@ -810,8 +765,8 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
             return ctx.res.status( code ).end( `No description found for ${code}` ), next();
         }
     }
-    const _controller: IController = new Controller( );
-    function initilize(): IApps {
+    const _controller: IController = new Controller();
+    function initilize( afterViewReg?: () => void ): IApps {
         const _app: IApps = sowAppCore();
         global.sow.server.registerView = ( next: ( app: IApps, controller: IController, server: ISowServer ) => void ): void => {
             return next( _app, _controller, _server );
@@ -819,7 +774,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
         _server.getHttpServer = (): Server => {
             return _app.getHttpServer();
         };
-        _server.on = ( ev: "shutdown", handler: Function ): void => {
+        _server.on = ( ev: "shutdown", handler: ()=>void ): void => {
             _app.on( ev, handler );
         };
         _app.prerequisites( ( req: IRequest, res: IResponse, next: NextFunction ): void => {
@@ -841,10 +796,10 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                 route: v.route,
                 root: v.root
             };
-        }
-        _server.addVirtualDir = ( route: string, root: string, evt?: HandlerFunc ): void => {
+        };
+        _server.addVirtualDir = ( route: string, root: string, evt?: ( ctx: IContext ) => void ): void => {
             if ( _virtualDir.some( ( a ) => a.route === route ) )
-                throw _Error( `You already add this virtual route ${route}` );
+                throw new Error( `You already add this virtual route ${route}` );
             const _processHandler = ( req: IRequest, res: IResponse, next: NextFunction, forWord: ( ctx: IContext ) => void ) => {
                 const _ctx = _server.createContext( req, res, next );
                 const _next = next;
@@ -870,7 +825,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                 _app.use( route, ( req: IRequest, res: IResponse, next: NextFunction ) => {
                     _processHandler( req, res, next, ( ctx: IContext ): void => {
                         _server.log.success( `Send ${200} ${route}${req.path}` ).reset();
-                        return evt( req, res, ctx.next );
+                        return evt( ctx );
                     } );
                 } );
             }
@@ -902,10 +857,11 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
                 return sowView.Init( _app, _controller, _server );
             } );
         }
+        if ( afterViewReg ) afterViewReg();
         _app.onError( ( req: IRequest, res: IResponse, err?: number | Error ): void => {
             if ( res.headersSent ) return;
-            // tslint:disable-next-line: no-shadowed-variable
-            const _context = _server.createContext( req, res, ( err?: Error ): void => {
+            const _context = _server.createContext( req, res, ( _err?: Error ): void => {
+                if ( res.headersSent ) return;
                 res.writeHead( 404, { 'Content-Type': 'text/html' } );
                 res.end( "Nothing found...." );
             } );
@@ -944,6 +900,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): {
         get public() { return _server.public; },
         get port() { return _server.port; },
         get log() { return _server.log; },
-        get socketPath() { return _server.config.socketPath || ""; }
+        get socketPath() { return _server.config.socketPath || ""; },
+        get server() { return _server; }
     }
 }

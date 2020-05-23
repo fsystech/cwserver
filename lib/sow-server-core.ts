@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -64,13 +64,14 @@ export interface IApplication {
     emit( ev: 'prepare' ): boolean;
 }
 export interface IApps {
-    use( ...args: any[] ): IApps;
+    use( handler: HandlerFunc ): IApps;
+    use( route: string, handler: HandlerFunc ): IApps;
     listen( handle: any, listeningListener?: () => void ): IApps;
     handleRequest( req: IRequest, res: IResponse ): IApps;
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps;
     getHttpServer(): Server;
     onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
-    on( ev: 'shutdown', handler: Function ): IApps;
+    on( ev: 'shutdown', handler: ()=>void ): IApps;
     shutdown( next?: ( err?: Error ) => void ): Promise<void> | void;
 }
 const getCook = ( cooks: string[] ): { [x: string]: string; } => {
@@ -206,6 +207,7 @@ const getRouteHandler = (
     regexp: RegExp | undefined
 } | undefined => {
     const router = handlers.filter( a => {
+        if ( a.route && a.route === reqPath ) return true;
         if ( a.regexp )
             return a.regexp.test( reqPath );
         return false;
@@ -227,11 +229,12 @@ const getRouteHandler = (
     }
     return router[0];
 }
+const pathRegx = new RegExp( '/', "gi" );
 function getRouteExp( route: string ): RegExp {
     if ( route.charAt( route.length - 1 ) === '/' ) {
         route = route.substring( 0, route.length - 2 );
     }
-    route = route.replace( /\//gi, "\\/" );
+    route = route.replace( pathRegx, "\\/" );
     return new RegExp( `^${route}\/?(?=\/|$)`, "gi" );
 }
 // tslint:disable-next-line: max-classes-per-file
@@ -250,15 +253,10 @@ class Application extends EventEmitter implements IApplication {
         } );
     }
     shutdown(): Promise<void> {
-        let resolveTerminating: { (): void; (value?: void | PromiseLike<void> | undefined): void; };
+        let resolveTerminating: (value?: void | PromiseLike<void> | undefined)=> void;
         // let rejectTerminating: { (arg0: Error): void; (reason?: any): void; };
         const promise = new Promise<void>( ( resolve, reject ) => {
             resolveTerminating = resolve;
-        } );
-        this.server.on( 'request', ( incomingMessage, outgoingMessage ) => {
-            if ( !outgoingMessage.headersSent ) {
-                outgoingMessage.setHeader( 'connection', 'close' );
-            }
         } );
         this.server.close().once( 'close', () => resolveTerminating() );
         return promise;
@@ -283,7 +281,11 @@ class Application extends EventEmitter implements IApplication {
             if ( layer ) {
                 if ( layer.regexp )
                     req.path = req.path.replace( layer.regexp, "" );
-                return layer.handler.call( this, req, res, _next );
+                try {
+                    return layer.handler.call( this, req, res, _next );
+                } catch ( e ) {
+                    return next( e );
+                }
             }
             return _next();
         }

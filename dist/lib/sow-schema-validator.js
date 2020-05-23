@@ -1,14 +1,27 @@
 "use strict";
+var __createBinding = ( this && this.__createBinding ) || ( Object.create ? ( function ( o, m, k, k2 ) {
+    if ( k2 === undefined ) k2 = k;
+    Object.defineProperty( o, k2, { enumerable: true, get: function () { return m[k]; } } );
+} ) : ( function ( o, m, k, k2 ) {
+    if ( k2 === undefined ) k2 = k;
+    o[k2] = m[k];
+} ) );
+var __setModuleDefault = ( this && this.__setModuleDefault ) || ( Object.create ? ( function ( o, v ) {
+    Object.defineProperty( o, "default", { enumerable: true, value: v } );
+} ) : function ( o, v ) {
+    o["default"] = v;
+} );
 var __importStar = ( this && this.__importStar ) || function ( mod ) {
     if ( mod && mod.__esModule ) return mod;
     var result = {};
-    if ( mod != null ) for ( var k in mod ) if ( Object.hasOwnProperty.call( mod, k ) ) result[k] = mod[k];
-    result["default"] = mod;
+    if ( mod != null ) for ( var k in mod ) if ( Object.hasOwnProperty.call( mod, k ) ) __createBinding( result, mod, k );
+    __setModuleDefault( result, mod );
     return result;
 };
 Object.defineProperty( exports, "__esModule", { value: true } );
+exports.Schema = void 0;
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -137,7 +150,7 @@ function schemaValidate( dataPath, schemaProperties, configProperties, additiona
 // tslint:disable-next-line: no-namespace
 ( function ( Schema ) {
     function Validate( config ) {
-        const parent = _path.resolve( __dirname, '../..' );
+        const parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ) : _path.resolve( __dirname, '../..' );
         const absPath = _path.resolve( `${parent}/schema.json` );
         const schema = readSchemaAsync( absPath );
         const schemaRoot = _supportSchema[schema.$schema];

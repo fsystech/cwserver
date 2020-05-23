@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty( exports, "__esModule", { value: true } );
+exports.SowHttpCache = void 0;
 const sow_static_1 = require( "./sow-static" );
 // tslint:disable-next-line: no-namespace
 ( function ( SowHttpCache ) {

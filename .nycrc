@@ -1,0 +1,30 @@
+{
+  "reporter": [
+    "text",
+    "text-summary",
+    "html",
+    "lcov"
+  ],
+  "extension": [
+    ".ts"
+  ],
+  "include": [
+    "**/lib/*.ts",
+    "**/index.ts"
+  ],
+  "exclude": [
+    "coverage/**",
+    "**/lib/sow-project-template.ts",
+    "**/*.d.ts",
+    "**/dist/**/*",
+    "**/node_modules/**/*",
+    "**/test/**/*"
+  ],
+  "require": [
+    "ts-node/register"
+  ],
+  "sourceMap": true,
+  "instrument": true,
+  "check-coverage": false,
+  "cache": true
+}

@@ -1,14 +1,27 @@
 "use strict";
+var __createBinding = ( this && this.__createBinding ) || ( Object.create ? ( function ( o, m, k, k2 ) {
+    if ( k2 === undefined ) k2 = k;
+    Object.defineProperty( o, k2, { enumerable: true, get: function () { return m[k]; } } );
+} ) : ( function ( o, m, k, k2 ) {
+    if ( k2 === undefined ) k2 = k;
+    o[k2] = m[k];
+} ) );
+var __setModuleDefault = ( this && this.__setModuleDefault ) || ( Object.create ? ( function ( o, v ) {
+    Object.defineProperty( o, "default", { enumerable: true, value: v } );
+} ) : function ( o, v ) {
+    o["default"] = v;
+} );
 var __importStar = ( this && this.__importStar ) || function ( mod ) {
     if ( mod && mod.__esModule ) return mod;
     var result = {};
-    if ( mod != null ) for ( var k in mod ) if ( Object.hasOwnProperty.call( mod, k ) ) result[k] = mod[k];
-    result["default"] = mod;
+    if ( mod != null ) for ( var k in mod ) if ( Object.hasOwnProperty.call( mod, k ) ) __createBinding( result, mod, k );
+    __setModuleDefault( result, mod );
     return result;
 };
 Object.defineProperty( exports, "__esModule", { value: true } );
+exports.Template = void 0;
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -146,7 +159,7 @@ class TemplateParser {
         const templats = [];
         do {
             const match = /#extends([\s\S]+?)\r\n/gi.exec( str );
-            if ( !match || match === null ) {
+            if ( !match ) {
                 // no more master template extends
                 templats.push( str );
                 break;
@@ -225,7 +238,7 @@ class TemplateCore {
             throw new Error( "No script found to compile...." );
         }
         const context = {
-            thisNext: function ( ctx, next, isCompressed ) {
+            thisNext: ( ctx, _next, isCompressed ) => {
                 throw new Error( "Method not implemented." );
             }
         };

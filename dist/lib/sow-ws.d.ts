@@ -1,8 +1,3 @@
-/*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
-* Copyrights licensed under the New BSD License.
-* See the accompanying LICENSE file for terms.
-*/
 /// <reference types="node" />
 import { ISowServer } from './sow-server';
 import { ISession } from './sow-static';
@@ -28,37 +23,42 @@ interface Socket extends EventEmitter {
     json: Socket;
     volatile: Socket;
     broadcast: Socket;
-    to( room: string ): Socket;
-    in( room: string ): Socket;
-    use( fn: ( packet: any[], next: ( err?: any ) => void ) => void ): Socket;
-    send( ...args: any[] ): Socket;
-    write( ...args: any[] ): Socket;
-    join( name: string | string[], fn?: ( err?: any ) => void ): Socket;
-    leave( name: string, fn?: Function ): Socket;
+    to(room: string): Socket;
+    in(room: string): Socket;
+    use(fn: (packet: any[], next: (err?: any) => void) => void): Socket;
+    send(...args: any[]): Socket;
+    write(...args: any[]): Socket;
+    join(name: string | string[], fn?: (err?: any) => void): Socket;
+    leave(name: string, fn?: () => void): Socket;
     leaveAll(): void;
-    disconnect( close?: boolean ): Socket;
-    listeners( event: string ): Function[];
-    compress( compress: boolean ): Socket;
-    error( err: any ): void;
+    disconnect(close?: boolean): Socket;
+    listeners(event: string): (() => void)[];
+    compress(compress: boolean): Socket;
+    error(err: any): void;
 }
 interface Namespace {
     _path: string;
-    close( ...args: any[] ): void;
-    use( fn: ( socket: Socket, fn: ( err?: any ) => void ) => void ): Namespace;
-    on( event: 'connect', listener: ( socket: Socket ) => void ): Namespace;
-    on( event: 'connection', listener: ( socket: Socket ) => void ): this;
+    close(...args: any[]): void;
+    use(fn: (socket: Socket, fn: (err?: any) => void) => void): Namespace;
+    on(event: 'connect', listener: (socket: Socket) => void): Namespace;
+    on(event: 'connection', listener: (socket: Socket) => void): this;
 }
-declare type ioServer = ( server: any, opt: {
+declare type ioServer = (server: any, opt: {
     path?: string;
     pingTimeout?: number;
     cookie?: boolean;
-} ) => Namespace;
+}) => Namespace;
 /** [/socket.io blueprint] */
 export interface IWsClientInfo {
-    on( ev: 'getClient', handler: IWsClient ): void;
-    on( ev: 'disConnected', handler: IEvtHandler ): void;
-    on( ev: 'connected', handler: IEvtHandler ): void;
-    on( ev: 'beforeInitiateConnection', handler: IWsNext ): void;
+    on(ev: 'getClient', handler: IWsClient): void;
+    on(ev: 'disConnected' | 'connected', handler: IEvtHandler): void;
+    on(ev: 'beforeInitiateConnection', handler: IWsNext): void;
+    emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket): void;
+    getServerEvent(): {
+        [x: string]: any;
+    };
+    beforeInitiateConnection: IWsNext;
+    client: IWsClient;
 }
 export interface ISowSocketInfo {
     token: string;
@@ -70,50 +70,35 @@ export interface ISowSocketInfo {
     isReconnectd: boolean;
     group?: string;
     getSocket(): Socket;
-    sendMsg( method: string, data: any ): any;
+    sendMsg(method: string, data: any): any;
 }
 export interface ISowSocket {
-    isActiveSocket( token: string ): boolean;
-    getOwners( group?: string ): ISowSocketInfo[];
-    findByHash( hash: string ): ISowSocketInfo[];
-    findByLogin( loginId: string ): ISowSocketInfo[];
-    toList( sockets: ISowSocketInfo[] ): {
+    isActiveSocket(token: string): boolean;
+    getOwners(group?: string): ISowSocketInfo[];
+    findByHash(hash: string): ISowSocketInfo[];
+    findByLogin(loginId: string): ISowSocketInfo[];
+    toList(sockets: ISowSocketInfo[]): {
         [x: string]: any;
     }[];
-    getClientByExceptHash( exceptHash: string, group?: string ): ISowSocketInfo[];
-    getClientByExceptLogin( exceptLoginId: string, group?: string ): ISowSocketInfo[];
-    getClientByExceptToken( token: string, group?: string ): ISowSocketInfo[];
-    getSocket( token: string ): ISowSocketInfo | void;
-    removeSocket( token: string ): boolean;
-    sendMsg( token: string, method: string, data?: any ): boolean;
+    getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[];
+    getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[];
+    getClientByExceptToken(token: string, group?: string): ISowSocketInfo[];
+    getSocket(token: string): ISowSocketInfo | void;
+    removeSocket(token: string): boolean;
+    sendMsg(token: string, method: string, data?: any): boolean;
 }
-declare type IEvtHandler = ( me: ISowSocketInfo, wsServer: ISowSocket ) => void;
-declare type IWsNext = ( session: ISession, socket: Socket ) => void | boolean;
-declare type IWsClient = ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ) => {
+declare type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocket) => void;
+declare type IWsNext = (session: ISession, socket: Socket) => void | boolean;
+declare type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
     [x: string]: any;
 };
-declare class WsClientInfo implements IWsClientInfo {
-    beforeInitiateConnection: IWsNext;
-    client: IWsClient;
-    event: {
-        [id: string]: any;
-    };
-    constructor();
-    getServerEvent(): {
-        [x: string]: any;
-    }[];
-    on( ev: string, handler: any ): void;
-    emit( ev: 'disConnected', me: ISowSocketInfo, wsServer: ISowSocket ): void;
-    emit( ev: 'connected', me: ISowSocketInfo, wsServer: ISowSocket ): void;
-    emit( ev: 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket ): void;
-}
 export declare function wsClient(): IWsClientInfo;
 /** If you want to use it you've to install socket.io */
-export declare function socketInitilizer( server: ISowServer, wsClientInfo: WsClientInfo ): {
+export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
     isConnectd: boolean;
     wsEvent: {
         [x: string]: any;
-    }[];
-    create: ( ioserver: ioServer ) => void;
+    };
+    create: (ioserver: ioServer) => void;
 };
-export { };
+export {};

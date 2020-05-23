@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -14,7 +14,13 @@ export interface IController {
     get( route: string, next: AppHandler ): IController;
     post( route: string, next: AppHandler ): IController;
     processAny( ctx: IContext ): void;
+    reset(): void;
 }
+// interface IHander {
+//    appHandler: AppHandler;
+//    route: string;
+//    query: string[];
+// }
 const routeInfo: {
     any: { [x: string]: AppHandler };
     get: { [x: string]: AppHandler };
@@ -33,6 +39,14 @@ export class Controller implements IController {
     public httpMimeHandler: IHttpMimeHandler;
     constructor( ) {
         this.httpMimeHandler = new HttpMimeHandler();
+    }
+    reset(): void {
+        delete routeInfo.get;
+        delete routeInfo.post;
+        delete routeInfo.any;
+        routeInfo.get = {};
+        routeInfo.post = {};
+        routeInfo.any = {};
     }
     public get( route: string, next: AppHandler ): IController {
         if ( routeInfo.get[route] )

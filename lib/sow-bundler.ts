@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -43,7 +43,7 @@ class Bundlew {
 ||####################################################################################################################################||
 ||#  Sow 'Combiner'                                                                                                                  #||
 ||#  Version: 1.0.0.1; Build Date : Fri May 01, 2020 1:33:49 GMT+0600 (BDT)                                                          #||
-||#  Sow( https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/rktuxyn)). All rights reserved          #||
+||#  Sow( https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver)). All rights reserved          #||
 ||#  Email: mssclang@outlook.com;                                                                                                    #||
 ||####################################################################################################################################||
 ---------------------------------------------------------------------------------------------------------------------------------------
@@ -52,9 +52,7 @@ This 'Combiner' contains the following files:\n`;
     static getResContentType( ctEnum: ContentType ): string {
         if ( ctEnum === ContentType.JS )
             return "application/x-javascript; charset=utf-8";
-        if ( ctEnum === ContentType.CSS )
-            return "text/css";
-        throw new Error( "Unsupported content type...." );
+        return "text/css";
     }
     static getContentType( ct: string ): ContentType {
         switch ( ct.toLowerCase() ) {
@@ -80,12 +78,6 @@ This 'Combiner' contains the following files:\n`;
         server: ISowServer, str: string,
         lastChangeTime?: number | void ): IBundleInfo {
         const result: IBundleInfo = new BundleInfo();
-        if ( !str ) {
-            result.error = true;
-            result.blocked = false;
-            result.msg = "Invalid param";
-            return result;
-        }
         str = server.encryption.decryptUri( str );
         if ( !str ) {
             result.error = true;
@@ -335,7 +327,6 @@ This 'Combiner' contains the following files:\n`;
             ctx.res.end( buff );
             ctx.next( 200 );
         } ), void 0;
-        
     }
 }
 const isAcceptedEncoding = ( req: IRequest, name: string ): boolean => {

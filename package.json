@@ -1,6 +1,6 @@
 {
   "name": "cwserver",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "SOW Web Server (All in one) for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,10 +16,10 @@
   "homepage": "https://github.com/safeonlineworld/cwserver#readme",
   "license": "CC-BY-4.0",
   "scripts": {
-    "start": "node clean.js && tsc && node dist/server.js o_conference",
-    "test": "node dist/test.js",
-    "dev": "nodemon server.ts",
-    "test:mocha": "mocha dist/test.js"
+    "build": "node clean.js && tsc",
+    "lint": "tslint --project .",
+    "test:cov": "nyc _mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts",
+    "test:mocha": "_mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts"
   },
   "keywords": [
     "web",
@@ -34,8 +34,13 @@
   ],
   "devDependencies": {
     "@types/crypto-js": "^3.1.46",
+    "@types/expect": "^24.3.0",
+    "@types/mocha": "^7.0.2",
     "@types/node": "^8.0.14",
-    "nodemon": "^2.0.4",
+    "@types/socket.io-client": "^1.4.33",
+    "@types/superagent": "^4.1.7",
+    "mocha": "^7.1.2",
+    "nyc": "^15.0.1",
     "ts-node": "^8.10.1",
     "tslint": "^6.1.2",
     "typescript": "^3.9.2"

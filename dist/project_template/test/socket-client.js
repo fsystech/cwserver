@@ -1,4 +1,4 @@
-const { wsClient } = require( "../../index" )
+const { wsClient } = require( "../../../index" )
 const clientInfo = wsClient();
 clientInfo.on( "beforeInitiateConnection", ( session, socket ) => {
     /*if ( !session.isAuthenticated ) {

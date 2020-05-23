@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -11,7 +11,7 @@ export namespace Streamer {
     export function stream(
         ctx: IContext, absPath: string,
         mimeType: string, fstat: Stats
-    ): any {
+    ): void {
         const total = fstat.size;
         let openenedFile: ReadStream = Object.create( null );
         if ( ctx.req.headers.range ) {
@@ -40,12 +40,12 @@ export namespace Streamer {
             } );
             openenedFile.pipe( ctx.res );
         }
-        ctx.res.on( 'close', () => {
+        return ctx.res.on( 'close', () => {
             if ( openenedFile ) {
                 openenedFile.unpipe( ctx.res );
                 openenedFile.close();
             }
             ctx.next( 200 );
-        } );
+        } ), void 0;
     }
 }

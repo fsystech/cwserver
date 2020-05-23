@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -81,7 +81,7 @@ const _group: { [x: string]: { type: string, error: boolean }; } = {
 export class HttpStatus {
     static get statusCode(): { [x: string]: number; } { return HttpStatusCode; }
     static getDescription( statusCode: number ): string {
-        for ( let description in HttpStatusCode ) {
+        for ( const description in HttpStatusCode ) {
             if ( HttpStatusCode[description] === statusCode ) return description;
         }
         return `Invalid ==> ${statusCode}...`;
@@ -102,7 +102,7 @@ export class HttpStatus {
         return statusCode;
     }
     static isValidCode( statusCode: number ): boolean {
-        for ( let name in HttpStatusCode ) {
+        for ( const name in HttpStatusCode ) {
             if ( HttpStatusCode[name] === statusCode ) return true;
         }
         return false;
