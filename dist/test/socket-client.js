@@ -18,7 +18,7 @@ clientInfo.on("getClient", (me, session, wsServer, server) => {
         'test-msg': (data) => {
             expect_1.default(me.getSocket()).toBeDefined();
             expect_1.default(wsServer.isActiveSocket(me.token)).toEqual(true);
-            expect_1.default(wsServer.getOwners(me.group).length).toEqual(0);
+            expect_1.default(wsServer.getOwners(me.group || "no_group").length).toEqual(0);
             expect_1.default(wsServer.getOwners().length).toEqual(0);
             expect_1.default(wsServer.findByHash(me.hash || "no_hash").length).toEqual(0);
             expect_1.default(wsServer.findByLogin(me.loginId || "un_authorized").length).toEqual(0);
@@ -26,6 +26,7 @@ clientInfo.on("getClient", (me, session, wsServer, server) => {
             expect_1.default(wsServer.getClientByExceptHash(me.hash || "no_hash", me.group || "no_group").length).toEqual(0);
             expect_1.default(wsServer.getClientByExceptLogin(me.loginId || "un_authorized").length).toBeGreaterThan(0);
             expect_1.default(wsServer.getClientByExceptLogin(me.loginId || "un_authorized", me.group || "no_group").length).toEqual(0);
+            expect_1.default(wsServer.getClientByExceptToken(me.token, me.group || "no_group").length).toEqual(0);
             return wsServer.sendMsg(me.token, "on-test-msg", data);
         }
     };
