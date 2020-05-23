@@ -3,6 +3,7 @@
 [![npm version](https://badge.fury.io/js/cwserver.svg)](https://badge.fury.io/js/cwserver)
 ![Downloads](https://img.shields.io/npm/dt/cwserver)
 [![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/safeonlineworld/cwserver.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/safeonlineworld/cwserver/context:javascript)
+[![Coverage Status](https://coveralls.io/repos/github/safeonlineworld/cwserver/badge.svg?branch=master)](https://coveralls.io/github/safeonlineworld/cwserver?branch=master)
 
 Install ```cwserver``` by this command ```npm i cwserver```<br/>
 Create ```createProjectTemplate.js``` as following
