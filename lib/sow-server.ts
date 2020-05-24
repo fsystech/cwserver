@@ -8,7 +8,7 @@ import {
     ISession, IResInfo
 } from "./sow-static";
 import {
-    NextFunction, IApps, HandlerFunc,
+    NextFunction, IApps,
     IRequest, IResponse,
     App as sowAppCore
 } from './sow-server-core';
