@@ -635,7 +635,7 @@ describe( "cwserver-socket-io-implementation", () => {
 describe( "cwserver-echo", () => {
     it( 'echo-server', ( done ) => {
         const reqMd5 = cwserver.md5( "Test" );
-        const hex = cwserver.Encryption.convert( "utf8", "hex" )( reqMd5 );
+        const hex = cwserver.Encryption.utf8ToHex( reqMd5 );
         app.listen( appUtility.port, () => {
             request
                 .post( `http://localhost:${appUtility.port}/echo` )

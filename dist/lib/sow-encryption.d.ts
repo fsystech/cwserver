@@ -13,7 +13,6 @@ export declare class CryptoInfo implements ICryptoInfo {
     constructor();
 }
 export declare namespace Encryption {
-    function convert(from: string, to: string): (str: string) => string;
     function utf8ToHex(str: string): string;
     function hexToUtf8(str: string): string;
     function toMd5(str: string): string;

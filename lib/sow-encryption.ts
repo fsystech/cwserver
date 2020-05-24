@@ -28,9 +28,6 @@ export class CryptoInfo implements ICryptoInfo {
 // tslint:disable-next-line: max-classes-per-file
 // tslint:disable-next-line: no-namespace
 export namespace Encryption {
-    export function convert( from: string, to: string ): ( str: string ) => string {
-        return str => Buffer.from( str, from ).toString( to );
-    }
     export function utf8ToHex( str: string) {
         return Buffer.from( str, 'utf8' ).toString( 'hex' );
     }

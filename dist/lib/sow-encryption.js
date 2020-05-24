@@ -46,10 +46,6 @@ exports.CryptoInfo = CryptoInfo;
 // tslint:disable-next-line: max-classes-per-file
 // tslint:disable-next-line: no-namespace
 ( function ( Encryption ) {
-    function convert( from, to ) {
-        return str => Buffer.from( str, from ).toString( to );
-    }
-    Encryption.convert = convert;
     function utf8ToHex( str ) {
         return Buffer.from( str, 'utf8' ).toString( 'hex' );
     }
