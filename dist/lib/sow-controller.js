@@ -40,6 +40,8 @@ class Controller {
     get(route, next) {
         if (routeInfo.get[route])
             throw new Error(`Duplicate get route defined ${route}`);
+        if (routeInfo.any[route])
+            throw new Error(`Duplicate get route defined ${route}`);
         return routeInfo.get[route] = next, this;
     }
     post(route, next) {
@@ -73,7 +75,7 @@ class Controller {
             return ctx.next(404, true);
         }
         else {
-            if (ctx.server.config.defaultExt) {
+            if (ctx.server.config.defaultExt && ctx.server.config.defaultExt.length > 0) {
                 let path = "";
                 if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
                     for (const name of ctx.server.config.defaultDoc) {
@@ -129,3 +131,4 @@ class Controller {
     }
 }
 exports.Controller = Controller;
+//# sourceMappingURL=sow-controller.js.map

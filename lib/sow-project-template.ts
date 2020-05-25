@@ -8,19 +8,15 @@ import * as _fs from 'fs';
 import * as _path from 'path';
 import { ConsoleColor } from './sow-logger';
 import { Util } from './sow-util';
-const formatPath = ( path: string ): string => {
-	if ( process.platform === "win32" )
-		return path.replace( /\//gi, "\\" );
-	return path.replace( /\\/gi, "/" );
-}
 export function createProjectTemplate( settings: {
 	appRoot: string;
 	projectRoot: string;
 	allExample?: boolean;
 	force?: boolean;
 	isTest?: boolean;
-} ): boolean {
-	if ( settings.isTest === false ) {
+} ): void {
+	const isTest: boolean = typeof ( settings.isTest ) === "boolean" && settings.isTest === true;
+	if ( isTest === false ) {
 		console.log( ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}` );
 	}
 	const myRoot: string = _path.resolve( __dirname, '..' );
@@ -33,7 +29,7 @@ export function createProjectTemplate( settings: {
 		throw new Error( `Project template not found in ${templateRoot}\r\nPlease uninstall and install again 'cwserver'` );
 	const appRoot: string = _path.resolve( settings.appRoot );
 	if ( !_fs.existsSync( appRoot ) ) {
-		if ( !settings.isTest ) {
+		if ( !isTest ) {
 			throw new Error( `App Root not found ${appRoot}\r\nprojectDef.projectRoot like as __dirname` );
 		}
 		Util.mkdirSync( appRoot );
@@ -71,18 +67,24 @@ export function createProjectTemplate( settings: {
 		console.log( ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/lib/` );
 		Util.copySync( _path.resolve( `${templateRoot}/lib/` ), _path.resolve( `${projectRoot}/lib/` ) );
 	}
-	if ( settings.isTest === true ) {
+	if ( isTest ) {
 		Util.copyFileSync( _path.resolve( `${templateRoot}/test/app.config.json` ), _path.resolve( `${projectRoot}/config/app.config.json` ) );
 		Util.copyFileSync( _path.resolve( `${templateRoot}/test/test.js` ), _path.resolve( `${projectRoot}/lib/view/test.js` ) );
 		Util.copyFileSync( _path.resolve( `${templateRoot}/test/socket-client.js` ), _path.resolve( `${projectRoot}/lib/socket-client.js` ) );
 	}
-	if ( settings.isTest === false ) {
-		console.log( ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${formatPath( projectRoot + '/config/' )}` );
-		console.log( ConsoleColor.FgGreen, `
+	const configPath = _path.resolve( `${projectRoot}/config/app.config.json` );
+	const config: { [id: string]: any } | void = Util.readJsonAsync( configPath );
+	if ( !config ) {
+		throw new Error( configPath );
+	}
+	if ( config.hostInfo.root !== settings.projectRoot ) {
+		config.hostInfo.root = settings.projectRoot;
+		_fs.writeFileSync( configPath, JSON.stringify( config ).replace( /{/gi, "{\n" ).replace( /}/gi, "\n}" ).replace( /,/gi, ",\n" ) );
+	}
+	if ( isTest ) return;
+	console.log( ConsoleColor.FgGreen, `
 Your project ${settings.projectRoot} created.
 run your project by this command
 node server ${settings.projectRoot}` );
-		console.log( ConsoleColor.Reset );
-	}
-	return true;
+	console.log( ConsoleColor.Reset );
 }

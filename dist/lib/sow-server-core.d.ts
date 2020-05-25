@@ -62,7 +62,6 @@ export interface IApps {
     use(handler: HandlerFunc): IApps;
     use(route: string, handler: HandlerFunc): IApps;
     listen(handle: any, listeningListener?: () => void): IApps;
-    handleRequest(req: IRequest, res: IResponse): IApps;
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApps;
     getHttpServer(): Server;
     onError(handler: (req: IRequest, res: IResponse, err?: Error | number) => void): void;

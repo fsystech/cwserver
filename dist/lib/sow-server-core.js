@@ -204,11 +204,6 @@ class Application extends events_1.EventEmitter {
         this._prerequisitesHandler = [];
         this._hasErrorEvnt = false;
         this.server = server;
-        this.once("prepare", () => {
-            if (this.listenerCount("error") > 0) {
-                this._hasErrorEvnt = true;
-            }
-        });
     }
     shutdown() {
         let resolveTerminating;
@@ -297,65 +292,49 @@ class Application extends events_1.EventEmitter {
     }
     // tslint:disable-next-line: ban-types
     listen(handle, listeningListener) {
+        if (this._hasErrorEvnt === false && this.listenerCount("error") > 0) {
+            this._hasErrorEvnt = true;
+        }
         this.server.listen(handle, listeningListener);
         return this;
     }
 }
 // tslint:disable-next-line: max-classes-per-file
 class Apps extends events_1.EventEmitter {
+    constructor() {
+        super();
+        this._app = new Application(http_1.createServer((request, response) => {
+            const req = Object.setPrototypeOf(request, Request.prototype);
+            const res = Object.setPrototypeOf(response, Response.prototype);
+            req.init();
+            this._app.handleRequest(req, res);
+        }));
+    }
     shutdown(next) {
-        throw new Error("Method not implemented.");
+        this.emit("shutdown");
+        if (typeof (next) !== "function")
+            return this._app.shutdown();
+        return this._app.shutdown().then(() => next()).catch((err) => next(err)), void 0;
     }
     onError(handler) {
-        throw new Error("Method not implemented.");
+        return this._app.on("error", handler), void 0;
     }
     use(...args) {
-        throw new Error("Method not implemented.");
+        return this._app.use.apply(this._app, Array.prototype.slice.call(args)), this;
     }
     getHttpServer() {
-        throw new Error("Method not implemented.");
+        return this._app.server;
     }
     // tslint:disable-next-line: ban-types
     listen(handle, listeningListener) {
-        throw new Error("Method not implemented.");
-    }
-    handleRequest(req, res) {
-        throw new Error("Method not implemented.");
+        return this._app.listen(handle, listeningListener), this;
     }
     prerequisites(handler) {
-        throw new Error("Method not implemented.");
+        return this._app.prerequisites(handler), this;
     }
 }
 function App() {
-    const _app = new Application(http_1.createServer((request, response) => {
-        const req = Object.setPrototypeOf(request, Request.prototype);
-        const res = Object.setPrototypeOf(response, Response.prototype);
-        req.init();
-        _app.handleRequest(req, res);
-    }));
-    const _apps = new Apps();
-    _apps.shutdown = (next) => {
-        _apps.emit("shutdown");
-        if (typeof (next) !== "function")
-            return _app.shutdown();
-        return _app.shutdown().then(() => next()).catch((err) => next(err)), void 0;
-    };
-    _apps.onError = (handler) => {
-        return _app.on("error", handler), void 0;
-    };
-    _apps.prerequisites = (handler) => {
-        return _app.prerequisites(handler), _apps;
-    };
-    _apps.getHttpServer = () => {
-        return _app.server;
-    };
-    _apps.use = (...args) => {
-        return _app.use.apply(_app, Array.prototype.slice.call(args)), _apps;
-    };
-    // tslint:disable-next-line: ban-types
-    _apps.listen = (handle, listeningListener) => {
-        return _app.emit("prepare"), _app.listen(handle, listeningListener), _apps;
-    };
-    return _apps;
+    return new Apps();
 }
 exports.App = App;
+//# sourceMappingURL=sow-server-core.js.map

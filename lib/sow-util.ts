@@ -167,11 +167,13 @@ export namespace Util {
         }, rootDir );
         return _fs.existsSync( fullPath );
     }
-    export function sendResponse( req: IRequest, res: IResponse, next: ( code?: number | undefined, transfer?: boolean ) => void, reqPath: string ): void {
-        const url = isExists( reqPath, next );
+    export function sendResponse(
+        ctx: IContext, reqPath: string, contentType?: string
+    ): void {
+        const url = isExists( reqPath, ctx.next );
         if ( !url ) return;
-        res.writeHead( 200, { 'Content-Type': 'text/html' } );
-        return res.end( _fs.readFileSync( String( url ) ) );
+        ctx.res.writeHead( 200, { 'Content-Type': contentType || 'text/html' } );
+        return pipeOutputStream( String( url ), ctx );
     }
     export function getExtension( reqPath: string ): string | void {
         const index = reqPath.lastIndexOf( "." );

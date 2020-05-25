@@ -8,21 +8,22 @@ import expect from 'expect';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cwserver from '../index';
-import { IAppUtility, ISowServer, IContext, IServerConfig } from '../lib/sow-server';
+import { IAppUtility, IContext } from '../lib/sow-server';
 import { IApps } from '../lib/sow-server-core';
-import { IController } from '../lib/sow-controller';
+import { Util } from '../lib/sow-util';
 import * as request from 'superagent';
 import * as io from 'socket.io-client';
-import { initView, shouldBeError } from "./test-view";
+import { shouldBeError } from "./test-view";
 import 'mocha';
 let appUtility: IAppUtility = Object.create( null );
 let app: IApps = Object.create( null );
 const appRoot = process.env.SCRIPT === "TS" ? path.join( path.resolve( __dirname, '..' ), "/dist/test/" ) : __dirname;
+const projectRoot = 'cwserver.safeonline.world';
 describe( "cwserver-default-project-template", () => {
     it( "create project template", ( done ) => {
         cwserver.createProjectTemplate( {
             appRoot,
-            projectRoot: "www",
+            projectRoot,
             allExample: false,
             force: true, // Delete if projectRoot exists
             isTest: true // add test view
@@ -31,15 +32,26 @@ describe( "cwserver-default-project-template", () => {
     } );
 } );
 describe( "cwserver-core", () => {
+    it( "initilize server throw error (projectRoot not provided)", ( done ) => {
+        expect( shouldBeError( () => {
+            cwserver.initilizeServer( appRoot );
+        } ) ).toBeInstanceOf( Error );
+        done();
+    } );
+    it( "initilize server throw error (projectRoot not provided while you using IISNODE)", ( done ) => {
+        process.env.IISNODE_VERSION = "iisnode";
+        expect( shouldBeError( () => {
+            cwserver.initilizeServer( appRoot );
+        } ) ).toBeInstanceOf( Error );
+        done();
+    } );
     it( "initilize server", ( done ) => {
-        appUtility = cwserver.initilizeServer( appRoot, "www" );
-        expect( appUtility.public ).toEqual( "www" );
+        appUtility = cwserver.initilizeServer( appRoot, projectRoot );
+        expect( appUtility.public ).toEqual( projectRoot );
         done();
     } );
     it( "initilize application", ( done ) => {
-        app = appUtility.init( () => {
-            initView();
-        } );
+        app = appUtility.init();
         done();
     } );
     it( "application listen", ( done ) => {
@@ -58,32 +70,46 @@ describe( "cwserver-core", () => {
 } );
 describe( "cwserver-view", () => {
     it( 'register view', ( done ) => {
-        global.sow.server.registerView( ( _app: IApps, controller: IController, server: ISowServer ) => {
-            const invoke = ( ctx: IContext ) => {
-                ctx.res.writeHead( 200, {
-                    "Content-Type": "text/plain"
-                } );
-                ctx.res.end( "Hello test-controller" );
-                return ctx.next( 200 );
-            };
-            controller.get( "/test-controller", invoke )
-                .post( "/test-controller", invoke );
-            let error: Error | undefined;
-            try {
-                controller.get( "/test-controller", invoke );
-            } catch ( e ) {
-                error = e;
-            }
-            expect( error ).toBeInstanceOf( Error );
-            error = void 0;
-            try {
-                controller.post( "/test-controller", invoke );
-            } catch ( e ) {
-                error = e;
-            }
-            expect( error ).toBeInstanceOf( Error );
-            done();
-        } );
+        const invoke = ( ctx: IContext ) => {
+            ctx.res.writeHead( 200, {
+                "Content-Type": "text/plain"
+            } );
+            ctx.res.end( "Hello test-controller" );
+            return ctx.next( 200 );
+        };
+        appUtility.controller.get( "/test-controller", invoke )
+            .post( "/test-controller", invoke );
+        expect( shouldBeError( () => {
+            appUtility.controller.get( "/test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            appUtility.controller.post( "/test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            appUtility.controller.any( "/test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        appUtility.controller.get( "/get-test-controller", invoke )
+            .post( "/post-test-controller", invoke );
+        expect( shouldBeError( () => {
+            appUtility.controller.get( "/get-test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            appUtility.controller.post( "/post-test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            appUtility.controller.any( "/get-test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            appUtility.controller.any( "/post-test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        appUtility.controller.any( "/any-test-controller", invoke );
+        expect( shouldBeError( () => {
+            appUtility.controller.any( "/any-test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            appUtility.controller.get( "/any-test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        done();
     } );
 } );
 describe( "cwserver-session", () => {
@@ -158,7 +184,37 @@ describe( "cwserver-get", () => {
                 } );
         } );
     } );
-    it( 'send get request should be 404 response', ( done ) => {
+    it( 'get-raw-file', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/get-file` )
+                .end( ( err, res ) => {
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+    it( 'redirect request to controller', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/redirect` )
+                .end( ( err, res ) => {
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    expect( res.redirects.length ).toEqual( 1 ); // should be redirect home page
+                    expect( res.redirects.indexOf( `http://localhost:${appUtility.port}/` ) ).toBeGreaterThan( -1 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+} );
+describe( "cwserver-template-engine", () => {
+    it( 'send get request should be 404 response config.defaultExt = .html', ( done ) => {
         app.listen( appUtility.port, () => {
             request
                 .get( `http://localhost:${appUtility.port}/index.html` )
@@ -183,6 +239,45 @@ describe( "cwserver-get", () => {
                     expect( res.status ).toBe( 200 );
                     expect( res.header["content-type"] ).toBe( "text/html" );
                     appUtility.server.config.defaultExt = defaultExt;
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+    let templateConf: {
+        cache: boolean;
+        cacheType: string;
+    } | void;
+    it( 'route `/` then should use config.defaultDoc and create template cache', ( done ) => {
+        templateConf = appUtility.server.config.template;
+        appUtility.server.config.template.cache = true;
+        appUtility.server.config.template.cacheType = "FILE";
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/` )
+                .end( ( err, res ) => {
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    expect( res.header["content-type"] ).toBe( "text/html" );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+    it( 'should be serve from template cache', ( done ) => {
+        expect( Util.isPlainObject( templateConf ) ).toBe( true );
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/` )
+                .end( ( err, res ) => {
+                    if ( templateConf ) {
+                        appUtility.server.config.template = templateConf;
+                    }
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    expect( res.header["content-type"] ).toBe( "text/html" );
                     app.shutdown( ( _err ) => {
                         done();
                     } );
@@ -491,6 +586,20 @@ describe( "cwserver-mime-type", () => {
                 } );
         } );
     } );
+    it( 'unsupported mime type', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/logo/logo.zip` )
+                .set( "if-modified-since", lastModified )
+                .end( ( err, res ) => {
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 404 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
     it( 'should be served from file (no server file cache)', ( done ) => {
         const oldfileCache = appUtility.server.config.staticFile.fileCache;
         appUtility.server.config.staticFile.fileCache = false;
@@ -689,12 +798,84 @@ describe( "cwserver-web-stream", () => {
         } );
     } );
 } );
-describe( "cwserver-controller-reset", () => {
-    it( 'should-be-reset-controller', ( done ) => {
-        global.sow.server.registerView( ( _app: IApps, controller: IController, server: ISowServer ) => {
-            controller.reset();
-            done();
+describe( "cwserver-error", () => {
+    it( 'should be throw server error', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/app-error/` )
+                .end( ( err, res ) => {
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 500 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
         } );
+    } );
+    it( 'should be pass server error', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/pass-error` )
+                .end( ( err, res ) => {
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 500 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+} );
+describe( "cwserver-controller-reset", () => {
+    it( 'config.defaultDoc', ( done ) => {
+        const defaultExt = appUtility.server.config.defaultExt;
+        const defaultDoc = appUtility.server.config.defaultDoc;
+        appUtility.server.config.defaultDoc = ["index.html", "default.html"];
+        appUtility.server.config.defaultExt = "";
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/` )
+                .end( ( err, res ) => {
+                    appUtility.server.config.defaultExt = defaultExt;
+                    appUtility.server.config.defaultDoc = defaultDoc;
+                    // console.log( err );
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+    it( 'should be route not found', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/app-error` )
+                .end( ( err, res ) => {
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 404 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+    it( 'no controller found for put', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .delete( `http://localhost:${appUtility.port}/app-error` )
+                .end( ( err, res ) => {
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 404 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+    it( 'should-be-reset-controller', ( done ) => {
+        appUtility.controller.reset();
+        done();
     } );
     it( 'should-be-controller-error', ( done ) => {
         app.listen( appUtility.port, () => {
@@ -711,26 +892,18 @@ describe( "cwserver-controller-reset", () => {
         } );
     } );
 } );
-describe( "cwserver-error", () => {
-    it( 'should be throw server error', ( done ) => {
-        app.listen( appUtility.port, () => {
-            request
-                .get( `http://localhost:${appUtility.port}/app-error/` )
-                .end( ( err, res ) => {
-                    expect( err ).toBeInstanceOf( Error );
-                    expect( res.status ).toBe( 500 );
-                    app.shutdown( ( _err ) => {
-                        done();
-                    } );
-                } );
-        } );
-    } );
-} );
 describe( "cwserver-utility", () => {
     it( "Encryption", ( done ): void => {
         const str = "TEST";
         const hex = cwserver.Encryption.utf8ToHex( str );
         expect( cwserver.Encryption.hexToUtf8( hex ) ).toEqual( str );
+        const plainText = "rajib";
+        let enc: string = appUtility.server.encryption.encrypt( plainText );
+        expect( plainText ).toEqual( appUtility.server.encryption.decrypt( enc ) );
+        enc = appUtility.server.encryption.encryptToHex( plainText );
+        expect( plainText ).toEqual( appUtility.server.encryption.decryptFromHex( enc ) );
+        enc = appUtility.server.encryption.encryptUri( plainText );
+        expect( plainText ).toEqual( appUtility.server.encryption.decryptUri( enc ) );
         done();
     } );
     describe( 'config', () => {
@@ -804,9 +977,7 @@ describe( "cwserver-utility", () => {
                 };
                 appUtility.server.implimentConfig( newConfig );
             } ) ).toBeInstanceOf( Error );
-            // console.log( untouchedConfig.session );
             cwserver.Util.extend( appUtility.server.config, untouchedConfig );
-            // server.implimentConfig( untouchedConfig );
             done();
         } );
     } );

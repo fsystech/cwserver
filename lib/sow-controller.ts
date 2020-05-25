@@ -51,6 +51,8 @@ export class Controller implements IController {
     public get( route: string, next: AppHandler ): IController {
         if ( routeInfo.get[route] )
             throw new Error( `Duplicate get route defined ${route}` );
+        if ( routeInfo.any[route] )
+            throw new Error( `Duplicate get route defined ${route}` );
         return routeInfo.get[route] = next, this;
     }
     public post( route: string, next: AppHandler ): IController {
@@ -83,7 +85,7 @@ export class Controller implements IController {
             }
             return ctx.next( 404, true );
         } else {
-            if ( ctx.server.config.defaultExt ) {
+            if ( ctx.server.config.defaultExt && ctx.server.config.defaultExt.length > 0 ) {
                 let path: string = "";
                 if ( ctx.req.path.charAt( ctx.req.path.length - 1 ) === "/" ) {
                     for ( const name of ctx.server.config.defaultDoc ) {

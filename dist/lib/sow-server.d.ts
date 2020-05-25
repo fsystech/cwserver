@@ -168,11 +168,11 @@ export declare class Context implements IContext {
     session: ISession;
     servedFrom?: string;
     server: ISowServer;
+    next: CtxNext;
     constructor(_server: ISowServer, _req: IRequest, _res: IResponse, _session: ISession);
-    next(code?: number | undefined, transfer?: boolean): void;
     redirect(url: string): void;
     write(str: string): void;
-    transferRequest(toPath: string): void;
+    transferRequest(path: string): void;
 }
 export declare class ServerConfig implements IServerConfig {
     [key: string]: any;
@@ -285,24 +285,31 @@ export declare class SowServer implements ISowServer {
     formatPath(name: string): string;
     createBundle(str: string): string;
 }
+declare type IViewRegister = (app: IApps, controller: IController, server: ISowServer) => void;
+interface ISowGlobalServer {
+    registerView(next: IViewRegister): void;
+    on(ev: "register-view", next: IViewRegister): void;
+    emit(ev: "register-view", app: IApps, controller: IController, server: ISowServer): void;
+}
+interface ISowGlobal {
+    isInitilized: boolean;
+    server: ISowGlobalServer;
+}
 declare global {
     namespace NodeJS {
         interface Global {
-            sow: {
-                server: {
-                    isInitilized: boolean;
-                    registerView: (next: (app: IApps, controller: IController, server: ISowServer) => void) => void;
-                };
-            };
+            sow: ISowGlobal;
         }
     }
 }
 export interface IAppUtility {
-    init: (afterViewReg?: () => void) => IApps;
+    init: () => IApps;
     readonly public: string;
     readonly port: string | number;
     readonly socketPath: string;
     readonly log: ILogger;
     readonly server: ISowServer;
+    readonly controller: IController;
 }
 export declare function initilizeServer(appRoot: string, wwwName?: string): IAppUtility;
+export {};

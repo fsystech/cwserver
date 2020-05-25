@@ -30,13 +30,9 @@ const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_logger_1 = require("./sow-logger");
 const sow_util_1 = require("./sow-util");
-const formatPath = (path) => {
-    if (process.platform === "win32")
-        return path.replace(/\//gi, "\\");
-    return path.replace(/\\/gi, "/");
-};
 function createProjectTemplate(settings) {
-    if (settings.isTest === false) {
+    const isTest = typeof (settings.isTest) === "boolean" && settings.isTest === true;
+    if (isTest === false) {
         console.log(sow_logger_1.ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}`);
     }
     const myRoot = _path.resolve(__dirname, '..');
@@ -49,7 +45,7 @@ function createProjectTemplate(settings) {
         throw new Error(`Project template not found in ${templateRoot}\r\nPlease uninstall and install again 'cwserver'`);
     const appRoot = _path.resolve(settings.appRoot);
     if (!_fs.existsSync(appRoot)) {
-        if (!settings.isTest) {
+        if (!isTest) {
             throw new Error(`App Root not found ${appRoot}\r\nprojectDef.projectRoot like as __dirname`);
         }
         sow_util_1.Util.mkdirSync(appRoot);
@@ -87,19 +83,27 @@ function createProjectTemplate(settings) {
         console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/lib/`);
         sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/lib/`), _path.resolve(`${projectRoot}/lib/`));
     }
-    if (settings.isTest === true) {
+    if (isTest) {
         sow_util_1.Util.copyFileSync(_path.resolve(`${templateRoot}/test/app.config.json`), _path.resolve(`${projectRoot}/config/app.config.json`));
         sow_util_1.Util.copyFileSync(_path.resolve(`${templateRoot}/test/test.js`), _path.resolve(`${projectRoot}/lib/view/test.js`));
         sow_util_1.Util.copyFileSync(_path.resolve(`${templateRoot}/test/socket-client.js`), _path.resolve(`${projectRoot}/lib/socket-client.js`));
     }
-    if (settings.isTest === false) {
-        console.log(sow_logger_1.ConsoleColor.FgYellow, `Find hostInfo ==> root in app_config.json and set ${settings.projectRoot} in\r\n${formatPath(projectRoot + '/config/')}`);
-        console.log(sow_logger_1.ConsoleColor.FgGreen, `
+    const configPath = _path.resolve(`${projectRoot}/config/app.config.json`);
+    const config = sow_util_1.Util.readJsonAsync(configPath);
+    if (!config) {
+        throw new Error(configPath);
+    }
+    if (config.hostInfo.root !== settings.projectRoot) {
+        config.hostInfo.root = settings.projectRoot;
+        _fs.writeFileSync(configPath, JSON.stringify(config).replace(/{/gi, "{\n").replace(/}/gi, "\n}").replace(/,/gi, ",\n"));
+    }
+    if (isTest)
+        return;
+    console.log(sow_logger_1.ConsoleColor.FgGreen, `
 Your project ${settings.projectRoot} created.
 run your project by this command
 node server ${settings.projectRoot}`);
-        console.log(sow_logger_1.ConsoleColor.Reset);
-    }
-    return true;
+    console.log(sow_logger_1.ConsoleColor.Reset);
 }
 exports.createProjectTemplate = createProjectTemplate;
+//# sourceMappingURL=sow-project-template.js.map

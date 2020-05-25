@@ -59,3 +59,4 @@ function SocketClient() {
     return clientInfo;
 }
 exports.SocketClient = SocketClient;
+//# sourceMappingURL=socket-client.js.map

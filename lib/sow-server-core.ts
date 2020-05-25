@@ -67,7 +67,6 @@ export interface IApps {
     use( handler: HandlerFunc ): IApps;
     use( route: string, handler: HandlerFunc ): IApps;
     listen( handle: any, listeningListener?: () => void ): IApps;
-    handleRequest( req: IRequest, res: IResponse ): IApps;
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps;
     getHttpServer(): Server;
     onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
@@ -246,11 +245,6 @@ class Application extends EventEmitter implements IApplication {
     constructor( server: Server ) {
         super();
         this.server = server;
-        this.once( "prepare", () => {
-            if ( this.listenerCount( "error" ) > 0 ) {
-                this._hasErrorEvnt = true;
-            }
-        } );
     }
     shutdown(): Promise<void> {
         let resolveTerminating: (value?: void | PromiseLike<void> | undefined)=> void;
@@ -338,6 +332,9 @@ class Application extends EventEmitter implements IApplication {
     }
     // tslint:disable-next-line: ban-types
     listen( handle: any, listeningListener?: () => void ): IApplication {
+        if ( this._hasErrorEvnt === false && this.listenerCount( "error" ) > 0 ) {
+            this._hasErrorEvnt = true;
+        }
         this.server.listen( handle, listeningListener );
         return this;
     }
@@ -345,57 +342,38 @@ class Application extends EventEmitter implements IApplication {
 }
 // tslint:disable-next-line: max-classes-per-file
 class Apps extends EventEmitter implements IApps {
+    _app: IApplication;
+    constructor( ) {
+        super();
+        this._app = new Application( createServer( ( request: IncomingMessage, response: ServerResponse ) => {
+            const req: IRequest = Object.setPrototypeOf( request, Request.prototype );
+            const res: IResponse = Object.setPrototypeOf( response, Response.prototype );
+            req.init();
+            this._app.handleRequest( req, res );
+        } ) );
+    }
     shutdown(next?: (err?: Error | undefined) => void): void | Promise<void> {
-        throw new Error( "Method not implemented." );
+        this.emit( "shutdown" );
+        if ( typeof ( next ) !== "function" ) return this._app.shutdown();
+        return this._app.shutdown().then( () => next() ).catch( ( err ) => next( err ) ), void 0;
     }
     onError( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void {
-        throw new Error( "Method not implemented." );
+        return this._app.on( "error", handler ), void 0;
     }
     use( ...args: any[] ): IApps {
-        throw new Error( "Method not implemented." );
+        return this._app.use.apply( this._app, Array.prototype.slice.call( args ) ), this;
     }
     getHttpServer(): Server {
-        throw new Error( "Method not implemented." );
+        return this._app.server;
     }
     // tslint:disable-next-line: ban-types
     listen( handle: any, listeningListener?: () => void ): IApps {
-        throw new Error( "Method not implemented." );
-    }
-    handleRequest( req: IRequest, res: IResponse ): IApps {
-        throw new Error( "Method not implemented." );
+        return this._app.listen( handle, listeningListener ), this;
     }
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps {
-        throw new Error( "Method not implemented." );
+        return this._app.prerequisites( handler ), this;
     }
 }
 export function App(): IApps {
-    const _app: IApplication = new Application( createServer( ( request: IncomingMessage, response: ServerResponse ) => {
-        const req: IRequest = Object.setPrototypeOf( request, Request.prototype );
-        const res: IResponse = Object.setPrototypeOf( response, Response.prototype );
-        req.init();
-        _app.handleRequest( req, res );
-    } ) );
-    const _apps: Apps = new Apps();
-    _apps.shutdown = ( next?: ( err?: Error | undefined ) => void ): void | Promise<void> => {
-        _apps.emit( "shutdown" );
-        if ( typeof ( next ) !== "function" ) return _app.shutdown();
-        return _app.shutdown().then( () => next() ).catch( ( err ) => next( err ) ), void 0;
-    }
-    _apps.onError = ( handler: ( req: IRequest, res: IResponse, err?: number | Error | undefined ) => void ): void => {
-        return _app.on( "error", handler ), void 0;
-    }
-    _apps.prerequisites = ( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps => {
-        return _app.prerequisites( handler ), _apps;
-    };
-    _apps.getHttpServer = (): Server => {
-        return _app.server;
-    };
-    _apps.use = ( ...args: any[] ): IApps => {
-        return _app.use.apply( _app, Array.prototype.slice.call( args ) ), _apps;
-    };
-    // tslint:disable-next-line: ban-types
-    _apps.listen = ( handle: any, listeningListener?: () => void ): IApps => {
-        return _app.emit( "prepare" ), _app.listen( handle, listeningListener ), _apps;
-    };
-    return _apps;
+    return new Apps();
 }

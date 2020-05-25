@@ -4,4 +4,4 @@ export declare function createProjectTemplate(settings: {
     allExample?: boolean;
     force?: boolean;
     isTest?: boolean;
-}): boolean;
+}): void;

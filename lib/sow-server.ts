@@ -264,6 +264,7 @@ export class Context implements IContext {
     session: ISession;
     servedFrom?: string;
     server: ISowServer;
+    next: CtxNext;
     constructor(
         _server: ISowServer,
         _req: IRequest,
@@ -273,18 +274,18 @@ export class Context implements IContext {
         this.error = void 0; this.path = ""; this.root = "";
         this.res = _res; this.req = _req; this.server = _server;
         this.session = _session; this.extension = "";
-    }
-    next( code?: number | undefined, transfer?: boolean ) {
-        throw new Error( "Method not implemented." );
+        this.next = Object.create( null );
     }
     redirect( url: string ): void {
-        throw new Error( "Method not implemented." );
+        return this.res.status( 301 ).redirect( url ), void 0;
     }
     write( str: string ): void {
-        throw new Error( "Method not implemented." );
+        return this.res.write( str ), void 0;
     }
-    transferRequest( toPath: string ) {
-        throw new Error( "Method not implemented." );
+    transferRequest( path: string ): void {
+        const status = HttpStatus.getResInfo( path, 200 );
+        this.server.log[status.isErrorCode ? "error" : "success"]( `Send ${status.code} ${this.req.path}` ).reset();
+        return this.server.transferRequest( this, path, status );
     }
 }
 // tslint:disable-next-line: max-classes-per-file
@@ -545,7 +546,11 @@ ${appRoot}\\www_public
         return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext {
-        throw new Error( "Method not implemented." );
+        const _context = new Context( this, req, res, req.session );
+        _context.path = decodeURIComponent( req.path ); _context.root = _context.path;
+        _context.next = next;
+        _context.extension = Util.getExtension( _context.path ) || "";
+        return _context;
     }
     setHeader( res: IResponse ): void {
         res.setHeader( 'x-timestamp', Date.now() );
@@ -688,53 +693,68 @@ ${appRoot}\\www_public
         return Encryption.encryptUri( str, this.config.encryptionKey );
     }
 }
+type IViewRegister = ( app: IApps, controller: IController, server: ISowServer ) => void;
+interface ISowGlobalServer {
+    // [deprecated soon...]
+    registerView( next: IViewRegister ): void;
+    on( ev: "register-view", next: IViewRegister ): void;
+    emit( ev: "register-view", app: IApps, controller: IController, server: ISowServer ): void;
+}
+// tslint:disable-next-line: max-classes-per-file
+class SowGlobalServer implements ISowGlobalServer {
+    private _evt: IViewRegister[];
+    constructor() {
+        this._evt = [];
+    }
+    public emit( ev: "register-view", app: IApps, controller: IController, server: ISowServer ): void {
+        this._evt.forEach( handler => {
+            return handler( app, controller, server );
+        } );
+        this._evt.length = 0;
+    }
+    public on( ev: "register-view", next: ( app: IApps, controller: IController, server: ISowServer ) => void ): void {
+        this._evt.push( next );
+    }
+    public registerView( next: IViewRegister ): void {
+        console.warn( 'deprecated soon `global.sow.server.registerView`\r\nUse:\r\nglobal.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => { } );' );
+        return this.on( "register-view", next );
+    }
+}
+interface ISowGlobal {
+    isInitilized: boolean;
+    server: ISowGlobalServer;
+}
+// tslint:disable-next-line: max-classes-per-file
+class SowGlobal implements ISowGlobal {
+    public isInitilized: boolean;
+    server: ISowGlobalServer;
+    constructor() {
+        this.server = new SowGlobalServer();
+        this.isInitilized = false;
+    }
+}
 declare global {
     namespace NodeJS {
         interface Global {
-            sow: {
-                server: {
-                    isInitilized: boolean;
-                    registerView: ( next: ( app: IApps, controller: IController, server: ISowServer ) => void ) => void;
-                }
-            };
+            sow: ISowGlobal;
         }
     }
 }
 export interface IAppUtility {
-    init: ( afterViewReg?: () => void ) => IApps;
+    init: ( ) => IApps;
     readonly public: string;
     readonly port: string | number;
     readonly socketPath: string;
     readonly log: ILogger;
     readonly server: ISowServer;
+    readonly controller: IController;
+}
+if ( !global.sow || ( global.sow && !global.sow.server ) ) {
+    global.sow = new SowGlobal();
 }
 export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtility {
-    if ( !global.sow || ( global.sow && !global.sow.server ) ) {
-        global.sow = {
-            server: {
-                isInitilized: false,
-                registerView: Object.create( null )
-            }
-        };
-    }
-    if ( global.sow.server.isInitilized ) throw new Error( "Server instance can initilize 1 time..." );
-    global.sow.server.isInitilized = true;
+    if ( global.sow.isInitilized ) throw new Error( "Server instance can initilize 1 time..." );
     const _server: SowServer = new SowServer( appRoot, wwwName );
-    _server.createContext = ( req: IRequest, res: IResponse, next: NextFunction ): IContext => {
-        const _context = new Context( _server, req, res, req.session );
-        _context.path = decodeURIComponent( req.path ); _context.root = _context.path;
-        _context.next = next;
-        _context.extension = Util.getExtension( _context.path ) || "";
-        _context.redirect = ( url: string ): void => {
-            return res.status( 301 ).redirect( url ), void 0;
-        }
-        _context.transferRequest = ( path: string ): void => {
-            const status = HttpStatus.getResInfo( path, 200 );
-            _server.log[status.isErrorCode ? "error" : "success"]( `Send ${status.code} ${req.path}` ).reset();
-            return _server.transferRequest( _context, path, status );
-        }
-        return _context;
-    }
     const _processNext = {
         render: ( code: number | undefined, ctx: IContext, next: NextFunction, transfer?: boolean ): any => {
             if ( transfer && typeof ( transfer ) !== "boolean" ) {
@@ -766,11 +786,8 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
         }
     }
     const _controller: IController = new Controller();
-    function initilize( afterViewReg?: () => void ): IApps {
+    function initilize( ): IApps {
         const _app: IApps = sowAppCore();
-        global.sow.server.registerView = ( next: ( app: IApps, controller: IController, server: ISowServer ) => void ): void => {
-            return next( _app, _controller, _server );
-        };
         _server.getHttpServer = (): Server => {
             return _app.getHttpServer();
         };
@@ -842,6 +859,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
             _server.config.views.forEach( ( a: string, _index: number, _array: string[] ) => {
                 const sowView: ISowView = require( a );
                 if ( sowView.__isRunOnly ) return;
+                console.warn( "deprecated soon... use module.exports.__isRunOnly = true;" );
                 if ( sowView.__esModule ) {
                     if ( !sowView[sowView.__moduleName] ) {
                         throw new Error( `Invalid module name declear ${sowView.__moduleName} not found in ${a}` );
@@ -857,7 +875,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
                 return sowView.Init( _app, _controller, _server );
             } );
         }
-        if ( afterViewReg ) afterViewReg();
+        global.sow.server.emit( "register-view", _app, _controller, _server );
         _app.onError( ( req: IRequest, res: IResponse, err?: number | Error ): void => {
             if ( res.headersSent ) return;
             const _context = _server.createContext( req, res, ( _err?: Error ): void => {
@@ -895,12 +913,14 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
         } );
         return _app;
     };
+    global.sow.isInitilized = true;
     return {
         init: initilize,
         get public() { return _server.public; },
         get port() { return _server.port; },
         get log() { return _server.log; },
         get socketPath() { return _server.config.socketPath || ""; },
-        get server() { return _server; }
+        get server() { return _server; },
+        get controller() { return _controller; }
     }
 }

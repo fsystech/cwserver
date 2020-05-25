@@ -1,5 +1,4 @@
 import { IContext } from './sow-server';
-import { IRequest, IResponse } from './sow-server-core';
 export declare namespace Util {
     function guid(): string;
     function extend(destination: any, source: any, deep?: boolean): {
@@ -27,6 +26,6 @@ export declare namespace Util {
     function copySync(src: string, dest: string): void;
     function isExists(path: string, next?: (code?: number | undefined, transfer?: boolean) => void): string | boolean;
     function mkdirSync(rootDir: string, targetDir?: string): boolean;
-    function sendResponse(req: IRequest, res: IResponse, next: (code?: number | undefined, transfer?: boolean) => void, reqPath: string): void;
+    function sendResponse(ctx: IContext, reqPath: string, contentType?: string): void;
     function getExtension(reqPath: string): string | void;
 }

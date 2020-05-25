@@ -40,3 +40,4 @@ class Compression {
     }
 }
 exports.Compression = Compression;
+//# sourceMappingURL=sow-zlib-compression.js.map

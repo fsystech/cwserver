@@ -147,18 +147,18 @@ class Context {
         this.server = _server;
         this.session = _session;
         this.extension = "";
-    }
-    next(code, transfer) {
-        throw new Error("Method not implemented.");
+        this.next = Object.create(null);
     }
     redirect(url) {
-        throw new Error("Method not implemented.");
+        return this.res.status(301).redirect(url), void 0;
     }
     write(str) {
-        throw new Error("Method not implemented.");
+        return this.res.write(str), void 0;
     }
-    transferRequest(toPath) {
-        throw new Error("Method not implemented.");
+    transferRequest(path) {
+        const status = sow_http_status_1.HttpStatus.getResInfo(path, 200);
+        this.server.log[status.isErrorCode ? "error" : "success"](`Send ${status.code} ${this.req.path}`).reset();
+        return this.server.transferRequest(this, path, status);
     }
 }
 exports.Context = Context;
@@ -363,7 +363,12 @@ ${appRoot}\\www_public
         return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext(req, res, next) {
-        throw new Error("Method not implemented.");
+        const _context = new Context(this, req, res, req.session);
+        _context.path = decodeURIComponent(req.path);
+        _context.root = _context.path;
+        _context.next = next;
+        _context.extension = sow_util_1.Util.getExtension(_context.path) || "";
+        return _context;
     }
     setHeader(res) {
         res.setHeader('x-timestamp', Date.now());
@@ -523,35 +528,39 @@ ${appRoot}\\www_public
     }
 }
 exports.SowServer = SowServer;
-function initilizeServer(appRoot, wwwName) {
-    if (!global.sow || (global.sow && !global.sow.server)) {
-        global.sow = {
-            server: {
-                isInitilized: false,
-                registerView: Object.create(null)
-            }
-        };
+// tslint:disable-next-line: max-classes-per-file
+class SowGlobalServer {
+    constructor() {
+        this._evt = [];
     }
-    if (global.sow.server.isInitilized)
+    emit(ev, app, controller, server) {
+        this._evt.forEach(handler => {
+            return handler(app, controller, server);
+        });
+        this._evt.length = 0;
+    }
+    on(ev, next) {
+        this._evt.push(next);
+    }
+    registerView(next) {
+        console.warn('deprecated soon `global.sow.server.registerView`\r\nUse:\r\nglobal.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => { } );');
+        return this.on("register-view", next);
+    }
+}
+// tslint:disable-next-line: max-classes-per-file
+class SowGlobal {
+    constructor() {
+        this.server = new SowGlobalServer();
+        this.isInitilized = false;
+    }
+}
+if (!global.sow || (global.sow && !global.sow.server)) {
+    global.sow = new SowGlobal();
+}
+function initilizeServer(appRoot, wwwName) {
+    if (global.sow.isInitilized)
         throw new Error("Server instance can initilize 1 time...");
-    global.sow.server.isInitilized = true;
     const _server = new SowServer(appRoot, wwwName);
-    _server.createContext = (req, res, next) => {
-        const _context = new Context(_server, req, res, req.session);
-        _context.path = decodeURIComponent(req.path);
-        _context.root = _context.path;
-        _context.next = next;
-        _context.extension = sow_util_1.Util.getExtension(_context.path) || "";
-        _context.redirect = (url) => {
-            return res.status(301).redirect(url), void 0;
-        };
-        _context.transferRequest = (path) => {
-            const status = sow_http_status_1.HttpStatus.getResInfo(path, 200);
-            _server.log[status.isErrorCode ? "error" : "success"](`Send ${status.code} ${req.path}`).reset();
-            return _server.transferRequest(_context, path, status);
-        };
-        return _context;
-    };
     const _processNext = {
         render: (code, ctx, next, transfer) => {
             if (transfer && typeof (transfer) !== "boolean") {
@@ -586,11 +595,8 @@ function initilizeServer(appRoot, wwwName) {
         }
     };
     const _controller = new sow_controller_1.Controller();
-    function initilize(afterViewReg) {
+    function initilize() {
         const _app = sow_server_core_1.App();
-        global.sow.server.registerView = (next) => {
-            return next(_app, _controller, _server);
-        };
         _server.getHttpServer = () => {
             return _app.getHttpServer();
         };
@@ -666,6 +672,7 @@ function initilizeServer(appRoot, wwwName) {
                 const sowView = require(a);
                 if (sowView.__isRunOnly)
                     return;
+                console.warn("deprecated soon... use module.exports.__isRunOnly = true;");
                 if (sowView.__esModule) {
                     if (!sowView[sowView.__moduleName]) {
                         throw new Error(`Invalid module name declear ${sowView.__moduleName} not found in ${a}`);
@@ -681,8 +688,7 @@ function initilizeServer(appRoot, wwwName) {
                 return sowView.Init(_app, _controller, _server);
             });
         }
-        if (afterViewReg)
-            afterViewReg();
+        global.sow.server.emit("register-view", _app, _controller, _server);
         _app.onError((req, res, err) => {
             if (res.headersSent)
                 return;
@@ -725,13 +731,16 @@ function initilizeServer(appRoot, wwwName) {
         return _app;
     }
     ;
+    global.sow.isInitilized = true;
     return {
         init: initilize,
         get public() { return _server.public; },
         get port() { return _server.port; },
         get log() { return _server.log; },
         get socketPath() { return _server.config.socketPath || ""; },
-        get server() { return _server; }
+        get server() { return _server; },
+        get controller() { return _controller; }
     };
 }
 exports.initilizeServer = initilizeServer;
+//# sourceMappingURL=sow-server.js.map
