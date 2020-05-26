@@ -98,7 +98,9 @@ export interface IServerConfig {
     };
 }
 export interface ISowServer {
-    [key: string]: any;
+    errorPage: {
+        [x: string]: any;
+    };
     copyright(): string;
     log: ILogger;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
@@ -133,7 +135,9 @@ export interface ISowServer {
     getHttpServer(): Server;
     getRoot(): string;
     getPublic(): string;
+    getPublicDirName(): string;
     encryption: IServerEncryption;
+    parseMaxAge(maxAge: any): number;
     db: {
         [x: string]: ISowDatabaseType;
     };
@@ -233,7 +237,6 @@ export declare class ServerConfig implements IServerConfig {
     constructor();
 }
 export declare class SowServer implements ISowServer {
-    [key: string]: any;
     config: IServerConfig;
     root: string;
     public: string;
@@ -254,7 +257,9 @@ export declare class SowServer implements ISowServer {
     on(ev: "shutdown", handler: () => void): void;
     getHttpServer(): Server;
     getRoot(): string;
+    parseMaxAge(maxAge: any): number;
     getPublic(): string;
+    getPublicDirName(): string;
     implimentConfig(config: {
         [x: string]: any;
     }): void;

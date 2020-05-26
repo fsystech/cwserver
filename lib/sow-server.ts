@@ -110,7 +110,7 @@ export interface IServerConfig {
     };
 }
 export interface ISowServer {
-    [key: string]: any;
+    errorPage: { [x: string]: any; };
     copyright(): string;
     log: ILogger;
     createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext;
@@ -140,7 +140,9 @@ export interface ISowServer {
     getHttpServer(): Server;
     getRoot(): string;
     getPublic(): string;
+    getPublicDirName(): string;
     encryption: IServerEncryption;
+    parseMaxAge( maxAge: any ): number;
     db: { [x: string]: ISowDatabaseType; };
     on( ev: 'shutdown', handler: ()=>void ): void;
 }
@@ -193,24 +195,9 @@ const _formatPath = ( () => {
         value?: string,
         name?: string
     } => {
-        if ( !name || typeof ( name ) !== 'string' ) return { value: void 0 };
-        const parts: string[] = name.split( '.' );
-        let value: any = void 0;
-        // tslint:disable-next-line: no-conditional-assignment
-        for ( let part; parts.length && ( part = parts.shift() ); ) {
-            if ( value ) {
-                if ( part in value ) {
-                    value = value[part];
-                }
-                continue;
-            }
-            if ( part in server ) value = server[part];
-            continue;
-        }
-        return {
-            value: typeof ( value ) === "string" ? value : void 0,
-            name
-        };
+        if ( name === "root" ) return { value: server.getRoot() };
+        if ( name === "public" ) return { value: server.getPublicDirName() };
+        return { value: void 0 };
     }
     return ( server: ISowServer, name: string ): string => {
         if ( /\$/gi.test( name ) === false ) return name;
@@ -392,7 +379,6 @@ export class ServerConfig implements IServerConfig {
 }
 // tslint:disable-next-line: max-classes-per-file
 export class SowServer implements ISowServer {
-    [key: string]: any;
     config: IServerConfig;
     root: string;
     public: string;
@@ -465,8 +451,14 @@ ${appRoot}\\www_public
     getRoot(): string {
         return this.root;
     }
+    parseMaxAge( maxAge: any ): number {
+        return parseMaxAge( maxAge );
+    }
     getPublic(): string {
         return `${this.root}/${this.public}`;
+    }
+    getPublicDirName(): string {
+        return this.public;
     }
     implimentConfig( config: { [x: string]: any; } ): void {
         if ( !config.encryptionKey )
@@ -475,7 +467,7 @@ ${appRoot}\\www_public
             throw new Error( 'hidden_directory should be Array...' );
         }
         if ( process.env.IISNODE_VERSION && process.env.PORT ) {
-            this.port = process.env.PORT || 8080;
+            this.port = process.env.PORT;
         } else {
             if ( !this.config.hostInfo.port )
                 throw new Error( 'Listener port required...' );
@@ -488,7 +480,7 @@ ${appRoot}\\www_public
             this.config.session.key = Encryption.updateCryptoKeyIV( config.session.key );
             if ( !this.config.session.maxAge )
                 config.session.maxAge = "1d";
-            if ( typeof ( this.config.session.maxAge ) !== "string" )
+            if ( typeof ( config.session.maxAge ) !== "string" )
                 throw new Error( `Invalid maxAage format ${config.session.maxAge}. maxAge should "1d|1h|1m" formatted...` );
             this.config.session.maxAge = parseMaxAge( config.session.maxAge );
         }
@@ -512,7 +504,7 @@ ${appRoot}\\www_public
                 this.db[conf.module] = new ( require( conf.path ) )( conf.dbConn )
             } );
         }
-        if ( !this.config.errorPage || ( this.config.errorPage && Object.keys( this.config.errorPage ).length === 0 ) ) {
+        if ( !this.config.errorPage || ( Util.isPlainObject( this.config.errorPage ) && Object.keys( this.config.errorPage ).length === 0 ) ) {
             if ( !this.config.errorPage ) this.config.errorPage = {};
             for ( const property in this.errorPage ) {
                 if ( this.errorPage.hasOwnProperty( property ) ) {
@@ -523,13 +515,12 @@ ${appRoot}\\www_public
             if ( Util.isPlainObject( this.config.errorPage ) === false )
                 throw new Error( "errorPage property should be Object." );
             for ( const property in this.config.errorPage ) {
-                if ( !this.errorPage.hasOwnProperty( property ) ) continue;
-                const path = this.config.errorPage[property];
+                if ( !this.config.errorPage.hasOwnProperty( property ) ) continue;
+                const path: string = this.config.errorPage[property];
                 // tslint:disable-next-line: radix
-                const code = parseInt( property );
-                // tslint:disable-next-line: variable-name
-                const status_code = HttpStatus.fromPath( path, code );
-                if ( !status_code || status_code !== code || !HttpStatus.isErrorCode( status_code ) ) {
+                const code: number = parseInt( property );
+                const statusCode: number = HttpStatus.fromPath( path, code );
+                if ( !statusCode || statusCode !== code || !HttpStatus.isErrorCode( statusCode ) ) {
                     throw new Error( `Invalid Server/Client error page... ${path} and code ${code}}` );
                 }
                 this.config.errorPage[property] = this.formatPath( path );

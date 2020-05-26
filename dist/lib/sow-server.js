@@ -74,26 +74,11 @@ const parseMaxAge = (maxAge) => {
 };
 const _formatPath = (() => {
     const _exportObj = (server, name) => {
-        if (!name || typeof (name) !== 'string')
-            return { value: void 0 };
-        const parts = name.split('.');
-        let value = void 0;
-        // tslint:disable-next-line: no-conditional-assignment
-        for (let part; parts.length && (part = parts.shift());) {
-            if (value) {
-                if (part in value) {
-                    value = value[part];
-                }
-                continue;
-            }
-            if (part in server)
-                value = server[part];
-            continue;
-        }
-        return {
-            value: typeof (value) === "string" ? value : void 0,
-            name
-        };
+        if (name === "root")
+            return { value: server.getRoot() };
+        if (name === "public")
+            return { value: server.getPublicDirName() };
+        return { value: void 0 };
     };
     return (server, name) => {
         if (/\$/gi.test(name) === false)
@@ -278,8 +263,14 @@ ${appRoot}\\www_public
     getRoot() {
         return this.root;
     }
+    parseMaxAge(maxAge) {
+        return parseMaxAge(maxAge);
+    }
     getPublic() {
         return `${this.root}/${this.public}`;
+    }
+    getPublicDirName() {
+        return this.public;
     }
     implimentConfig(config) {
         if (!config.encryptionKey)
@@ -288,7 +279,7 @@ ${appRoot}\\www_public
             throw new Error('hidden_directory should be Array...');
         }
         if (process.env.IISNODE_VERSION && process.env.PORT) {
-            this.port = process.env.PORT || 8080;
+            this.port = process.env.PORT;
         }
         else {
             if (!this.config.hostInfo.port)
@@ -302,7 +293,7 @@ ${appRoot}\\www_public
             this.config.session.key = sow_encryption_1.Encryption.updateCryptoKeyIV(config.session.key);
             if (!this.config.session.maxAge)
                 config.session.maxAge = "1d";
-            if (typeof (this.config.session.maxAge) !== "string")
+            if (typeof (config.session.maxAge) !== "string")
                 throw new Error(`Invalid maxAage format ${config.session.maxAge}. maxAge should "1d|1h|1m" formatted...`);
             this.config.session.maxAge = parseMaxAge(config.session.maxAge);
         }
@@ -326,7 +317,7 @@ ${appRoot}\\www_public
                 this.db[conf.module] = new (require(conf.path))(conf.dbConn);
             });
         }
-        if (!this.config.errorPage || (this.config.errorPage && Object.keys(this.config.errorPage).length === 0)) {
+        if (!this.config.errorPage || (sow_util_1.Util.isPlainObject(this.config.errorPage) && Object.keys(this.config.errorPage).length === 0)) {
             if (!this.config.errorPage)
                 this.config.errorPage = {};
             for (const property in this.errorPage) {
@@ -339,14 +330,13 @@ ${appRoot}\\www_public
             if (sow_util_1.Util.isPlainObject(this.config.errorPage) === false)
                 throw new Error("errorPage property should be Object.");
             for (const property in this.config.errorPage) {
-                if (!this.errorPage.hasOwnProperty(property))
+                if (!this.config.errorPage.hasOwnProperty(property))
                     continue;
                 const path = this.config.errorPage[property];
                 // tslint:disable-next-line: radix
                 const code = parseInt(property);
-                // tslint:disable-next-line: variable-name
-                const status_code = sow_http_status_1.HttpStatus.fromPath(path, code);
-                if (!status_code || status_code !== code || !sow_http_status_1.HttpStatus.isErrorCode(status_code)) {
+                const statusCode = sow_http_status_1.HttpStatus.fromPath(path, code);
+                if (!statusCode || statusCode !== code || !sow_http_status_1.HttpStatus.isErrorCode(statusCode)) {
                     throw new Error(`Invalid Server/Client error page... ${path} and code ${code}}`);
                 }
                 this.config.errorPage[property] = this.formatPath(path);

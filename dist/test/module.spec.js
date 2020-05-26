@@ -32,7 +32,9 @@ const expect_1 = __importDefault(require("expect"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const cwserver = __importStar(require("../index"));
+const sow_static_1 = require("../lib/sow-static");
 const sow_util_1 = require("../lib/sow-util");
+// import { HttpStatus } from '../lib/sow-http-status';
 const request = __importStar(require("superagent"));
 const io = __importStar(require("socket.io-client"));
 const test_view_1 = require("./test-view");
@@ -54,6 +56,38 @@ describe("cwserver-default-project-template", () => {
     });
 });
 describe("cwserver-core", () => {
+    it("initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", (done) => {
+        const root = path.resolve(`${appRoot}/ewww`); // path.resolve( appRoot, "/ewww" );
+        sow_util_1.Util.mkdirSync(appRoot, "/ewww/config");
+        expect_1.default(fs.existsSync(root)).toEqual(true);
+        const filePath = path.resolve(root + "/config/app.config.json");
+        const fromFile = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
+        expect_1.default(fs.existsSync(fromFile)).toEqual(true);
+        fs.copyFileSync(fromFile, filePath);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            cwserver.initilizeServer(appRoot, `ewww`);
+        })).toBeInstanceOf(Error);
+        sow_util_1.Util.rmdirSync(root);
+        done();
+    });
+    it("initilize server throw error (invalid app.config.json)", (done) => {
+        const root = path.resolve(`${appRoot}/ewww`); // path.resolve( appRoot, "/ewww" );
+        sow_util_1.Util.mkdirSync(appRoot, "/ewww/config");
+        expect_1.default(fs.existsSync(root)).toEqual(true);
+        const filePath = path.resolve(root + "/config/app.config.json");
+        fs.writeFileSync(filePath, "INVALID_FILE");
+        expect_1.default(test_view_1.shouldBeError(() => {
+            cwserver.initilizeServer(appRoot, `ewww`);
+        })).toBeInstanceOf(Error);
+        sow_util_1.Util.rmdirSync(root);
+        done();
+    });
+    it("initilize server throw error (projectRoot not provided)", (done) => {
+        expect_1.default(test_view_1.shouldBeError(() => {
+            cwserver.initilizeServer(appRoot);
+        })).toBeInstanceOf(Error);
+        done();
+    });
     it("initilize server throw error (projectRoot not provided)", (done) => {
         expect_1.default(test_view_1.shouldBeError(() => {
             cwserver.initilizeServer(appRoot);
@@ -65,11 +99,30 @@ describe("cwserver-core", () => {
         expect_1.default(test_view_1.shouldBeError(() => {
             cwserver.initilizeServer(appRoot);
         })).toBeInstanceOf(Error);
+        process.env.IISNODE_VERSION = "";
+        done();
+    });
+    it("initilize server throw error (projectRoot not found)", (done) => {
+        expect_1.default(test_view_1.shouldBeError(() => {
+            cwserver.initilizeServer(appRoot, `${projectRoot}_not_found`);
+        })).toBeInstanceOf(Error);
+        done();
+    });
+    it("initilize server throw error (app.config.json not found)", (done) => {
+        expect_1.default(test_view_1.shouldBeError(() => {
+            cwserver.initilizeServer(appRoot, `/`);
+        })).toBeInstanceOf(Error);
         done();
     });
     it("initilize server", (done) => {
         appUtility = cwserver.initilizeServer(appRoot, projectRoot);
         expect_1.default(appUtility.public).toEqual(projectRoot);
+        done();
+    });
+    it("initilize server throw error (Server instance can initilize 1 time)", (done) => {
+        expect_1.default(test_view_1.shouldBeError(() => {
+            cwserver.initilizeServer(appRoot, projectRoot);
+        })).toBeInstanceOf(Error);
         done();
     });
     it("initilize application", (done) => {
@@ -200,6 +253,32 @@ describe("cwserver-get", () => {
                 expect_1.default(err).not.toBeInstanceOf(Error);
                 expect_1.default(res.status).toBe(200);
                 expect_1.default(res.header["content-type"]).toBe("text/html");
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
+    it('try to access config.hiddenDirectory', (done) => {
+        app.listen(appUtility.port, () => {
+            request
+                .get(`http://localhost:${appUtility.port}/lib/`)
+                .end((err, res) => {
+                expect_1.default(err).toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(404);
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
+    it('try to access $root', (done) => {
+        app.listen(appUtility.port, () => {
+            request
+                .get(`http://localhost:${appUtility.port}/$root/`)
+                .end((err, res) => {
+                expect_1.default(err).toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(404);
                 app.shutdown((_err) => {
                     done();
                 });
@@ -482,12 +561,46 @@ describe("cwserver-bundler-error", () => {
     });
 });
 describe("cwserver-post", () => {
-    it('send post request to application', (done) => {
+    it('send post request content type application/json', (done) => {
         app.listen(appUtility.port, () => {
             request
                 .post(`http://localhost:${appUtility.port}/post`)
                 .send(JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }))
                 .set('Content-Type', 'application/json')
+                .end((err, res) => {
+                expect_1.default(err).not.toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(200);
+                expect_1.default(res.header["content-type"]).toBe("application/json");
+                expect_1.default(res.body.name).toBe('rajibs');
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
+    it('send post request content type urlencoded', (done) => {
+        app.listen(appUtility.port, () => {
+            request
+                .post(`http://localhost:${appUtility.port}/post`)
+                .type('form')
+                .send({ name: 'rajibs', occupation: 'kutukutu' })
+                .end((err, res) => {
+                expect_1.default(err).not.toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(200);
+                expect_1.default(res.header["content-type"]).toBe("application/json");
+                expect_1.default(res.body.name).toBe('rajibs');
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
+    it('send post request to async handler', (done) => {
+        app.listen(appUtility.port, () => {
+            request
+                .post(`http://localhost:${appUtility.port}/post-async`)
+                .type('form')
+                .send({ name: 'rajibs', occupation: 'kutukutu' })
                 .end((err, res) => {
                 expect_1.default(err).not.toBeInstanceOf(Error);
                 expect_1.default(res.status).toBe(200);
@@ -668,6 +781,34 @@ describe("cwserver-mime-type", () => {
     });
 });
 describe("cwserver-virtual-dir", () => {
+    it('check-virtual-dir-server-manage', (done) => {
+        app.listen(appUtility.port, () => {
+            request
+                .get(`http://localhost:${appUtility.port}/test-virtual/socket-client.js`)
+                .end((err, res) => {
+                expect_1.default(err).not.toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(200);
+                expect_1.default(res.header["content-type"]).toBe("application/javascript");
+                expect_1.default(res.header["content-encoding"]).toBe("gzip");
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
+    it('check-virtual-dir-mimeType-404', (done) => {
+        app.listen(appUtility.port, () => {
+            request
+                .get(`http://localhost:${appUtility.port}/test-virtual/socket-client.jsx`)
+                .end((err, res) => {
+                expect_1.default(err).toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(404);
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
     it('check-virtual-dir-handler', (done) => {
         app.listen(appUtility.port, () => {
             request
@@ -703,6 +844,41 @@ describe("cwserver-multipart-paylod-parser", () => {
             const readStream = fs.createReadStream(filePath);
             request
                 .post(`http://localhost:${appUtility.port}/upload`)
+                .field('post-file', readStream)
+                .end((err, res) => {
+                readStream.close();
+                expect_1.default(err).not.toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(200);
+                expect_1.default(res.header["content-type"]).toBe("application/json");
+                expect_1.default(res.body).toBeInstanceOf(Object);
+                expect_1.default(res.body.content_type).toBe(contentType);
+                expect_1.default(res.body.file_name).toBe(fileName);
+                expect_1.default(res.body.name).toBe("post-file");
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
+    it('should post multipart post file and save as bulk', (done) => {
+        app.listen(appUtility.port, () => {
+            let fileName = "";
+            let filePath = "";
+            let contentType = "";
+            if (process.env.SCRIPT === "TS") {
+                fileName = "schema.json";
+                contentType = "application/json";
+                filePath = path.resolve(`./${fileName}`);
+            }
+            else {
+                fileName = "module.spec.js";
+                contentType = "application/javascript";
+                filePath = path.resolve(`./dist/test/${fileName}`);
+            }
+            const readStream = fs.createReadStream(filePath);
+            request
+                .post(`http://localhost:${appUtility.port}/upload`)
+                .query({ saveto: "Y" })
                 .field('post-file', readStream)
                 .end((err, res) => {
                 readStream.close();
@@ -924,73 +1100,230 @@ describe("cwserver-utility", () => {
         it('database', (done) => {
             untouchedConfig = cwserver.Util.clone(appUtility.server.config);
             expect_1.default(test_view_1.shouldBeError(() => {
-                appUtility.server.config.database = [{
-                        module: "", path: "", dbConn: {
-                            database: "", password: ""
-                        }
-                    }];
-                appUtility.server.initilize();
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.database = {};
+                    appUtility.server.initilize();
+                }
+                catch (e) {
+                    appUtility.server.config.database = [];
+                    throw e;
+                }
             })).toBeInstanceOf(Error);
             expect_1.default(test_view_1.shouldBeError(() => {
-                appUtility.server.config.database = [{
-                        module: "pgsql", path: "", dbConn: {
-                            database: "", password: ""
-                        }
-                    }];
-                appUtility.server.initilize();
+                try {
+                    appUtility.server.config.database = [{
+                            module: "", path: "", dbConn: {
+                                database: "", password: ""
+                            }
+                        }];
+                    appUtility.server.initilize();
+                }
+                catch (e) {
+                    appUtility.server.config.database = [];
+                    throw e;
+                }
             })).toBeInstanceOf(Error);
             expect_1.default(test_view_1.shouldBeError(() => {
-                appUtility.server.config.database = [{
-                        module: "pgsql", path: "$rotex/$public/lib/pgslq.js", dbConn: {
-                            database: "", password: ""
-                        }
-                    }];
-                appUtility.server.initilize();
+                try {
+                    appUtility.server.config.database = [{
+                            module: "pgsql", path: "", dbConn: {
+                                database: "", password: ""
+                            }
+                        }];
+                    appUtility.server.initilize();
+                }
+                catch (e) {
+                    appUtility.server.config.database = [];
+                    throw e;
+                }
             })).toBeInstanceOf(Error);
             expect_1.default(test_view_1.shouldBeError(() => {
-                appUtility.server.config.database = [{
-                        module: "pgsql", path: "$rote/$public/lib/pgslq.js", dbConn: {
-                            database: "sysdb", password: ""
-                        }
-                    }];
-                appUtility.server.initilize();
+                try {
+                    appUtility.server.config.database = [{
+                            module: "pgsql", path: "$rotex/$public/lib/pgslq.js", dbConn: {
+                                database: "", password: ""
+                            }
+                        }];
+                    appUtility.server.initilize();
+                }
+                catch (e) {
+                    appUtility.server.config.database = [];
+                    throw e;
+                }
             })).toBeInstanceOf(Error);
             expect_1.default(test_view_1.shouldBeError(() => {
-                appUtility.server.config.database = [{
-                        module: "pgsql", path: "$rote/$public/lib/pgslq.js", dbConn: {
-                            database: "sysdb", password: "xyz"
-                        }
-                    }];
-                appUtility.server.initilize();
+                try {
+                    appUtility.server.config.database = [{
+                            module: "pgsql", path: "$rote/$public/lib/pgslq.js", dbConn: {
+                                database: "sysdb", password: ""
+                            }
+                        }];
+                    appUtility.server.initilize();
+                }
+                catch (e) {
+                    appUtility.server.config.database = [];
+                    throw e;
+                }
+            })).toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                try {
+                    appUtility.server.config.database = [{
+                            module: "pgsql", path: "$rote/$public/lib/pgslq.js", dbConn: {
+                                database: "sysdb", password: "xyz"
+                            }
+                        }];
+                    appUtility.server.initilize();
+                }
+                catch (e) {
+                    appUtility.server.config.database = [];
+                    throw e;
+                }
             })).toBeInstanceOf(Error);
             done();
         });
         it('override', (done) => {
             expect_1.default(test_view_1.shouldBeError(() => {
-                const newConfig = appUtility.server.config;
-                newConfig.encryptionKey = void 0;
-                appUtility.server.implimentConfig(newConfig);
+                const oldKey = appUtility.server.config.encryptionKey;
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.encryptionKey = void 0;
+                    appUtility.server.implimentConfig(newConfig);
+                }
+                catch (e) {
+                    appUtility.server.config.encryptionKey = oldKey;
+                    throw e;
+                }
             })).toBeInstanceOf(Error);
             expect_1.default(test_view_1.shouldBeError(() => {
+                const oldKey = appUtility.server.config.hiddenDirectory;
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.hiddenDirectory = void 0;
+                    newConfig.encryptionKey = "NEW_KEY";
+                    appUtility.server.implimentConfig(newConfig);
+                }
+                catch (e) {
+                    appUtility.server.config.hiddenDirectory = oldKey;
+                    throw e;
+                }
+            })).toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                const oldkey = appUtility.server.config.session;
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.session = {};
+                    appUtility.server.implimentConfig(newConfig);
+                }
+                catch (e) {
+                    appUtility.server.config.session = oldkey;
+                    throw e;
+                }
+            })).toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                const oldkey = appUtility.server.config.errorPage;
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.errorPage = {};
+                    appUtility.server.implimentConfig(newConfig);
+                    appUtility.server.initilize();
+                }
+                catch (e) {
+                    appUtility.server.config.errorPage = oldkey;
+                    throw e;
+                }
+            })).toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                const oldkey = appUtility.server.config.errorPage;
                 const newConfig = appUtility.server.config;
-                newConfig.hiddenDirectory = void 0;
-                appUtility.server.implimentConfig(newConfig);
+                newConfig.errorPage = void 0;
                 appUtility.server.initilize();
+                appUtility.server.config.errorPage = oldkey;
+            })).not.toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                const oldkey = appUtility.server.config.errorPage;
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.errorPage = [];
+                    appUtility.server.initilize();
+                }
+                catch (e) {
+                    appUtility.server.config.errorPage = oldkey;
+                    throw e;
+                }
             })).toBeInstanceOf(Error);
             expect_1.default(test_view_1.shouldBeError(() => {
-                const newConfig = appUtility.server.config;
-                newConfig.session = {};
-                appUtility.server.implimentConfig(newConfig);
+                const oldkey = appUtility.server.config.errorPage;
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.errorPage = {
+                        "405": "g/nopx/404.html"
+                    };
+                    appUtility.server.initilize();
+                    console.log(appUtility.server.config.errorPage);
+                }
+                catch (e) {
+                    appUtility.server.config.errorPage = oldkey;
+                    throw e;
+                }
             })).toBeInstanceOf(Error);
-            expect_1.default(test_view_1.shouldBeError(() => {
-                const newConfig = appUtility.server.config;
-                newConfig.session = {
-                    key: "session",
-                    maxAge: "14DD"
-                };
-                appUtility.server.implimentConfig(newConfig);
-            })).toBeInstanceOf(Error);
+            expect_1.default(appUtility.server.parseSession("test=1;no-parse")).toBeInstanceOf(sow_static_1.Session);
             cwserver.Util.extend(appUtility.server.config, untouchedConfig);
+            expect_1.default(appUtility.server.parseSession("_session=error")).toBeInstanceOf(sow_static_1.Session);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                const oldkey = appUtility.server.config.session;
+                const enckey = appUtility.server.config.encryptionKey;
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.encryptionKey = "NEW_KEY";
+                    newConfig.session = {
+                        key: "session",
+                        maxAge: {}
+                    };
+                    appUtility.server.implimentConfig(newConfig);
+                }
+                catch (e) {
+                    appUtility.server.config.session = oldkey;
+                    appUtility.server.config.encryptionKey = enckey;
+                    throw e;
+                }
+            })).toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                const oldkey = appUtility.server.config.cacheHeader;
+                const enckey = appUtility.server.config.encryptionKey;
+                const oldSession = appUtility.server.config.session;
+                try {
+                    const newConfig = appUtility.server.config;
+                    newConfig.encryptionKey = "NEW_KEY";
+                    newConfig.cacheHeader = void 0;
+                    newConfig.session = {
+                        key: "session",
+                        maxAge: void 0
+                    };
+                    appUtility.server.implimentConfig(newConfig);
+                }
+                catch (e) {
+                    appUtility.server.config.session = oldSession;
+                    appUtility.server.config.cacheHeader = oldkey;
+                    appUtility.server.config.encryptionKey = enckey;
+                    throw e;
+                }
+            })).toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                appUtility.server.parseMaxAge("10N");
+            })).toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                appUtility.server.parseMaxAge("AD");
+            })).toBeInstanceOf(Error);
+            expect_1.default(appUtility.server.parseMaxAge("1H")).not.toBeInstanceOf(Error);
+            expect_1.default(appUtility.server.parseMaxAge("1M")).not.toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                appUtility.server.parseMaxAge({});
+            })).toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                appUtility.server.formatPath("$root/$public/lib.js");
+            })).toBeInstanceOf(Error);
+            expect_1.default(appUtility.server.formatPath("root/public/lib.js")).not.toBeInstanceOf(Error);
             done();
         });
     });

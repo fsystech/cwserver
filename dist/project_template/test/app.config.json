@@ -52,7 +52,7 @@
     "origin": [],
     "root": "www",
     "hostName": "",
-    "frameAncestors": "",
+    "frameAncestors": "http://localhost",
     "tls": false,
     "cert": {},
     "port": 8080

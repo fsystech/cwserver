@@ -18,10 +18,22 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.shouldBeError = void 0;
 // 4:38 AM 5/22/2020
-// import expect from 'expect';
+const expect_1 = __importDefault(require("expect"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const socket_client_1 = require("./socket-client");
@@ -51,6 +63,10 @@ global.sow.server.on("register-view", (app, controller, server) => {
         mimeHandler.getMimeType(ctx.extension);
         return mimeHandler.render(ctx, vDir, true);
     });
+    expect_1.default(shouldBeError(() => {
+        server.addVirtualDir("/vtest", vDir);
+    })).toBeInstanceOf(Error);
+    server.addVirtualDir("/test-virtual", vDir);
     const streamDir = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
     server.addVirtualDir("/web-stream", streamDir, (ctx) => {
         if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
@@ -62,6 +78,10 @@ global.sow.server.on("register-view", (app, controller, server) => {
         }
         return ctx.next(404);
     });
+    const downloadDir = server.mapPath("/upload/data/");
+    if (!fs.existsSync(downloadDir)) {
+        index_1.Util.mkdirSync(server.mapPath("/"), "/upload/data/");
+    }
     controller
         .get('/ws-server-event', (ctx) => {
         ctx.res.json(ws.wsEvent);
@@ -90,36 +110,6 @@ global.sow.server.on("register-view", (app, controller, server) => {
         }
         return ctx.next(404);
     })
-        .post('/upload', (ctx) => {
-        const parser = new index_1.PayloadParser(ctx.req, tempDir);
-        parser.readData((err) => {
-            if (err) {
-                if (typeof (err) === "string" && err === "CLIENET_DISCONNECTED")
-                    return ctx.next(-500);
-                parser.clear();
-                server.addError(ctx, err instanceof Error ? err.message : err);
-                return ctx.next(500);
-            }
-            if (!parser.isMultipart()) {
-                ctx.next(404);
-            }
-            else {
-                const data = [];
-                parser.getFiles((file) => {
-                    data.push({
-                        content_type: file.getContentType(),
-                        name: file.getName(),
-                        file_name: file.getFileName(),
-                        content_disposition: file.getContentDisposition(),
-                        file_size: file.getFileSize()
-                    });
-                });
-                ctx.res.json(data.shift() || {});
-                ctx.next(200);
-            }
-            parser.clear();
-        });
-    })
         .get('/is-authenticate', (ctx) => {
         if (!ctx.req.query.loginId)
             return ctx.next(401);
@@ -133,6 +123,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
     })
         .any('/pass-error', (ctx) => {
         server.addError(ctx, new Error('test pass-error'));
+        server.addError(ctx, 'test pass-error');
         return server.passError(ctx), void 0;
     })
         .get('/authenticate', (ctx) => {
@@ -176,10 +167,64 @@ global.sow.server.on("register-view", (app, controller, server) => {
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
         parser.readData((err) => {
             if (parser.isUrlEncoded() || parser.isAppJson()) {
-                ctx.res.writeHead(200, { 'Content-Type': 'application/json' });
-                return ctx.res.end(JSON.stringify(parser.getJson())), ctx.next(200), void 0;
+                expect_1.default(shouldBeError(() => {
+                    parser.saveAs(downloadDir);
+                })).toBeInstanceOf(Error);
+                expect_1.default(shouldBeError(() => {
+                    parser.getFiles((pf) => { return; });
+                })).toBeInstanceOf(Error);
+                return ctx.res.json(parser.getJson()), ctx.next(200), void 0;
             }
             return ctx.next(404);
+        });
+    }).post('/post-async', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+        const parser = new index_1.PayloadParser(ctx.req, tempDir);
+        yield parser.readDataAsync();
+        if (parser.isUrlEncoded() || parser.isAppJson()) {
+            ctx.res.writeHead(200, { 'Content-Type': 'application/json' });
+            return ctx.res.end(JSON.stringify(parser.getJson())), ctx.next(200), void 0;
+        }
+        return ctx.next(404);
+    }))
+        .post('/upload', (ctx) => {
+        const parser = new index_1.PayloadParser(ctx.req, tempDir);
+        parser.readData((err) => {
+            if (err) {
+                if (typeof (err) === "string" && err === "CLIENET_DISCONNECTED")
+                    return ctx.next(-500);
+                parser.clear();
+                server.addError(ctx, err instanceof Error ? err.message : err);
+                return ctx.next(500);
+            }
+            if (!parser.isMultipart()) {
+                ctx.next(404);
+            }
+            else {
+                const saveTo = typeof (ctx.req.query.saveto) === "string";
+                const data = [];
+                parser.getFiles((file) => {
+                    data.push({
+                        content_type: file.getContentType(),
+                        name: file.getName(),
+                        file_name: file.getFileName(),
+                        content_disposition: file.getContentDisposition(),
+                        file_size: file.getFileSize(),
+                        temp_path: file.getTempPath()
+                    });
+                    expect_1.default(file.read()).toBeInstanceOf(Buffer);
+                    if (saveTo)
+                        return;
+                    file.saveAs(`${downloadDir}/${index_1.Util.guid()}_${file.getFileName()}`);
+                });
+                if (saveTo)
+                    parser.saveAs(downloadDir);
+                expect_1.default(shouldBeError(() => {
+                    parser.getData();
+                })).toBeInstanceOf(Error);
+                ctx.res.json(data.shift() || {});
+                ctx.next(200);
+            }
+            parser.clear();
         });
     });
 });
