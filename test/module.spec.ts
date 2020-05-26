@@ -237,6 +237,22 @@ describe( "cwserver-get", () => {
                 } );
         } );
     } );
+    it( 'test applicaton cookie', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/cookie` )
+                .end( ( err, res ) => {
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    expect( res.header["content-type"] ).toBe( "application/json" );
+                    const cook: string[] = res.get( "Set-Cookie" );
+                    expect( cook.length ).toEqual( 3 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
     it( 'try to access config.hiddenDirectory', ( done ) => {
         app.listen( appUtility.port, () => {
             request
@@ -293,6 +309,42 @@ describe( "cwserver-get", () => {
     } );
 } );
 describe( "cwserver-template-engine", () => {
+    it( 'should served from server mem cache', ( done ) => {
+        const old = appUtility.server.config.template;
+        appUtility.server.config.template.cacheType = "MEM";
+        appUtility.server.config.template.cache = true;
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/` )
+                .end( ( err, res ) => {
+                    appUtility.server.config.template = old;
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    expect( res.header["content-type"] ).toBe( "text/html" );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+    it( 'should throw template runtime error', ( done ) => {
+        const filePath: string = appUtility.server.mapPath( "/test.html" );
+        expect( fs.existsSync( filePath ) ).toEqual( false );
+        fs.writeFileSync( filePath, "{% server.invalid_method() %}" );
+        expect( fs.existsSync( filePath ) ).toEqual( true );
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/test` )
+                .end( ( err, res ) => {
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 500 );
+                    expect( res.header["content-type"] ).toBe( "text/html" );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
     it( 'send get request should be 404 response config.defaultExt = .html', ( done ) => {
         app.listen( appUtility.port, () => {
             request
@@ -634,6 +686,24 @@ describe( "cwserver-gzip-response", () => {
     } );
 } );
 describe( "cwserver-mime-type", () => {
+    it( 'served static file no cache', ( done ) => {
+        const old = appUtility.server.config.liveStream;
+        appUtility.server.config.liveStream = [];
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/static-file/test.mp3` )
+                .end( ( err, res ) => {
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    expect( res.header["content-type"] ).toBe( "audio/mpeg" );
+                    expect( res.header["content-length"] ).toBeDefined();
+                    appUtility.server.config.liveStream = old;
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
     let eTag: string = "";
     let lastModified: string = "";
     it( 'should be mime type encoding gzip', ( done ) => {

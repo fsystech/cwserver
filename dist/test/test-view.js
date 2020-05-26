@@ -78,6 +78,9 @@ global.sow.server.on("register-view", (app, controller, server) => {
         }
         return ctx.next(404);
     });
+    server.addVirtualDir("/static-file", streamDir, (ctx) => {
+        return mimeHandler.render(ctx, streamDir, true);
+    });
     const downloadDir = server.mapPath("/upload/data/");
     if (!fs.existsSync(downloadDir)) {
         index_1.Util.mkdirSync(server.mapPath("/"), "/upload/data/");
@@ -90,6 +93,25 @@ global.sow.server.on("register-view", (app, controller, server) => {
     })
         .get('/get-file', (ctx) => {
         return index_1.Util.sendResponse(ctx, server.mapPath("index.html"), "text/plain");
+    })
+        .any('/cookie', (ctx) => {
+        ctx.res.cookie("test-1", "test", {
+            domain: "localhost", path: "/",
+            expires: new Date(), secure: true,
+            sameSite: true
+        });
+        ctx.res.cookie("test-2", "test", {
+            domain: "localhost", path: "/",
+            expires: new Date(), secure: true,
+            sameSite: 'lax'
+        });
+        ctx.res.cookie("test-3", "test", {
+            domain: "localhost", path: "/",
+            expires: new Date(), secure: true,
+            sameSite: 'none'
+        });
+        ctx.res.json({ task: "done" });
+        return void 0;
     })
         .any('/echo', (ctx) => {
         ctx.res.writeHead(200, {

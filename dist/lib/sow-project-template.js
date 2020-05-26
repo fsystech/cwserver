@@ -67,23 +67,25 @@ function createProjectTemplate(settings) {
     if (!_fs.existsSync(webConfig)) {
         _fs.copyFileSync(_path.resolve(`${templateRoot}/web.config`), webConfig);
     }
-    // Blank directory ignore both of npm and git
-    // So, we've to check before complete project creation
-    const temp = '/web/temp/cache/';
-    if (!_fs.existsSync(_path.resolve(`${projectRoot}${temp}`))) {
-        sow_util_1.Util.mkdirSync(projectRoot, temp);
-        // Create blank directory in project_template/www/ for further use
-        sow_util_1.Util.mkdirSync(_path.resolve(`${templateRoot}/www`), temp);
+    if (isTest === false) {
+        // Blank directory ignore both of npm and git
+        // So, we've to check before complete project creation
+        const temp = '/web/temp/cache/';
+        if (!_fs.existsSync(_path.resolve(`${projectRoot}${temp}`))) {
+            sow_util_1.Util.mkdirSync(projectRoot, temp);
+            // Create blank directory in project_template/www/ for further use
+            sow_util_1.Util.mkdirSync(_path.resolve(`${templateRoot}/www`), temp);
+        }
+        if (settings.allExample === true) {
+            console.log(sow_logger_1.ConsoleColor.FgYellow, `Add all example to your project root ${settings.projectRoot}`);
+            sow_util_1.Util.mkdirSync(projectRoot, "/example/");
+            console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/example/`);
+            sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/example/`), _path.resolve(`${projectRoot}/example/`));
+            console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/lib/`);
+            sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/lib/`), _path.resolve(`${projectRoot}/lib/`));
+        }
     }
-    if (settings.allExample === true) {
-        console.log(sow_logger_1.ConsoleColor.FgYellow, `Add all example to your project root ${settings.projectRoot}`);
-        sow_util_1.Util.mkdirSync(projectRoot, "/example/");
-        console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/example/`);
-        sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/example/`), _path.resolve(`${projectRoot}/example/`));
-        console.log(sow_logger_1.ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/lib/`);
-        sow_util_1.Util.copySync(_path.resolve(`${templateRoot}/lib/`), _path.resolve(`${projectRoot}/lib/`));
-    }
-    if (isTest) {
+    else {
         sow_util_1.Util.copyFileSync(_path.resolve(`${templateRoot}/test/app.config.json`), _path.resolve(`${projectRoot}/config/app.config.json`));
         sow_util_1.Util.copyFileSync(_path.resolve(`${templateRoot}/test/test.js`), _path.resolve(`${projectRoot}/lib/view/test.js`));
         sow_util_1.Util.copyFileSync(_path.resolve(`${templateRoot}/test/socket-client.js`), _path.resolve(`${projectRoot}/lib/socket-client.js`));

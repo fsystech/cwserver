@@ -36,7 +36,8 @@ const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "pdf", gzip: true },
     { cache: false, ext: "ppt", gzip: true },
     { cache: false, ext: "pptx", gzip: true },
-    { cache: false, ext: "gz", gzip: false }
+    { cache: false, ext: "gz", gzip: false },
+    { cache: false, ext: "mp3", gzip: false }
 ];
 class MimeHandler {
     static getCachePath( ctx: IContext ) {
