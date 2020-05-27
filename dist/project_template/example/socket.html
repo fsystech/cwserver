@@ -1,0 +1,103 @@
+﻿<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+<body>
+    <div id="container" style="padding:50px">
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="form-group has-feedback">
+                    <label for="find">Message:</label>
+                    <textarea style="height: 75px; border:solid 1px #428bca;" class="form-control" rows="10" data-field-key="msg" placeholder="e.g. Any msg"></textarea>
+                    <span class="form-control-feedback" aria-hidden="true"></span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-12">
+                <label for="comment">Server Message:</label>
+                <ul data-logger="true" style="padding: 20px;list-style:none; width:100%; background-color:black;min-height:400px; max-height:400px; overflow-x: hidden; overflow-y: scroll"></ul>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+            integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+            crossorigin="anonymous"></script>
+    <script type="text/javascript">
+        $( document ).ready( function () {
+            var _logger = function () {
+                var $log = $( '[data-logger="true"]' );
+                return {
+                    clear: function () {
+                        return $( 'li', $log ).remove(), void 0;
+                    },
+                    scroll: function () {
+                        return $log.scrollTop( $log[0].scrollHeight ), void 0;
+                    },
+                    info: function ( msg ) {
+                        let $li = $( "<li>" );
+                        $li.css( "color", "yellow" );
+                        $li.html( `${new Date().toString().split( "GMT" )[0]}\t${msg}\n` );
+                        $log.append( $li );
+                        return $li = void 0, this.scroll();
+                    },
+                    log: function ( msg ) {
+                        let $li = $( "<li>" );
+                        $li.css( "color", "white" );
+                        $li.html( `${new Date().toString().split( "GMT" )[0]}\t${msg}\n` );
+                        $log.append( $li );
+                        return $li = void 0, this.scroll();
+                    },
+                    success: function ( msg ) {
+                        let $li = $( "<li>" );
+                        $li.css( "color", "lime" );
+                        $li.html( `${new Date().toString().split( "GMT" )[0]}\t${msg}\n` );
+                        $log.append( $li );
+                        return $li = void 0, this.scroll();
+                    },
+                    error: function ( msg ) {
+                        let $li = $( "<li>" );
+                        $li.css( "color", "red" );
+                        $li.html( `${new Date().toString().split( "GMT" )[0]}\tERROR# ${msg}\n` );
+                        $log.append( $li );
+                        return $li = void 0, this.scroll();
+                    }
+                };
+            }();
+            ( function ( socket ) {
+                socket.on( "on-connected", ( me ) => {
+                    _logger.success( `on-connected:${me.token}` );
+                } );
+                socket.on( "on-connect-user", ( me ) => {
+                    _logger.success( `on-connect-user:${me.token}` );
+                } );
+                socket.on( "on-disconnected-user", ( me ) => {
+                    _logger.success( `on-disconnected-user:${me.token}` );
+                } );
+                socket.on( 'on-public-msg', ( token, msg ) => {
+                    return _logger.info( `from:${msg}` );
+                } );
+                $( '[data-field-key="msg"]' ).keyup( function ( e ) {
+                    if ( e.keyCode == 13 ) {
+                        const $owner = $( this );
+                        const msg = $owner.val(); $owner.val( "" );
+                        socket.emit( "public-msg", JSON.stringify( { msg: msg } ) );
+                        _logger.success( `Me:${msg}` );
+                        return;
+                    }
+                } );
+
+            }( io( `${location.protocol}//${location.hostname}:${location.port || 80}`, {
+                path: void 0,
+                'reconnect': true,
+                timeout: ( 1000 * 5 ) - 500
+            } ) ) );
+        } )
+    </script>
+</body>
+</html>

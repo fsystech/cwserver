@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<placeholder id="header">
+</placeholder>
+<body>
+    <placeholder id="body">
+    </placeholder>
+    #attach /template/footer.html
+    <script src="/app/api/bundle/?g={= ctx.server.createBundle(`
+        $root/$public/static/script/test-1.js,
+        $root/$public/static/script/test-2.js|__owner__
+    `) =}&ck=bundle_test&ct=text/javascript&rc=Y"></script>
+    <link rel="stylesheet" type="text/css" href="/app/api/bundle/?g={= ctx.server.createBundle(`
+        $root/$public/static/css/test-1.css,
+        $root/$public/static/css/test-2.css|__owner__
+    `) =}&ck=bundle_test&ct=text/css&rc=Y" />
+</body>
+</html>
