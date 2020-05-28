@@ -213,7 +213,7 @@ var Util;
         const url = isExists(reqPath, ctx.next);
         if (!url)
             return;
-        ctx.res.writeHead(200, { 'Content-Type': contentType || 'text/html' });
+        ctx.res.writeHead(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
         return pipeOutputStream(String(url), ctx);
     }
     Util.sendResponse = sendResponse;

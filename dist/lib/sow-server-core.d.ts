@@ -43,6 +43,8 @@ export interface IResponse extends ServerResponse {
         [key: string]: any;
     }, compress?: boolean, next?: (error: Error | null) => void): void;
     status(code: number): IResponse;
+    asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse;
+    asJSON(code: number, contentLength?: number, isGzip?: boolean): IResponse;
     cookie(name: string, val: string, options: CookieOptions): IResponse;
     set(field: string, value: number | string | string[]): IResponse;
     redirect(url: string): void;

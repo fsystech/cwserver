@@ -6,6 +6,7 @@
 // 11:26 PM 9/28/2019
 import * as _fs from 'fs';
 import * as _path from 'path';
+import { Util } from './sow-util';
 export interface ILogger {
     newLine(): any;
     write( msg: string, color?: string ): ILogger;
@@ -15,6 +16,8 @@ export interface ILogger {
     error( msg: string ): ILogger;
     reset(): ILogger;
     dispose(): any;
+    writeToStream( str: string ): void;
+    flush(): boolean;
 }
 // tslint:disable-next-line: one-variable-per-declaration
 const dfo = ( t: any ) => {
@@ -23,7 +26,7 @@ const dfo = ( t: any ) => {
 }, dfm = ( t: any ) => {
     t += 1;
     return t <= 9 ? "0" + t : t;
-}, getLocalDateTime = ( offset: any ) => {
+}, getLocalDateTime = ( offset: any ): Date => {
     // create Date object for current location
     const d = new Date();
     // convert to msec
@@ -33,7 +36,7 @@ const dfo = ( t: any ) => {
     // create new Date object for different city
     // using supplied offset
     const nd = new Date( utc + ( 3600000 * offset ) );
-    // return time as a string
+    // return date
     return nd;
 }, getTime = ( tz: string ) => {
     const date = getLocalDateTime( tz );
@@ -72,61 +75,67 @@ export class Logger implements ILogger {
     private _isDebug: boolean;
     private _canWrite: boolean;
     private _tz: string;
-    private _stream?: _fs.WriteStream;
-    private _isWaiting: boolean;
-    private _buffer?: string;
-    constructor( dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean ) {
+    private _buff: Buffer[] = [];
+    private _blockSize: number = 0;
+    private _maxBlockSize: number = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
+    private _fd: number = -1;
+    constructor(
+        dir?: string, name?: string,
+        tz?: string, userInteractive?: boolean,
+        isDebug?: boolean, maxBlockSize?: number
+    ) {
         this._userInteractive = typeof ( userInteractive ) !== "boolean" ? true : userInteractive;
         this._isDebug = typeof ( isDebug ) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
-        this._canWrite = false;
-        this._stream = void 0; this._tz = "+6";
-        this._isWaiting = false;
+        this._canWrite = false; this._tz = "+6";
         if ( !dir ) return;
         dir = _path.resolve( dir );
         if ( !tz ) tz = '+6';
         this._tz = tz;
-        if ( _fs.existsSync( dir ) ) {
-            const date = getLocalDateTime( this._tz );
-            name = `${name || String( Math.random().toString( 36 ).slice( 2 ) + Date.now() )}_${date.getFullYear()}_${dfm( date.getMonth() )}_${dfo( date.getDate() )}.log`;
-            const path = _path.resolve( `${dir}/${name}` );
-            const exists = _fs.existsSync( path );
-            // const fd = _fs.openSync( path, 'a' );
-            // _fs.appendFileSync( fd, `\n`);
-            this._stream = _fs.createWriteStream( path, exists ? { flags: 'a', encoding: 'utf-8' } : { flags: 'w', encoding: 'utf-8' } );
-            this._canWrite = true;
-            if ( exists === false ) {
-                this._stream.write( `Log Genarte On ${getTime( this._tz )}\r\n-------------------------------------------------------------------\r\n` );
-            } else {
-                this.newLine();
-            }
+        if ( !_fs.existsSync( dir ) ) {
+            Util.mkdirSync( dir );
+        }
+        if ( typeof ( maxBlockSize ) === "number" ) {
+            this._maxBlockSize = maxBlockSize;
+        }
+        const date = getLocalDateTime( this._tz );
+        name = `${name || String( Math.random().toString( 36 ).slice( 2 ) + Date.now() )}_${date.getFullYear()}_${dfm( date.getMonth() )}_${dfo( date.getDate() )}.log`;
+        const path = _path.resolve( `${dir}/${name}` );
+        const exists = _fs.existsSync( path );
+        this._fd = _fs.openSync( path, 'a' );
+        this._canWrite = true;
+        if ( exists === false ) {
+            this.writeToStream( `Log Genarte On ${getTime( this._tz )}\r\n-------------------------------------------------------------------\r\n` );
+        } else {
+            this.newLine();
         }
     }
-    private _writeToStream( str: string ): void {
-        if ( this._canWrite === false ) return void 0;
-        if ( !this._stream ) return void 0;
-        if ( this._isWaiting ) {
-            if ( !this._buffer ) {
-                return this._buffer = str, void 0;
-            }
-            return this._buffer += str, void 0;
+    public flush(): boolean {
+        if ( this._fd < 0 ) {
+            throw new Error("File not open yet....");
         }
-        if ( this._stream.write( str ) ) return void 0;
-        this._isWaiting = true;
-        return this._stream.once( "drain", () => {
-            if ( this._buffer && this._stream ) {
-                this._stream.write( this._buffer );
-                delete this._buffer;
-            }
-            this._isWaiting = false;
-            return;
-        } ), void 0;
-
+        if ( this._buff.length === 0 ) return false;
+        _fs.appendFileSync( this._fd, Buffer.concat( this._buff ) );
+        this._buff.length = 0;
+        this._blockSize = 0;
+        return true;
+    }
+    public writeToStream( str: string ): void {
+        if ( this._canWrite === false ) return void 0;
+        const buff = Buffer.from( str );
+        this._blockSize += buff.byteLength;
+        this._buff.push( buff );
+        if ( this._blockSize < this._maxBlockSize ) {
+            return void 0;
+        }
+        return this.flush(), void 0;
     }
     public newLine(): void {
-        return this._writeToStream( '-------------------------------------------------------------------\r\n' );
+        return this.writeToStream( '-------------------------------------------------------------------\r\n' );
     }
     private _write( buffer: any ): void {
-        return this._writeToStream( `${getTime( this._tz )}\t${buffer.replace( /\t/gi, "" )}\r\n` );
+        if ( typeof ( buffer ) !== "string" )
+            buffer = String( buffer );
+        return this.writeToStream( `${getTime( this._tz )}\t${buffer.replace( /\t/gi, "" )}\r\n` );
     }
     private _log( color?: string, msg?: any ): ILogger {
         if ( !this._isDebug && !this._userInteractive ) return this._write( msg ), this;
@@ -156,10 +165,11 @@ export class Logger implements ILogger {
         return console.log( ConsoleColor.Reset ), this;
     }
     public dispose() {
-        if ( this._canWrite === false ) return;
-        if ( this._stream !== undefined ) {
-            this._stream.end(); delete this._stream;
+        if ( this._fd > 0 ) {
+            this.flush();
+            _fs.closeSync( this._fd );
+            this._fd = -1;
+            this._canWrite = false;
         }
-        this._canWrite = false;
     }
 }

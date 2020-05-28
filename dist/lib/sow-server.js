@@ -709,6 +709,7 @@ function initilizeServer(appRoot, wwwName) {
                 return _server.transferRequest(_context, _server.config.errorPage["404"]);
             }
             if (req.path.indexOf('$root') > -1 || req.path.indexOf('$public') > -1) {
+                _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
                 return _server.transferRequest(_context, _server.config.errorPage["404"]);
             }
             try {

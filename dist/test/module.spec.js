@@ -53,6 +53,7 @@ let appUtility = Object.create(null);
 let app = Object.create(null);
 const appRoot = process.env.SCRIPT === "TS" ? path.join(path.resolve(__dirname, '..'), "/dist/test/") : __dirname;
 const projectRoot = 'cwserver.safeonline.world';
+const logDir = path.resolve('./log/');
 describe("cwserver-default-project-template", () => {
     it("create project template", (done) => {
         cwserver.createProjectTemplate({
@@ -125,6 +126,9 @@ describe("cwserver-core", () => {
         done();
     });
     it("initilize server", (done) => {
+        if (fs.existsSync(logDir)) {
+            sow_util_1.Util.rmdirSync(logDir);
+        }
         appUtility = cwserver.initilizeServer(appRoot, projectRoot);
         expect_1.default(appUtility.public).toEqual(projectRoot);
         done();
@@ -152,6 +156,21 @@ describe("cwserver-core", () => {
             });
         });
     });
+    it("throw application already shutdown", (done) => {
+        app.shutdown((err) => {
+            expect_1.default(err).toBeInstanceOf(Error);
+            done();
+        });
+    });
+    it("throw application already listen", (done) => {
+        app.listen(appUtility.port, () => __awaiter(void 0, void 0, void 0, function* () {
+            expect_1.default(test_view_1.shouldBeError(() => {
+                app.listen(appUtility.port);
+            })).toBeInstanceOf(Error);
+            yield app.shutdown();
+            done();
+        }));
+    });
 });
 describe("cwserver-view", () => {
     it('register view', (done) => {
@@ -163,12 +182,16 @@ describe("cwserver-view", () => {
             return ctx.next(200);
         };
         appUtility.controller.get("/test-controller", invoke)
-            .post("/test-controller", invoke);
+            .post("/test-controller", invoke)
+            .any("/any-controller", invoke);
         expect_1.default(test_view_1.shouldBeError(() => {
             appUtility.controller.get("/test-controller", invoke);
         })).toBeInstanceOf(Error);
         expect_1.default(test_view_1.shouldBeError(() => {
             appUtility.controller.post("/test-controller", invoke);
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            appUtility.controller.post("/any-controller", invoke);
         })).toBeInstanceOf(Error);
         expect_1.default(test_view_1.shouldBeError(() => {
             appUtility.controller.any("/test-controller", invoke);
@@ -339,6 +362,43 @@ describe("cwserver-get", () => {
             });
         });
     });
+    it('test route /test-any/*', (done) => {
+        app.listen(appUtility.port, () => {
+            request
+                .get(`http://localhost:${appUtility.port}/test-any/param/go`)
+                .end((err, res) => {
+                expect_1.default(err).not.toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(200);
+                expect_1.default(res.header["content-type"]).toBe("application/json");
+                expect_1.default(res.body).toBeInstanceOf(Object);
+                expect_1.default(res.body.servedFrom).toEqual('/test-any/*');
+                expect_1.default(res.body.q).toBeInstanceOf(Array);
+                expect_1.default(res.body.q.indexOf("param")).toBeGreaterThan(-1);
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
+    it('test route /task/:id/*', (done) => {
+        app.listen(appUtility.port, () => {
+            request
+                .get(`http://localhost:${appUtility.port}/task/1/test_request/next`)
+                .end((err, res) => {
+                expect_1.default(err).not.toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(200);
+                expect_1.default(res.header["content-type"]).toBe("application/json");
+                expect_1.default(res.body).toBeInstanceOf(Object);
+                expect_1.default(res.body.servedFrom).toEqual('/task/:id/*');
+                expect_1.default(res.body.q).toBeInstanceOf(Array);
+                expect_1.default(res.body.q.indexOf("1")).toBeGreaterThan(-1);
+                expect_1.default(res.body.q.indexOf("test_request")).toBeGreaterThan(-1);
+                app.shutdown((_err) => {
+                    done();
+                });
+            });
+        });
+    });
 });
 describe("cwserver-template-engine", () => {
     it('should served from server mem cache', (done) => {
@@ -410,7 +470,7 @@ describe("cwserver-template-engine", () => {
     });
     let templateConf;
     it('route `/` then should use config.defaultDoc and create template cache', (done) => {
-        templateConf = appUtility.server.config.template;
+        templateConf = sow_util_1.Util.clone(appUtility.server.config.template);
         appUtility.server.config.template.cache = true;
         appUtility.server.config.template.cacheType = "FILE";
         app.listen(appUtility.port, () => {
@@ -433,7 +493,7 @@ describe("cwserver-template-engine", () => {
                 .get(`http://localhost:${appUtility.port}/`)
                 .end((err, res) => {
                 if (templateConf) {
-                    appUtility.server.config.template = templateConf;
+                    sow_util_1.Util.extend(appUtility.server.config.template, templateConf);
                 }
                 expect_1.default(err).not.toBeInstanceOf(Error);
                 expect_1.default(res.status).toBe(200);
@@ -1285,7 +1345,8 @@ describe("cwserver-controller-reset", () => {
     });
 });
 describe("cwserver-utility", () => {
-    it("Encryption", (done) => {
+    it("test-app-utility", (done) => {
+        expect_1.default(sow_static_1.ToNumber(null)).toEqual(0);
         const str = "TEST";
         const hex = cwserver.Encryption.utf8ToHex(str);
         expect_1.default(cwserver.Encryption.hexToUtf8(hex)).toEqual(str);
@@ -1533,13 +1594,31 @@ describe("cwserver-utility", () => {
         appUtility.server.log.log("log-test");
         appUtility.server.log.info("log-info-test");
         appUtility.server.log.dispose();
-        const logger = new sow_logger_1.Logger();
+        let logger = new sow_logger_1.Logger();
         logger.log("log-test");
         logger.info("log-test");
         logger.success("log-test");
         logger.error("log-test");
+        expect_1.default(test_view_1.shouldBeError(() => {
+            logger.flush();
+        })).toBeInstanceOf(Error);
         logger.reset();
         logger.dispose();
+        logger.dispose();
+        logger = new sow_logger_1.Logger(logDir, void 0, "+6", void 0, false);
+        logger.write("test");
+        logger.dispose();
+        appUtility.server.log.dispose();
+        logger = new sow_logger_1.Logger(logDir, projectRoot, "+6", true, true, 100);
+        expect_1.default(logger.flush()).toEqual(true);
+        expect_1.default(logger.flush()).toEqual(false);
+        logger.log({});
+        logger.writeToStream("log-test");
+        logger.writeToStream("log-test");
+        logger.writeToStream("log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test");
+        logger.writeToStream("log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test ");
+        logger.writeToStream("log-test");
+        logger.reset();
         logger.dispose();
         done();
     });

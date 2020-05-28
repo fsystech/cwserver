@@ -5,7 +5,7 @@
 */
 // 2:40 PM 5/7/2020
 import {
-    createServer,
+    createServer, OutgoingHttpHeaders,
     Server, IncomingMessage, ServerResponse
 } from 'http';
 import { EventEmitter } from 'events';
@@ -47,6 +47,8 @@ export interface IRequest extends IncomingMessage {
 export interface IResponse extends ServerResponse {
     json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void;
     status( code: number ): IResponse;
+    asHTML( code: number, contentLength?: number, isGzip?: boolean ): IResponse;
+    asJSON( code: number, contentLength?: number, isGzip?: boolean ): IResponse;
     // isEnd: boolean;
     cookie( name: string, val: string, options: CookieOptions ): IResponse;
     set( field: string, value: number | string | string[] ): IResponse;
@@ -146,15 +148,33 @@ const createCookie = ( name: string, val: string, options: CookieOptions ): stri
     }
     return str;
 }
+const getCommonHeader = ( contentType: string, contentLength?: number, isGzip?: boolean ): OutgoingHttpHeaders => {
+    const header: OutgoingHttpHeaders = {
+        'Content-Type': contentType
+    };
+    if ( typeof ( contentLength ) === "number" ) {
+        header['Content-Length'] = contentLength;
+    }
+    if ( typeof ( isGzip ) === "boolean" && isGzip === true ) {
+        header['Content-Encoding'] = "gzip";
+    }
+    return header;
+}
 // tslint:disable-next-line: max-classes-per-file
 class Response extends ServerResponse implements IResponse {
+    asHTML( code: number, contentLength?: number, isGzip?: boolean ): IResponse {
+        return this.writeHead( code, getCommonHeader( 'text/html; charset=UTF-8', contentLength, isGzip ) ), this;
+    }
+    asJSON( code: number, contentLength?: number, isGzip?: boolean ): IResponse {
+        return this.writeHead( code, getCommonHeader( 'application/json', contentLength, isGzip ) ), this;
+    }
     render( ctx: IContext, path: string, status?: IResInfo ): void {
         return Template.parse( ctx, path, status );
     }
     redirect( url: string ): void {
         return this.writeHead( this.statusCode, {
             'Location': url
-        } ), this.end();
+        } ).end();
     }
     set( field: string, value: number | string | string[] ): IResponse {
         return this.setHeader( field, value ), this;
@@ -167,8 +187,7 @@ class Response extends ServerResponse implements IResponse {
             sCookie = [];
         }
         sCookie.push( createCookie( name, val, options ) );
-        this.setHeader( "Set-Cookie", sCookie );
-        return this;
+        return this.setHeader( "Set-Cookie", sCookie ), this;
     }
     json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void {
         const json = JSON.stringify( body );
@@ -178,20 +197,14 @@ class Response extends ServerResponse implements IResponse {
                     if ( next ) return next( error );
                     this.writeHead( 500, {
                         'Content-Type': 'text/plain'
-                    } );
-                    return this.end( `Runtime Error: ${error.message}` );
+                    } ).end( `Runtime Error: ${error.message}` );
+                    return void 0;
                 }
-                this.writeHead( 200, {
-                    'Content-Type': 'application/json',
-                    'Content-Encoding': 'gzip',
-                    'Content-Length': buff.length
-                } );
-                this.end( buff );
+                this.asJSON( 200, buff.length, true ).end( buff );
+                return void 0;
             } );
         }
-        this.setHeader( 'Content-Type', 'application/json' );
-        this.setHeader( 'Content-Length', Buffer.byteLength( json ) );
-        return this.end( json );
+        return this.asJSON( 200, Buffer.byteLength( json ) ).end( json );
     }
     status( code: number ): IResponse {
         this.statusCode = code;
@@ -241,17 +254,26 @@ class Application extends EventEmitter implements IApplication {
     private _appHandler: IHandlers[] = [];
     private _prerequisitesHandler: IHandlers[] = [];
     private _hasErrorEvnt: boolean = false;
+    private _isRunning: boolean = false;
     constructor( server: Server ) {
         super();
         this.server = server;
     }
     shutdown(): Promise<void> {
         let resolveTerminating: (value?: void | PromiseLike<void> | undefined)=> void;
-        // let rejectTerminating: { (arg0: Error): void; (reason?: any): void; };
+        let rejectTerminating: ( reason?: any ) => void;
         const promise = new Promise<void>( ( resolve, reject ) => {
             resolveTerminating = resolve;
+            rejectTerminating = reject;
         } );
-        this.server.close().once( 'close', () => resolveTerminating() );
+        if ( !this._isRunning ) {
+            setImmediate( () => {
+                rejectTerminating( new Error("Server not running....") );
+            }, 0 );
+        } else {
+            this._isRunning = false;
+            this.server.close().once( 'close', () => resolveTerminating() );
+        }
         return promise;
     }
     _handleRequest(
@@ -298,18 +320,14 @@ class Application extends EventEmitter implements IApplication {
                 if ( this._hasErrorEvnt ) {
                     return this.emit( "error", req, res, err ), void 0;
                 }
-                res.writeHead( 500, { 'Content-Type': 'text/html' } );
-                res.end( "Error found...." + err.message );
-                return;
+                return res.asHTML( 500 ).end( "Error found...." + err.message );
             }
-            // tslint:disable-next-line: no-shadowed-variable
-            this._handleRequest( req, res, this._appHandler, ( err?: Error ): void => {
+            this._handleRequest( req, res, this._appHandler, ( _err?: Error ): void => {
                 if ( res.headersSent ) return;
                 if ( this._hasErrorEvnt ) {
-                    return this.emit( "error", req, res, err ), void 0;
+                    return this.emit( "error", req, res, _err ), void 0;
                 }
-                res.writeHead( 200, { 'Content-Type': 'text/html' } );
-                res.end( `Can not ${req.method} ${req.path}....` );
+                return res.asHTML( 200 ).end( `Can not ${req.method} ${req.path}....` );
             }, false );
         }, true );
     }
@@ -329,13 +347,18 @@ class Application extends EventEmitter implements IApplication {
         }
         throw new Error( "Invalid arguments..." );
     }
-    // tslint:disable-next-line: ban-types
     listen( handle: any, listeningListener?: () => void ): IApplication {
+        if ( this._isRunning ) {
+            throw new Error( "Server already running...." );
+        }
         if ( this._hasErrorEvnt === false && this.listenerCount( "error" ) > 0 ) {
             this._hasErrorEvnt = true;
         }
-        this.server.listen( handle, listeningListener );
-        return this;
+        return this.server.listen( handle, () => {
+            this._isRunning = true;
+            if ( listeningListener )
+                return listeningListener();
+        } ), this;
     }
 
 }

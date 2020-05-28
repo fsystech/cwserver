@@ -154,7 +154,7 @@ class PostedFileInfo {
     }
     read() {
         if (!this._tempFile || this._isMoved)
-            throw new Error("Method not implemented.");
+            throw new Error("This file already moved or not created yet.");
         return _fs.readFileSync(this._tempFile);
     }
     saveAs(absPath) {

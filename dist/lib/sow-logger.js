@@ -28,6 +28,7 @@ exports.Logger = exports.ConsoleColor = void 0;
 // 11:26 PM 9/28/2019
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
+const sow_util_1 = require("./sow-util");
 // tslint:disable-next-line: one-variable-per-declaration
 const dfo = (t) => {
     t = t === 0 ? 1 : t;
@@ -45,7 +46,7 @@ const dfo = (t) => {
     // create new Date object for different city
     // using supplied offset
     const nd = new Date(utc + (3600000 * offset));
-    // return time as a string
+    // return date
     return nd;
 }, getTime = (tz) => {
     const date = getLocalDateTime(tz);
@@ -84,64 +85,69 @@ let ConsoleColor = /** @class */ (() => {
 exports.ConsoleColor = ConsoleColor;
 // tslint:disable-next-line: max-classes-per-file
 class Logger {
-    constructor(dir, name, tz, userInteractive, isDebug) {
+    constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
+        this._buff = [];
+        this._blockSize = 0;
+        this._maxBlockSize = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
+        this._fd = -1;
         this._userInteractive = typeof (userInteractive) !== "boolean" ? true : userInteractive;
         this._isDebug = typeof (isDebug) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false;
-        this._stream = void 0;
         this._tz = "+6";
-        this._isWaiting = false;
         if (!dir)
             return;
         dir = _path.resolve(dir);
         if (!tz)
             tz = '+6';
         this._tz = tz;
-        if (_fs.existsSync(dir)) {
-            const date = getLocalDateTime(this._tz);
-            name = `${name || String(Math.random().toString(36).slice(2) + Date.now())}_${date.getFullYear()}_${dfm(date.getMonth())}_${dfo(date.getDate())}.log`;
-            const path = _path.resolve(`${dir}/${name}`);
-            const exists = _fs.existsSync(path);
-            // const fd = _fs.openSync( path, 'a' );
-            // _fs.appendFileSync( fd, `\n`);
-            this._stream = _fs.createWriteStream(path, exists ? { flags: 'a', encoding: 'utf-8' } : { flags: 'w', encoding: 'utf-8' });
-            this._canWrite = true;
-            if (exists === false) {
-                this._stream.write(`Log Genarte On ${getTime(this._tz)}\r\n-------------------------------------------------------------------\r\n`);
-            }
-            else {
-                this.newLine();
-            }
+        if (!_fs.existsSync(dir)) {
+            sow_util_1.Util.mkdirSync(dir);
+        }
+        if (typeof (maxBlockSize) === "number") {
+            this._maxBlockSize = maxBlockSize;
+        }
+        const date = getLocalDateTime(this._tz);
+        name = `${name || String(Math.random().toString(36).slice(2) + Date.now())}_${date.getFullYear()}_${dfm(date.getMonth())}_${dfo(date.getDate())}.log`;
+        const path = _path.resolve(`${dir}/${name}`);
+        const exists = _fs.existsSync(path);
+        this._fd = _fs.openSync(path, 'a');
+        this._canWrite = true;
+        if (exists === false) {
+            this.writeToStream(`Log Genarte On ${getTime(this._tz)}\r\n-------------------------------------------------------------------\r\n`);
+        }
+        else {
+            this.newLine();
         }
     }
-    _writeToStream(str) {
+    flush() {
+        if (this._fd < 0) {
+            throw new Error("File not open yet....");
+        }
+        if (this._buff.length === 0)
+            return false;
+        _fs.appendFileSync(this._fd, Buffer.concat(this._buff));
+        this._buff.length = 0;
+        this._blockSize = 0;
+        return true;
+    }
+    writeToStream(str) {
         if (this._canWrite === false)
             return void 0;
-        if (!this._stream)
+        const buff = Buffer.from(str);
+        this._blockSize += buff.byteLength;
+        this._buff.push(buff);
+        if (this._blockSize < this._maxBlockSize) {
             return void 0;
-        if (this._isWaiting) {
-            if (!this._buffer) {
-                return this._buffer = str, void 0;
-            }
-            return this._buffer += str, void 0;
         }
-        if (this._stream.write(str))
-            return void 0;
-        this._isWaiting = true;
-        return this._stream.once("drain", () => {
-            if (this._buffer && this._stream) {
-                this._stream.write(this._buffer);
-                delete this._buffer;
-            }
-            this._isWaiting = false;
-            return;
-        }), void 0;
+        return this.flush(), void 0;
     }
     newLine() {
-        return this._writeToStream('-------------------------------------------------------------------\r\n');
+        return this.writeToStream('-------------------------------------------------------------------\r\n');
     }
     _write(buffer) {
-        return this._writeToStream(`${getTime(this._tz)}\t${buffer.replace(/\t/gi, "")}\r\n`);
+        if (typeof (buffer) !== "string")
+            buffer = String(buffer);
+        return this.writeToStream(`${getTime(this._tz)}\t${buffer.replace(/\t/gi, "")}\r\n`);
     }
     _log(color, msg) {
         if (!this._isDebug && !this._userInteractive)
@@ -177,13 +183,12 @@ class Logger {
         return console.log(ConsoleColor.Reset), this;
     }
     dispose() {
-        if (this._canWrite === false)
-            return;
-        if (this._stream !== undefined) {
-            this._stream.end();
-            delete this._stream;
+        if (this._fd > 0) {
+            this.flush();
+            _fs.closeSync(this._fd);
+            this._fd = -1;
+            this._canWrite = false;
         }
-        this._canWrite = false;
     }
 }
 exports.Logger = Logger;

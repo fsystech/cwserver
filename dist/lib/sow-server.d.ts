@@ -7,7 +7,7 @@ import { IController } from './sow-controller';
 import { ICryptoInfo } from "./sow-encryption";
 import { ILogger } from "./sow-logger";
 export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
-export declare type AppHandler = (ctx: IContext) => void;
+export declare type AppHandler = (ctx: IContext, routeParam?: string[]) => void;
 export interface IContext {
     [key: string]: any;
     error?: string;

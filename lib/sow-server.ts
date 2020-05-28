@@ -24,7 +24,7 @@ import { Encryption, ICryptoInfo } from "./sow-encryption";
 import { HttpStatus } from "./sow-http-status";
 import { Logger, ILogger } from "./sow-logger"
 export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => void;
-export type AppHandler = ( ctx: IContext ) => void;
+export type AppHandler = ( ctx: IContext, routeParam?: string[] ) => void;
 // -------------------------------------------------------
 export interface IContext {
     [key: string]: any;
@@ -894,6 +894,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
                 return _server.transferRequest( _context, _server.config.errorPage["404"] );
             }
             if ( req.path.indexOf( '$root' ) > -1 || req.path.indexOf( '$public' ) > -1 ) {
+                _server.log.write( `Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}` ).reset();
                 return _server.transferRequest( _context, _server.config.errorPage["404"] );
             }
             try {

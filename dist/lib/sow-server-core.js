@@ -106,15 +106,33 @@ const createCookie = (name, val, options) => {
     }
     return str;
 };
+const getCommonHeader = (contentType, contentLength, isGzip) => {
+    const header = {
+        'Content-Type': contentType
+    };
+    if (typeof (contentLength) === "number") {
+        header['Content-Length'] = contentLength;
+    }
+    if (typeof (isGzip) === "boolean" && isGzip === true) {
+        header['Content-Encoding'] = "gzip";
+    }
+    return header;
+};
 // tslint:disable-next-line: max-classes-per-file
 class Response extends http_1.ServerResponse {
+    asHTML(code, contentLength, isGzip) {
+        return this.writeHead(code, getCommonHeader('text/html; charset=UTF-8', contentLength, isGzip)), this;
+    }
+    asJSON(code, contentLength, isGzip) {
+        return this.writeHead(code, getCommonHeader('application/json', contentLength, isGzip)), this;
+    }
     render(ctx, path, status) {
         return sow_template_1.Template.parse(ctx, path, status);
     }
     redirect(url) {
         return this.writeHead(this.statusCode, {
             'Location': url
-        }), this.end();
+        }).end();
     }
     set(field, value) {
         return this.setHeader(field, value), this;
@@ -128,8 +146,7 @@ class Response extends http_1.ServerResponse {
             sCookie = [];
         }
         sCookie.push(createCookie(name, val, options));
-        this.setHeader("Set-Cookie", sCookie);
-        return this;
+        return this.setHeader("Set-Cookie", sCookie), this;
     }
     json(body, compress, next) {
         const json = JSON.stringify(body);
@@ -140,20 +157,14 @@ class Response extends http_1.ServerResponse {
                         return next(error);
                     this.writeHead(500, {
                         'Content-Type': 'text/plain'
-                    });
-                    return this.end(`Runtime Error: ${error.message}`);
+                    }).end(`Runtime Error: ${error.message}`);
+                    return void 0;
                 }
-                this.writeHead(200, {
-                    'Content-Type': 'application/json',
-                    'Content-Encoding': 'gzip',
-                    'Content-Length': buff.length
-                });
-                this.end(buff);
+                this.asJSON(200, buff.length, true).end(buff);
+                return void 0;
             });
         }
-        this.setHeader('Content-Type', 'application/json');
-        this.setHeader('Content-Length', Buffer.byteLength(json));
-        return this.end(json);
+        return this.asJSON(200, Buffer.byteLength(json)).end(json);
     }
     status(code) {
         this.statusCode = code;
@@ -199,15 +210,25 @@ class Application extends events_1.EventEmitter {
         this._appHandler = [];
         this._prerequisitesHandler = [];
         this._hasErrorEvnt = false;
+        this._isRunning = false;
         this.server = server;
     }
     shutdown() {
         let resolveTerminating;
-        // let rejectTerminating: { (arg0: Error): void; (reason?: any): void; };
+        let rejectTerminating;
         const promise = new Promise((resolve, reject) => {
             resolveTerminating = resolve;
+            rejectTerminating = reject;
         });
-        this.server.close().once('close', () => resolveTerminating());
+        if (!this._isRunning) {
+            setImmediate(() => {
+                rejectTerminating(new Error("Server not running...."));
+            }, 0);
+        }
+        else {
+            this._isRunning = false;
+            this.server.close().once('close', () => resolveTerminating());
+        }
         return promise;
     }
     _handleRequest(req, res, handlers, next, isPrerequisites) {
@@ -254,19 +275,15 @@ class Application extends events_1.EventEmitter {
                 if (this._hasErrorEvnt) {
                     return this.emit("error", req, res, err), void 0;
                 }
-                res.writeHead(500, { 'Content-Type': 'text/html' });
-                res.end("Error found...." + err.message);
-                return;
+                return res.asHTML(500).end("Error found...." + err.message);
             }
-            // tslint:disable-next-line: no-shadowed-variable
-            this._handleRequest(req, res, this._appHandler, (err) => {
+            this._handleRequest(req, res, this._appHandler, (_err) => {
                 if (res.headersSent)
                     return;
                 if (this._hasErrorEvnt) {
-                    return this.emit("error", req, res, err), void 0;
+                    return this.emit("error", req, res, _err), void 0;
                 }
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(`Can not ${req.method} ${req.path}....`);
+                return res.asHTML(200).end(`Can not ${req.method} ${req.path}....`);
             }, false);
         }, true);
     }
@@ -286,13 +303,18 @@ class Application extends events_1.EventEmitter {
         }
         throw new Error("Invalid arguments...");
     }
-    // tslint:disable-next-line: ban-types
     listen(handle, listeningListener) {
+        if (this._isRunning) {
+            throw new Error("Server already running....");
+        }
         if (this._hasErrorEvnt === false && this.listenerCount("error") > 0) {
             this._hasErrorEvnt = true;
         }
-        this.server.listen(handle, listeningListener);
-        return this;
+        return this.server.listen(handle, () => {
+            this._isRunning = true;
+            if (listeningListener)
+                return listeningListener();
+        }), this;
     }
 }
 // tslint:disable-next-line: max-classes-per-file

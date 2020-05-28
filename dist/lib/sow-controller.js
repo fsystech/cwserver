@@ -9,15 +9,83 @@ exports.Controller = void 0;
 // 11:16 PM 5/2/2020
 const sow_http_mime_1 = require("./sow-http-mime");
 const sow_util_1 = require("./sow-util");
-// interface IHander {
-//    appHandler: AppHandler;
-//    route: string;
-//    query: string[];
-// }
 const routeInfo = {
     any: {},
     get: {},
-    post: {}
+    post: {},
+    router: []
+};
+// 1:21 AM 5/28/2020
+const concatArray = (from, to, index) => {
+    const l = from.length;
+    for (let i = index; i < l; i++) {
+        to.push(from[i]);
+    }
+};
+// 1:21 AM 5/28/2020
+const fireHandler = (ctx) => {
+    if (routeInfo.router.length === 0)
+        return false;
+    const pathArray = ctx.path.split("/");
+    const routeParam = [];
+    const router = routeInfo.router.find((info) => {
+        if (routeParam.length > 0)
+            routeParam.length = 0;
+        if (info.method !== "ANY") {
+            if (info.method !== ctx.req.method)
+                return false;
+        }
+        if (info.pathArray[1] !== "*" && info.pathArray[1].indexOf(":") < 0 && pathArray[1] !== info.pathArray[1])
+            return false;
+        let reqPath = "";
+        let path = "";
+        let index = 0;
+        for (const part of info.pathArray) {
+            if (part) {
+                if (!pathArray[index]) {
+                    if (part === "*") {
+                        concatArray(pathArray, routeParam, index);
+                        return true;
+                    }
+                    return false;
+                }
+                reqPath += `/${pathArray[index]}`;
+                if (part === "*") {
+                    if (index >= 1) {
+                        concatArray(pathArray, routeParam, index);
+                        return true;
+                    }
+                    path += `/${pathArray[index]}`;
+                    if (reqPath !== path)
+                        return false;
+                    concatArray(pathArray, routeParam, index);
+                    return true;
+                }
+                if (part.indexOf(":") > -1) {
+                    path += `/${pathArray[index]}`;
+                    routeParam.push(pathArray[index]);
+                }
+                else {
+                    if (pathArray[index] !== part)
+                        return false;
+                    path += `/${part}`;
+                    if (reqPath !== path)
+                        return false;
+                }
+            }
+            index++;
+        }
+        if (path === reqPath) {
+            if (pathArray.length > index) {
+                concatArray(pathArray, routeParam, index);
+            }
+            return true;
+        }
+        return false;
+    });
+    if (!router)
+        return false;
+    return router.handler(ctx, routeParam), true;
 };
 const getFileName = (path) => {
     const index = path.lastIndexOf("/");
@@ -33,20 +101,40 @@ class Controller {
         delete routeInfo.get;
         delete routeInfo.post;
         delete routeInfo.any;
+        delete routeInfo.router;
         routeInfo.get = {};
         routeInfo.post = {};
         routeInfo.any = {};
+        routeInfo.router = [];
     }
     get(route, next) {
         if (routeInfo.get[route])
             throw new Error(`Duplicate get route defined ${route}`);
         if (routeInfo.any[route])
             throw new Error(`Duplicate get route defined ${route}`);
+        if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
+            routeInfo.router.push({
+                method: "GET",
+                handler: next,
+                path: route,
+                pathArray: route.split("/")
+            });
+        }
         return routeInfo.get[route] = next, this;
     }
     post(route, next) {
         if (routeInfo.post[route])
             throw new Error(`Duplicate post route defined ${route}`);
+        if (routeInfo.any[route])
+            throw new Error(`Duplicate post route defined ${route}`);
+        if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
+            routeInfo.router.push({
+                method: "POST",
+                handler: next,
+                path: route,
+                pathArray: route.split("/")
+            });
+        }
         return routeInfo.post[route] = next, this;
     }
     any(route, next) {
@@ -56,12 +144,22 @@ class Controller {
             throw new Error(`Duplicate get route defined ${route}`);
         if (routeInfo.any[route])
             throw new Error(`Duplicate any route defined ${route}`);
+        if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
+            routeInfo.router.push({
+                method: "ANY",
+                handler: next,
+                path: route,
+                pathArray: route.split("/")
+            });
+        }
         return routeInfo.any[route] = next, this;
     }
     processGet(ctx) {
         if (routeInfo.get[ctx.req.path]) {
             return routeInfo.get[ctx.req.path](ctx);
         }
+        if (fireHandler(ctx))
+            return void 0;
         if (ctx.extension) {
             if (['htm', 'html'].indexOf(ctx.extension) > -1) {
                 if (ctx.server.config.defaultExt) {
@@ -118,6 +216,8 @@ class Controller {
         if (routeInfo.post[ctx.req.path]) {
             return routeInfo.post[ctx.req.path](ctx);
         }
+        if (fireHandler(ctx))
+            return void 0;
         return ctx.next(404);
     }
     processAny(ctx) {

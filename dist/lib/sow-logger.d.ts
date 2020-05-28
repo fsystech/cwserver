@@ -7,6 +7,8 @@ export interface ILogger {
     error(msg: string): ILogger;
     reset(): ILogger;
     dispose(): any;
+    writeToStream(str: string): void;
+    flush(): boolean;
 }
 export declare class ConsoleColor {
     static Cyan: string;
@@ -40,11 +42,13 @@ export declare class Logger implements ILogger {
     private _isDebug;
     private _canWrite;
     private _tz;
-    private _stream?;
-    private _isWaiting;
-    private _buffer?;
-    constructor(dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean);
-    private _writeToStream;
+    private _buff;
+    private _blockSize;
+    private _maxBlockSize;
+    private _fd;
+    constructor(dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean, maxBlockSize?: number);
+    flush(): boolean;
+    writeToStream(str: string): void;
     newLine(): void;
     private _write;
     private _log;

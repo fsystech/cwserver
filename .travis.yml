@@ -1,19 +1,12 @@
 language: node_js
 sudo: false
 node_js:
-  - '8'
   - '10'
   - '12'
   - 'stable'
 before_script:
-  - npm install mocha
-  - npm install superagent
-  - npm install expect.js
-  - npm install socket.io-client
-  - npm install socket.io
+  - npm install socket.io --save-dev
 script:
-  # npm run test:mocha
-  # npm run lint
   # Run test script
   - npm run test:cov
   # Run linting

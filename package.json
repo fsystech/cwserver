@@ -1,6 +1,6 @@
 {
   "name": "cwserver",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "SOW Web Server (All in one) for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

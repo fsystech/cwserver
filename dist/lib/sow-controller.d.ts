@@ -8,6 +8,12 @@ export interface IController {
     processAny(ctx: IContext): void;
     reset(): void;
 }
+export interface IRouterInfo {
+    path: string;
+    handler: AppHandler;
+    pathArray: string[];
+    method: "GET" | "POST" | "ANY";
+}
 export declare class Controller implements IController {
     httpMimeHandler: IHttpMimeHandler;
     constructor();

@@ -8,7 +8,7 @@ import expect from 'expect';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cwserver from '../index';
-import { Session } from '../lib/sow-static';
+import { Session, ToNumber } from '../lib/sow-static';
 import { IAppUtility, IContext } from '../lib/sow-server';
 import { IApps } from '../lib/sow-server-core';
 import { Util } from '../lib/sow-util';
@@ -22,6 +22,7 @@ let appUtility: IAppUtility = Object.create( null );
 let app: IApps = Object.create( null );
 const appRoot = process.env.SCRIPT === "TS" ? path.join( path.resolve( __dirname, '..' ), "/dist/test/" ) : __dirname;
 const projectRoot = 'cwserver.safeonline.world';
+const logDir = path.resolve( './log/' );
 describe( "cwserver-default-project-template", () => {
     it( "create project template", ( done ) => {
         cwserver.createProjectTemplate( {
@@ -94,6 +95,9 @@ describe( "cwserver-core", () => {
         done();
     } );
     it( "initilize server", ( done ) => {
+        if ( fs.existsSync( logDir ) ) {
+            Util.rmdirSync( logDir );
+        }
         appUtility = cwserver.initilizeServer( appRoot, projectRoot );
         expect( appUtility.public ).toEqual( projectRoot );
         done();
@@ -121,6 +125,21 @@ describe( "cwserver-core", () => {
             } );
         } );
     } );
+    it( "throw application already shutdown", ( done ) => {
+        app.shutdown( ( err ) => {
+            expect( err ).toBeInstanceOf( Error );
+            done();
+        } );
+    } );
+    it( "throw application already listen", ( done ) => {
+        app.listen( appUtility.port, async () => {
+            expect( shouldBeError( () => {
+                app.listen( appUtility.port );
+            } ) ).toBeInstanceOf( Error );
+            await app.shutdown();
+            done();
+        } );
+    } );
 } );
 describe( "cwserver-view", () => {
     it( 'register view', ( done ) => {
@@ -132,12 +151,16 @@ describe( "cwserver-view", () => {
             return ctx.next( 200 );
         };
         appUtility.controller.get( "/test-controller", invoke )
-            .post( "/test-controller", invoke );
+            .post( "/test-controller", invoke )
+            .any( "/any-controller", invoke );
         expect( shouldBeError( () => {
             appUtility.controller.get( "/test-controller", invoke );
         } ) ).toBeInstanceOf( Error );
         expect( shouldBeError( () => {
             appUtility.controller.post( "/test-controller", invoke );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            appUtility.controller.post( "/any-controller", invoke );
         } ) ).toBeInstanceOf( Error );
         expect( shouldBeError( () => {
             appUtility.controller.any( "/test-controller", invoke );
@@ -308,6 +331,43 @@ describe( "cwserver-get", () => {
                 } );
         } );
     } );
+    it( 'test route /test-any/*', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/test-any/param/go` )
+                .end( ( err, res ) => {
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    expect( res.header["content-type"] ).toBe( "application/json" );
+                    expect( res.body ).toBeInstanceOf( Object );
+                    expect( res.body.servedFrom ).toEqual( '/test-any/*' );
+                    expect( res.body.q ).toBeInstanceOf( Array );
+                    expect( res.body.q.indexOf( "param" ) ).toBeGreaterThan( -1 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
+    it( 'test route /task/:id/*', ( done ) => {
+        app.listen( appUtility.port, () => {
+            request
+                .get( `http://localhost:${appUtility.port}/task/1/test_request/next` )
+                .end( ( err, res ) => {
+                    expect( err ).not.toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 200 );
+                    expect( res.header["content-type"] ).toBe( "application/json" );
+                    expect( res.body ).toBeInstanceOf( Object );
+                    expect( res.body.servedFrom ).toEqual( '/task/:id/*' );
+                    expect( res.body.q ).toBeInstanceOf( Array );
+                    expect( res.body.q.indexOf( "1" ) ).toBeGreaterThan( -1 );
+                    expect( res.body.q.indexOf( "test_request" ) ).toBeGreaterThan( -1 );
+                    app.shutdown( ( _err ) => {
+                        done();
+                    } );
+                } );
+        } );
+    } );
 } );
 describe( "cwserver-template-engine", () => {
     it( 'should served from server mem cache', ( done ) => {
@@ -377,12 +437,9 @@ describe( "cwserver-template-engine", () => {
                 } );
         } );
     } );
-    let templateConf: {
-        cache: boolean;
-        cacheType: string;
-    } | void;
+    let templateConf: { [x: string]: any; } | void;
     it( 'route `/` then should use config.defaultDoc and create template cache', ( done ) => {
-        templateConf = appUtility.server.config.template;
+        templateConf = Util.clone( appUtility.server.config.template );
         appUtility.server.config.template.cache = true;
         appUtility.server.config.template.cacheType = "FILE";
         app.listen( appUtility.port, () => {
@@ -405,7 +462,7 @@ describe( "cwserver-template-engine", () => {
                 .get( `http://localhost:${appUtility.port}/` )
                 .end( ( err, res ) => {
                     if ( templateConf ) {
-                        appUtility.server.config.template = templateConf;
+                        Util.extend( appUtility.server.config.template, templateConf );
                     }
                     expect( err ).not.toBeInstanceOf( Error );
                     expect( res.status ).toBe( 200 );
@@ -1267,7 +1324,8 @@ describe( "cwserver-controller-reset", () => {
     } );
 } );
 describe( "cwserver-utility", () => {
-    it( "Encryption", ( done ): void => {
+    it( "test-app-utility", ( done ): void => {
+        expect( ToNumber( null ) ).toEqual( 0 );
         const str = "TEST";
         const hex = cwserver.Encryption.utf8ToHex( str );
         expect( cwserver.Encryption.hexToUtf8( hex ) ).toEqual( str );
@@ -1501,13 +1559,31 @@ describe( "cwserver-utility", () => {
         appUtility.server.log.log( "log-test" );
         appUtility.server.log.info( "log-info-test" );
         appUtility.server.log.dispose();
-        const logger = new Logger();
+        let logger = new Logger();
         logger.log( "log-test" );
         logger.info( "log-test" );
         logger.success( "log-test" );
         logger.error( "log-test" );
+        expect( shouldBeError( () => {
+            logger.flush();
+        } ) ).toBeInstanceOf( Error );
         logger.reset( );
         logger.dispose(); logger.dispose();
+        logger = new Logger( logDir, void 0, "+6", void 0, false );
+        logger.write( "test" );
+        logger.dispose();
+        appUtility.server.log.dispose();
+        logger = new Logger( logDir, projectRoot, "+6", true, true, 100 );
+        expect( logger.flush() ).toEqual( true );
+        expect( logger.flush() ).toEqual( false );
+        logger.log( {} );
+        logger.writeToStream( "log-test" );
+        logger.writeToStream( "log-test" );
+        logger.writeToStream( "log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test" );
+        logger.writeToStream( "log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test ");
+        logger.writeToStream( "log-test" );
+        logger.reset();
+        logger.dispose();
         done();
     } );
 } );

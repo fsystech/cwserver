@@ -19,7 +19,7 @@ function _generateRandomNumber( num ) {
 	return result;
 }
 global.sow.server.on( "register-view", ( app, controller, server ) => {
-	const { PayloadParser, Encryption } = require( 'cwserver' );
+	const { PayloadParser, Encryption, Util } = require( 'cwserver' );
 	// const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
 	// const ws = socketInitilizer(server, require("../socket-client"));
 	//ws.create(require("socket.io"));
@@ -48,7 +48,23 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 	controller
 		.get( '/', ( ctx ) => {
 			return ctx.res.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );
-		} ).get( '/authenticate', ( ctx ) => {
+		} )
+		.get( '/readme', ( ctx ) => {
+			return Util.sendResponse( ctx, server.mapPath( "readme.html" ) );
+		} )
+		.get( '/task/:id', ( ctx, match ) => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/task/:id", q: match } );
+		} )
+		.get( '/dist/*', ( ctx, match ) => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/dist/*", q: match } );
+		} )
+		.get( '/user/:id/settings', ( ctx, match ) => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match } );
+		} )
+		.get( '/user/:id/:name/settings', ( ctx, match ) => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/:name/settings", q: match } );
+		} )
+		.get( '/authenticate', ( ctx ) => {
 			let result = {
 				code: 200,
 				data: void 0
@@ -97,7 +113,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 					ctx.res.end( JSON.stringify( parser.getJson() ) );
 				} else {
 					parser.saveAs( downloadDir );
-					ctx.res.writeHead( 200, { 'Content-Type': 'text/html' } );
+					ctx.res.asHtml( 200 );
 					ctx.res.end( "File uploaded..." );
 				}
 				parser.clear();
