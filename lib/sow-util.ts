@@ -4,7 +4,6 @@
 * See the accompanying LICENSE file for terms.
 */
 import { IContext } from './sow-server';
-import { IRequest, IResponse } from './sow-server-core';
 import * as _fs from 'fs';
 import * as _path from  'path';
 const _isPlainObject = ( obj: any ): obj is { [x: string]: any; } => {
