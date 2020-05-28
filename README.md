@@ -35,9 +35,65 @@ appRoot
 └─ README.md
 ```
 After, run this command ```node server www /**your project root*/```<br/>
+# How to setup router ?
+```
+global.sow.server.on( "register-view", ( app, controller, server ) => {
+    controller
+        .any( '/test-any/*', ( ctx, match ) => {
+            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: match } );
+        } )
+        .get( '/task/:id/*', ( ctx, match ) => {
+            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/task/:id/*", q: match } );
+        } )
+        .get( '/dist/*', ( ctx, match ) => {
+            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/dist/*", q: match } );
+        } )
+        .get( '/user/:id/settings', ( ctx, match ) => {
+            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match } );
+        } );
+} );
+```
+# How to add Virtual Directory ?
+```
+global.sow.server.on( "register-view", ( app, controller, server ) => {
+    const vDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
+    server.addVirtualDir( "/vtest", vDir, ( ctx ) => {
+        if ( !mimeHandler.isValidExtension( ctx.extension ) )
+            return ctx.next( 404 );
+        mimeHandler.getMimeType( ctx.extension );
+        return mimeHandler.render( ctx, vDir, true );
+    } );
+    server.addVirtualDir( "/test-virtual", vDir );
+    server.addVirtualDir( "/vtest/virtual/", vDir );
+} );
+```
+# Handle post data
+```
+global.sow.server.on( "register-view", ( app, controller, server ) => {
+    const downloadDir = server.mapPath( "/upload/data/" );
+    if ( !fs.existsSync( downloadDir ) ) {
+        Util.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
+    }
+    const tempDir = server.mapPath( "/upload/temp/" );
+    controller.post( '/post-async', async ( ctx ) => {
+        const parser = new PayloadParser( ctx.req, tempDir );
+        await parser.readDataAsync();
+        if ( parser.isUrlEncoded() || parser.isAppJson() ) {
+            ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
+            return ctx.res.end( JSON.stringify( parser.getJson() ) ), ctx.next( 200 ), void 0;
+        }
+        parser.saveAs( downloadDir );
+        return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
+    } )
+} );
+```
+[See more test here](https://github.com/safeonlineworld/cwserver/blob/master/test/test-view.ts)<br/> 
 # Template Engine<br/>
 Template can run ```config.defaultExt``` file extension or ```ctx.res.render( ctx, to_file_path )``` <br/>
 Example of server-side script in ```config.defaultExt``` or ```.htm|.html```<br/>
+```
+ctx.res.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );
+```
 Code block:
 ```
 {%
