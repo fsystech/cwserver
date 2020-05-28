@@ -58,9 +58,6 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 global.sow.server.on( "register-view", ( app, controller, server ) => {
     const vDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
     server.addVirtualDir( "/vtest", vDir, ( ctx ) => {
-        if ( !mimeHandler.isValidExtension( ctx.extension ) )
-            return ctx.next( 404 );
-        mimeHandler.getMimeType( ctx.extension );
         return mimeHandler.render( ctx, vDir, true );
     } );
     server.addVirtualDir( "/test-virtual", vDir );
@@ -84,6 +81,20 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
         }
         parser.saveAs( downloadDir );
         return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
+        // or
+        /*const data = [];
+        parser.getFiles( ( file ) => {
+            data.push( {
+                content_type: file.getContentType(),
+                name: file.getName(),
+                file_name: file.getFileName(),
+                content_disposition: file.getContentDisposition(),
+                file_size: file.getFileSize(),
+                temp_path: file.getTempPath()
+            } );
+            file.saveAs( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
+        } );
+        return ctx.res.json( data );*/
     } )
 } );
 ```
