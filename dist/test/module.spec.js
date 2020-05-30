@@ -627,22 +627,24 @@ describe("cwserver-bundler", () => {
     });
     it('bundler should compair if-modified-since header and send 304 (no server cache)', (done) => {
         appUtility.server.config.bundler.fileCache = false;
-        request
-            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
-            .set("if-modified-since", lastModified)
-            .query({
-            g: appUtility.server.createBundle(`
+        setImmediate(() => {
+            request
+                .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
+                .set("if-modified-since", lastModified)
+                .query({
+                g: appUtility.server.createBundle(`
                         $virtual_vtest/socket-client.js,
                         static/script/test-1.js,
                         static/script/test-2.js|__owner__`),
-            ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
-        })
-            .end((err, res) => {
-            expect_1.default(err).toBeInstanceOf(Error);
-            expect_1.default(res.status).toBe(304);
-            expect_1.default(res.header["x-server-revalidate"]).toBe("true");
-            done();
-        });
+                ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
+            })
+                .end((err, res) => {
+                expect_1.default(err).toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(304);
+                expect_1.default(res.header["x-server-revalidate"]).toBe("true");
+                done();
+            });
+        }, 100);
     });
     it('css file bundler with gizp response (server file cache)', (done) => {
         appUtility.server.config.bundler.fileCache = true;
