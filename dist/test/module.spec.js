@@ -547,7 +547,7 @@ describe("cwserver-bundler", () => {
             done();
         });
     });
-    it('bundler should compair if-modified-since header and send 304', (done) => {
+    it('bundler should compair if-modified-since header and send 304 (server file cache)', (done) => {
         request
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
             .set("if-modified-since", lastModified)
@@ -565,26 +565,7 @@ describe("cwserver-bundler", () => {
             done();
         });
     });
-    it('bundler should be skip invalid if-modified-since header and send 200', (done) => {
-        request
-            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
-            .set("if-modified-since", `AAA${lastModified}ZZZ`)
-            .query({
-            g: appUtility.server.createBundle(`
-                        $virtual_vtest/socket-client.js,
-                        static/script/test-1.js,
-                        static/script/test-2.js|__owner__`),
-            ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
-        })
-            .end((err, res) => {
-            expect_1.default(err).not.toBeInstanceOf(Error);
-            expect_1.default(res.status).toBe(200);
-            expect_1.default(res.header["content-type"]).toBe("application/x-javascript; charset=utf-8");
-            expect_1.default(res.header["content-encoding"]).toBe("gzip");
-            done();
-        });
-    });
-    it('bundler should compair if-none-match and send 304', (done) => {
+    it('bundler should compair if-none-match and send 304 (server file cache)', (done) => {
         request
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
             .set("if-none-match", eTag)
@@ -817,6 +798,24 @@ describe("cwserver-bundler-error", () => {
             .end((err, res) => {
             expect_1.default(err).toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(404);
+            done();
+        });
+    });
+    it('bundler should be skip invalid if-modified-since header and send 200', (done) => {
+        request
+            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
+            .set("if-modified-since", `AAAZZZ`)
+            .query({
+            g: appUtility.server.createBundle(`
+                        $virtual_vtest/socket-client.js,
+                        static/script/test-1.js,
+                        static/script/test-2.js|__owner__`),
+            ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
+        })
+            .end((err, res) => {
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(200);
+            expect_1.default(res.header["content-type"]).toBe("application/x-javascript; charset=utf-8");
             done();
         });
     });
