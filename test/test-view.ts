@@ -10,7 +10,7 @@ import { PayloadParser, socketInitilizer, HttpMimeHandler, Streamer, Util, Encry
 const mimeHandler = new HttpMimeHandler();
 export function shouldBeError( next: () => void ): Error | void {
 	try {
-		next();
+		 next();
 	} catch ( e ) {
 		return e;
 	}
@@ -21,6 +21,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 	} );
 	const ws = socketInitilizer( server, SocketClient() );
 	ws.create( require( "socket.io" ) );
+	expect( ws.isConnectd ).toEqual( true );
 	controller.get( '/ws-server-event', ( ctx ) => {
 		ctx.res.json( ws.wsEvent ); ctx.next( 200 );
 		return void 0;
@@ -138,12 +139,16 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		.get( '/task/:id/*', ( ctx, match ) => {
 			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/task/:id/*", q: match } );
 		} )
+		.get( '/test-c/:id', ( ctx, match ) => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-c/:id", q: match } );
+		} )
 		.get( '/dist/*', ( ctx, match ) => {
 			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/dist/*", q: match } );
 		} )
 		.get( '/user/:id/settings', ( ctx, match ) => {
 			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match } );
 		} );
+
 } );
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
 	controller

@@ -70,8 +70,10 @@ const getHeader = ( headers: IncomingHttpHeaders, key: string ): string => {
     const result = headers[key];
     return typeof ( result ) === "string" ? result.toString() : "";
 }
-const createDir = ( tempDir: string ): void => {
-    if ( !_fs.existsSync( tempDir ) ) Util.mkdirSync( tempDir );
+const createDir = ( dir: string ): void => {
+    if ( !_fs.existsSync( dir ) ) {
+        Util.mkdirSync( dir );
+    }
 }
 const incomingContentType: {
     [key: string]: any;
@@ -246,7 +248,7 @@ class PayloadDataParser {
         if ( this._waitCount === 0 && ( line.length < this._sepLen || line.indexOf( this._separator ) < 0 ) ) {
             if ( !this._isStart ) return;
             if ( this._writeStream ) {
-                const readLen = buffer.length;
+                const readLen = buffer.byteLength;
                 this._byteCount += readLen;
                 this._blockSize += readLen;
                 if ( this._writeStream.write( buffer ) ) return this.drain( false );

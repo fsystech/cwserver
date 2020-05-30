@@ -55,8 +55,6 @@ export namespace SowHttpCache {
     }
     /** Create and Gets {etag} (timestamp ^ fsize). */
     export function getEtag( timestamp: number, fsize: number ): string {
-        if ( typeof ( timestamp ) !== "number" )
-            throw new Error( "Invalid argument defined. timestamp should be Number..." );
         // tslint:disable-next-line: no-bitwise
         return `W/${( timestamp ^ fsize )}`;
     }

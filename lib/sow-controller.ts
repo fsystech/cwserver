@@ -15,6 +15,8 @@ export interface IController {
     post( route: string, next: AppHandler ): IController;
     processAny( ctx: IContext ): void;
     reset(): void;
+    remove( path: string ): boolean;
+    sort(): void;
 }
 export interface IRouterInfo {
     path: string; handler: AppHandler,
@@ -64,7 +66,7 @@ const fireHandler = ( ctx: IContext ): boolean => {
                 }
                 reqPath += `/${pathArray[index]}`;
                 if ( part === "*" ) {
-                    if ( index >= 1 ) {
+                    if ( index > 1 ) {
                         concatArray( pathArray, routeParam, index );
                         return true;
                     }
@@ -85,9 +87,12 @@ const fireHandler = ( ctx: IContext ): boolean => {
             index++;
         }
         if ( path === reqPath ) {
-            if ( pathArray.length > index ) {
-                concatArray( pathArray, routeParam, index );
+            if ( info.pathArray.length < pathArray.length ) {
+                if ( info.pathArray[index] !== "*" ) return false;
             }
+            // if ( pathArray.length > index ) {
+            //    concatArray( pathArray, routeParam, index );
+            // }
             return true;
         }
         return false;
@@ -224,5 +229,26 @@ export class Controller implements IController {
         if ( ctx.req.method === "GET" )
             return this.processGet( ctx );
         return ctx.next( 404 );
+    }
+    public remove( path: string ): boolean {
+        let found: boolean = false;
+        if ( routeInfo.any[path] ) {
+            delete routeInfo.any[path]; found = true;
+        } else if ( routeInfo.post[path] ) {
+            delete routeInfo.post[path]; found = true;
+        } else if ( routeInfo.get[path] ) {
+            delete routeInfo.get[path]; found = true;
+        }
+        if ( !found ) return false;
+        const index = routeInfo.router.findIndex( r => r.path === path );
+        if ( index > -1 ) {
+            routeInfo.router.splice( index, 1 );
+        }
+        return true;
+    }
+    public sort(): void {
+        routeInfo.router = routeInfo.router.sort( ( a, b ) => {
+            return a.path.length - b.path.length;
+        } );
     }
 }

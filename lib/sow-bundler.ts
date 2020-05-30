@@ -117,12 +117,7 @@ This 'Combiner' contains the following files:\n`;
                 const stat = _fs.statSync( absolute );
                 const changeTime = stat.mtime.getTime();
                 result.files.push( {
-                    name: name.replace( /\$.+?\//gi, ( m ) => {
-                        if ( m.indexOf( "virtual" ) > -1 ) return "/";
-                        if ( m.indexOf( "root" ) > -1 ) return "/";
-                        if ( m.indexOf( "public" ) > -1 ) return "/";
-                        throw new Error( `insecure path ${name}`);
-                    } ),
+                    name: name.replace( /\$.+?\//gi, "/" ),
                     absolute,
                     changeTime,
                     isChange: lastChangeTime && lastChangeTime === 0 ? true : ( lastChangeTime && lastChangeTime > 0 && changeTime > lastChangeTime ? true : false ),

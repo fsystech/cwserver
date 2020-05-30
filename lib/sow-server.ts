@@ -694,16 +694,22 @@ interface ISowGlobalServer {
 // tslint:disable-next-line: max-classes-per-file
 class SowGlobalServer implements ISowGlobalServer {
     private _evt: IViewRegister[];
+    private _isInitilized: boolean;
     constructor() {
         this._evt = [];
+        this._isInitilized = false;
     }
     public emit( ev: "register-view", app: IApps, controller: IController, server: ISowServer ): void {
         this._evt.forEach( handler => {
             return handler( app, controller, server );
         } );
         this._evt.length = 0;
+        this._isInitilized = true;
     }
     public on( ev: "register-view", next: ( app: IApps, controller: IController, server: ISowServer ) => void ): void {
+        if ( this._isInitilized ) {
+            throw new Error("After initilize view, you should not register new veiw.");
+        }
         this._evt.push( next );
     }
     public registerView( next: IViewRegister ): void {
@@ -867,6 +873,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
             } );
         }
         global.sow.server.emit( "register-view", _app, _controller, _server );
+        _controller.sort();
         _app.onError( ( req: IRequest, res: IResponse, err?: number | Error ): void => {
             if ( res.headersSent ) return;
             const _context = _server.createContext( req, res, ( _err?: Error ): void => {

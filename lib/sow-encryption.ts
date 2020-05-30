@@ -52,18 +52,14 @@ export namespace Encryption {
     }
     export function decrypt( encryptedText: string, inf: ICryptoInfo ): string {
         if ( !inf.key ) throw new Error( "Invalid iv and key...." );
-        try {
-            const dec = CryptoJS.AES.decrypt( {
-                iv: inf.iv,
-                salt: "",
-                ciphertext: CryptoJS.enc.Base64.parse( encryptedText )
-            }, inf.key, {
-                iv: inf.iv
-            } );
-            return CryptoJS.enc.Utf8.stringify( dec );
-        } catch ( e ) {
-            return "";
-        }
+        const dec = CryptoJS.AES.decrypt( {
+            iv: inf.iv,
+            salt: "",
+            ciphertext: CryptoJS.enc.Base64.parse( encryptedText )
+        }, inf.key, {
+            iv: inf.iv
+        } );
+        return CryptoJS.enc.Utf8.stringify( dec );
     }
     export function encryptToHex( plainText: string, inf: ICryptoInfo ): string {
         const encryptedText = encrypt( plainText, inf );

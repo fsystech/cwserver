@@ -13,3 +13,4 @@ export { Util } from './lib/sow-util';
 export { Streamer } from './lib/sow-web-streamer';
 export { socketInitilizer, wsClient } from './lib/sow-ws';
 export { createProjectTemplate } from './lib/sow-project-template';
+export { HttpStatus } from "./lib/sow-http-status";

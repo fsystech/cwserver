@@ -55,6 +55,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
     });
     const ws = index_1.socketInitilizer(server, socket_client_1.SocketClient());
     ws.create(require("socket.io"));
+    expect_1.default(ws.isConnectd).toEqual(true);
     controller.get('/ws-server-event', (ctx) => {
         ctx.res.json(ws.wsEvent);
         ctx.next(200);
@@ -169,6 +170,9 @@ global.sow.server.on("register-view", (app, controller, server) => {
     })
         .get('/task/:id/*', (ctx, match) => {
         return ctx.res.json({ reqPath: ctx.path, servedFrom: "/task/:id/*", q: match });
+    })
+        .get('/test-c/:id', (ctx, match) => {
+        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-c/:id", q: match });
     })
         .get('/dist/*', (ctx, match) => {
         return ctx.res.json({ reqPath: ctx.path, servedFrom: "/dist/*", q: match });

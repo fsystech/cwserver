@@ -7,6 +7,8 @@ export interface IController {
     post(route: string, next: AppHandler): IController;
     processAny(ctx: IContext): void;
     reset(): void;
+    remove(path: string): boolean;
+    sort(): void;
 }
 export interface IRouterInfo {
     path: string;
@@ -24,4 +26,6 @@ export declare class Controller implements IController {
     private processGet;
     private processPost;
     processAny(ctx: IContext): void;
+    remove(path: string): boolean;
+    sort(): void;
 }

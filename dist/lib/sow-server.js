@@ -522,14 +522,19 @@ exports.SowServer = SowServer;
 class SowGlobalServer {
     constructor() {
         this._evt = [];
+        this._isInitilized = false;
     }
     emit(ev, app, controller, server) {
         this._evt.forEach(handler => {
             return handler(app, controller, server);
         });
         this._evt.length = 0;
+        this._isInitilized = true;
     }
     on(ev, next) {
+        if (this._isInitilized) {
+            throw new Error("After initilize view, you should not register new veiw.");
+        }
         this._evt.push(next);
     }
     registerView(next) {
@@ -679,6 +684,7 @@ function initilizeServer(appRoot, wwwName) {
             });
         }
         global.sow.server.emit("register-view", _app, _controller, _server);
+        _controller.sort();
         _app.onError((req, res, err) => {
             if (res.headersSent)
                 return;

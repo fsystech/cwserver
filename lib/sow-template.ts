@@ -104,7 +104,6 @@ class ScriptParser implements IScriptParser {
                     : parserInfo.isTagEnd = false,
                     parserInfo.line = parserInfo.line.replace( /'/gi, '\x0f' ).replace( this.tag.write.lre, "\x0f; __RSP +=" ) );
                 break;
-            default: throw new Error( `Invalid script tag "${parserInfo.tag}" found...` );
         }
         parserInfo.startTageName = ( !parserInfo.isTagEnd ? parserInfo.tag : void 0 );
         return;
@@ -125,7 +124,6 @@ class ScriptParser implements IScriptParser {
                         ( parserInfo.isTagEnd = true, parserInfo.isTagStart = false, parserInfo.line = parserInfo.line.replace( this.tag.write.rre, "; __RSP += \x0f" ) )
                         : parserInfo.isTagEnd = false );
                     break;
-                default: break;
             }
             parserInfo.startTageName = ( !parserInfo.isTagEnd ? parserInfo.startTageName : void 0 );
         }

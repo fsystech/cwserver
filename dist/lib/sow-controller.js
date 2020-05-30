@@ -51,7 +51,7 @@ const fireHandler = (ctx) => {
                 }
                 reqPath += `/${pathArray[index]}`;
                 if (part === "*") {
-                    if (index >= 1) {
+                    if (index > 1) {
                         concatArray(pathArray, routeParam, index);
                         return true;
                     }
@@ -76,9 +76,13 @@ const fireHandler = (ctx) => {
             index++;
         }
         if (path === reqPath) {
-            if (pathArray.length > index) {
-                concatArray(pathArray, routeParam, index);
+            if (info.pathArray.length < pathArray.length) {
+                if (info.pathArray[index] !== "*")
+                    return false;
             }
+            // if ( pathArray.length > index ) {
+            //    concatArray( pathArray, routeParam, index );
+            // }
             return true;
         }
         return false;
@@ -228,6 +232,33 @@ class Controller {
         if (ctx.req.method === "GET")
             return this.processGet(ctx);
         return ctx.next(404);
+    }
+    remove(path) {
+        let found = false;
+        if (routeInfo.any[path]) {
+            delete routeInfo.any[path];
+            found = true;
+        }
+        else if (routeInfo.post[path]) {
+            delete routeInfo.post[path];
+            found = true;
+        }
+        else if (routeInfo.get[path]) {
+            delete routeInfo.get[path];
+            found = true;
+        }
+        if (!found)
+            return false;
+        const index = routeInfo.router.findIndex(r => r.path === path);
+        if (index > -1) {
+            routeInfo.router.splice(index, 1);
+        }
+        return true;
+    }
+    sort() {
+        routeInfo.router = routeInfo.router.sort((a, b) => {
+            return a.path.length - b.path.length;
+        });
     }
 }
 exports.Controller = Controller;

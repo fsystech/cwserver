@@ -36,6 +36,20 @@ appRoot
 └─ README.md
 ```
 After, run this command ```node server www /**your project root*/```<br/>
+# How to setup middleware
+First process ```app.prerequisites``` every request and then run ```app.use```
+```
+global.sow.server.on( "register-view", ( app, controller, server ) => {
+	app.prerequisites( ( req, res, next ): void => {
+		res.setHeader( 'x-frame-options', 'sameorigin' );
+		return next();
+	} );
+	app.use( ( req, res, next ): void => {
+		res.setHeader( 'x-frame-options', 'sameorigin' );
+		return next();
+	} );
+} );
+```
 # How to setup router ?
 ```
 global.sow.server.on( "register-view", ( app, controller, server ) => {

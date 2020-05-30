@@ -80,7 +80,7 @@ class HttpStatus {
             if (exports.HttpStatusCode[description] === statusCode)
                 return description;
         }
-        return `Invalid ==> ${statusCode}...`;
+        throw new Error(`Invalid ==> ${statusCode}...`);
     }
     static fromPath(path, statusCode) {
         const outStatusCode = statusCode;

@@ -138,11 +138,7 @@ export namespace Util {
         return url;
     }
     export function mkdirSync( rootDir: string, targetDir?: string ): boolean {
-        if ( !rootDir || typeof ( rootDir ) !== "string" )
-            throw new Error( "Invalid argument" );
         let fullPath: string = "";
-        if ( targetDir && typeof ( targetDir ) !== "string" )
-            throw new Error( "Invalid argument" );
         let sep: string = "";
         if ( targetDir ) {
             if ( targetDir.charAt( 0 ) === '.' ) throw new Error( "No need to defined start point...." );

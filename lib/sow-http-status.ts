@@ -84,7 +84,7 @@ export class HttpStatus {
         for ( const description in HttpStatusCode ) {
             if ( HttpStatusCode[description] === statusCode ) return description;
         }
-        return `Invalid ==> ${statusCode}...`;
+        throw new Error( `Invalid ==> ${statusCode}...` );
     }
     static fromPath( path: string | any, statusCode: any ): number {
         const outStatusCode = statusCode;

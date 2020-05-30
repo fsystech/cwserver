@@ -73,9 +73,10 @@ const getHeader = (headers, key) => {
     const result = headers[key];
     return typeof (result) === "string" ? result.toString() : "";
 };
-const createDir = (tempDir) => {
-    if (!_fs.existsSync(tempDir))
-        sow_util_1.Util.mkdirSync(tempDir);
+const createDir = (dir) => {
+    if (!_fs.existsSync(dir)) {
+        sow_util_1.Util.mkdirSync(dir);
+    }
 };
 const incomingContentType = {
     URL_ENCODE: "application/x-www-form-urlencoded",
@@ -229,7 +230,7 @@ class PayloadDataParser {
             if (!this._isStart)
                 return;
             if (this._writeStream) {
-                const readLen = buffer.length;
+                const readLen = buffer.byteLength;
                 this._byteCount += readLen;
                 this._blockSize += readLen;
                 if (this._writeStream.write(buffer))
