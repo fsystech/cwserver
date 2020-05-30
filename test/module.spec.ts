@@ -493,7 +493,7 @@ describe( "cwserver-bundler", () => {
         if ( fs.existsSync( temp ) ) {
             Util.rmdirSync( temp );
         }
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .query( {
                 g: appUtility.server.createBundle( `
@@ -516,7 +516,7 @@ describe( "cwserver-bundler", () => {
             } );
     } );
     it( 'bundler should compair if-modified-since header and send 304', ( done ) => {
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .set( "if-modified-since", lastModified )
             .query( {
@@ -535,7 +535,7 @@ describe( "cwserver-bundler", () => {
             } );
     } );
     it( 'bundler should be skip invalid if-modified-since header and send 200', ( done ) => {
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .set( "if-modified-since", `AAA${lastModified}ZZZ` )
             .query( {
@@ -555,7 +555,7 @@ describe( "cwserver-bundler", () => {
             } );
     } );
     it( 'bundler should compair if-none-match and send 304', ( done ) => {
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .set( "if-none-match", eTag )
             .query( {
@@ -576,7 +576,7 @@ describe( "cwserver-bundler", () => {
     it( 'js file bundler not gizp response (no server cache)', ( done ) => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = false;
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .query( {
                 g: appUtility.server.createBundle( `
@@ -597,7 +597,7 @@ describe( "cwserver-bundler", () => {
     it( 'js file bundler with gizp response (no server cache)', ( done ) => {
         appUtility.server.config.bundler.fileCache = false;
         appUtility.server.config.bundler.compress = true;
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .query( {
                 g: appUtility.server.createBundle( `
@@ -619,7 +619,7 @@ describe( "cwserver-bundler", () => {
     } );
     it( 'bundler should compair if-modified-since header and send 304 (no server cache)', ( done ) => {
         appUtility.server.config.bundler.fileCache = false;
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .set( "if-modified-since", lastModified )
             .query( {
@@ -639,7 +639,7 @@ describe( "cwserver-bundler", () => {
     } );
     it( 'css file bundler with gizp response (server file cache)', ( done ) => {
         appUtility.server.config.bundler.fileCache = true;
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .query( {
                 g: appUtility.server.createBundle( `
@@ -661,7 +661,7 @@ describe( "cwserver-bundler", () => {
     it( 'js file bundler not gizp response (server cache)', ( done ) => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = true;
-        getAgent()
+        request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .query( {
                 g: appUtility.server.createBundle( `
