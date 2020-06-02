@@ -228,17 +228,12 @@ export class HttpMimeHandler implements IHttpMimeHandler {
         if ( process.env.SCRIPT === "TS" ) {
             part = "/dist";
         }
-        // const parent = _path.resolve(__dirname, '..');
         const absPath = _path.resolve( `${parent}${part}/mime-type.json` );
         if ( !_fs.existsSync( absPath ) )
             throw new Error( `Unable to load mime-type from ${absPath}` );
-        const types = _fs.readFileSync( absPath, "utf8" ).replace( /^\uFEFF/, '' );
+        const types = Util.readJsonAsync( absPath);
         if ( !types ) throw new Error( "Invalid mime-type.json file..." );
-        try {
-            HttpMimeType = JSON.parse( types );
-        } catch ( e ) {
-            throw new Error( "Invalid mime-type.json file..." );
-        }
+        HttpMimeType = types;
     }
     getMimeType( extension: string ): string {
         const mimeType = HttpMimeType[extension];

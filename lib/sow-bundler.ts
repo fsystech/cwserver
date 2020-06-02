@@ -24,6 +24,22 @@ interface IBundleInfo {
     msg: string | Error;
     blocked?: boolean;
 }
+const responseWriteGzip = (
+    ctx: IContext, buff: Buffer,
+    cte: ContentType
+): void => {
+    ctx.res.writeHead( 200, {
+        'Content-Type': Bundlew.getResContentType( cte ),
+        'Content-Encoding': 'gzip'
+    } );
+    const compressor = _zlib.createGzip( { level: _zlib.constants.Z_BEST_COMPRESSION } );
+    compressor.pipe( ctx.res );
+    compressor.end( buff );
+    return compressor.on( "end", () => {
+        compressor.unpipe( ctx.res );
+        ctx.next( 200 );
+    } ), void 0;
+}
 class BundleInfo implements IBundleInfo {
     error: boolean;
     files: { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean }[];
@@ -195,20 +211,7 @@ This 'Combiner' contains the following files:\n`;
             } );
             return ctx.res.end( buffer ), ctx.next( 200 );
         }
-        return _zlib.gzip( buffer, ( error: Error | null, buff: Buffer ) => {
-            if ( error ) {
-                server.addError( ctx, error );
-                return ctx.next( 500 );
-            }
-            ctx.res.writeHead( 200, {
-                'Content-Type': this.getResContentType( cte ),
-                'Content-Encoding': 'gzip',
-                'Content-Length': buff.length
-            } );
-            ctx.res.end( buff );
-            ctx.next( 200 );
-        } ), void 0;
-
+        return responseWriteGzip( ctx, buffer, cte );
     }
     static createServerFileCache( server: ISowServer, ctx: IContext ): void {
         const cacheKey = ctx.req.query.ck;
@@ -296,7 +299,7 @@ This 'Combiner' contains the following files:\n`;
             ctx.res.end( buff );
             return ctx.next( 200 ), void 0;
         }
-        return _zlib.gzip( this.readBuffer( bundleInfo, server.copyright() ), ( error, buff ) => {
+         return _zlib.gzip( this.readBuffer( bundleInfo, server.copyright() ), ( error, buff ) => {
             if ( error ) {
                 server.addError( ctx, error );
                 return ctx.next( 500 );
@@ -315,7 +318,7 @@ This 'Combiner' contains the following files:\n`;
             } );
             ctx.res.end( buff );
             ctx.next( 200 );
-        } ), void 0;
+         } ), void 0;
     }
 }
 const isAcceptedEncoding = ( req: IRequest, name: string ): boolean => {

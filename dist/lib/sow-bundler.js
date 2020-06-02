@@ -38,6 +38,19 @@ var ContentType;
     ContentType[ContentType["CSS"] = 1] = "CSS";
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
 })(ContentType || (ContentType = {}));
+const responseWriteGzip = (ctx, buff, cte) => {
+    ctx.res.writeHead(200, {
+        'Content-Type': Bundlew.getResContentType(cte),
+        'Content-Encoding': 'gzip'
+    });
+    const compressor = _zlib.createGzip({ level: _zlib.constants.Z_BEST_COMPRESSION });
+    compressor.pipe(ctx.res);
+    compressor.end(buff);
+    return compressor.on("end", () => {
+        compressor.unpipe(ctx.res);
+        ctx.next(200);
+    }), void 0;
+};
 class BundleInfo {
     constructor() {
         this.error = false;
@@ -209,19 +222,7 @@ This 'Combiner' contains the following files:\n`;
             });
             return ctx.res.end(buffer), ctx.next(200);
         }
-        return _zlib.gzip(buffer, (error, buff) => {
-            if (error) {
-                server.addError(ctx, error);
-                return ctx.next(500);
-            }
-            ctx.res.writeHead(200, {
-                'Content-Type': this.getResContentType(cte),
-                'Content-Encoding': 'gzip',
-                'Content-Length': buff.length
-            });
-            ctx.res.end(buff);
-            ctx.next(200);
-        }), void 0;
+        return responseWriteGzip(ctx, buffer, cte);
     }
     static createServerFileCache(server, ctx) {
         const cacheKey = ctx.req.query.ck;

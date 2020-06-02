@@ -1,0 +1,56 @@
+/*__sow_template_script__*/
+__RSP += '<!DOCTYPE html>\n';
+__RSP += '<html xmlns="http://www.w3.org/1999/xhtml">\n';
+__RSP += '<head>\n';
+__RSP += '    <meta charset="utf-8" />\n';
+__RSP += '    <title> 500 - '; __RSP += ctx.server.config.appName ; __RSP += '</title>\n';
+__RSP += '    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>\n';
+__RSP += '    <link rel="icon" href="/favicon.ico" type="image/x-icon"/>\n';
+__RSP += '    <style type="text/css">\n';
+__RSP += '        @import url(\x27https://fonts.googleapis.com/css?family=Montserrat:400,600,700\x27);\n';
+__RSP += '        @import url(\x27https://fonts.googleapis.com/css?family=Catamaran:400,800\x27);\n';
+__RSP += '        .page-footer {height:unset; padding: 0px 13px 0!important; padding-left: unset!important;border-top: 1px solid #CECECE; background: #2a2725;width: 100%;position: fixed;display: block;bottom: 0;}\n';
+__RSP += '        .txt-color-white {color: #fff!important;}\n';
+__RSP += '        .sup { vertical-align: super; }\n';
+__RSP += '        .page-footer a {color: #fff !important;}\n';
+__RSP += '        a {text-decoration: none;}\n';
+__RSP += '        .error-container>span,.error-container>span>span{position:relative;display:inline-block}.error-container,.link-container,.zoom-area,h1{text-align:center}.error-container{font-size:180px;font-family:Catamaran,sans-serif;font-weight:800;margin:20px 15px}.error-container>span{line-height:.7;color:#FFB485}.error-container>span:nth-of-type(1){perspective:1000px;perspective-origin:500% 50%;color:#F0E395}.error-container>span:nth-of-type(1)>span{transform-origin:50% 100% 0;transform:rotateX(0);animation:easyoutelastic 8s infinite}.error-container>span:nth-of-type(3){perspective:none;perspective-origin:50% 50%;color:#D15C95}.error-container>span:nth-of-type(3)>span{transform-origin:100% 100% 0;transform:rotate(0);animation:rotatedrop 8s infinite}@keyframes easyoutelastic{0%,100%,80%{transform:rotateX(0)}9%{transform:rotateX(210deg)}13%{transform:rotateX(150deg)}16%{transform:rotateX(200deg)}18%{transform:rotateX(170deg)}20%,60%{transform:rotateX(180deg)}}@keyframes rotatedrop{0%,80%{transform:rotate(0)}10%{transform:rotate(30deg)}15%,70%{transform:rotate(90deg)}100%{transform:rotateX(0)}}*{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}body{background-color:#f4f4f4;margin-bottom:50px}button,html,input,select,textarea{font-family:Montserrat,Helvetica,sans-serif;color:#bbb}h1{margin:30px 15px}.zoom-area{max-width:490px;margin:30px auto;font-size:19px}a.more-link{text-transform:uppercase;font-size:13px;background-color:#bbb;padding:10px 15px;border-radius:0;color:#fff;display:inline-block;margin-right:5px;margin-bottom:5px;line-height:1.5;text-decoration:none;margin-top:50px;letter-spacing:1px}\n';
+__RSP += '    </style>\n';
+__RSP += '</head>\n';
+__RSP += '<body>\n';
+__RSP += '    <h1>500 Internal Server Error</h1>\n';
+__RSP += '    ';
+        var wrap = {
+            start:"", end:""
+        };
+        if ( /at /gi.test( ctx.error ) ){
+            wrap.start = '<pre style="text-align:left;margin-left: 30%;">\n';
+            wrap.end = '</pre>';
+        }
+     __RSP += '\n';
+__RSP += '    <p class="zoom-area"><a href="/"><img style="width: 100px;" src="/logo/logo_blue.png?v='; __RSP += ctx.server.config.packageVersion ; __RSP += '" alt="'; __RSP +=ctx.server.config.appName; __RSP += '" /></a></p>\n';
+__RSP += '    <h1 style="color:red; font-size:10px;" class="error-description">'; __RSP += `${wrap.start}${ctx.server.escape( ctx.error )}${wrap.end}` ; __RSP += '</h1>\n';
+__RSP += '    <section class="error-container">\n';
+__RSP += '        <span><span>5</span></span>\n';
+__RSP += '        <span>0</span>\n';
+__RSP += '        <span><span>0</span></span>\n';
+__RSP += '    </section>\n';
+__RSP += '    <div class="link-container">\n';
+__RSP += '        <a href="'; __RSP += ctx.root ; __RSP += '" class="more-link">Go Back</a>\n';
+__RSP += '    </div>\n';
+__RSP += '    <div class="page-footer">\n';
+__RSP += '        <div class="row" style="float:right;">\n';
+__RSP += '            <div class="col-xs-12 col-sm-12 txt-color-white">\n';
+__RSP += '                <span style="font-size:10px;float:right;" data-footer-info="cust">Copyright © 2015- '; __RSP += new Date().getFullYear().toString( ) ; __RSP += ' <a href="https://www.safeonline.world" target="_blank">Sow<span class="sup">®</span></a> All rights reserved. <span class="hidden-xs"> - '; __RSP += ctx.server.config.appName ; __RSP += ' - '; __RSP += ctx.server.config.version ; __RSP += '</span></span>\n';
+__RSP += '            </div>\n';
+__RSP += '            <div class="col-xs-6 col-sm-6 text-right hidden-xs">\n';
+__RSP += '                <div class="txt-color-white inline-block">\n';
+__RSP += '                </div>\n';
+__RSP += '                <!-- end div-->\n';
+__RSP += '            </div>\n';
+__RSP += '            <!-- end col -->\n';
+__RSP += '        </div>\n';
+__RSP += '        <!-- end row -->\n';
+__RSP += '    </div>\n';
+__RSP += '</body>\n';
+__RSP += '</html>\n';

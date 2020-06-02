@@ -13,18 +13,18 @@
     "**/index.ts"
   ],
   "exclude": [
-    "coverage/**",
-    "**/lib/sow-project-template.ts",
-    "**/*.d.ts",
-    "**/dist/**/*",
     "**/node_modules/**/*",
-    "**/test/**/*"
+    "**/coverage/**",
+    "**/dist/**/*",
+    "**/test/**/*",
+    "**/lib/sow-project-template.ts",
+    "**/*.d.ts"
   ],
   "require": [
     "ts-node/register"
   ],
   "sourceMap": true,
   "instrument": true,
-  "check-coverage": false,
+  "check-coverage": true,
   "cache": true
 }

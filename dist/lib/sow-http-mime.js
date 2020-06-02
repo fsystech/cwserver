@@ -227,19 +227,13 @@ class HttpMimeHandler {
         if (process.env.SCRIPT === "TS") {
             part = "/dist";
         }
-        // const parent = _path.resolve(__dirname, '..');
         const absPath = _path.resolve(`${parent}${part}/mime-type.json`);
         if (!_fs.existsSync(absPath))
             throw new Error(`Unable to load mime-type from ${absPath}`);
-        const types = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '');
+        const types = sow_util_1.Util.readJsonAsync(absPath);
         if (!types)
             throw new Error("Invalid mime-type.json file...");
-        try {
-            HttpMimeType = JSON.parse(types);
-        }
-        catch (e) {
-            throw new Error("Invalid mime-type.json file...");
-        }
+        HttpMimeType = types;
     }
     getMimeType(extension) {
         const mimeType = HttpMimeType[extension];

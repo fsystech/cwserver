@@ -18,14 +18,14 @@ import * as io from 'socket.io-client';
 import { shouldBeError } from "./test-view";
 import { Logger } from '../lib/sow-logger';
 import 'mocha';
-let appUtility: IAppUtility;
 let app: IApps;
 const appRoot = process.env.SCRIPT === "TS" ? path.join( path.resolve( __dirname, '..' ), "/dist/test/" ) : __dirname;
-const projectRoot = 'cwserver.safeonline.world';
+const projectRoot = 'test_web';
 const logDir = path.resolve( './log/' );
 type Agent = request.SuperAgentStatic & request.Request;
 const agent: Agent = request.agent();
 let appIsLestening: boolean = false;
+let appUtility: IAppUtility;
 const getAgent = (): Agent => {
     expect( appIsLestening ).toEqual( true );
     return agent;
@@ -698,7 +698,26 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    it( 'bundler should be unsupported content type error', ( done ) => {
+    it( 'bundler should be unsupported content type error  (server cache)', ( done ) => {
+        appUtility.server.config.bundler.fileCache = true;
+        appUtility.server.config.bundler.enable = true;
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
+            .query( {
+                g: appUtility.server.createBundle( `
+                        $virtual_vtest/socket-client.js,
+                        $root/$public/static/script/test-1.js,
+                        $root/$public/static/script/test-2.js|__owner__`
+                ),
+                ck: "bundle_test_jsx", ct: "text/plain", rc: "Y"
+            } )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 404 );
+                done();
+            } );
+    } );
+    it( 'bundler should be unsupported content type error  (no server cache)', ( done ) => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )

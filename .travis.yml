@@ -5,7 +5,8 @@ node_js:
   - '12'
   - 'stable'
 before_script:
-  # npm install mocha
+  #- npm install nyc@latest --save-dev
+  #- npm install mocha@latest --save-dev
   - npm install superagent --save-dev
   - npm install expect --save-dev
   - npm install socket.io-client --save-dev
