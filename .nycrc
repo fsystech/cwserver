@@ -25,6 +25,6 @@
   ],
   "sourceMap": true,
   "instrument": true,
-  "check-coverage": true,
+  "check-coverage": false,
   "cache": true
 }
