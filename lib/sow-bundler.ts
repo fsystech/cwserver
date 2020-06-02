@@ -5,6 +5,7 @@
 */
 // 4:48 PM 5/3/2020
 import * as _fs from 'fs';
+// import { Readable, Writable, Transform } from 'stream';
 import * as _path from 'path';
 import * as _zlib from 'zlib';
 import { Encryption } from './sow-encryption';
@@ -18,9 +19,10 @@ enum ContentType {
     CSS= 1,
     UNKNOWN= -1
 }
+type BundlerFile = { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean };
 interface IBundleInfo {
     error: boolean;
-    files: { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean }[];
+    files: BundlerFile[];
     msg: string | Error;
     blocked?: boolean;
 }
@@ -42,7 +44,7 @@ const responseWriteGzip = (
 }
 class BundleInfo implements IBundleInfo {
     error: boolean;
-    files: { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean }[];
+    files: BundlerFile[];
     msg: string | Error;
     blocked?: boolean;
     constructor() {
@@ -148,6 +150,7 @@ This 'Combiner' contains the following files:\n`;
             return result;
         }
     }
+
     static readBuffer( bundleInfo: IBundleInfo, copyright: string ): Buffer {
         const out = [];
         let istr = this.getInfo();
@@ -192,16 +195,13 @@ This 'Combiner' contains the following files:\n`;
         if ( cngHander.sinceModify ) {
             hasChanged = bundleInfo.files.some( a => a.isChange === true );
         }
-        if ( !hasChanged ) {
-            SowHttpCache.writeCacheHeader( ctx.res, {
-                lastChangeTime: Date.now()
-            }, server.config.cacheHeader );
-            ctx.res.writeHead( 304, { 'Content-Type': this.getResContentType( cte ) } );
-            return ctx.res.end(), ctx.next( 304 );
-        }
         SowHttpCache.writeCacheHeader( ctx.res, {
             lastChangeTime: Date.now()
         }, server.config.cacheHeader );
+        if ( !hasChanged ) {
+            ctx.res.writeHead( 304, { 'Content-Type': this.getResContentType( cte ) } );
+            return ctx.res.end(), ctx.next( 304 );
+        }
         ctx.req.socket.setNoDelay( true );
         const buffer: Buffer = this.readBuffer( bundleInfo, server.copyright() );
         if ( isGzip === false || !server.config.bundler.compress ) {
@@ -299,7 +299,7 @@ This 'Combiner' contains the following files:\n`;
             ctx.res.end( buff );
             return ctx.next( 200 ), void 0;
         }
-         return _zlib.gzip( this.readBuffer( bundleInfo, server.copyright() ), ( error, buff ) => {
+        return _zlib.gzip( this.readBuffer( bundleInfo, server.copyright() ), ( error, buff ) => {
             if ( error ) {
                 server.addError( ctx, error );
                 return ctx.next( 500 );
@@ -318,7 +318,7 @@ This 'Combiner' contains the following files:\n`;
             } );
             ctx.res.end( buff );
             ctx.next( 200 );
-         } ), void 0;
+        } ), void 0;
     }
 }
 const isAcceptedEncoding = ( req: IRequest, name: string ): boolean => {

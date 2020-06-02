@@ -39,7 +39,7 @@ const sow_static_1 = require( "./sow-static" );
         }
         if ( cacheHeader.serverRevalidate ) {
             res.setHeader( 'cache-control', 'no-cache, must-revalidate, immutable' );
-            res.setHeader( 'x-server-revalidate', "true" );
+            res.setHeader( 'x-server-revalidate', 'true' );
         }
         else {
             res.setHeader( 'cache-control', `max-age=${cacheHeader.maxAge + Date.now()}, public, immutable` );

@@ -27,6 +27,7 @@ exports.Bundler = exports.__moduleName = void 0;
 */
 // 4:48 PM 5/3/2020
 const _fs = __importStar(require("fs"));
+// import { Readable, Writable, Transform } from 'stream';
 const _path = __importStar(require("path"));
 const _zlib = __importStar(require("zlib"));
 const sow_encryption_1 = require("./sow-encryption");
@@ -203,16 +204,13 @@ This 'Combiner' contains the following files:\n`;
         if (cngHander.sinceModify) {
             hasChanged = bundleInfo.files.some(a => a.isChange === true);
         }
-        if (!hasChanged) {
-            sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
-                lastChangeTime: Date.now()
-            }, server.config.cacheHeader);
-            ctx.res.writeHead(304, { 'Content-Type': this.getResContentType(cte) });
-            return ctx.res.end(), ctx.next(304);
-        }
         sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime: Date.now()
         }, server.config.cacheHeader);
+        if (!hasChanged) {
+            ctx.res.writeHead(304, { 'Content-Type': this.getResContentType(cte) });
+            return ctx.res.end(), ctx.next(304);
+        }
         ctx.req.socket.setNoDelay(true);
         const buffer = this.readBuffer(bundleInfo, server.copyright());
         if (isGzip === false || !server.config.bundler.compress) {
