@@ -57,7 +57,6 @@ class BundleInfo {
         this.error = false;
         this.files = [];
         this.msg = "";
-        this.blocked = false;
     }
 }
 // tslint:disable-next-line: max-classes-per-file
@@ -101,16 +100,8 @@ This 'Combiner' contains the following files:\n`;
     }
     static getFiles(server, str, lastChangeTime) {
         const result = new BundleInfo();
-        str = server.encryption.decryptUri(str);
-        if (!str) {
-            result.error = true;
-            result.blocked = true;
-            result.msg = "Invalid key";
-            return result;
-        }
         if (typeof (lastChangeTime) !== "number")
             lastChangeTime = 0;
-        str = str.replace(/\r\n/gi, "").replace(/\s+/g, "");
         try {
             // let files: Array<{ name: string, absolute: string, change_time: number, is_change: boolean, is_own: boolean }> = [];
             str.split(",").forEach((name) => {
@@ -182,6 +173,14 @@ This 'Combiner' contains the following files:\n`;
         });
         return Buffer.concat(out);
     }
+    static decryptFilePath(server, ctx, str) {
+        str = server.encryption.decryptUri(str);
+        if (str.length === 0) {
+            return ctx.next(404), void 0;
+        }
+        str = str.replace(/\r\n/gi, "").replace(/\s+/g, "");
+        return str;
+    }
     static createMemmory(server, ctx, isGzip) {
         const ct = ctx.req.query.ct;
         const str = ctx.req.query.g;
@@ -191,12 +190,12 @@ This 'Combiner' contains the following files:\n`;
         const cte = this.getContentType(ct.toString());
         if (cte === ContentType.UNKNOWN)
             return ctx.next(404);
+        const desc = this.decryptFilePath(server, ctx, str.toString());
+        if (!desc)
+            return;
         const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
-        const bundleInfo = this.getFiles(server, str.toString(), cngHander.sinceModify);
+        const bundleInfo = this.getFiles(server, desc.toString(), cngHander.sinceModify);
         if (bundleInfo.error === true) {
-            if (bundleInfo.blocked) {
-                return ctx.next(404);
-            }
             server.addError(ctx, bundleInfo.msg);
             return ctx.next(500);
         }
@@ -232,8 +231,10 @@ This 'Combiner' contains the following files:\n`;
         const cte = this.getContentType(ct.toString());
         if (cte === ContentType.UNKNOWN)
             return ctx.next(404);
-        const cachpath = this.getCachePath(server, str.toString(), cte, cacheKey.toString());
-        // if ( !cachpath ) return ctx.next( 404 );
+        const desc = this.decryptFilePath(server, ctx, str.toString());
+        if (!desc)
+            return;
+        const cachpath = this.getCachePath(server, desc.toString(), cte, cacheKey.toString());
         const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
         const existsCachFile = _fs.existsSync(cachpath);
         // tslint:disable-next-line: one-variable-per-declaration
@@ -243,11 +244,8 @@ This 'Combiner' contains the following files:\n`;
             cfileSize = stat.size;
             lastChangeTime = stat.mtime.getTime();
         }
-        const bundleInfo = this.getFiles(server, str.toString(), lastChangeTime);
+        const bundleInfo = this.getFiles(server, desc.toString(), lastChangeTime);
         if (bundleInfo.error === true) {
-            if (bundleInfo.blocked) {
-                return ctx.next(404);
-            }
             server.addError(ctx, bundleInfo.msg);
             return ctx.next(500);
         }

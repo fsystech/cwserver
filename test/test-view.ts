@@ -5,7 +5,7 @@ import * as fs from "fs";
 import { IApps } from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
 import { ISowServer } from '../lib/sow-server';
-import { SocketClient } from './socket-client';
+import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import { PayloadParser, socketInitilizer, HttpMimeHandler, Streamer, Util, Encryption } from '../index';
 const mimeHandler = new HttpMimeHandler();
 export function shouldBeError( next: () => void ): Error | void {
@@ -19,8 +19,12 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 	app.use( "/app-error", ( req, res, next ) => {
 		throw new Error( "Application should be fire Error event" );
 	} );
+	expect( shouldBeError( () => { socketInitilizer( server, SocketErr1() ) } ) ).toBeInstanceOf( Error );
+	expect( shouldBeError( () => { socketInitilizer( server, SocketErr2() ) } ) ).toBeInstanceOf( Error );
 	const ws = socketInitilizer( server, SocketClient() );
-	ws.create( require( "socket.io" ) );
+	const io = require( "socket.io" );
+	ws.create( io );
+	expect( ws.create( io ) ).toEqual( false );
 	expect( ws.isConnectd ).toEqual( true );
 	controller.get( '/ws-server-event', ( ctx ) => {
 		ctx.res.json( ws.wsEvent ); ctx.next( 200 );
@@ -75,7 +79,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			}
 			return ctx.next( 404 );
 		} );
-	} ).post( '/post-async', async ( ctx ) => {
+	} ).post( '/post-async/:id', async ( ctx, routeParam ) => {
 		const parser = new PayloadParser( ctx.req, tempDir );
 		await parser.readDataAsync();
 		if ( parser.isUrlEncoded() || parser.isAppJson() ) {

@@ -1,14 +1,15 @@
 /// <reference types="node" />
 import { IncomingHttpHeaders } from 'http';
 import { IResponse } from './sow-server-core';
+export declare type IChangeHeader = {
+    sinceModify?: number | void;
+    etag?: string;
+};
 export declare namespace SowHttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
     function getIfModifiedSinceUTCTime(headers: IncomingHttpHeaders): number | void;
     /** Gets the {sinceModify, etag} from given header {If-None-Match, If-Modified-Since}. */
-    function getChangedHeader(headers: IncomingHttpHeaders): {
-        sinceModify?: number | void;
-        etag?: string;
-    };
+    function getChangedHeader(headers: IncomingHttpHeaders): IChangeHeader;
     /**
      * Write cache header
      * e.g. {last-modified, expires, ETag, cache-control, x-server-revalidate}.

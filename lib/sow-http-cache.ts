@@ -7,6 +7,10 @@
 import { IncomingHttpHeaders } from 'http';
 import { IResponse } from './sow-server-core';
 import { ToResponseTime } from './sow-static';
+export type IChangeHeader = {
+    sinceModify?: number | void;
+    etag?: string;
+};
 // tslint:disable-next-line: no-namespace
 export namespace SowHttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
@@ -20,7 +24,7 @@ export namespace SowHttpCache {
         return void 0;
     }
     /** Gets the {sinceModify, etag} from given header {If-None-Match, If-Modified-Since}. */
-    export function getChangedHeader( headers: IncomingHttpHeaders ): { sinceModify?: number | void, etag?: string } {
+    export function getChangedHeader( headers: IncomingHttpHeaders ): IChangeHeader {
         const tag: string | string[] | undefined = headers["If-None-Match"] || headers["if-none-match"] || headers.ETag || headers.etag;
         return {
             sinceModify: getIfModifiedSinceUTCTime( headers ),

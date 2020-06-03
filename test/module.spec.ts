@@ -22,34 +22,47 @@ let app: IApps;
 const appRoot = process.env.SCRIPT === "TS" ? path.join( path.resolve( __dirname, '..' ), "/dist/test/" ) : __dirname;
 const projectRoot = 'test_web';
 const logDir = path.resolve( './log/' );
+let authCookies: string = "";
 type Agent = request.SuperAgentStatic & request.Request;
 const agent: Agent = request.agent();
 let appIsLestening: boolean = false;
 let appUtility: IAppUtility;
+const createRequest = ( method: string, url: string, ensure?: string ): request.SuperAgentRequest => {
+    expect( appIsLestening ).toEqual( true );
+    const client: request.SuperAgentRequest = method === "GET" ? agent.get( url ) : agent.post( url );
+    if ( !ensure ) return client;
+    const key: string = ensure;
+    const end = client.end.bind( client );
+    client.end = function ( callback?: ( err: any, res: request.Response ) => void ) {
+        expect( this.get( key ).length ).toBeGreaterThan( 0 );
+        end( callback );
+    };
+    return client;
+};
 const getAgent = (): Agent => {
     expect( appIsLestening ).toEqual( true );
     return agent;
 };
-const shutdownApp = ( done?: Mocha.Done ) => {
+const shutdownApp = ( done?: Mocha.Done ): void => {
     try {
-        app.shutdown( () => {
+        app.shutdown( ( err?: Error ): void => {
             if ( !done ) return;
-            done();
+            return done();
         } );
     } catch ( e ) {
         if ( !done ) return;
-        done( e );
+        return done( e );
     }
-}
+};
 const its = ( name: string, func: ( done: Mocha.Done ) => void ): void => {
     it( name, ( done ) => {
-        return setImmediate( () => {
-            return func( done );
-        }, 5 ), void 0;
+        setTimeout( () => {
+            func( done );
+        }, 100 );
     } );
-}
+};
 describe( "cwserver-default-project-template", () => {
-    its( "create project template", ( done ) => {
+    it( "create project template", ( done: Mocha.Done ): void => {
         cwserver.createProjectTemplate( {
             appRoot,
             projectRoot,
@@ -61,7 +74,7 @@ describe( "cwserver-default-project-template", () => {
     } );
 } );
 describe( "cwserver-core", () => {
-    its( "initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", ( done ) => {
+    it( "initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", ( done: Mocha.Done ): void => {
         const root: string = path.resolve( `${appRoot}/ewww` ); // path.resolve( appRoot, "/ewww" );
         Util.mkdirSync( appRoot, "/ewww/config" );
         expect( fs.existsSync( root ) ).toEqual( true );
@@ -75,31 +88,33 @@ describe( "cwserver-core", () => {
         Util.rmdirSync( root );
         done();
     } );
-    it( "initilize server throw error (invalid app.config.json)", ( done ) => {
+    it( "initilize server throw error (invalid app.config.json)", ( done: Mocha.Done ): void => {
         const root: string = path.resolve( `${appRoot}/ewww` ); // path.resolve( appRoot, "/ewww" );
         Util.mkdirSync( appRoot, "/ewww/config" );
         expect( fs.existsSync( root ) ).toEqual( true );
         const filePath: string = path.resolve( root + "/config/app.config.json" );
         fs.writeFileSync( filePath, "INVALID_FILE" );
+        const orginalCfg: string = path.resolve( `${appRoot}/${projectRoot}/config/app.config.json` );
+        expect( Util.compairFile( filePath, orginalCfg ) ).toEqual( true );
         expect( shouldBeError( () => {
             cwserver.initilizeServer( appRoot, `ewww` );
         } ) ).toBeInstanceOf( Error );
         Util.rmdirSync( root );
         done();
     } );
-    it( "initilize server throw error (projectRoot not provided)", ( done ) => {
+    it( "initilize server throw error (projectRoot not provided)", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             cwserver.initilizeServer( appRoot );
         } ) ).toBeInstanceOf( Error );
         done();
     } );
-    it( "initilize server throw error (projectRoot not provided)", ( done ) => {
+    it( "initilize server throw error (projectRoot not provided)", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             cwserver.initilizeServer( appRoot );
         } ) ).toBeInstanceOf( Error );
         done();
     } );
-    it( "initilize server throw error (projectRoot not provided while you using IISNODE)", ( done ) => {
+    it( "initilize server throw error (projectRoot not provided while you using IISNODE)", ( done: Mocha.Done ): void => {
         process.env.IISNODE_VERSION = "iisnode";
         expect( shouldBeError( () => {
             cwserver.initilizeServer( appRoot );
@@ -107,19 +122,19 @@ describe( "cwserver-core", () => {
         process.env.IISNODE_VERSION = "";
         done();
     } );
-    it( "initilize server throw error (projectRoot not found)", ( done ) => {
+    it( "initilize server throw error (projectRoot not found)", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             cwserver.initilizeServer( appRoot, `${projectRoot}_not_found` );
         } ) ).toBeInstanceOf( Error );
         done();
     } );
-    it( "initilize server throw error (app.config.json not found)", ( done ) => {
+    it( "initilize server throw error (app.config.json not found)", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             cwserver.initilizeServer( appRoot, `/` );
         } ) ).toBeInstanceOf( Error );
         done();
     } );
-    its( "initilize server", ( done ) => {
+    it( "initilize server", ( done: Mocha.Done ): void => {
         if ( fs.existsSync( logDir ) ) {
             Util.rmdirSync( logDir );
         }
@@ -127,17 +142,17 @@ describe( "cwserver-core", () => {
         expect( appUtility.public ).toEqual( projectRoot );
         done();
     } );
-    it( "initilize server throw error (Server instance can initilize 1 time)", ( done ) => {
+    it( "initilize server throw error (Server instance can initilize 1 time)", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             cwserver.initilizeServer( appRoot, projectRoot );
         } ) ).toBeInstanceOf( Error );
         done();
     } );
-    it( "initilize application", ( done ) => {
+    it( "initilize application", ( done: Mocha.Done ): void => {
         app = appUtility.init();
         done();
     } );
-    its( "application listen", ( done ) => {
+    it( "application listen", ( done: Mocha.Done ): void => {
         app.listen( appUtility.port, () => {
             appUtility.log.write( `
     [+] Maintance      : https://www.safeonline.world
@@ -148,13 +163,13 @@ describe( "cwserver-core", () => {
             shutdownApp( done );
         } );
     } );
-    it( "throw application already shutdown", ( done ) => {
+    it( "throw application already shutdown", ( done: Mocha.Done ): void => {
         app.shutdown( ( err ) => {
             expect( err ).toBeInstanceOf( Error );
             done();
         } );
     } );
-    its( "throw application already listen", ( done ) => {
+    it( "throw application already listen", ( done: Mocha.Done ): void => {
         app.listen( appUtility.port, () => {
             expect( shouldBeError( () => {
                 app.listen( appUtility.port );
@@ -166,7 +181,7 @@ describe( "cwserver-core", () => {
     } );
 } );
 describe( "cwserver-view", () => {
-    it( 'register view', ( done ) => {
+    it( 'register view', ( done: Mocha.Done ): void => {
         const invoke = ( ctx: IContext ) => {
             ctx.res.writeHead( 200, {
                 "Content-Type": "text/plain"
@@ -212,7 +227,7 @@ describe( "cwserver-view", () => {
         } ) ).toBeInstanceOf( Error );
         done();
     } );
-    it( 'should throw error (After initilize view, you should not register new veiw)', ( done ) => {
+    it( 'should throw error (After initilize view, you should not register new veiw)', ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             // tslint:disable-next-line: no-empty
             global.sow.server.on( "register-view", ( _app, controller, server ) => {} );
@@ -222,7 +237,7 @@ describe( "cwserver-view", () => {
 } );
 describe( "cwserver-session", () => {
     const loginId = "rajib";
-    it( 'authenticate-request', ( done ) => {
+    it( 'authenticate-request', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/authenticate` )
             .query( { loginId } )
@@ -235,10 +250,12 @@ describe( "cwserver-session", () => {
                 expect( res.body.userInfo ).toBeInstanceOf( Object );
                 expect( res.body.userInfo.loginId ).toEqual( loginId );
                 expect( res.body.hash ).toEqual( cwserver.Encryption.toMd5( loginId ) );
+                authCookies = res.header["set-cookie"];
+                expect( authCookies ).toBeInstanceOf( Array );
                 done();
             } );
     } );
-    it( 'should-be-user-authenticated', ( done ) => {
+    it( 'should-be-user-authenticated', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/is-authenticate` )
             .query( { loginId } )
@@ -252,7 +269,7 @@ describe( "cwserver-session", () => {
                 done();
             } );
     } );
-    it( 'authenticated-user-should-be-redirect-to-home', ( done ) => {
+    it( 'authenticated-user-should-be-redirect-to-home', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/authenticate` )
             .end( ( err, res ) => {
@@ -265,7 +282,7 @@ describe( "cwserver-session", () => {
     } );
 } );
 describe( "cwserver-get", () => {
-    it( 'send get request to application', ( done ) => {
+    it( 'send get request to application', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/` )
             .end( ( err, res ) => {
@@ -275,7 +292,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'test applicaton cookie', ( done ) => {
+    it( 'test applicaton cookie', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/cookie` )
             .end( ( err, res ) => {
@@ -287,7 +304,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'try to access config.hiddenDirectory', ( done ) => {
+    it( 'try to access config.hiddenDirectory', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/lib/` )
             .end( ( err, res ) => {
@@ -296,7 +313,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'try to access $root', ( done ) => {
+    it( 'try to access $root', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/$root/` )
             .end( ( err, res ) => {
@@ -305,7 +322,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'get-raw-file', ( done ) => {
+    it( 'get-raw-file', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/get-file` )
             .end( ( err, res ) => {
@@ -314,7 +331,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'redirect request to controller', ( done ) => {
+    it( 'redirect request to controller', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/redirect` )
             .end( ( err, res ) => {
@@ -325,7 +342,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'test route target /test-any/*', ( done ) => {
+    it( 'test route target /test-any/*', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/test-any/param/go` )
             .end( ( err, res ) => {
@@ -339,7 +356,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'test route target /task/:id/*', ( done ) => {
+    it( 'test route target /task/:id/*', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/task/1/test_request/next` )
             .end( ( err, res ) => {
@@ -354,7 +371,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'test route target /dist/*', ( done ) => {
+    it( 'test route target /dist/*', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/dist` )
             .end( ( err, res ) => {
@@ -366,7 +383,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'test route target /user/:id/settings', ( done ) => {
+    it( 'test route target /user/:id/settings', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/user/10/settings/100` )
             .end( ( err, res ) => {
@@ -375,7 +392,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'should be 404 route target /test-c/:id', ( done ) => {
+    it( 'should be 404 route target /test-c/:id', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/test-c/10/df/a` )
             .end( ( err, res ) => {
@@ -384,7 +401,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'should be 404 target route /test-c/:id not match', ( done ) => {
+    it( 'should be 404 target route /test-c/:id not match', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/test-c/` )
             .end( ( err, res ) => {
@@ -393,7 +410,7 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'target route /*', ( done ) => {
+    it( 'target route /*', ( done: Mocha.Done ): void => {
         const route: string = "/*";
         appUtility.controller.any( route, ( ctx: IContext, routeParam?: string[] ) => {
             return ctx.res.json( { reqPath: ctx.path, servedFrom: "/*", q: routeParam } );
@@ -412,7 +429,7 @@ describe( "cwserver-get", () => {
     } );
 } );
 describe( "cwserver-template-engine", () => {
-    it( 'should served from server mem cache', ( done ) => {
+    it( 'should served from server mem cache', ( done: Mocha.Done ): void => {
         const old = appUtility.server.config.template;
         appUtility.server.config.template.cacheType = "MEM";
         appUtility.server.config.template.cache = true;
@@ -426,7 +443,7 @@ describe( "cwserver-template-engine", () => {
                 done();
             } );
     } );
-    it( 'should throw template runtime error', ( done ) => {
+    it( 'should throw template runtime error', ( done: Mocha.Done ): void => {
         const filePath: string = appUtility.server.mapPath( "/test.html" );
         expect( fs.existsSync( filePath ) ).toEqual( false );
         fs.writeFileSync( filePath, "{% server.invalid_method() %}" );
@@ -440,7 +457,7 @@ describe( "cwserver-template-engine", () => {
                 done();
             } );
     } );
-    it( 'send get request should be 404 response config.defaultExt = .html', ( done ) => {
+    it( 'send get request should be 404 response config.defaultExt = .html', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/index.html` )
             .end( ( err, res ) => {
@@ -450,7 +467,7 @@ describe( "cwserver-template-engine", () => {
                 done();
             } );
     } );
-    it( 'send get request should be 200 response', ( done ) => {
+    it( 'send get request should be 200 response', ( done: Mocha.Done ): void => {
         const defaultExt = appUtility.server.config.defaultExt;
         appUtility.server.config.defaultExt = "";
         getAgent()
@@ -464,7 +481,7 @@ describe( "cwserver-template-engine", () => {
             } );
     } );
     let templateConf: { [x: string]: any; } | void;
-    it( 'route `/` then should use config.defaultDoc and create template cache', ( done ) => {
+    it( 'route `/` then should use config.defaultDoc and create template cache', ( done: Mocha.Done ): void => {
         templateConf = Util.clone( appUtility.server.config.template );
         appUtility.server.config.template.cache = true;
         appUtility.server.config.template.cacheType = "FILE";
@@ -477,7 +494,7 @@ describe( "cwserver-template-engine", () => {
                 done();
             } );
     } );
-    it( 'should be serve from template cache', ( done ) => {
+    it( 'should be serve from template cache', ( done: Mocha.Done ): void => {
         expect( Util.isPlainObject( templateConf ) ).toBe( true );
         getAgent()
             .get( `http://localhost:${appUtility.port}/` )
@@ -495,7 +512,7 @@ describe( "cwserver-template-engine", () => {
 describe( "cwserver-bundler", () => {
     let eTag: string = "";
     let lastModified: string = "";
-    its( 'js file bundler with gizp response (server file cache)', ( done ) => {
+    it( 'js file bundler with gizp response (server file cache)', ( done: Mocha.Done ): void => {
         const temp = appUtility.server.mapPath( `/web/temp/` );
         if ( fs.existsSync( temp ) ) {
             Util.rmdirSync( temp );
@@ -522,47 +539,71 @@ describe( "cwserver-bundler", () => {
                 done();
             } );
     } );
-    its( 'bundler should compair if-modified-since header and send 304 (server file cache)', ( done ) => {
-        expect( lastModified.length ).toBeGreaterThan( 0 );
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
-            .set( "if-modified-since", lastModified )
-            .query( {
-                g: appUtility.server.createBundle( `
-                    $virtual_vtest/socket-client.js,
-                    static/script/test-1.js,
-                    static/script/test-2.js|__owner__`
-                ),
-                ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
-            } )
-            .end( ( err, res ) => {
-                expect( err ).toBeInstanceOf( Error );
-                expect( res.status ).toBe( 304 );
-                expect( res.header["x-server-revalidate"] ).toBe( "true" );
-                done();
-            } );
-    } );
-    its( 'bundler should compair if-none-match and send 304 (server file cache)', ( done ) => {
-        expect( eTag.length ).toBeGreaterThan( 0 );
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
-            .set( "if-none-match", eTag )
-            .query( {
-                g: appUtility.server.createBundle( `
-                    $virtual_vtest/socket-client.js,
-                    static/script/test-1.js,
-                    static/script/test-2.js|__owner__`
-                ),
-                ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
-            } )
-            .end( ( err, res ) => {
-                expect( err ).toBeInstanceOf( Error );
-                expect( res.status ).toBe( 304 );
-                expect( res.header["x-server-revalidate"] ).toBe( "true" );
-                done();
-            } );
-    } );
-    its( 'js file bundler with gizp response (no server cache)', ( done ) => {
+    it( 'bundler should compair if-modified-since header and send 304 (server file cache)', ( () => {
+        const sendReq = ( done: Mocha.Done, tryCount: number ): void => {
+            if ( tryCount > 0 ) {
+                appUtility.server.log.info( `Try Count: ${tryCount} and if-modified-since: ${lastModified}` );
+            }
+            createRequest( "GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-modified-since" )
+                .set( "if-modified-since", lastModified )
+                .query( {
+                    g: appUtility.server.createBundle( `
+                        $virtual_vtest/socket-client.js,
+                        static/script/test-1.js,
+                        static/script/test-2.js|__owner__`
+                    ),
+                    ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
+                } )
+                .end( ( err, res ) => {
+                    if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                        return setTimeout( () => {
+                            return sendReq( done, tryCount + 1 );
+                        }, 100 ), void 0;
+                    }
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 304 );
+                    expect( res.header["x-server-revalidate"] ).toBe( "true" );
+                    return done();
+                } );
+        };
+        return ( done: Mocha.Done ): void => {
+            expect( lastModified.length ).toBeGreaterThan( 0 );
+            return sendReq( done, 0 );
+        };
+    } )() );
+    it( 'bundler should compair if-none-match and send 304 (server file cache)', ( () => {
+        const sendReq = ( done: Mocha.Done, tryCount: number ): void => {
+            if ( tryCount > 0 ) {
+                appUtility.server.log.info( `Try Count: ${tryCount} and if-none-match: ${eTag}` );
+            }
+            createRequest( "GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-none-match" )
+                .set( "if-none-match", eTag )
+                .query( {
+                    g: appUtility.server.createBundle( `
+					    $virtual_vtest/socket-client.js,
+					    static/script/test-1.js,
+					    static/script/test-2.js|__owner__`
+                    ),
+                    ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
+                } )
+                .end( ( err, res ) => {
+                    if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                        return setTimeout( () => {
+                            return sendReq( done, tryCount + 1 );
+                        }, 100 ), void 0;
+                    }
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toBe( 304 );
+                    expect( res.header["x-server-revalidate"] ).toBe( "true" );
+                    return done();
+                } );
+        };
+        return ( done: Mocha.Done ): void => {
+            expect( eTag.length ).toBeGreaterThan( 0 );
+            return sendReq( done, 0 );
+        };
+    } )() );
+    it( 'js file bundler with gizp response (no server cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = false;
         appUtility.server.config.bundler.compress = true;
         getAgent()
@@ -577,37 +618,49 @@ describe( "cwserver-bundler", () => {
             } )
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
-                expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/x-javascript; charset=utf-8" );
-                expect( res.header["content-encoding"] ).toBe( "gzip" );
+                expect( res.status ).toEqual( 200 );
+                expect( res.header["content-type"] ).toEqual( "application/x-javascript; charset=utf-8" );
+                expect( res.header["content-encoding"] ).toEqual( "gzip" );
                 expect( res.header["last-modified"] ).toBeDefined();
                 lastModified = res.header['last-modified'];
                 done();
             } );
     } );
-    its( 'bundler should compair if-modified-since header and send 304 (no server cache)', ( done ) => {
-        expect( lastModified.length ).toBeGreaterThan( 0 );
-        appUtility.server.config.bundler.fileCache = false;
-        appUtility.server.config.bundler.compress = true;
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
-            .set( "if-modified-since", lastModified )
-            .query( {
-                g: appUtility.server.createBundle( `
-                        $virtual_vtest/socket-client.js,
-                        static/script/test-1.js,
-                        static/script/test-2.js|__owner__`
-                ),
-                ck: "bundle_no_cache_js", ct: "text/javascript", rc: "Y"
-            } )
-            .end( ( err, res ) => {
-                expect( err ).toBeInstanceOf( Error );
-                expect( res.status ).toBe( 304 );
-                expect( res.header["x-server-revalidate"] ).toBe( "true" );
-                done();
-            } );
-    } );
-    its( 'js file bundler not gizp response (no server cache)', ( done ) => {
+    its( 'bundler should compair if-modified-since header and send 304 (no server cache)', ( () => {
+        const sendReq = ( done: Mocha.Done, tryCount: number ): void => {
+            if ( tryCount > 0 ) {
+                appUtility.server.log.info( `Try Count: ${tryCount} and if-modified-since: ${lastModified}` );
+            }
+            createRequest( "GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-modified-since" )
+                .set( "if-modified-since", lastModified )
+                .query( {
+                    g: appUtility.server.createBundle( `
+						$virtual_vtest/socket-client.js,
+						static/script/test-1.js,
+						static/script/test-2.js|__owner__`
+                    ),
+                    ck: "bundle_no_cache_js", ct: "text/javascript", rc: "Y"
+                } )
+                .end( ( err, res ) => {
+                    if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                        return setTimeout( () => {
+                            return sendReq( done, tryCount + 1 );
+                        }, 100 ), void 0;
+                    }
+                    expect( err ).toBeInstanceOf( Error );
+                    expect( res.status ).toEqual( 304 );
+                    expect( res.header["x-server-revalidate"] ).toEqual( "true" );
+                    return done();
+                } );
+        };
+        return ( done: Mocha.Done ): void => {
+            expect( lastModified.length ).toBeGreaterThan( 0 );
+            appUtility.server.config.bundler.fileCache = false;
+            appUtility.server.config.bundler.compress = true;
+            return sendReq( done, 0 );
+        };
+    } )() );
+    it( 'js file bundler not gizp response (no server cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
@@ -628,7 +681,7 @@ describe( "cwserver-bundler", () => {
                 done();
             } );
     } );
-    its( 'css file bundler with gizp response (server file cache)', ( done ) => {
+    it( 'css file bundler with gizp response (server file cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = true;
         appUtility.server.config.bundler.compress = true;
         getAgent()
@@ -650,7 +703,7 @@ describe( "cwserver-bundler", () => {
                 done();
             } );
     } );
-    its( 'js file bundler not gizp response (server cache)', ( done ) => {
+    it( 'js file bundler not gizp response (server cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = true;
         getAgent()
@@ -672,7 +725,7 @@ describe( "cwserver-bundler", () => {
     } );
 } );
 describe( "cwserver-bundler-error", () => {
-    its( 'bundler should be virtual file error', ( done ) => {
+    it( 'bundler should be virtual file error', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -690,7 +743,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be virtual error', ( done ) => {
+    it( 'bundler should be virtual error', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -708,7 +761,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be unsupported content type error  (server cache)', ( done ) => {
+    it( 'bundler should be unsupported content type error  (server cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = true;
         appUtility.server.config.bundler.enable = true;
         getAgent()
@@ -727,7 +780,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be unsupported content type error  (no server cache)', ( done ) => {
+    it( 'bundler should be unsupported content type error  (no server cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -745,7 +798,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be path parse error', ( done ) => {
+    it( 'bundler should be path parse error', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -763,7 +816,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be encryption error', ( done ) => {
+    it( 'bundler should be encryption error', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -777,7 +830,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be error (no param (no cache))', ( done ) => {
+    it( 'bundler should be error (no param (no cache))', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -787,7 +840,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be error (no param (server cache))', ( done ) => {
+    it( 'bundler should be error (no param (server cache))', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = true;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -797,7 +850,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be encryption error (server cache)', ( done ) => {
+    it( 'bundler should be encryption error (server cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = true;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -811,7 +864,7 @@ describe( "cwserver-bundler-error", () => {
                 done();
             } );
     } );
-    its( 'bundler should be skip invalid if-modified-since header and send 200', ( done ) => {
+    it( 'bundler should be skip invalid if-modified-since header and send 200', ( done: Mocha.Done ): void => {
         request
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .set( "if-modified-since", `AAAZZZ` )
@@ -832,7 +885,7 @@ describe( "cwserver-bundler-error", () => {
     } );
 } );
 describe( "cwserver-post", () => {
-    its( 'send post request content type application/json', ( done ) => {
+    it( 'send post request content type application/json', ( done: Mocha.Done ): void => {
         getAgent()
             .post( `http://localhost:${appUtility.port}/post` )
             .send( JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) )
@@ -845,7 +898,7 @@ describe( "cwserver-post", () => {
                 done();
             } );
     } );
-    its( 'send post request content type urlencoded', ( done ) => {
+    it( 'send post request content type urlencoded', ( done: Mocha.Done ): void => {
         getAgent()
             .post( `http://localhost:${appUtility.port}/post` )
             .type( 'form' )
@@ -858,9 +911,9 @@ describe( "cwserver-post", () => {
                 done();
             } );
     } );
-    its( 'send post request to async handler', ( done ) => {
+    it( 'send post request to async handler', ( done: Mocha.Done ): void => {
         getAgent()
-            .post( `http://localhost:${appUtility.port}/post-async` )
+            .post( `http://localhost:${appUtility.port}/post-async/10` )
             .type( 'form' )
             .send( { name: 'rajibs', occupation: 'kutukutu' } )
             .end( ( err, res ) => {
@@ -871,7 +924,7 @@ describe( "cwserver-post", () => {
                 done();
             } );
     } );
-    its( 'should post request not found', ( done ) => {
+    it( 'should post request not found', ( done: Mocha.Done ): void => {
         getAgent()
             .post( `http://localhost:${appUtility.port}/post/invalid-route` )
             .send( JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) )
@@ -884,7 +937,7 @@ describe( "cwserver-post", () => {
     } );
 } );
 describe( "cwserver-gzip-response", () => {
-    its( 'should be response type gzip', ( done ) => {
+    it( 'should be response type gzip', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/response` )
             .query( { task: "gzip", data: JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) } )
@@ -897,7 +950,7 @@ describe( "cwserver-gzip-response", () => {
     } );
 } );
 describe( "cwserver-mime-type", () => {
-    its( 'served static file no cache', ( done ) => {
+    it( 'served static file no cache', ( done: Mocha.Done ): void => {
         const old = appUtility.server.config.liveStream;
         appUtility.server.config.liveStream = [];
         getAgent()
@@ -913,7 +966,7 @@ describe( "cwserver-mime-type", () => {
     } );
     let eTag: string = "";
     let lastModified: string = "";
-    its( 'should be mime type encoding gzip', ( done ) => {
+    it( 'should be mime type encoding gzip', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/logo/logo.png` )
             .end( ( err, res ) => {
@@ -928,7 +981,7 @@ describe( "cwserver-mime-type", () => {
                 done();
             } );
     } );
-    its( 'should be mime type if-none-match', ( done ) => {
+    it( 'should be mime type if-none-match', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/logo/logo.png` )
             .set( "if-none-match", eTag )
@@ -939,7 +992,7 @@ describe( "cwserver-mime-type", () => {
                 done();
             } );
     } );
-    its( 'should be mime type if-modified-since', ( done ) => {
+    it( 'should be mime type if-modified-since', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/logo/logo.png` )
             .set( "if-modified-since", lastModified )
@@ -950,7 +1003,7 @@ describe( "cwserver-mime-type", () => {
                 done();
             } );
     } );
-    its( 'should be mime type not found', ( done ) => {
+    it( 'should be mime type not found', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/logo/logos.png` )
             .set( "if-modified-since", lastModified )
@@ -960,7 +1013,7 @@ describe( "cwserver-mime-type", () => {
                 done();
             } );
     } );
-    its( 'unsupported mime type', ( done ) => {
+    it( 'unsupported mime type', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/logo/logo.zip` )
             .set( "if-modified-since", lastModified )
@@ -970,7 +1023,7 @@ describe( "cwserver-mime-type", () => {
                 done();
             } );
     } );
-    its( 'should be served from file (no server file cache)', ( done ) => {
+    it( 'should be served from file (no server file cache)', ( done: Mocha.Done ): void => {
         const oldfileCache = appUtility.server.config.staticFile.fileCache;
         appUtility.server.config.staticFile.fileCache = false;
         getAgent()
@@ -988,7 +1041,7 @@ describe( "cwserver-mime-type", () => {
                 done();
             } );
     } );
-    its( 'should be mime type if-none-match (no server file cache)', ( done ) => {
+    it( 'should be mime type if-none-match (no server file cache)', ( done: Mocha.Done ): void => {
         const oldfileCache = appUtility.server.config.staticFile.fileCache;
         appUtility.server.config.staticFile.fileCache = false;
         getAgent()
@@ -1002,7 +1055,7 @@ describe( "cwserver-mime-type", () => {
                 done();
             } );
     } );
-    its( 'should be favicon.ico 200', ( done ) => {
+    it( 'should be favicon.ico 200', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/favicon.ico` )
             .end( ( err, res ) => {
@@ -1014,7 +1067,7 @@ describe( "cwserver-mime-type", () => {
     } );
 } );
 describe( "cwserver-virtual-dir", () => {
-    its( 'check-virtual-dir-server-manage', ( done ) => {
+    it( 'check-virtual-dir-server-manage', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/test-virtual/socket-client.js` )
             .end( ( err, res ) => {
@@ -1025,7 +1078,7 @@ describe( "cwserver-virtual-dir", () => {
                 done();
             } );
     } );
-    its( 'check-virtual-dir-mimeType-404', ( done ) => {
+    it( 'check-virtual-dir-mimeType-404', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/test-virtual/socket-client.jsx` )
             .end( ( err, res ) => {
@@ -1034,7 +1087,7 @@ describe( "cwserver-virtual-dir", () => {
                 done();
             } );
     } );
-    its( 'check-virtual-dir-handler', ( done ) => {
+    it( 'check-virtual-dir-handler', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/vtest/socket-client.js` )
             .end( ( err, res ) => {
@@ -1047,7 +1100,7 @@ describe( "cwserver-virtual-dir", () => {
     } );
 } );
 describe( "cwserver-multipart-paylod-parser", () => {
-    its( 'should post multipart post file', ( done ) => {
+    it( 'should post multipart post file', ( done: Mocha.Done ): void => {
         let fileName = "";
         let filePath = "";
         let contentType = "";
@@ -1076,7 +1129,7 @@ describe( "cwserver-multipart-paylod-parser", () => {
                 done();
             } );
     } );
-    its( 'should post multipart post file and save as bulk', ( done ) => {
+    it( 'should post multipart post file and save as bulk', ( done: Mocha.Done ): void => {
         let fileName = "";
         let filePath = "";
         let contentType = "";
@@ -1108,7 +1161,7 @@ describe( "cwserver-multipart-paylod-parser", () => {
     } );
 } );
 describe( "cwserver-socket-io-implementation", () => {
-    its( 'get ws-server-event', ( done ) => {
+    it( 'get ws-server-event', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/ws-server-event` )
             .end( ( err, res ) => {
@@ -1121,20 +1174,28 @@ describe( "cwserver-socket-io-implementation", () => {
                 done();
             } );
     } );
-    its( 'should be send n receive data over socket-io', ( done ) => {
-        const socket = io.connect( `http://localhost:${appUtility.port}`, { reconnection: true } );
+    it( 'should be send n receive data over socket-io', ( done: Mocha.Done ): void => {
+        const socket = io.connect( `http://localhost:${appUtility.port}`, {
+            reconnection: true, transportOptions: {
+                polling: {
+                    extraHeaders: {
+                        'Cookie': authCookies[0].substring( 0, authCookies[0].indexOf(";") )
+                    }
+                }
+            }
+        } );
         socket.on( 'connect', () => {
             socket.emit( 'test-msg', { name: 'rajibs', occupation: 'kutukutu' } );
         } );
         socket.on( 'on-test-msg', ( data: { name: any; } ) => {
             socket.close();
-            expect( data.name ).toBe( 'rajibs' );
+            expect( data.name ).toEqual( 'rajibs' );
             done();
         } );
     } );
 } );
 describe( "cwserver-echo", () => {
-    its( 'echo-server', ( done ) => {
+    it( 'echo-server', ( done: Mocha.Done ): void => {
         const reqMd5 = cwserver.md5( "Test" );
         const hex = cwserver.Encryption.utf8ToHex( reqMd5 );
         getAgent()
@@ -1154,7 +1215,7 @@ describe( "cwserver-echo", () => {
     } );
 } );
 describe( "cwserver-web-stream", () => {
-    its( 'should-be-get-stream-request', ( done ) => {
+    it( 'should-be-get-stream-request', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/web-stream/test.mp3` )
             .end( ( err, res ) => {
@@ -1165,7 +1226,7 @@ describe( "cwserver-web-stream", () => {
                 done();
             } );
     } );
-    its( 'should-be-stream', ( done ) => {
+    it( 'should-be-stream', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/web-stream/test.mp3` )
             .set( "range", "bytes=0-" )
@@ -1179,7 +1240,7 @@ describe( "cwserver-web-stream", () => {
     } );
 } );
 describe( "cwserver-error", () => {
-    its( 'should be throw server error', ( done ) => {
+    it( 'should be throw server error', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/app-error/` )
             .end( ( err, res ) => {
@@ -1188,7 +1249,7 @@ describe( "cwserver-error", () => {
                 done();
             } );
     } );
-    its( 'should be pass server error', ( done ) => {
+    it( 'should be pass server error', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/pass-error` )
             .end( ( err, res ) => {
@@ -1199,7 +1260,7 @@ describe( "cwserver-error", () => {
     } );
 } );
 describe( "cwserver-controller-reset", () => {
-    its( 'config.defaultDoc', ( done ) => {
+    it( 'config.defaultDoc', ( done: Mocha.Done ): void => {
         const defaultExt = appUtility.server.config.defaultExt;
         const defaultDoc = appUtility.server.config.defaultDoc;
         appUtility.server.config.defaultDoc = ["index.html", "default.html"];
@@ -1214,7 +1275,7 @@ describe( "cwserver-controller-reset", () => {
                 done();
             } );
     } );
-    its( 'should be route not found', ( done ) => {
+    it( 'should be route not found', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/app-error` )
             .end( ( err, res ) => {
@@ -1223,7 +1284,7 @@ describe( "cwserver-controller-reset", () => {
                 done();
             } );
     } );
-    its( 'no controller found for put', ( done ) => {
+    it( 'no controller found for put', ( done: Mocha.Done ): void => {
         getAgent()
             .delete( `http://localhost:${appUtility.port}/app-error` )
             .end( ( err, res ) => {
@@ -1232,13 +1293,13 @@ describe( "cwserver-controller-reset", () => {
                 done();
             } );
     } );
-    its( 'should-be-reset-controller', ( done ) => {
+    it( 'should-be-reset-controller', ( done: Mocha.Done ): void => {
         expect( appUtility.controller.remove( '/authenticate' ) ).toEqual( true );
         expect( appUtility.controller.remove( '/post' ) ).toEqual( true );
         appUtility.controller.reset();
         done();
     } );
-    its( 'should-be-controller-error', ( done ) => {
+    it( 'should-be-controller-error', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/response` )
             .query( { task: "gzip", data: JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) } )
@@ -1250,7 +1311,7 @@ describe( "cwserver-controller-reset", () => {
     } );
 } );
 describe( "cwserver-utility", () => {
-    its( "test-app-utility", ( done ): void => {
+    it( "test-app-utility", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             cwserver.HttpStatus.isErrorCode( "adz" );
         } ) ).toBeInstanceOf( Error );
@@ -1280,8 +1341,19 @@ describe( "cwserver-utility", () => {
         expect( shouldBeError( () => {
             Util.mkdirSync( logDir, "./" );
         } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            Util.copyFileSync( `${logDir}/temp/`, "./" );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            Util.copyFileSync( `${logDir}/temp/nofile.lg`, "./" );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            Util.copyFileSync( `${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx` );
+        } ) ).toBeInstanceOf( Error );
+        expect( Util.rmdirSync( `${logDir}/temp/` ) ).not.toBeInstanceOf( Error );
+        expect( Util.copySync( `${logDir}/temp/`, `${logDir}/tempx/` ) ).not.toBeInstanceOf( Error );
         expect( Util.mkdirSync( logDir ) ).toEqual( true );
-        expect( Util.extend( {}, new Session() ) ).toBeInstanceOf( Object );
+        expect( Util.extend( {}, Session.prototype ) ).toBeInstanceOf( Object );
         expect( Util.extend( {}, () => {
             return new Session();
         }, true ) ).toBeInstanceOf( Object );
@@ -1306,7 +1378,7 @@ describe( "cwserver-utility", () => {
     } );
     describe( 'config', () => {
         let untouchedConfig: { [x: string]: any; } = {};
-        its( 'database', ( done ) => {
+        it( 'database', ( done: Mocha.Done ): void => {
             untouchedConfig = cwserver.Util.clone( appUtility.server.config );
             expect( shouldBeError( () => {
                 try {
@@ -1385,7 +1457,7 @@ describe( "cwserver-utility", () => {
             } ) ).toBeInstanceOf( Error );
             done();
         } );
-        its( 'override', ( done ) => {
+        it( 'override', ( done: Mocha.Done ): void => {
             expect( shouldBeError( () => {
                 const oldKey = appUtility.server.config.encryptionKey;
                 try {
@@ -1521,7 +1593,7 @@ describe( "cwserver-utility", () => {
             done();
         } );
     } );
-    its( 'log', ( done ) => {
+    it( 'log', ( done: Mocha.Done ): void => {
         appUtility.server.log.log( "log-test" );
         appUtility.server.log.info( "log-info-test" );
         appUtility.server.log.dispose();
@@ -1554,7 +1626,7 @@ describe( "cwserver-utility", () => {
     } );
 } );
 describe( "cwserver-schema-validator", () => {
-    its( "validate-schema", ( done ) => {
+    it( "validate-schema", ( done: Mocha.Done ): void => {
         const config = Util.readJsonAsync( appUtility.server.mapPath( "/config/app.config.json" ) );
         expect( config ).toBeInstanceOf( Object );
         if ( !config ) throw new Error( "unreachable..." );
@@ -1688,7 +1760,7 @@ describe( "cwserver-schema-validator", () => {
         } ) ).toBeInstanceOf( Error );
         done();
     } );
-    it( "shutdown-application", ( done ) => {
+    it( "shutdown-application", ( done: Mocha.Done ): void => {
         shutdownApp( done );
     } );
 } );

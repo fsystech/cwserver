@@ -15,8 +15,6 @@ class WsClientInfo {
         this.event = {};
     }
     getServerEvent() {
-        if (!this.event.hasOwnProperty('getClient'))
-            throw new Error("`getClient` event did not registered...");
         const obj = this.event.getClient();
         if (obj instanceof Object)
             return obj;
@@ -65,7 +63,7 @@ class SowSocket {
     }
     toList(sockets) {
         const list = [];
-        if (!sockets)
+        if (sockets.length === 0)
             return list;
         sockets.forEach(a => {
             list.push({
@@ -104,7 +102,7 @@ class SowSocket {
     }
     create(ioserver) {
         if (this.implimented)
-            return void 0;
+            return false;
         this.implimented = true;
         const io = ioserver(this._server.getHttpServer(), {
             path: this._server.config.socketPath,
@@ -129,8 +127,7 @@ class SowSocket {
             // if ( !socket.request.session ) {
             //    socket.request.session = this._server.parseSession( socket.handshake.headers.cookie );
             // }
-            if (!this._wsClients.beforeInitiateConnection(socket.request.session, socket))
-                return void 0;
+            // if ( !this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) return void 0;
             const _me = (() => {
                 const token = sow_util_1.Util.guid();
                 this.socket.push({
@@ -165,7 +162,7 @@ class SowSocket {
                 socket.on(method, client[method]);
             }
             return this._wsClients.emit("connected", _me, this), void 0;
-        }), void 0;
+        }), true;
     }
 }
 /** If you want to use it you've to install socket.io */
@@ -186,8 +183,6 @@ function socketInitilizer(server, wsClientInfo) {
             return _wsEvent ? _wsEvent : (_wsEvent = wsClientInfo.getServerEvent(), _wsEvent);
         },
         create(ioserver) {
-            if (_ws.implimented)
-                return;
             return _ws.create(ioserver);
         }
     };

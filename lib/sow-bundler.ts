@@ -9,7 +9,7 @@ import * as _fs from 'fs';
 import * as _path from 'path';
 import * as _zlib from 'zlib';
 import { Encryption } from './sow-encryption';
-import { SowHttpCache } from './sow-http-cache';
+import { SowHttpCache, IChangeHeader } from './sow-http-cache';
 import { IApplication, IRequest } from './sow-server-core';
 import { ISowServer, IContext } from './sow-server';
 import { IController } from './sow-controller';
@@ -24,7 +24,6 @@ interface IBundleInfo {
     error: boolean;
     files: BundlerFile[];
     msg: string | Error;
-    blocked?: boolean;
 }
 const responseWriteGzip = (
     ctx: IContext, buff: Buffer,
@@ -46,14 +45,13 @@ class BundleInfo implements IBundleInfo {
     error: boolean;
     files: BundlerFile[];
     msg: string | Error;
-    blocked?: boolean;
     constructor() {
         this.error = false;
         this.files = [];
         this.msg = "";
-        this.blocked = false;
     }
 }
+
 // tslint:disable-next-line: max-classes-per-file
 class Bundlew {
     static getInfo(): string {
@@ -96,15 +94,7 @@ This 'Combiner' contains the following files:\n`;
         server: ISowServer, str: string,
         lastChangeTime?: number | void ): IBundleInfo {
         const result: IBundleInfo = new BundleInfo();
-        str = server.encryption.decryptUri( str );
-        if ( !str ) {
-            result.error = true;
-            result.blocked = true;
-            result.msg = "Invalid key";
-            return result;
-        }
         if ( typeof ( lastChangeTime ) !== "number" ) lastChangeTime = 0;
-        str = str.replace( /\r\n/gi, "" ).replace( /\s+/g, "" );
         try {
             // let files: Array<{ name: string, absolute: string, change_time: number, is_change: boolean, is_own: boolean }> = [];
             str.split( "," ).forEach( ( name: string ): void => {
@@ -150,7 +140,6 @@ This 'Combiner' contains the following files:\n`;
             return result;
         }
     }
-
     static readBuffer( bundleInfo: IBundleInfo, copyright: string ): Buffer {
         const out = [];
         let istr = this.getInfo();
@@ -174,6 +163,14 @@ This 'Combiner' contains the following files:\n`;
         } );
         return Buffer.concat( out );
     }
+    private static decryptFilePath( server: ISowServer, ctx: IContext, str: string ): string | void {
+        str = server.encryption.decryptUri( str );
+        if ( str.length === 0 ) {
+            return ctx.next( 404 ), void 0;
+        }
+        str = str.replace( /\r\n/gi, "" ).replace( /\s+/g, "" );
+        return str;
+    }
     static createMemmory( server: ISowServer, ctx: IContext, isGzip: boolean ): any {
         const ct = ctx.req.query.ct;
         const str = ctx.req.query.g;
@@ -182,12 +179,11 @@ This 'Combiner' contains the following files:\n`;
         }
         const cte = this.getContentType( ct.toString() );
         if ( cte === ContentType.UNKNOWN ) return ctx.next( 404 );
-        const cngHander: { sinceModify?: number | void, etag?: string } = SowHttpCache.getChangedHeader( ctx.req.headers );
-        const bundleInfo: IBundleInfo = this.getFiles( server, str.toString(), cngHander.sinceModify );
+        const desc = this.decryptFilePath( server, ctx, str.toString() );
+        if ( !desc ) return;
+        const cngHander: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
+        const bundleInfo: IBundleInfo = this.getFiles( server, desc.toString(), cngHander.sinceModify );
         if ( bundleInfo.error === true ) {
-            if ( bundleInfo.blocked ) {
-                return ctx.next( 404 );
-            }
             server.addError( ctx, bundleInfo.msg );
             return ctx.next( 500 );
         }
@@ -222,9 +218,10 @@ This 'Combiner' contains the following files:\n`;
         }
         const cte = this.getContentType( ct.toString() );
         if ( cte === ContentType.UNKNOWN ) return ctx.next( 404 );
-        const cachpath = this.getCachePath( server, str.toString(), cte, cacheKey.toString() );
-        // if ( !cachpath ) return ctx.next( 404 );
-        const cngHander: { sinceModify?: number | void, etag?: string } = SowHttpCache.getChangedHeader( ctx.req.headers );
+        const desc = this.decryptFilePath( server, ctx, str.toString() );
+        if ( !desc ) return;
+        const cachpath = this.getCachePath( server, desc.toString(), cte, cacheKey.toString() );
+        const cngHander: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
         const existsCachFile = _fs.existsSync( cachpath );
         // tslint:disable-next-line: one-variable-per-declaration
         let lastChangeTime = 0, cfileSize = 0;
@@ -233,11 +230,8 @@ This 'Combiner' contains the following files:\n`;
             cfileSize = stat.size;
             lastChangeTime = stat.mtime.getTime();
         }
-        const bundleInfo: IBundleInfo = this.getFiles( server, str.toString(), lastChangeTime );
+        const bundleInfo: IBundleInfo = this.getFiles( server, desc.toString(), lastChangeTime );
         if ( bundleInfo.error === true ) {
-            if ( bundleInfo.blocked ) {
-                return ctx.next( 404 );
-            }
             server.addError( ctx, bundleInfo.msg );
             return ctx.next( 500 );
         }
@@ -331,7 +325,7 @@ export const __moduleName: string = "Bundler";
 // tslint:disable-next-line: max-classes-per-file
 export class Bundler {
     public static Init( app: IApplication, controller: IController, server: ISowServer ): void {
-        controller.get( server.config.bundler.route, ( ctx: IContext ): any => {
+        controller.get( server.config.bundler.route, ( ctx: IContext ): void => {
             const isGzip = isAcceptedEncoding( ctx.req, "gzip" );
             if ( !isGzip || server.config.bundler.fileCache === false ) return Bundlew.createMemmory( server, ctx, isGzip );
             return Bundlew.createServerFileCache( server, ctx );

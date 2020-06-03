@@ -88,8 +88,6 @@ class WsClientInfo implements IWsClientInfo {
     client: IWsClient = Object.create( null );
     event: { [id: string]: any } = {};
     getServerEvent(): { [x: string]: any; } {
-        if ( !this.event.hasOwnProperty('getClient') )
-            throw new Error( "`getClient` event did not registered..." );
         const obj = this.event.getClient();
         if ( obj instanceof Object ) return obj;
         return {};
@@ -139,7 +137,7 @@ class SowSocket implements ISowSocket {
     }
     toList( sockets: ISowSocketInfo[] ): { [x: string]: any; }[] {
         const list: { [x: string]: any; }[] = [];
-        if ( !sockets ) return list;
+        if ( sockets.length === 0 ) return list;
         sockets.forEach( a => {
             list.push( {
                 token: a.token, hash: a.hash, loginId: a.loginId
@@ -185,8 +183,8 @@ class SowSocket implements ISowSocket {
         if ( !soc ) return false;
         return soc.sendMsg( method, data ), true;
     }
-    create( ioserver: ioServer ): void {
-        if ( this.implimented ) return void 0;
+    create( ioserver: ioServer ): boolean {
+        if ( this.implimented ) return false;
         this.implimented = true;
         const io = ioserver( this._server.getHttpServer(), {
             path: this._server.config.socketPath,
@@ -210,7 +208,7 @@ class SowSocket implements ISowSocket {
             // if ( !socket.request.session ) {
             //    socket.request.session = this._server.parseSession( socket.handshake.headers.cookie );
             // }
-            if ( !this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) return void 0;
+            // if ( !this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) return void 0;
             const _me: ISowSocketInfo = ( () => {
                 const token = Util.guid();
                 this.socket.push( {
@@ -243,14 +241,14 @@ class SowSocket implements ISowSocket {
                 socket.on( method, client[method] );
             }
             return this._wsClients.emit( "connected", _me, this ), void 0;
-        } ), void 0;
+        } ), true;
     }
 }
 /** If you want to use it you've to install socket.io */
 export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
     isConnectd: boolean;
     wsEvent: { [x: string]: any; };
-    create: ( ioserver: ioServer ) => void;
+    create: ( ioserver: ioServer ) => boolean;
 } {
     if ( typeof ( wsClientInfo.client ) !== "function" ) {
         throw new Error( "`getClient` event did not registered..." );
@@ -267,8 +265,7 @@ export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInf
         get wsEvent(): { [x: string]: any; } {
             return _wsEvent ? _wsEvent : ( _wsEvent = wsClientInfo.getServerEvent(), _wsEvent );
         },
-        create( ioserver: ioServer ): void {
-            if ( _ws.implimented ) return;
+        create( ioserver: ioServer ): boolean {
             return _ws.create( ioserver );
         }
     };

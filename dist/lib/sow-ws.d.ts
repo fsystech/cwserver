@@ -99,6 +99,6 @@ export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsCl
     wsEvent: {
         [x: string]: any;
     };
-    create: (ioserver: ioServer) => void;
+    create: (ioserver: ioServer) => boolean;
 };
 export {};

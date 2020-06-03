@@ -53,36 +53,50 @@ let app;
 const appRoot = process.env.SCRIPT === "TS" ? path.join(path.resolve(__dirname, '..'), "/dist/test/") : __dirname;
 const projectRoot = 'test_web';
 const logDir = path.resolve('./log/');
+let authCookies = "";
 const agent = request.agent();
 let appIsLestening = false;
 let appUtility;
+const createRequest = (method, url, ensure) => {
+    expect_1.default(appIsLestening).toEqual(true);
+    const client = method === "GET" ? agent.get(url) : agent.post(url);
+    if (!ensure)
+        return client;
+    const key = ensure;
+    const end = client.end.bind(client);
+    client.end = function (callback) {
+        expect_1.default(this.get(key).length).toBeGreaterThan(0);
+        end(callback);
+    };
+    return client;
+};
 const getAgent = () => {
     expect_1.default(appIsLestening).toEqual(true);
     return agent;
 };
 const shutdownApp = (done) => {
     try {
-        app.shutdown(() => {
+        app.shutdown((err) => {
             if (!done)
                 return;
-            done();
+            return done();
         });
     }
     catch (e) {
         if (!done)
             return;
-        done(e);
+        return done(e);
     }
 };
 const its = (name, func) => {
     it(name, (done) => {
-        return setImmediate(() => {
-            return func(done);
-        }, 5), void 0;
+        setTimeout(() => {
+            func(done);
+        }, 100);
     });
 };
 describe("cwserver-default-project-template", () => {
-    its("create project template", (done) => {
+    it("create project template", (done) => {
         cwserver.createProjectTemplate({
             appRoot,
             projectRoot,
@@ -94,7 +108,7 @@ describe("cwserver-default-project-template", () => {
     });
 });
 describe("cwserver-core", () => {
-    its("initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", (done) => {
+    it("initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", (done) => {
         const root = path.resolve(`${appRoot}/ewww`); // path.resolve( appRoot, "/ewww" );
         sow_util_1.Util.mkdirSync(appRoot, "/ewww/config");
         expect_1.default(fs.existsSync(root)).toEqual(true);
@@ -114,6 +128,8 @@ describe("cwserver-core", () => {
         expect_1.default(fs.existsSync(root)).toEqual(true);
         const filePath = path.resolve(root + "/config/app.config.json");
         fs.writeFileSync(filePath, "INVALID_FILE");
+        const orginalCfg = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
+        expect_1.default(sow_util_1.Util.compairFile(filePath, orginalCfg)).toEqual(true);
         expect_1.default(test_view_1.shouldBeError(() => {
             cwserver.initilizeServer(appRoot, `ewww`);
         })).toBeInstanceOf(Error);
@@ -152,7 +168,7 @@ describe("cwserver-core", () => {
         })).toBeInstanceOf(Error);
         done();
     });
-    its("initilize server", (done) => {
+    it("initilize server", (done) => {
         if (fs.existsSync(logDir)) {
             sow_util_1.Util.rmdirSync(logDir);
         }
@@ -170,7 +186,7 @@ describe("cwserver-core", () => {
         app = appUtility.init();
         done();
     });
-    its("application listen", (done) => {
+    it("application listen", (done) => {
         app.listen(appUtility.port, () => {
             appUtility.log.write(`
     [+] Maintance      : https://www.safeonline.world
@@ -187,7 +203,7 @@ describe("cwserver-core", () => {
             done();
         });
     });
-    its("throw application already listen", (done) => {
+    it("throw application already listen", (done) => {
         app.listen(appUtility.port, () => {
             expect_1.default(test_view_1.shouldBeError(() => {
                 app.listen(appUtility.port);
@@ -268,6 +284,8 @@ describe("cwserver-session", () => {
             expect_1.default(res.body.userInfo).toBeInstanceOf(Object);
             expect_1.default(res.body.userInfo.loginId).toEqual(loginId);
             expect_1.default(res.body.hash).toEqual(cwserver.Encryption.toMd5(loginId));
+            authCookies = res.header["set-cookie"];
+            expect_1.default(authCookies).toBeInstanceOf(Array);
             done();
         });
     });
@@ -528,7 +546,7 @@ describe("cwserver-template-engine", () => {
 describe("cwserver-bundler", () => {
     let eTag = "";
     let lastModified = "";
-    its('js file bundler with gizp response (server file cache)', (done) => {
+    it('js file bundler with gizp response (server file cache)', (done) => {
         const temp = appUtility.server.mapPath(`/web/temp/`);
         if (fs.existsSync(temp)) {
             sow_util_1.Util.rmdirSync(temp);
@@ -554,45 +572,69 @@ describe("cwserver-bundler", () => {
             done();
         });
     });
-    its('bundler should compair if-modified-since header and send 304 (server file cache)', (done) => {
-        expect_1.default(lastModified.length).toBeGreaterThan(0);
-        getAgent()
-            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
-            .set("if-modified-since", lastModified)
-            .query({
-            g: appUtility.server.createBundle(`
-                    $virtual_vtest/socket-client.js,
-                    static/script/test-1.js,
-                    static/script/test-2.js|__owner__`),
-            ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
-        })
-            .end((err, res) => {
-            expect_1.default(err).toBeInstanceOf(Error);
-            expect_1.default(res.status).toBe(304);
-            expect_1.default(res.header["x-server-revalidate"]).toBe("true");
-            done();
-        });
-    });
-    its('bundler should compair if-none-match and send 304 (server file cache)', (done) => {
-        expect_1.default(eTag.length).toBeGreaterThan(0);
-        getAgent()
-            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
-            .set("if-none-match", eTag)
-            .query({
-            g: appUtility.server.createBundle(`
-                    $virtual_vtest/socket-client.js,
-                    static/script/test-1.js,
-                    static/script/test-2.js|__owner__`),
-            ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
-        })
-            .end((err, res) => {
-            expect_1.default(err).toBeInstanceOf(Error);
-            expect_1.default(res.status).toBe(304);
-            expect_1.default(res.header["x-server-revalidate"]).toBe("true");
-            done();
-        });
-    });
-    its('js file bundler with gizp response (no server cache)', (done) => {
+    it('bundler should compair if-modified-since header and send 304 (server file cache)', (() => {
+        const sendReq = (done, tryCount) => {
+            if (tryCount > 0) {
+                appUtility.server.log.info(`Try Count: ${tryCount} and if-modified-since: ${lastModified}`);
+            }
+            createRequest("GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-modified-since")
+                .set("if-modified-since", lastModified)
+                .query({
+                g: appUtility.server.createBundle(`
+                        $virtual_vtest/socket-client.js,
+                        static/script/test-1.js,
+                        static/script/test-2.js|__owner__`),
+                ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
+            })
+                .end((err, res) => {
+                if ((!err || !(err instanceof Error)) && tryCount === 0) {
+                    return setTimeout(() => {
+                        return sendReq(done, tryCount + 1);
+                    }, 100), void 0;
+                }
+                expect_1.default(err).toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(304);
+                expect_1.default(res.header["x-server-revalidate"]).toBe("true");
+                return done();
+            });
+        };
+        return (done) => {
+            expect_1.default(lastModified.length).toBeGreaterThan(0);
+            return sendReq(done, 0);
+        };
+    })());
+    it('bundler should compair if-none-match and send 304 (server file cache)', (() => {
+        const sendReq = (done, tryCount) => {
+            if (tryCount > 0) {
+                appUtility.server.log.info(`Try Count: ${tryCount} and if-none-match: ${eTag}`);
+            }
+            createRequest("GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-none-match")
+                .set("if-none-match", eTag)
+                .query({
+                g: appUtility.server.createBundle(`
+					    $virtual_vtest/socket-client.js,
+					    static/script/test-1.js,
+					    static/script/test-2.js|__owner__`),
+                ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
+            })
+                .end((err, res) => {
+                if ((!err || !(err instanceof Error)) && tryCount === 0) {
+                    return setTimeout(() => {
+                        return sendReq(done, tryCount + 1);
+                    }, 100), void 0;
+                }
+                expect_1.default(err).toBeInstanceOf(Error);
+                expect_1.default(res.status).toBe(304);
+                expect_1.default(res.header["x-server-revalidate"]).toBe("true");
+                return done();
+            });
+        };
+        return (done) => {
+            expect_1.default(eTag.length).toBeGreaterThan(0);
+            return sendReq(done, 0);
+        };
+    })());
+    it('js file bundler with gizp response (no server cache)', (done) => {
         appUtility.server.config.bundler.fileCache = false;
         appUtility.server.config.bundler.compress = true;
         getAgent()
@@ -606,36 +648,48 @@ describe("cwserver-bundler", () => {
         })
             .end((err, res) => {
             expect_1.default(err).not.toBeInstanceOf(Error);
-            expect_1.default(res.status).toBe(200);
-            expect_1.default(res.header["content-type"]).toBe("application/x-javascript; charset=utf-8");
-            expect_1.default(res.header["content-encoding"]).toBe("gzip");
+            expect_1.default(res.status).toEqual(200);
+            expect_1.default(res.header["content-type"]).toEqual("application/x-javascript; charset=utf-8");
+            expect_1.default(res.header["content-encoding"]).toEqual("gzip");
             expect_1.default(res.header["last-modified"]).toBeDefined();
             lastModified = res.header['last-modified'];
             done();
         });
     });
-    its('bundler should compair if-modified-since header and send 304 (no server cache)', (done) => {
-        expect_1.default(lastModified.length).toBeGreaterThan(0);
-        appUtility.server.config.bundler.fileCache = false;
-        appUtility.server.config.bundler.compress = true;
-        getAgent()
-            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
-            .set("if-modified-since", lastModified)
-            .query({
-            g: appUtility.server.createBundle(`
-                        $virtual_vtest/socket-client.js,
-                        static/script/test-1.js,
-                        static/script/test-2.js|__owner__`),
-            ck: "bundle_no_cache_js", ct: "text/javascript", rc: "Y"
-        })
-            .end((err, res) => {
-            expect_1.default(err).toBeInstanceOf(Error);
-            expect_1.default(res.status).toBe(304);
-            expect_1.default(res.header["x-server-revalidate"]).toBe("true");
-            done();
-        });
-    });
-    its('js file bundler not gizp response (no server cache)', (done) => {
+    its('bundler should compair if-modified-since header and send 304 (no server cache)', (() => {
+        const sendReq = (done, tryCount) => {
+            if (tryCount > 0) {
+                appUtility.server.log.info(`Try Count: ${tryCount} and if-modified-since: ${lastModified}`);
+            }
+            createRequest("GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-modified-since")
+                .set("if-modified-since", lastModified)
+                .query({
+                g: appUtility.server.createBundle(`
+						$virtual_vtest/socket-client.js,
+						static/script/test-1.js,
+						static/script/test-2.js|__owner__`),
+                ck: "bundle_no_cache_js", ct: "text/javascript", rc: "Y"
+            })
+                .end((err, res) => {
+                if ((!err || !(err instanceof Error)) && tryCount === 0) {
+                    return setTimeout(() => {
+                        return sendReq(done, tryCount + 1);
+                    }, 100), void 0;
+                }
+                expect_1.default(err).toBeInstanceOf(Error);
+                expect_1.default(res.status).toEqual(304);
+                expect_1.default(res.header["x-server-revalidate"]).toEqual("true");
+                return done();
+            });
+        };
+        return (done) => {
+            expect_1.default(lastModified.length).toBeGreaterThan(0);
+            appUtility.server.config.bundler.fileCache = false;
+            appUtility.server.config.bundler.compress = true;
+            return sendReq(done, 0);
+        };
+    })());
+    it('js file bundler not gizp response (no server cache)', (done) => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
@@ -655,7 +709,7 @@ describe("cwserver-bundler", () => {
             done();
         });
     });
-    its('css file bundler with gizp response (server file cache)', (done) => {
+    it('css file bundler with gizp response (server file cache)', (done) => {
         appUtility.server.config.bundler.fileCache = true;
         appUtility.server.config.bundler.compress = true;
         getAgent()
@@ -676,7 +730,7 @@ describe("cwserver-bundler", () => {
             done();
         });
     });
-    its('js file bundler not gizp response (server cache)', (done) => {
+    it('js file bundler not gizp response (server cache)', (done) => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = true;
         getAgent()
@@ -697,7 +751,7 @@ describe("cwserver-bundler", () => {
     });
 });
 describe("cwserver-bundler-error", () => {
-    its('bundler should be virtual file error', (done) => {
+    it('bundler should be virtual file error', (done) => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -714,7 +768,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be virtual error', (done) => {
+    it('bundler should be virtual error', (done) => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -731,7 +785,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be unsupported content type error  (server cache)', (done) => {
+    it('bundler should be unsupported content type error  (server cache)', (done) => {
         appUtility.server.config.bundler.fileCache = true;
         appUtility.server.config.bundler.enable = true;
         getAgent()
@@ -749,7 +803,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be unsupported content type error  (no server cache)', (done) => {
+    it('bundler should be unsupported content type error  (no server cache)', (done) => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -766,7 +820,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be path parse error', (done) => {
+    it('bundler should be path parse error', (done) => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -783,7 +837,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be encryption error', (done) => {
+    it('bundler should be encryption error', (done) => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -797,7 +851,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be error (no param (no cache))', (done) => {
+    it('bundler should be error (no param (no cache))', (done) => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -807,7 +861,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be error (no param (server cache))', (done) => {
+    it('bundler should be error (no param (server cache))', (done) => {
         appUtility.server.config.bundler.fileCache = true;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -817,7 +871,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be encryption error (server cache)', (done) => {
+    it('bundler should be encryption error (server cache)', (done) => {
         appUtility.server.config.bundler.fileCache = true;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -831,7 +885,7 @@ describe("cwserver-bundler-error", () => {
             done();
         });
     });
-    its('bundler should be skip invalid if-modified-since header and send 200', (done) => {
+    it('bundler should be skip invalid if-modified-since header and send 200', (done) => {
         request
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
             .set("if-modified-since", `AAAZZZ`)
@@ -851,7 +905,7 @@ describe("cwserver-bundler-error", () => {
     });
 });
 describe("cwserver-post", () => {
-    its('send post request content type application/json', (done) => {
+    it('send post request content type application/json', (done) => {
         getAgent()
             .post(`http://localhost:${appUtility.port}/post`)
             .send(JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }))
@@ -864,7 +918,7 @@ describe("cwserver-post", () => {
             done();
         });
     });
-    its('send post request content type urlencoded', (done) => {
+    it('send post request content type urlencoded', (done) => {
         getAgent()
             .post(`http://localhost:${appUtility.port}/post`)
             .type('form')
@@ -877,9 +931,9 @@ describe("cwserver-post", () => {
             done();
         });
     });
-    its('send post request to async handler', (done) => {
+    it('send post request to async handler', (done) => {
         getAgent()
-            .post(`http://localhost:${appUtility.port}/post-async`)
+            .post(`http://localhost:${appUtility.port}/post-async/10`)
             .type('form')
             .send({ name: 'rajibs', occupation: 'kutukutu' })
             .end((err, res) => {
@@ -890,7 +944,7 @@ describe("cwserver-post", () => {
             done();
         });
     });
-    its('should post request not found', (done) => {
+    it('should post request not found', (done) => {
         getAgent()
             .post(`http://localhost:${appUtility.port}/post/invalid-route`)
             .send(JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }))
@@ -903,7 +957,7 @@ describe("cwserver-post", () => {
     });
 });
 describe("cwserver-gzip-response", () => {
-    its('should be response type gzip', (done) => {
+    it('should be response type gzip', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/response`)
             .query({ task: "gzip", data: JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }) })
@@ -916,7 +970,7 @@ describe("cwserver-gzip-response", () => {
     });
 });
 describe("cwserver-mime-type", () => {
-    its('served static file no cache', (done) => {
+    it('served static file no cache', (done) => {
         const old = appUtility.server.config.liveStream;
         appUtility.server.config.liveStream = [];
         getAgent()
@@ -932,7 +986,7 @@ describe("cwserver-mime-type", () => {
     });
     let eTag = "";
     let lastModified = "";
-    its('should be mime type encoding gzip', (done) => {
+    it('should be mime type encoding gzip', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/logo/logo.png`)
             .end((err, res) => {
@@ -947,7 +1001,7 @@ describe("cwserver-mime-type", () => {
             done();
         });
     });
-    its('should be mime type if-none-match', (done) => {
+    it('should be mime type if-none-match', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/logo/logo.png`)
             .set("if-none-match", eTag)
@@ -958,7 +1012,7 @@ describe("cwserver-mime-type", () => {
             done();
         });
     });
-    its('should be mime type if-modified-since', (done) => {
+    it('should be mime type if-modified-since', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/logo/logo.png`)
             .set("if-modified-since", lastModified)
@@ -969,7 +1023,7 @@ describe("cwserver-mime-type", () => {
             done();
         });
     });
-    its('should be mime type not found', (done) => {
+    it('should be mime type not found', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/logo/logos.png`)
             .set("if-modified-since", lastModified)
@@ -979,7 +1033,7 @@ describe("cwserver-mime-type", () => {
             done();
         });
     });
-    its('unsupported mime type', (done) => {
+    it('unsupported mime type', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/logo/logo.zip`)
             .set("if-modified-since", lastModified)
@@ -989,7 +1043,7 @@ describe("cwserver-mime-type", () => {
             done();
         });
     });
-    its('should be served from file (no server file cache)', (done) => {
+    it('should be served from file (no server file cache)', (done) => {
         const oldfileCache = appUtility.server.config.staticFile.fileCache;
         appUtility.server.config.staticFile.fileCache = false;
         getAgent()
@@ -1007,7 +1061,7 @@ describe("cwserver-mime-type", () => {
             done();
         });
     });
-    its('should be mime type if-none-match (no server file cache)', (done) => {
+    it('should be mime type if-none-match (no server file cache)', (done) => {
         const oldfileCache = appUtility.server.config.staticFile.fileCache;
         appUtility.server.config.staticFile.fileCache = false;
         getAgent()
@@ -1021,7 +1075,7 @@ describe("cwserver-mime-type", () => {
             done();
         });
     });
-    its('should be favicon.ico 200', (done) => {
+    it('should be favicon.ico 200', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/favicon.ico`)
             .end((err, res) => {
@@ -1033,7 +1087,7 @@ describe("cwserver-mime-type", () => {
     });
 });
 describe("cwserver-virtual-dir", () => {
-    its('check-virtual-dir-server-manage', (done) => {
+    it('check-virtual-dir-server-manage', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/test-virtual/socket-client.js`)
             .end((err, res) => {
@@ -1044,7 +1098,7 @@ describe("cwserver-virtual-dir", () => {
             done();
         });
     });
-    its('check-virtual-dir-mimeType-404', (done) => {
+    it('check-virtual-dir-mimeType-404', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/test-virtual/socket-client.jsx`)
             .end((err, res) => {
@@ -1053,7 +1107,7 @@ describe("cwserver-virtual-dir", () => {
             done();
         });
     });
-    its('check-virtual-dir-handler', (done) => {
+    it('check-virtual-dir-handler', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/vtest/socket-client.js`)
             .end((err, res) => {
@@ -1066,7 +1120,7 @@ describe("cwserver-virtual-dir", () => {
     });
 });
 describe("cwserver-multipart-paylod-parser", () => {
-    its('should post multipart post file', (done) => {
+    it('should post multipart post file', (done) => {
         let fileName = "";
         let filePath = "";
         let contentType = "";
@@ -1096,7 +1150,7 @@ describe("cwserver-multipart-paylod-parser", () => {
             done();
         });
     });
-    its('should post multipart post file and save as bulk', (done) => {
+    it('should post multipart post file and save as bulk', (done) => {
         let fileName = "";
         let filePath = "";
         let contentType = "";
@@ -1129,7 +1183,7 @@ describe("cwserver-multipart-paylod-parser", () => {
     });
 });
 describe("cwserver-socket-io-implementation", () => {
-    its('get ws-server-event', (done) => {
+    it('get ws-server-event', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/ws-server-event`)
             .end((err, res) => {
@@ -1142,20 +1196,28 @@ describe("cwserver-socket-io-implementation", () => {
             done();
         });
     });
-    its('should be send n receive data over socket-io', (done) => {
-        const socket = io.connect(`http://localhost:${appUtility.port}`, { reconnection: true });
+    it('should be send n receive data over socket-io', (done) => {
+        const socket = io.connect(`http://localhost:${appUtility.port}`, {
+            reconnection: true, transportOptions: {
+                polling: {
+                    extraHeaders: {
+                        'Cookie': authCookies[0].substring(0, authCookies[0].indexOf(";"))
+                    }
+                }
+            }
+        });
         socket.on('connect', () => {
             socket.emit('test-msg', { name: 'rajibs', occupation: 'kutukutu' });
         });
         socket.on('on-test-msg', (data) => {
             socket.close();
-            expect_1.default(data.name).toBe('rajibs');
+            expect_1.default(data.name).toEqual('rajibs');
             done();
         });
     });
 });
 describe("cwserver-echo", () => {
-    its('echo-server', (done) => {
+    it('echo-server', (done) => {
         const reqMd5 = cwserver.md5("Test");
         const hex = cwserver.Encryption.utf8ToHex(reqMd5);
         getAgent()
@@ -1175,7 +1237,7 @@ describe("cwserver-echo", () => {
     });
 });
 describe("cwserver-web-stream", () => {
-    its('should-be-get-stream-request', (done) => {
+    it('should-be-get-stream-request', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/web-stream/test.mp3`)
             .end((err, res) => {
@@ -1186,7 +1248,7 @@ describe("cwserver-web-stream", () => {
             done();
         });
     });
-    its('should-be-stream', (done) => {
+    it('should-be-stream', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/web-stream/test.mp3`)
             .set("range", "bytes=0-")
@@ -1200,7 +1262,7 @@ describe("cwserver-web-stream", () => {
     });
 });
 describe("cwserver-error", () => {
-    its('should be throw server error', (done) => {
+    it('should be throw server error', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/app-error/`)
             .end((err, res) => {
@@ -1209,7 +1271,7 @@ describe("cwserver-error", () => {
             done();
         });
     });
-    its('should be pass server error', (done) => {
+    it('should be pass server error', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/pass-error`)
             .end((err, res) => {
@@ -1220,7 +1282,7 @@ describe("cwserver-error", () => {
     });
 });
 describe("cwserver-controller-reset", () => {
-    its('config.defaultDoc', (done) => {
+    it('config.defaultDoc', (done) => {
         const defaultExt = appUtility.server.config.defaultExt;
         const defaultDoc = appUtility.server.config.defaultDoc;
         appUtility.server.config.defaultDoc = ["index.html", "default.html"];
@@ -1235,7 +1297,7 @@ describe("cwserver-controller-reset", () => {
             done();
         });
     });
-    its('should be route not found', (done) => {
+    it('should be route not found', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/app-error`)
             .end((err, res) => {
@@ -1244,7 +1306,7 @@ describe("cwserver-controller-reset", () => {
             done();
         });
     });
-    its('no controller found for put', (done) => {
+    it('no controller found for put', (done) => {
         getAgent()
             .delete(`http://localhost:${appUtility.port}/app-error`)
             .end((err, res) => {
@@ -1253,13 +1315,13 @@ describe("cwserver-controller-reset", () => {
             done();
         });
     });
-    its('should-be-reset-controller', (done) => {
+    it('should-be-reset-controller', (done) => {
         expect_1.default(appUtility.controller.remove('/authenticate')).toEqual(true);
         expect_1.default(appUtility.controller.remove('/post')).toEqual(true);
         appUtility.controller.reset();
         done();
     });
-    its('should-be-controller-error', (done) => {
+    it('should-be-controller-error', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/response`)
             .query({ task: "gzip", data: JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }) })
@@ -1271,7 +1333,7 @@ describe("cwserver-controller-reset", () => {
     });
 });
 describe("cwserver-utility", () => {
-    its("test-app-utility", (done) => {
+    it("test-app-utility", (done) => {
         expect_1.default(test_view_1.shouldBeError(() => {
             cwserver.HttpStatus.isErrorCode("adz");
         })).toBeInstanceOf(Error);
@@ -1301,8 +1363,19 @@ describe("cwserver-utility", () => {
         expect_1.default(test_view_1.shouldBeError(() => {
             sow_util_1.Util.mkdirSync(logDir, "./");
         })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_util_1.Util.copyFileSync(`${logDir}/temp/`, "./");
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_util_1.Util.copyFileSync(`${logDir}/temp/nofile.lg`, "./");
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_util_1.Util.copyFileSync(`${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx`);
+        })).toBeInstanceOf(Error);
+        expect_1.default(sow_util_1.Util.rmdirSync(`${logDir}/temp/`)).not.toBeInstanceOf(Error);
+        expect_1.default(sow_util_1.Util.copySync(`${logDir}/temp/`, `${logDir}/tempx/`)).not.toBeInstanceOf(Error);
         expect_1.default(sow_util_1.Util.mkdirSync(logDir)).toEqual(true);
-        expect_1.default(sow_util_1.Util.extend({}, new sow_static_1.Session())).toBeInstanceOf(Object);
+        expect_1.default(sow_util_1.Util.extend({}, sow_static_1.Session.prototype)).toBeInstanceOf(Object);
         expect_1.default(sow_util_1.Util.extend({}, () => {
             return new sow_static_1.Session();
         }, true)).toBeInstanceOf(Object);
@@ -1327,7 +1400,7 @@ describe("cwserver-utility", () => {
     });
     describe('config', () => {
         let untouchedConfig = {};
-        its('database', (done) => {
+        it('database', (done) => {
             untouchedConfig = cwserver.Util.clone(appUtility.server.config);
             expect_1.default(test_view_1.shouldBeError(() => {
                 try {
@@ -1412,7 +1485,7 @@ describe("cwserver-utility", () => {
             })).toBeInstanceOf(Error);
             done();
         });
-        its('override', (done) => {
+        it('override', (done) => {
             expect_1.default(test_view_1.shouldBeError(() => {
                 const oldKey = appUtility.server.config.encryptionKey;
                 try {
@@ -1556,7 +1629,7 @@ describe("cwserver-utility", () => {
             done();
         });
     });
-    its('log', (done) => {
+    it('log', (done) => {
         appUtility.server.log.log("log-test");
         appUtility.server.log.info("log-info-test");
         appUtility.server.log.dispose();
@@ -1590,7 +1663,7 @@ describe("cwserver-utility", () => {
     });
 });
 describe("cwserver-schema-validator", () => {
-    its("validate-schema", (done) => {
+    it("validate-schema", (done) => {
         const config = sow_util_1.Util.readJsonAsync(appUtility.server.mapPath("/config/app.config.json"));
         expect_1.default(config).toBeInstanceOf(Object);
         if (!config)

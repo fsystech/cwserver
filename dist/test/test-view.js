@@ -53,8 +53,12 @@ global.sow.server.on("register-view", (app, controller, server) => {
     app.use("/app-error", (req, res, next) => {
         throw new Error("Application should be fire Error event");
     });
+    expect_1.default(shouldBeError(() => { index_1.socketInitilizer(server, socket_client_1.SocketErr1()); })).toBeInstanceOf(Error);
+    expect_1.default(shouldBeError(() => { index_1.socketInitilizer(server, socket_client_1.SocketErr2()); })).toBeInstanceOf(Error);
     const ws = index_1.socketInitilizer(server, socket_client_1.SocketClient());
-    ws.create(require("socket.io"));
+    const io = require("socket.io");
+    ws.create(io);
+    expect_1.default(ws.create(io)).toEqual(false);
     expect_1.default(ws.isConnectd).toEqual(true);
     controller.get('/ws-server-event', (ctx) => {
         ctx.res.json(ws.wsEvent);
@@ -112,7 +116,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
             }
             return ctx.next(404);
         });
-    }).post('/post-async', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    }).post('/post-async/:id', (ctx, routeParam) => __awaiter(void 0, void 0, void 0, function* () {
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
         yield parser.readDataAsync();
         if (parser.isUrlEncoded() || parser.isAppJson()) {
