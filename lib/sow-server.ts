@@ -147,13 +147,6 @@ export interface ISowServer {
     on( ev: 'shutdown', handler: ()=>void ): void;
 }
 export type IViewHandler = ( app: IApps, controller: IController, server: ISowServer ) => void;
-export interface ISowView {
-    [key: string]: IViewHandler | any;
-    __isRunOnly: boolean;
-    __esModule: boolean;
-    __moduleName: string;
-    Init: IViewHandler;
-}
 // -------------------------------------------------------
 // const _Error = ( msg: string ): Error => {
 //    if ( process.env.SCRIPT === "TS" ) return new Error( msg );
@@ -686,8 +679,6 @@ ${appRoot}\\www_public
 }
 type IViewRegister = ( app: IApps, controller: IController, server: ISowServer ) => void;
 interface ISowGlobalServer {
-    // [deprecated soon...]
-    registerView( next: IViewRegister ): void;
     on( ev: "register-view", next: IViewRegister ): void;
     emit( ev: "register-view", app: IApps, controller: IController, server: ISowServer ): void;
 }
@@ -711,10 +702,6 @@ class SowGlobalServer implements ISowGlobalServer {
             throw new Error("After initilize view, you should not register new veiw.");
         }
         this._evt.push( next );
-    }
-    public registerView( next: IViewRegister ): void {
-        console.warn( 'deprecated soon `global.sow.server.registerView`\r\nUse:\r\nglobal.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => { } );' );
-        return this.on( "register-view", next );
     }
 }
 interface ISowGlobal {
@@ -854,22 +841,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
         }
         if ( _server.config.views ) {
             _server.config.views.forEach( ( a: string, _index: number, _array: string[] ) => {
-                const sowView: ISowView = require( a );
-                if ( sowView.__isRunOnly ) return;
-                console.warn( "deprecated soon... use module.exports.__isRunOnly = true;" );
-                if ( sowView.__esModule ) {
-                    if ( !sowView[sowView.__moduleName] ) {
-                        throw new Error( `Invalid module name declear ${sowView.__moduleName} not found in ${a}` );
-                    }
-                    if ( typeof ( sowView[sowView.__moduleName].Init ) !== "function" ) {
-                        throw new Error( "Invalid __esModule Init Function not defined...." );
-                    }
-                    return sowView[sowView.__moduleName].Init( _app, _controller, _server );
-                }
-                if ( typeof ( sowView.Init ) !== "function" ) {
-                    throw new Error( "Invalid module use module.export.Init Function()" );
-                }
-                return sowView.Init( _app, _controller, _server );
+                require( a );
             } );
         }
         global.sow.server.emit( "register-view", _app, _controller, _server );

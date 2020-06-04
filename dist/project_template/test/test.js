@@ -1,4 +1,3 @@
-module.exports.__isRunOnly = true;
-global.sow.server.registerView( ( app, controller, server ) => {
-	//Nothing to do here...
+global.sow.server.on( "register-view", ( app, controller, server ) => {
+	// Nothing to Do
 } );

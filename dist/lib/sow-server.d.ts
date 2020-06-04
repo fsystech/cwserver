@@ -144,13 +144,6 @@ export interface ISowServer {
     on(ev: 'shutdown', handler: () => void): void;
 }
 export declare type IViewHandler = (app: IApps, controller: IController, server: ISowServer) => void;
-export interface ISowView {
-    [key: string]: IViewHandler | any;
-    __isRunOnly: boolean;
-    __esModule: boolean;
-    __moduleName: string;
-    Init: IViewHandler;
-}
 export declare class ServerEncryption implements IServerEncryption {
     private cryptoInfo;
     constructor(inf: ICryptoInfo);
@@ -292,7 +285,6 @@ export declare class SowServer implements ISowServer {
 }
 declare type IViewRegister = (app: IApps, controller: IController, server: ISowServer) => void;
 interface ISowGlobalServer {
-    registerView(next: IViewRegister): void;
     on(ev: "register-view", next: IViewRegister): void;
     emit(ev: "register-view", app: IApps, controller: IController, server: ISowServer): void;
 }

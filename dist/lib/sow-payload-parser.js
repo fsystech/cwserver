@@ -160,7 +160,7 @@ class PostedFileInfo {
     }
     saveAs(absPath) {
         if (!this._tempFile || this._isMoved === true)
-            throw new Error("Method not implemented.");
+            throw new Error("This file already moved or not created yet.");
         _fs.renameSync(this._tempFile, absPath);
         delete this._tempFile;
         this._isMoved = true;
@@ -326,18 +326,15 @@ class PayloadParser {
     constructor(req, tempDir) {
         this._isDisposed = false;
         createDir(tempDir);
-        if (!_fs.statSync(tempDir).isDirectory()) {
-            throw new Error(`Invalid temp dir ${tempDir}`);
-        }
         this._contentType = getHeader(req.headers, "content-type");
         this._contentLength = sow_static_1.ToNumber(getHeader(req.headers, "content-length"));
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
         }
-        else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1) {
+        else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1 && this._contentType === incomingContentType.URL_ENCODE) {
             this._contentTypeEnum = ContentType.URL_ENCODE;
         }
-        else if (this._contentType.indexOf(incomingContentType.APP_JSON) > -1) {
+        else if (this._contentType.indexOf(incomingContentType.APP_JSON) > -1 && this._contentType === incomingContentType.APP_JSON) {
             this._contentTypeEnum = ContentType.APP_JSON;
         }
         else {
@@ -426,7 +423,7 @@ class PayloadParser {
     }
     readData(onReadEnd) {
         if (!this.isValidRequest())
-            throw new Error("Invalid request defiend....");
+            return onReadEnd(new Error("Invalid request defiend...."));
         if (this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON) {
             this._req.on("readable", (...args) => {
                 while (true) {

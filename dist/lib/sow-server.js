@@ -537,10 +537,6 @@ class SowGlobalServer {
         }
         this._evt.push(next);
     }
-    registerView(next) {
-        console.warn('deprecated soon `global.sow.server.registerView`\r\nUse:\r\nglobal.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => { } );');
-        return this.on("register-view", next);
-    }
 }
 // tslint:disable-next-line: max-classes-per-file
 class SowGlobal {
@@ -664,23 +660,7 @@ function initilizeServer(appRoot, wwwName) {
         }
         if (_server.config.views) {
             _server.config.views.forEach((a, _index, _array) => {
-                const sowView = require(a);
-                if (sowView.__isRunOnly)
-                    return;
-                console.warn("deprecated soon... use module.exports.__isRunOnly = true;");
-                if (sowView.__esModule) {
-                    if (!sowView[sowView.__moduleName]) {
-                        throw new Error(`Invalid module name declear ${sowView.__moduleName} not found in ${a}`);
-                    }
-                    if (typeof (sowView[sowView.__moduleName].Init) !== "function") {
-                        throw new Error("Invalid __esModule Init Function not defined....");
-                    }
-                    return sowView[sowView.__moduleName].Init(_app, _controller, _server);
-                }
-                if (typeof (sowView.Init) !== "function") {
-                    throw new Error("Invalid module use module.export.Init Function()");
-                }
-                return sowView.Init(_app, _controller, _server);
+                require(a);
             });
         }
         global.sow.server.emit("register-view", _app, _controller, _server);

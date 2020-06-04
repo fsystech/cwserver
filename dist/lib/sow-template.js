@@ -327,8 +327,8 @@ class TemplateCore {
             return result( ctx, this.processResponse( status ), false );
         }
         ctx.res.set( 'Cache-Control', 'no-store' );
-        ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
-        return ctx.res.end( result ), ctx.next( status.code, status.isErrorCode === false );
+        // ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
+        return ctx.res.asHTML( 200 ).end( result ), ctx.next( status.code, status.isErrorCode === false );
     }
     static tryMemCache( ctx, path, status ) {
         const key = path.replace( /\//gi, "_" ).replace( /\./gi, "_" );

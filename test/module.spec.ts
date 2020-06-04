@@ -430,16 +430,34 @@ describe( "cwserver-get", () => {
 } );
 describe( "cwserver-template-engine", () => {
     it( 'should served from server mem cache', ( done: Mocha.Done ): void => {
-        const old = appUtility.server.config.template;
+        const old = Util.clone( appUtility.server.config.template );
         appUtility.server.config.template.cacheType = "MEM";
         appUtility.server.config.template.cache = true;
         getAgent()
             .get( `http://localhost:${appUtility.port}/` )
             .end( ( err, res ) => {
-                appUtility.server.config.template = old;
+                Util.extend( appUtility.server.config.template, old );
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-type"] ).toBe( "text/html" );
+                done();
+            } );
+    } );
+    it( 'should served from server non-template and no cache', ( done: Mocha.Done ): void => {
+        const old = Util.clone( appUtility.server.config.template );
+        appUtility.server.config.template.cacheType = "MEM";
+        appUtility.server.config.template.cache = false;
+        const filePath: string = appUtility.server.mapPath( "/no_template.html" );
+        expect( fs.existsSync( filePath ) ).toEqual( false );
+        fs.writeFileSync( filePath, "<h1>Hello World</h1>" );
+        expect( fs.existsSync( filePath ) ).toEqual( true );
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/no_template` )
+            .end( ( err, res ) => {
+                Util.extend( appUtility.server.config.template, old );
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                expect( res.header["content-type"] ).toBe( "text/html; charset=UTF-8" );
                 done();
             } );
     } );
@@ -494,7 +512,7 @@ describe( "cwserver-template-engine", () => {
                 done();
             } );
     } );
-    it( 'should be serve from template cache', ( done: Mocha.Done ): void => {
+    it( 'should be served from template cache', ( done: Mocha.Done ): void => {
         expect( Util.isPlainObject( templateConf ) ).toBe( true );
         getAgent()
             .get( `http://localhost:${appUtility.port}/` )
@@ -557,7 +575,8 @@ describe( "cwserver-bundler", () => {
                 .end( ( err, res ) => {
                     if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
                         return setTimeout( () => {
-                            return sendReq( done, tryCount + 1 );
+                            tryCount++;
+                            return sendReq( done, tryCount );
                         }, 100 ), void 0;
                     }
                     expect( err ).toBeInstanceOf( Error );
@@ -589,7 +608,8 @@ describe( "cwserver-bundler", () => {
                 .end( ( err, res ) => {
                     if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
                         return setTimeout( () => {
-                            return sendReq( done, tryCount + 1 );
+                            tryCount++;
+                            return sendReq( done, tryCount );
                         }, 100 ), void 0;
                     }
                     expect( err ).toBeInstanceOf( Error );
@@ -644,7 +664,8 @@ describe( "cwserver-bundler", () => {
                 .end( ( err, res ) => {
                     if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
                         return setTimeout( () => {
-                            return sendReq( done, tryCount + 1 );
+                            tryCount++;
+                            return sendReq( done, tryCount );
                         }, 100 ), void 0;
                     }
                     expect( err ).toBeInstanceOf( Error );
@@ -898,6 +919,19 @@ describe( "cwserver-post", () => {
                 done();
             } );
     } );
+    it( 'send post request unknown content type application/jsons', ( done: Mocha.Done ): void => {
+        getAgent()
+            .post( `http://localhost:${appUtility.port}/post?task=ERROR` )
+            .send( JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) )
+            .set( 'Content-Type', 'application/jsons' )
+            .end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                expect( res.header["content-type"] ).toBe( "application/json" );
+                expect( res.body.error ).toBe( true );
+                done();
+            } );
+    } );
     it( 'send post request content type urlencoded', ( done: Mocha.Done ): void => {
         getAgent()
             .post( `http://localhost:${appUtility.port}/post` )
@@ -934,6 +968,47 @@ describe( "cwserver-post", () => {
                 expect( res.status ).toBe( 404 );
                 done();
             } );
+    } );
+} );
+describe( "cwserver-multipart-paylod-parser", () => {
+    const processReq = ( done: Mocha.Done, saveto?: string ): void => {
+        let fileName = "";
+        let filePath = "";
+        let contentType = "";
+        if ( process.env.SCRIPT === "TS" ) {
+            fileName = "schema.json";
+            contentType = "application/json";
+            filePath = path.resolve( `./${fileName}` );
+        } else {
+            fileName = "module.spec.js";
+            contentType = "application/javascript";
+            filePath = path.resolve( `./dist/test/${fileName}` );
+        }
+        const readStream = fs.createReadStream( filePath );
+        getAgent()
+            .post( `http://localhost:${appUtility.port}/upload` )
+            .query( { saveto } )
+            .field( 'post-file', readStream )
+            .end( ( err, res ) => {
+                readStream.close();
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                expect( res.header["content-type"] ).toBe( "application/json" );
+                expect( res.body ).toBeInstanceOf( Object );
+                expect( res.body.content_type ).toBe( contentType );
+                expect( res.body.file_name ).toBe( fileName );
+                expect( res.body.name ).toBe( "post-file" );
+                done();
+            } );
+    }
+    it( 'should post multipart post file', ( done: Mocha.Done ): void => {
+        processReq( done );
+    } );
+    it( 'should post multipart post file and save as bulk', ( done: Mocha.Done ): void => {
+        processReq( done, "true" );
+    } );
+    it( 'test multipart post file and clear', ( done: Mocha.Done ): void => {
+        processReq( done, "C" );
     } );
 } );
 describe( "cwserver-gzip-response", () => {
@@ -1041,6 +1116,25 @@ describe( "cwserver-mime-type", () => {
                 done();
             } );
     } );
+    it( 'should be gzip response & served from file (no server file cache)', ( done: Mocha.Done ): void => {
+        const oldValue = Util.clone( appUtility.server.config.staticFile );
+        appUtility.server.config.staticFile.fileCache = false;
+        appUtility.server.config.staticFile.compression = true;
+        const filePath: string = appUtility.server.mapPath( "/test.pdf" );
+        expect( fs.existsSync( filePath ) ).toEqual( false );
+        fs.writeFileSync( filePath, "<h1>Hello World</h1>" );
+        expect( fs.existsSync( filePath ) ).toEqual( true );
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/test.pdf` )
+            .end( ( err, res ) => {
+                Util.extend( appUtility.server.config.staticFile, oldValue );
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                expect( res.header["content-type"] ).toBe( "application/pdf" );
+                expect( res.header["content-encoding"] ).toBe( "gzip" );
+                done();
+            } );
+    } );
     it( 'should be mime type if-none-match (no server file cache)', ( done: Mocha.Done ): void => {
         const oldfileCache = appUtility.server.config.staticFile.fileCache;
         appUtility.server.config.staticFile.fileCache = false;
@@ -1064,6 +1158,24 @@ describe( "cwserver-mime-type", () => {
                 expect( res.header["content-type"] ).toBe( "image/x-icon" );
                 done();
             } );
+    } );
+    it( 'catch-HttpMimeHandler-error', ( done: Mocha.Done ): void => {
+        const parent: string = path.resolve( __dirname, '..' );
+        const absPath = path.resolve( `${parent}/dist/mime-type.json` );
+        expect( fs.existsSync( absPath ) ).toBe( true );
+        const distPath = path.resolve( `${parent}/mime-types.json` );
+        fs.renameSync( absPath, distPath );
+        expect( shouldBeError( () => {
+            const mime = new cwserver.HttpMimeHandler();
+        } ) ).toBeInstanceOf( Error );
+        fs.writeFileSync( absPath, "INVALID_JSON" );
+        expect( fs.existsSync( absPath ) ).toEqual( true );
+        expect( shouldBeError( () => {
+            const mime = new cwserver.HttpMimeHandler();
+        } ) ).toBeInstanceOf( Error );
+        fs.unlinkSync( absPath );
+        fs.renameSync( distPath, absPath );
+        done();
     } );
 } );
 describe( "cwserver-virtual-dir", () => {
@@ -1095,67 +1207,6 @@ describe( "cwserver-virtual-dir", () => {
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-type"] ).toBe( "application/javascript" );
                 expect( res.header["content-encoding"] ).toBe( "gzip" );
-                done();
-            } );
-    } );
-} );
-describe( "cwserver-multipart-paylod-parser", () => {
-    it( 'should post multipart post file', ( done: Mocha.Done ): void => {
-        let fileName = "";
-        let filePath = "";
-        let contentType = "";
-        if ( process.env.SCRIPT === "TS" ) {
-            fileName = "schema.json";
-            contentType = "application/json";
-            filePath = path.resolve( `./${fileName}` );
-        } else {
-            fileName = "module.spec.js";
-            contentType = "application/javascript";
-            filePath = path.resolve( `./dist/test/${fileName}` );
-        }
-        const readStream = fs.createReadStream( filePath );
-        getAgent()
-            .post( `http://localhost:${appUtility.port}/upload` )
-            .field( 'post-file', readStream )
-            .end( ( err, res ) => {
-                readStream.close();
-                expect( err ).not.toBeInstanceOf( Error );
-                expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
-                expect( res.body ).toBeInstanceOf( Object );
-                expect( res.body.content_type ).toBe( contentType );
-                expect( res.body.file_name ).toBe( fileName );
-                expect( res.body.name ).toBe( "post-file" );
-                done();
-            } );
-    } );
-    it( 'should post multipart post file and save as bulk', ( done: Mocha.Done ): void => {
-        let fileName = "";
-        let filePath = "";
-        let contentType = "";
-        if ( process.env.SCRIPT === "TS" ) {
-            fileName = "schema.json";
-            contentType = "application/json";
-            filePath = path.resolve( `./${fileName}` );
-        } else {
-            fileName = "module.spec.js";
-            contentType = "application/javascript";
-            filePath = path.resolve( `./dist/test/${fileName}` );
-        }
-        const readStream = fs.createReadStream( filePath );
-        getAgent()
-            .post( `http://localhost:${appUtility.port}/upload` )
-            .query( { saveto: "Y" } )
-            .field( 'post-file', readStream )
-            .end( ( err, res ) => {
-                readStream.close();
-                expect( err ).not.toBeInstanceOf( Error );
-                expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
-                expect( res.body ).toBeInstanceOf( Object );
-                expect( res.body.content_type ).toBe( contentType );
-                expect( res.body.file_name ).toBe( fileName );
-                expect( res.body.name ).toBe( "post-file" );
                 done();
             } );
     } );
@@ -1758,6 +1809,51 @@ describe( "cwserver-schema-validator", () => {
                 throw e;
             }
         } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            config.$schema = $schema;
+            const old = config.appName;
+            try {
+                config.appName = "";
+                Schema.Validate( config );
+            } catch ( e ) {
+                config.appName = old;
+                throw e;
+            }
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            config.$schema = $schema;
+            const old = config.template;
+            try {
+                config.template = void 0;
+                Schema.Validate( config );
+            } catch ( e ) {
+                config.template = old;
+                throw e;
+            }
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            Schema.Validate( [] );
+        } ) ).toBeInstanceOf( Error );
+        const parent = path.resolve( __dirname, '..' );
+        const absPath = path.resolve( `${parent}/schema.json` );
+        expect( fs.existsSync( absPath ) ).toBe( true );
+        const distPath = path.resolve( `${parent}/schemas.json` );
+        fs.renameSync( absPath, distPath );
+        process.env.SCRIPT = "TSX";
+        expect( shouldBeError( () => {
+            Schema.Validate( config );
+        } ) ).toBeInstanceOf( Error );
+        process.env.SCRIPT = "TS";
+        fs.writeFileSync( absPath, "{}" );
+        expect( shouldBeError( () => {
+            Schema.Validate( config );
+        } ) ).toBeInstanceOf( Error );
+        fs.writeFileSync( absPath, "INVALID_JSON" );
+        expect( shouldBeError( () => {
+            Schema.Validate( config );
+        } ) ).toBeInstanceOf( Error );
+        fs.unlinkSync( absPath );
+        fs.renameSync( distPath, absPath );
         done();
     } );
     it( "shutdown-application", ( done: Mocha.Done ): void => {

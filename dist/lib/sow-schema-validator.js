@@ -77,44 +77,40 @@ function schemaValidate( dataPath, schemaProperties, configProperties, additiona
     propertiValidate( dataPath, configProperties, schemaProperties, additionalProperties );
     // tslint:disable-next-line: forin
     for ( const prop in schemaProperties ) {
-        const hasProp = configProperties.hasOwnProperty( prop );
+        // const hasProp = configProperties.hasOwnProperty( prop );
         const cvalue = configProperties[prop];
         const svalue = schemaProperties[prop];
         const valueType = typeof ( cvalue );
         if ( valueType === "undefined" && svalue.minLength > 0 ) {
-            if ( !hasProp ) {
-                throw new Error( `ERROR: Configuration doesn't match the required schema. Data path "${dataPath}" required properties (${prop}).` );
-            }
-            throw new Error( `ERROR: Data path "${dataPath}.${prop}" value should not left blank` );
+            throw new Error( `ERROR: Configuration doesn't match the required schema. Data path "${dataPath}" required properties (${prop}).` );
         }
         if ( valueType === "undefined" ) {
             configProperties[prop] = fillUpType( svalue.type );
             continue;
         }
         if ( svalue.type === "array" ) {
-            if ( !sow_util_1.Util.isArrayLike( cvalue ) ) {
-                throw new Error( `ERROR: Data path "${dataPath}.${prop}" should be value type ${svalue.type}` );
-            }
-            if ( cvalue.length < svalue.minLength ) {
-                throw new Error( `ERROR: Data path "${dataPath}.${prop}" minmum length required ${svalue.minLength}` );
-            }
-            if ( svalue.items ) {
-                const itemType = svalue.items.type;
-                if ( itemType === "object" && svalue.items.properties ) {
-                    const itemprop = svalue.items.properties;
-                    cvalue.forEach( ( a, index ) => {
+            if ( sow_util_1.Util.isArrayLike( cvalue ) ) {
+                if ( cvalue.length < svalue.minLength ) {
+                    throw new Error( `ERROR: Data path "${dataPath}.${prop}" minmum length required ${svalue.minLength}` );
+                }
+                if ( svalue.items ) {
+                    const itemType = svalue.items.type;
+                    if ( itemType === "object" && svalue.items.properties ) {
+                        const itemprop = svalue.items.properties;
+                        cvalue.forEach( ( a, index ) => {
+                            if ( typeof ( a ) !== itemType ) {
+                                throw new Error( `ERROR: Data path "${dataPath}.${prop}" should be item value type ${itemType}` );
+                            }
+                            schemaValidate( `${dataPath}.${prop}[${index}]`, itemprop, a, svalue.additionalProperties ? svalue.additionalProperties : false );
+                        } );
+                        continue;
+                    }
+                    cvalue.forEach( a => {
                         if ( typeof ( a ) !== itemType ) {
                             throw new Error( `ERROR: Data path "${dataPath}.${prop}" should be item value type ${itemType}` );
                         }
-                        schemaValidate( `${dataPath}.${prop}[${index}]`, itemprop, a, svalue.additionalProperties ? svalue.additionalProperties : false );
                     } );
-                    continue;
                 }
-                cvalue.forEach( a => {
-                    if ( typeof ( a ) !== itemType ) {
-                        throw new Error( `ERROR: Data path "${dataPath}.${prop}" should be item value type ${itemType}` );
-                    }
-                } );
             }
             continue;
         }
@@ -152,15 +148,15 @@ function schemaValidate( dataPath, schemaProperties, configProperties, additiona
         if ( !schemaRoot ) {
             throw new Error( `Invalid schema file defined.\nPlease re-install cwserver.` );
         }
+        if ( !sow_util_1.Util.isPlainObject( config ) ) {
+            throw new Error( `Invalid config file defined.\nConfig file should be ${schema.type}.` );
+        }
         if ( !config.$schema ) {
             throw new Error( `No schema defined in config file.\nConfig file should be use $schema:${schema.$schema}` );
         }
         delete config.$schema;
         if ( config.$comment ) {
             delete config.$comment;
-        }
-        if ( typeof ( config ) !== schema.type ) {
-            throw new Error( `Invalid config file defined.\nConfig file should be ${schema.type}.` );
         }
         schemaValidate( "config", schema.properties, config, schema.additionalProperties );
     }

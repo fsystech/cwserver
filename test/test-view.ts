@@ -32,6 +32,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 	} );
 } );
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
+	expect( shouldBeError( () => { mimeHandler.getMimeType( "NO_EXT" ); } ) ).toBeInstanceOf( Error );
 	const vDir: string = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
 	server.addVirtualDir( "/vtest", vDir, ( ctx ) => {
 		if ( !mimeHandler.isValidExtension( ctx.extension ) ) return ctx.next( 404 );
@@ -65,43 +66,62 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		Util.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
 	}
 	const tempDir: string = server.mapPath( "/upload/temp/" );
-	controller.post( '/post', ( ctx ) => {
+	controller.post( '/post', async ( ctx ) => {
+		const task: string | void = typeof ( ctx.req.query.task ) === "string" ? ctx.req.query.task.toString() : void 0;
 		const parser = new PayloadParser( ctx.req, tempDir );
-		parser.readData( ( err ) => {
-			if ( parser.isUrlEncoded() || parser.isAppJson() ) {
-				expect( shouldBeError( () => {
-					parser.saveAs( downloadDir );
-				} ) ).toBeInstanceOf( Error );
-				expect( shouldBeError( () => {
-					parser.getFiles( ( pf ) => { return; } );
-				} ) ).toBeInstanceOf( Error );
-				return ctx.res.json( parser.getJson() ), ctx.next( 200 ), void 0;
+		if ( task && task === "ERROR" ) {
+			try {
+				await parser.readDataAsync();
+			} catch ( e ) {
+				expect( e ).toBeInstanceOf( Error );
 			}
-			return ctx.next( 404 );
+		}
+		parser.readData( ( err ) => {
+			if ( parser.isMultipart() ) {
+				return ctx.next( 404 );
+			}
+			const result: { [key: string]: any; } = {};
+			if ( parser.isAppJson() ) {
+				result.isJson = true;
+			}
+			expect( shouldBeError( () => {
+				parser.saveAs( downloadDir );
+			} ) ).toBeInstanceOf( Error );
+			expect( shouldBeError( () => {
+				parser.getFiles( ( pf ) => { return; } );
+			} ) ).toBeInstanceOf( Error );
+			if ( err && err instanceof Error ) {
+				ctx.res.json( Util.extend( result, { error: true, msg: err.message } ) );
+			} else {
+				ctx.res.json( Util.extend( result, parser.getJson() ) );
+			}
+			return ctx.next( 200 );
 		} );
 	} ).post( '/post-async/:id', async ( ctx, routeParam ) => {
 		const parser = new PayloadParser( ctx.req, tempDir );
-		await parser.readDataAsync();
 		if ( parser.isUrlEncoded() || parser.isAppJson() ) {
+			await parser.readDataAsync();
 			ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
-			return ctx.res.end( JSON.stringify( parser.getJson() ) ), ctx.next( 200 ), void 0;
+			return ctx.res.end( JSON.stringify( parser.getJson() ) ), ctx.next( 200 );
 		}
 		parser.saveAs( downloadDir );
 		return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
-	} ).post( '/upload', ( ctx ) => {
+	} ).post( '/upload', async ( ctx ) => {
+		const saveTo = typeof ( ctx.req.query.saveto ) === "string" ? ctx.req.query.saveto.toString() : void 0;
 		const parser = new PayloadParser( ctx.req, tempDir );
+		expect( shouldBeError( () => {
+			parser.saveAs( downloadDir );
+		} ) ).toBeInstanceOf( Error );
 		parser.readData( ( err ) => {
 			if ( err ) {
 				if ( typeof ( err ) === "string" && err === "CLIENET_DISCONNECTED" ) return ctx.next( -500 );
 				parser.clear();
-
 				server.addError( ctx, err instanceof Error ? err.message : err );
 				return ctx.next( 500 );
 			}
 			if ( !parser.isMultipart() ) {
 				ctx.next( 404 );
 			} else {
-				const saveTo = typeof ( ctx.req.query.saveto ) === "string";
 				const data: {
 					[key: string]: any;
 					content_type: string;
@@ -120,11 +140,22 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 						temp_path: file.getTempPath()
 					} );
 					expect( file.read() ).toBeInstanceOf( Buffer );
-					if ( saveTo ) return;
+					if ( saveTo ) {
+						if ( saveTo === "C" )
+							file.clear();
+						return;
+					}
 					file.saveAs( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
+					expect( shouldBeError( () => {
+						file.read();
+					} ) ).toBeInstanceOf( Error );
+					expect( shouldBeError( () => {
+						file.saveAs( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
+					} ) ).toBeInstanceOf( Error );
 				} );
-				if ( saveTo )
+				if ( saveTo && saveTo !== "C" ) {
 					parser.saveAs( downloadDir );
+				}
 				expect( shouldBeError( () => {
 					parser.getData();
 				} ) ).toBeInstanceOf( Error );

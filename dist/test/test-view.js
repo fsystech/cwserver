@@ -67,6 +67,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
     });
 });
 global.sow.server.on("register-view", (app, controller, server) => {
+    expect_1.default(shouldBeError(() => { mimeHandler.getMimeType("NO_EXT"); })).toBeInstanceOf(Error);
     const vDir = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
     server.addVirtualDir("/vtest", vDir, (ctx) => {
         if (!mimeHandler.isValidExtension(ctx.extension))
@@ -102,31 +103,54 @@ global.sow.server.on("register-view", (app, controller, server) => {
         index_1.Util.mkdirSync(server.mapPath("/"), "/upload/data/");
     }
     const tempDir = server.mapPath("/upload/temp/");
-    controller.post('/post', (ctx) => {
+    controller.post('/post', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+        const task = typeof (ctx.req.query.task) === "string" ? ctx.req.query.task.toString() : void 0;
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
-        parser.readData((err) => {
-            if (parser.isUrlEncoded() || parser.isAppJson()) {
-                expect_1.default(shouldBeError(() => {
-                    parser.saveAs(downloadDir);
-                })).toBeInstanceOf(Error);
-                expect_1.default(shouldBeError(() => {
-                    parser.getFiles((pf) => { return; });
-                })).toBeInstanceOf(Error);
-                return ctx.res.json(parser.getJson()), ctx.next(200), void 0;
+        if (task && task === "ERROR") {
+            try {
+                yield parser.readDataAsync();
             }
-            return ctx.next(404);
+            catch (e) {
+                expect_1.default(e).toBeInstanceOf(Error);
+            }
+        }
+        parser.readData((err) => {
+            if (parser.isMultipart()) {
+                return ctx.next(404);
+            }
+            const result = {};
+            if (parser.isAppJson()) {
+                result.isJson = true;
+            }
+            expect_1.default(shouldBeError(() => {
+                parser.saveAs(downloadDir);
+            })).toBeInstanceOf(Error);
+            expect_1.default(shouldBeError(() => {
+                parser.getFiles((pf) => { return; });
+            })).toBeInstanceOf(Error);
+            if (err && err instanceof Error) {
+                ctx.res.json(index_1.Util.extend(result, { error: true, msg: err.message }));
+            }
+            else {
+                ctx.res.json(index_1.Util.extend(result, parser.getJson()));
+            }
+            return ctx.next(200);
         });
-    }).post('/post-async/:id', (ctx, routeParam) => __awaiter(void 0, void 0, void 0, function* () {
+    })).post('/post-async/:id', (ctx, routeParam) => __awaiter(void 0, void 0, void 0, function* () {
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
-        yield parser.readDataAsync();
         if (parser.isUrlEncoded() || parser.isAppJson()) {
+            yield parser.readDataAsync();
             ctx.res.writeHead(200, { 'Content-Type': 'application/json' });
-            return ctx.res.end(JSON.stringify(parser.getJson())), ctx.next(200), void 0;
+            return ctx.res.end(JSON.stringify(parser.getJson())), ctx.next(200);
         }
         parser.saveAs(downloadDir);
         return ctx.res.asHTML(200).end("<h1>success</h1>");
-    })).post('/upload', (ctx) => {
+    })).post('/upload', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+        const saveTo = typeof (ctx.req.query.saveto) === "string" ? ctx.req.query.saveto.toString() : void 0;
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
+        expect_1.default(shouldBeError(() => {
+            parser.saveAs(downloadDir);
+        })).toBeInstanceOf(Error);
         parser.readData((err) => {
             if (err) {
                 if (typeof (err) === "string" && err === "CLIENET_DISCONNECTED")
@@ -139,7 +163,6 @@ global.sow.server.on("register-view", (app, controller, server) => {
                 ctx.next(404);
             }
             else {
-                const saveTo = typeof (ctx.req.query.saveto) === "string";
                 const data = [];
                 parser.getFiles((file) => {
                     data.push({
@@ -151,12 +174,22 @@ global.sow.server.on("register-view", (app, controller, server) => {
                         temp_path: file.getTempPath()
                     });
                     expect_1.default(file.read()).toBeInstanceOf(Buffer);
-                    if (saveTo)
+                    if (saveTo) {
+                        if (saveTo === "C")
+                            file.clear();
                         return;
+                    }
                     file.saveAs(`${downloadDir}/${index_1.Util.guid()}_${file.getFileName()}`);
+                    expect_1.default(shouldBeError(() => {
+                        file.read();
+                    })).toBeInstanceOf(Error);
+                    expect_1.default(shouldBeError(() => {
+                        file.saveAs(`${downloadDir}/${index_1.Util.guid()}_${file.getFileName()}`);
+                    })).toBeInstanceOf(Error);
                 });
-                if (saveTo)
+                if (saveTo && saveTo !== "C") {
                     parser.saveAs(downloadDir);
+                }
                 expect_1.default(shouldBeError(() => {
                     parser.getData();
                 })).toBeInstanceOf(Error);
@@ -165,7 +198,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
             }
             parser.clear();
         });
-    });
+    }));
 });
 global.sow.server.on("register-view", (app, controller, server) => {
     controller

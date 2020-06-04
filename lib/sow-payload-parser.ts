@@ -173,7 +173,7 @@ export class PostedFileInfo implements IPostedFileInfo {
         return _fs.readFileSync( this._tempFile );
     }
     saveAs( absPath: string ): void {
-        if ( !this._tempFile || this._isMoved === true ) throw new Error( "Method not implemented." );
+        if ( !this._tempFile || this._isMoved === true ) throw new Error( "This file already moved or not created yet." );
         _fs.renameSync( this._tempFile, absPath ); delete this._tempFile;
         this._isMoved = true;
     }
@@ -346,16 +346,13 @@ export class PayloadParser implements IPayloadParser {
     constructor( req: IRequest, tempDir: string ) {
         this._isDisposed = false;
         createDir( tempDir );
-        if ( !_fs.statSync( tempDir ).isDirectory() ) {
-            throw new Error( `Invalid temp dir ${tempDir}` );
-        }
         this._contentType = getHeader( req.headers, "content-type" );
         this._contentLength = ToNumber( getHeader( req.headers, "content-length" ) );
         if ( this._contentType.indexOf( incomingContentType.MULTIPART ) > -1 ) {
             this._contentTypeEnum = ContentType.MULTIPART;
-        } else if ( this._contentType.indexOf( incomingContentType.URL_ENCODE ) > -1 ) {
+        } else if ( this._contentType.indexOf( incomingContentType.URL_ENCODE ) > -1 && this._contentType === incomingContentType.URL_ENCODE ) {
             this._contentTypeEnum = ContentType.URL_ENCODE;
-        } else if ( this._contentType.indexOf( incomingContentType.APP_JSON ) > -1 ) {
+        } else if ( this._contentType.indexOf( incomingContentType.APP_JSON ) > -1 && this._contentType === incomingContentType.APP_JSON ) {
             this._contentTypeEnum = ContentType.APP_JSON;
         } else {
             this._contentTypeEnum = ContentType.UNKNOWN;
@@ -434,12 +431,12 @@ export class PayloadParser implements IPayloadParser {
             this.readData( ( err?: Error | string ): void => {
                 if ( err ) return reject( typeof ( err ) === "string" ? new Error( err ) : err );
                 return resolve();
-            } )
+            } );
         } );
     }
     public readData( onReadEnd: ( err?: Error | string ) => void ): void {
         if ( !this.isValidRequest() )
-            throw new Error( "Invalid request defiend...." );
+            return onReadEnd( new Error( "Invalid request defiend...." ) );
         if ( this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON ) {
             this._req.on( "readable", ( ...args: any[] ): void => {
                 while ( true ) {

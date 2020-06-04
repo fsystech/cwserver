@@ -464,16 +464,34 @@ describe("cwserver-get", () => {
 });
 describe("cwserver-template-engine", () => {
     it('should served from server mem cache', (done) => {
-        const old = appUtility.server.config.template;
+        const old = sow_util_1.Util.clone(appUtility.server.config.template);
         appUtility.server.config.template.cacheType = "MEM";
         appUtility.server.config.template.cache = true;
         getAgent()
             .get(`http://localhost:${appUtility.port}/`)
             .end((err, res) => {
-            appUtility.server.config.template = old;
+            sow_util_1.Util.extend(appUtility.server.config.template, old);
             expect_1.default(err).not.toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(200);
             expect_1.default(res.header["content-type"]).toBe("text/html");
+            done();
+        });
+    });
+    it('should served from server non-template and no cache', (done) => {
+        const old = sow_util_1.Util.clone(appUtility.server.config.template);
+        appUtility.server.config.template.cacheType = "MEM";
+        appUtility.server.config.template.cache = false;
+        const filePath = appUtility.server.mapPath("/no_template.html");
+        expect_1.default(fs.existsSync(filePath)).toEqual(false);
+        fs.writeFileSync(filePath, "<h1>Hello World</h1>");
+        expect_1.default(fs.existsSync(filePath)).toEqual(true);
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/no_template`)
+            .end((err, res) => {
+            sow_util_1.Util.extend(appUtility.server.config.template, old);
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(200);
+            expect_1.default(res.header["content-type"]).toBe("text/html; charset=UTF-8");
             done();
         });
     });
@@ -528,7 +546,7 @@ describe("cwserver-template-engine", () => {
             done();
         });
     });
-    it('should be serve from template cache', (done) => {
+    it('should be served from template cache', (done) => {
         expect_1.default(sow_util_1.Util.isPlainObject(templateConf)).toBe(true);
         getAgent()
             .get(`http://localhost:${appUtility.port}/`)
@@ -589,7 +607,8 @@ describe("cwserver-bundler", () => {
                 .end((err, res) => {
                 if ((!err || !(err instanceof Error)) && tryCount === 0) {
                     return setTimeout(() => {
-                        return sendReq(done, tryCount + 1);
+                        tryCount++;
+                        return sendReq(done, tryCount);
                     }, 100), void 0;
                 }
                 expect_1.default(err).toBeInstanceOf(Error);
@@ -620,7 +639,8 @@ describe("cwserver-bundler", () => {
                 .end((err, res) => {
                 if ((!err || !(err instanceof Error)) && tryCount === 0) {
                     return setTimeout(() => {
-                        return sendReq(done, tryCount + 1);
+                        tryCount++;
+                        return sendReq(done, tryCount);
                     }, 100), void 0;
                 }
                 expect_1.default(err).toBeInstanceOf(Error);
@@ -673,7 +693,8 @@ describe("cwserver-bundler", () => {
                 .end((err, res) => {
                 if ((!err || !(err instanceof Error)) && tryCount === 0) {
                     return setTimeout(() => {
-                        return sendReq(done, tryCount + 1);
+                        tryCount++;
+                        return sendReq(done, tryCount);
                     }, 100), void 0;
                 }
                 expect_1.default(err).toBeInstanceOf(Error);
@@ -918,6 +939,19 @@ describe("cwserver-post", () => {
             done();
         });
     });
+    it('send post request unknown content type application/jsons', (done) => {
+        getAgent()
+            .post(`http://localhost:${appUtility.port}/post?task=ERROR`)
+            .send(JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }))
+            .set('Content-Type', 'application/jsons')
+            .end((err, res) => {
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(200);
+            expect_1.default(res.header["content-type"]).toBe("application/json");
+            expect_1.default(res.body.error).toBe(true);
+            done();
+        });
+    });
     it('send post request content type urlencoded', (done) => {
         getAgent()
             .post(`http://localhost:${appUtility.port}/post`)
@@ -954,6 +988,48 @@ describe("cwserver-post", () => {
             expect_1.default(res.status).toBe(404);
             done();
         });
+    });
+});
+describe("cwserver-multipart-paylod-parser", () => {
+    const processReq = (done, saveto) => {
+        let fileName = "";
+        let filePath = "";
+        let contentType = "";
+        if (process.env.SCRIPT === "TS") {
+            fileName = "schema.json";
+            contentType = "application/json";
+            filePath = path.resolve(`./${fileName}`);
+        }
+        else {
+            fileName = "module.spec.js";
+            contentType = "application/javascript";
+            filePath = path.resolve(`./dist/test/${fileName}`);
+        }
+        const readStream = fs.createReadStream(filePath);
+        getAgent()
+            .post(`http://localhost:${appUtility.port}/upload`)
+            .query({ saveto })
+            .field('post-file', readStream)
+            .end((err, res) => {
+            readStream.close();
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(200);
+            expect_1.default(res.header["content-type"]).toBe("application/json");
+            expect_1.default(res.body).toBeInstanceOf(Object);
+            expect_1.default(res.body.content_type).toBe(contentType);
+            expect_1.default(res.body.file_name).toBe(fileName);
+            expect_1.default(res.body.name).toBe("post-file");
+            done();
+        });
+    };
+    it('should post multipart post file', (done) => {
+        processReq(done);
+    });
+    it('should post multipart post file and save as bulk', (done) => {
+        processReq(done, "true");
+    });
+    it('test multipart post file and clear', (done) => {
+        processReq(done, "C");
     });
 });
 describe("cwserver-gzip-response", () => {
@@ -1061,6 +1137,25 @@ describe("cwserver-mime-type", () => {
             done();
         });
     });
+    it('should be gzip response & served from file (no server file cache)', (done) => {
+        const oldValue = sow_util_1.Util.clone(appUtility.server.config.staticFile);
+        appUtility.server.config.staticFile.fileCache = false;
+        appUtility.server.config.staticFile.compression = true;
+        const filePath = appUtility.server.mapPath("/test.pdf");
+        expect_1.default(fs.existsSync(filePath)).toEqual(false);
+        fs.writeFileSync(filePath, "<h1>Hello World</h1>");
+        expect_1.default(fs.existsSync(filePath)).toEqual(true);
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/test.pdf`)
+            .end((err, res) => {
+            sow_util_1.Util.extend(appUtility.server.config.staticFile, oldValue);
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(200);
+            expect_1.default(res.header["content-type"]).toBe("application/pdf");
+            expect_1.default(res.header["content-encoding"]).toBe("gzip");
+            done();
+        });
+    });
     it('should be mime type if-none-match (no server file cache)', (done) => {
         const oldfileCache = appUtility.server.config.staticFile.fileCache;
         appUtility.server.config.staticFile.fileCache = false;
@@ -1084,6 +1179,24 @@ describe("cwserver-mime-type", () => {
             expect_1.default(res.header["content-type"]).toBe("image/x-icon");
             done();
         });
+    });
+    it('catch-HttpMimeHandler-error', (done) => {
+        const parent = path.resolve(__dirname, '..');
+        const absPath = path.resolve(`${parent}/dist/mime-type.json`);
+        expect_1.default(fs.existsSync(absPath)).toBe(true);
+        const distPath = path.resolve(`${parent}/mime-types.json`);
+        fs.renameSync(absPath, distPath);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            const mime = new cwserver.HttpMimeHandler();
+        })).toBeInstanceOf(Error);
+        fs.writeFileSync(absPath, "INVALID_JSON");
+        expect_1.default(fs.existsSync(absPath)).toEqual(true);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            const mime = new cwserver.HttpMimeHandler();
+        })).toBeInstanceOf(Error);
+        fs.unlinkSync(absPath);
+        fs.renameSync(distPath, absPath);
+        done();
     });
 });
 describe("cwserver-virtual-dir", () => {
@@ -1115,69 +1228,6 @@ describe("cwserver-virtual-dir", () => {
             expect_1.default(res.status).toBe(200);
             expect_1.default(res.header["content-type"]).toBe("application/javascript");
             expect_1.default(res.header["content-encoding"]).toBe("gzip");
-            done();
-        });
-    });
-});
-describe("cwserver-multipart-paylod-parser", () => {
-    it('should post multipart post file', (done) => {
-        let fileName = "";
-        let filePath = "";
-        let contentType = "";
-        if (process.env.SCRIPT === "TS") {
-            fileName = "schema.json";
-            contentType = "application/json";
-            filePath = path.resolve(`./${fileName}`);
-        }
-        else {
-            fileName = "module.spec.js";
-            contentType = "application/javascript";
-            filePath = path.resolve(`./dist/test/${fileName}`);
-        }
-        const readStream = fs.createReadStream(filePath);
-        getAgent()
-            .post(`http://localhost:${appUtility.port}/upload`)
-            .field('post-file', readStream)
-            .end((err, res) => {
-            readStream.close();
-            expect_1.default(err).not.toBeInstanceOf(Error);
-            expect_1.default(res.status).toBe(200);
-            expect_1.default(res.header["content-type"]).toBe("application/json");
-            expect_1.default(res.body).toBeInstanceOf(Object);
-            expect_1.default(res.body.content_type).toBe(contentType);
-            expect_1.default(res.body.file_name).toBe(fileName);
-            expect_1.default(res.body.name).toBe("post-file");
-            done();
-        });
-    });
-    it('should post multipart post file and save as bulk', (done) => {
-        let fileName = "";
-        let filePath = "";
-        let contentType = "";
-        if (process.env.SCRIPT === "TS") {
-            fileName = "schema.json";
-            contentType = "application/json";
-            filePath = path.resolve(`./${fileName}`);
-        }
-        else {
-            fileName = "module.spec.js";
-            contentType = "application/javascript";
-            filePath = path.resolve(`./dist/test/${fileName}`);
-        }
-        const readStream = fs.createReadStream(filePath);
-        getAgent()
-            .post(`http://localhost:${appUtility.port}/upload`)
-            .query({ saveto: "Y" })
-            .field('post-file', readStream)
-            .end((err, res) => {
-            readStream.close();
-            expect_1.default(err).not.toBeInstanceOf(Error);
-            expect_1.default(res.status).toBe(200);
-            expect_1.default(res.header["content-type"]).toBe("application/json");
-            expect_1.default(res.body).toBeInstanceOf(Object);
-            expect_1.default(res.body.content_type).toBe(contentType);
-            expect_1.default(res.body.file_name).toBe(fileName);
-            expect_1.default(res.body.name).toBe("post-file");
             done();
         });
     });
@@ -1807,6 +1857,53 @@ describe("cwserver-schema-validator", () => {
                 throw e;
             }
         })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            config.$schema = $schema;
+            const old = config.appName;
+            try {
+                config.appName = "";
+                sow_schema_validator_1.Schema.Validate(config);
+            }
+            catch (e) {
+                config.appName = old;
+                throw e;
+            }
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            config.$schema = $schema;
+            const old = config.template;
+            try {
+                config.template = void 0;
+                sow_schema_validator_1.Schema.Validate(config);
+            }
+            catch (e) {
+                config.template = old;
+                throw e;
+            }
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_schema_validator_1.Schema.Validate([]);
+        })).toBeInstanceOf(Error);
+        const parent = path.resolve(__dirname, '..');
+        const absPath = path.resolve(`${parent}/schema.json`);
+        expect_1.default(fs.existsSync(absPath)).toBe(true);
+        const distPath = path.resolve(`${parent}/schemas.json`);
+        fs.renameSync(absPath, distPath);
+        process.env.SCRIPT = "TSX";
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_schema_validator_1.Schema.Validate(config);
+        })).toBeInstanceOf(Error);
+        process.env.SCRIPT = "TS";
+        fs.writeFileSync(absPath, "{}");
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_schema_validator_1.Schema.Validate(config);
+        })).toBeInstanceOf(Error);
+        fs.writeFileSync(absPath, "INVALID_JSON");
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_schema_validator_1.Schema.Validate(config);
+        })).toBeInstanceOf(Error);
+        fs.unlinkSync(absPath);
+        fs.renameSync(distPath, absPath);
         done();
     });
     it("shutdown-application", (done) => {
