@@ -61,7 +61,6 @@ const parseMaxAge = (maxAge) => {
     let add = 0;
     const length = maxAge.length;
     const type = maxAge.charAt(length - 1).toUpperCase();
-    // tslint:disable-next-line: radix
     add = parseInt(maxAge.substring(0, length - 1));
     if (isNaN(add))
         throw new Error(`Invalid maxAage format ${maxAge}`);
@@ -96,7 +95,6 @@ const _formatPath = (() => {
         return absPath;
     };
 })();
-// tslint:disable-next-line: max-classes-per-file
 class ServerEncryption {
     constructor(inf) {
         this.cryptoInfo = inf;
@@ -121,7 +119,6 @@ class ServerEncryption {
     }
 }
 exports.ServerEncryption = ServerEncryption;
-// tslint:disable-next-line: max-classes-per-file
 class Context {
     constructor(_server, _req, _res, _session) {
         this.error = void 0;
@@ -147,7 +144,6 @@ class Context {
     }
 }
 exports.Context = Context;
-// tslint:disable-next-line: max-classes-per-file
 class ServerConfig {
     constructor() {
         this.Author = "Safe Online World Ltd.";
@@ -201,7 +197,6 @@ class ServerConfig {
     }
 }
 exports.ServerConfig = ServerConfig;
-// tslint:disable-next-line: max-classes-per-file
 class SowServer {
     constructor(appRoot, wwwName) {
         this.port = 0;
@@ -333,7 +328,6 @@ ${appRoot}\\www_public
                 if (!this.config.errorPage.hasOwnProperty(property))
                     continue;
                 const path = this.config.errorPage[property];
-                // tslint:disable-next-line: radix
                 const code = parseInt(property);
                 const statusCode = sow_http_status_1.HttpStatus.fromPath(path, code);
                 if (!statusCode || statusCode !== code || !sow_http_status_1.HttpStatus.isErrorCode(statusCode)) {
@@ -388,7 +382,7 @@ ${appRoot}\\www_public
         return cookies;
     }
     parseSession(cookies) {
-        if (!this.config.session.cookie)
+        if (!this.config.session.cookie || this.config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new sow_static_1.Session();
         cookies = this.parseCookie(cookies);
@@ -448,8 +442,10 @@ ${appRoot}\\www_public
                 this.log.error(`Active connection closed by client. Request path ${ctx.path}`).reset();
                 return cleanContext(ctx);
             }
-            // tslint:disable-next-line: no-unused-expression
-            return (this.passError(ctx) ? void 0 : ctx.res.status(rcode).end('Page Not found 404')), _next(rcode, false);
+            if (!this.passError(ctx)) {
+                ctx.res.status(rcode).end('Page Not found 404');
+            }
+            return _next(rcode, false);
         };
         return ctx.res.render(ctx, path, status);
     }
@@ -457,8 +453,6 @@ ${appRoot}\\www_public
         return _path.resolve(`${this.root}/${this.public}/${path}`);
     }
     pathToUrl(path) {
-        if (!path)
-            return path;
         if (!sow_util_1.Util.getExtension(path))
             return path;
         let index = path.indexOf(this.public);
@@ -518,7 +512,6 @@ ${appRoot}\\www_public
     }
 }
 exports.SowServer = SowServer;
-// tslint:disable-next-line: max-classes-per-file
 class SowGlobalServer {
     constructor() {
         this._evt = [];
@@ -538,7 +531,6 @@ class SowGlobalServer {
         this._evt.push(next);
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class SowGlobal {
     constructor() {
         this.server = new SowGlobalServer();
@@ -616,8 +608,13 @@ function initilizeServer(appRoot, wwwName) {
             };
         };
         _server.addVirtualDir = (route, root, evt) => {
-            if (_virtualDir.some((a) => a.route === route))
+            if (route.indexOf(":") > -1 || route.indexOf("*") > -1)
+                throw new Error(`Unsupported symbol defined. ${route}`);
+            const neRoute = route;
+            if (_virtualDir.some((a) => a.route === neRoute))
                 throw new Error(`You already add this virtual route ${route}`);
+            route += route.charAt(route.length - 1) !== "/" ? "/" : "";
+            route += "*";
             const _processHandler = (req, res, next, forWord) => {
                 const _ctx = _server.createContext(req, res, next);
                 const _next = next;
@@ -639,7 +636,7 @@ function initilizeServer(appRoot, wwwName) {
                         }
                         return ctx.next(404);
                     });
-                });
+                }, true);
             }
             else {
                 _app.use(route, (req, res, next) => {
@@ -647,10 +644,10 @@ function initilizeServer(appRoot, wwwName) {
                         _server.log.success(`Send ${200} ${route}${req.path}`).reset();
                         return evt(ctx);
                     });
-                });
+                }, true);
             }
             return _virtualDir.push({
-                route,
+                route: neRoute,
                 root
             }), void 0;
         };

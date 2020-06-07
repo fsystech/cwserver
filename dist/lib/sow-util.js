@@ -30,7 +30,6 @@ const _isPlainObject = ( obj ) => {
 const _extend = ( destination, source ) => {
     if ( !_isPlainObject( destination ) || !_isPlainObject( source ) )
         throw new TypeError( `Invalid arguments defined. Arguments should be Object instance. destination type ${typeof ( destination )} and source type ${typeof ( source )}` );
-    // tslint:disable-next-line: forin
     for ( const property in source ) {
         if ( property === "__proto__" || property === "constructor" )
             continue;
@@ -45,7 +44,6 @@ const _deepExtend = ( destination, source ) => {
         source = source();
     if ( !_isPlainObject( destination ) || !_isPlainObject( source ) )
         throw new TypeError( `Invalid arguments defined. Arguments should be Object instance. destination type ${typeof ( destination )} and source type ${typeof ( source )}` );
-    // tslint:disable-next-line: forin
     for ( const property in source ) {
         if ( property === "__proto__" || property === "constructor" )
             continue;
@@ -61,13 +59,10 @@ const _deepExtend = ( destination, source ) => {
     }
     return destination;
 };
-// tslint:disable-next-line: no-namespace
 ( function ( Util ) {
     function guid() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, ( c ) => {
-            // tslint:disable-next-line: no-bitwise
             const r = Math.random() * 16 | 0;
-            // tslint:disable-next-line: no-bitwise
             const v = c === 'x' ? r : ( r & 0x3 | 0x8 );
             return v.toString( 16 );
         } );
@@ -176,8 +171,7 @@ const _deepExtend = ( destination, source ) => {
     function isExists( path, next ) {
         const url = _path.resolve( path );
         if ( !_fs.existsSync( url ) ) {
-            // tslint:disable-next-line: no-unused-expression
-            return ( next ? next( 404, true ) : undefined ), false;
+            return next ? ( next( 404, true ), false ) : false;
         }
         return url;
     }

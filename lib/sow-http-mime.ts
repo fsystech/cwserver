@@ -9,7 +9,7 @@ import * as _path from 'path';
 import * as _zlib from 'zlib';
 import { IRequest } from './sow-server-core';
 import { IContext } from './sow-server';
-import { SowHttpCache } from './sow-http-cache';
+import { SowHttpCache, IChangeHeader } from './sow-http-cache';
 import { Streamer } from './sow-web-streamer';
 import { Encryption } from './sow-encryption';
 import { Util } from './sow-util';
@@ -19,7 +19,7 @@ export interface IHttpMimeHandler {
     isValidExtension( extension: string ): boolean;
 }
 const isAcceptedEncoding = ( req: IRequest, name: string ): boolean => {
-    const acceptEncoding = req.headers['accept-encoding'];
+    const acceptEncoding: string | string[] | undefined = req.headers['accept-encoding'];
     if ( !acceptEncoding ) return false;
     return acceptEncoding.indexOf( name ) > -1;
 }
@@ -41,34 +41,33 @@ const TaskDeff: ITaskDeff[] = [
 ];
 class MimeHandler {
     static getCachePath( ctx: IContext ) {
-        const dir = ctx.server.mapPath( `/web/temp/cache/` );
+        const dir: string = ctx.server.mapPath( `/web/temp/cache/` );
         if ( !_fs.existsSync( dir ) ) {
             Util.mkdirSync( ctx.server.getPublic(), "/web/temp/cache/" );
         }
-        const path = `${dir}\\${Encryption.toMd5( ctx.path )}`;
+        const path: string = `${dir}\\${Encryption.toMd5( ctx.path )}`;
         return _path.resolve( `${path}.${ctx.extension}.cache` );
     }
     static servedFromServerFileCache(
         ctx: IContext, absPath: string, mimeType: string,
         fstat: _fs.Stats
     ): void {
-        const reqCacheHeader: { sinceModify?: number | void, etag?: string } = SowHttpCache.getChangedHeader( ctx.req.headers );
-        const cachePath = this.getCachePath( ctx );
-        const existsCachFile = _fs.existsSync( cachePath );
-        // tslint:disable-next-line: one-variable-per-declaration
-        let lastChangeTime = 0, cfileSize = 0;
+        const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
+        const cachePath: string = this.getCachePath( ctx );
+        const existsCachFile: boolean = _fs.existsSync( cachePath );
+        let lastChangeTime: number = 0, cfileSize: number = 0;
         if ( existsCachFile ) {
             const stat = _fs.statSync( cachePath );
             cfileSize = stat.size;
             lastChangeTime = stat.mtime.getTime();
         }
-        let hasChanged = true;
+        let hasChanged: boolean = true;
         if ( existsCachFile ) {
             hasChanged = fstat.mtime.getTime() > lastChangeTime;
         }
-        const etag = cfileSize !== 0 ? SowHttpCache.getEtag( lastChangeTime, cfileSize ) : void 0;
+        const etag: string | undefined = cfileSize !== 0 ? SowHttpCache.getEtag( lastChangeTime, cfileSize ) : void 0;
         if ( !hasChanged && existsCachFile && ( reqCacheHeader.etag || reqCacheHeader.sinceModify ) ) {
-            let exit = false;
+            let exit: boolean = false;
             if ( etag && reqCacheHeader.etag ) {
                 if ( reqCacheHeader.etag === etag ) {
                     SowHttpCache.writeCacheHeader( ctx.res, {}, ctx.server.config.cacheHeader );
@@ -92,13 +91,13 @@ class MimeHandler {
             ctx.res.writeHead( 200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' } );
             return Util.pipeOutputStream( cachePath, ctx );
         }
-        return _zlib.gzip( _fs.readFileSync( absPath ), ( error, buff ) => {
+        return _zlib.gzip( _fs.readFileSync( absPath ), ( error: Error | null, buff: Buffer ): void => {
             if ( error ) {
                 ctx.server.addError( ctx, error );
                 return ctx.next( 500 );
             }
             _fs.writeFileSync( cachePath, buff );
-            const stat = _fs.statSync( cachePath );
+            const stat: _fs.Stats = _fs.statSync( cachePath );
             lastChangeTime = stat.mtime.getTime();
             SowHttpCache.writeCacheHeader( ctx.res, {
                 lastChangeTime,
@@ -118,7 +117,7 @@ class MimeHandler {
             etag: void 0
         }, { maxAge: 0, serverRevalidate: true } );
         if ( ctx.server.config.staticFile.compression && isGzip ) {
-            return _zlib.gzip( _fs.readFileSync( absPath ), ( error, buff ) => {
+            return _zlib.gzip( _fs.readFileSync( absPath ), ( error: Error | null, buff: Buffer ): void => {
                 if ( error ) {
                     ctx.server.addError( ctx, error );
                     return ctx.next( 500 );
@@ -141,9 +140,9 @@ class MimeHandler {
         mimeType: string, isGzip: boolean,
         fstat: _fs.Stats
     ): void {
-        const reqCachHeader: { sinceModify?: number | void, etag?: string } = SowHttpCache.getChangedHeader( ctx.req.headers );
-        const lastChangeTime = fstat.mtime.getTime();
-        const curEtag = SowHttpCache.getEtag( lastChangeTime, fstat.size );
+        const reqCachHeader: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
+        const lastChangeTime: number = fstat.mtime.getTime();
+        const curEtag: string = SowHttpCache.getEtag( lastChangeTime, fstat.size );
         if (
             ( reqCachHeader.etag && reqCachHeader.etag === curEtag ) ||
             ( reqCachHeader.sinceModify && reqCachHeader.sinceModify === lastChangeTime )
@@ -175,7 +174,7 @@ class MimeHandler {
         maybeDir?: string,
         checkFile?: boolean
     ): void {
-        const absPath = typeof ( maybeDir ) === "string" && maybeDir ? _path.resolve( `${maybeDir}/${ctx.path}` ) : ctx.server.mapPath( ctx.path );
+        const absPath: string = typeof ( maybeDir ) === "string" && maybeDir ? _path.resolve( `${maybeDir}/${ctx.path}` ) : ctx.server.mapPath( ctx.path );
         if ( typeof ( checkFile ) === "boolean" && checkFile === true ) {
             if ( !_fs.existsSync( absPath ) ) return ctx.next( 404, true );
         }
@@ -190,13 +189,13 @@ class MimeHandler {
             ctx.res.writeHead( 200, { 'Content-Type': mimeType } );
             return Util.pipeOutputStream( absPath, ctx );
         }
-        const stat = _fs.statSync( absPath );
+        const stat: _fs.Stats = _fs.statSync( absPath );
         if ( ctx.server.config.liveStream.indexOf( ctx.extension ) > -1 ) {
             return Streamer.stream( ctx, absPath, mimeType, stat );
         }
         let noCache: boolean = false;
         const taskDeff: ITaskDeff | undefined = TaskDeff.find( a => a.ext === ctx.extension );
-        let isGzip = ( !ctx.server.config.staticFile.compression ? false : isAcceptedEncoding( ctx.req, "gzip" ) );
+        let isGzip: boolean = ( !ctx.server.config.staticFile.compression ? false : isAcceptedEncoding( ctx.req, "gzip" ) );
         if ( isGzip ) {
             if ( ctx.server.config.staticFile.minCompressionSize > 0 && stat.size < ctx.server.config.staticFile.minCompressionSize ) {
                 isGzip = false;
@@ -220,7 +219,6 @@ class MimeHandler {
         return this.servedFromServerFileCache( ctx, absPath, mimeType, stat );
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 export class HttpMimeHandler implements IHttpMimeHandler {
     constructor() {
         let part: string = "";
@@ -228,15 +226,15 @@ export class HttpMimeHandler implements IHttpMimeHandler {
         if ( process.env.SCRIPT === "TS" ) {
             part = "/dist";
         }
-        const absPath = _path.resolve( `${parent}${part}/mime-type.json` );
+        const absPath: string = _path.resolve( `${parent}${part}/mime-type.json` );
         if ( !_fs.existsSync( absPath ) )
             throw new Error( `Unable to load mime-type from ${absPath}` );
-        const types = Util.readJsonAsync( absPath);
+        const types: { [id: string]: any } | void = Util.readJsonAsync( absPath);
         if ( !types ) throw new Error( "Invalid mime-type.json file..." );
         HttpMimeType = types;
     }
     getMimeType( extension: string ): string {
-        const mimeType = HttpMimeType[extension];
+        const mimeType: string | undefined = HttpMimeType[extension];
         if ( !mimeType )
             throw new Error( `Unsupported extension =>${extension}` );
         return mimeType;
@@ -245,7 +243,7 @@ export class HttpMimeHandler implements IHttpMimeHandler {
         return HttpMimeType[extension] ? true : false;
     }
     render( ctx: IContext, maybeDir?: string, checkFile?: boolean ): void {
-        const mimeType = HttpMimeType[ctx.extension];
+        const mimeType: string | undefined = HttpMimeType[ctx.extension];
         if ( !mimeType ) {
             return ctx.transferRequest( ctx.server.config.errorPage["404"] );
         }

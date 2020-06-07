@@ -60,7 +60,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
     ws.create(io);
     expect_1.default(ws.create(io)).toEqual(false);
     expect_1.default(ws.isConnectd).toEqual(true);
-    controller.get('/ws-server-event', (ctx) => {
+    controller.get('/ws-server-event', (ctx, requestParam) => {
         ctx.res.json(ws.wsEvent);
         ctx.next(200);
         return void 0;
@@ -79,11 +79,16 @@ global.sow.server.on("register-view", (app, controller, server) => {
         server.addVirtualDir("/vtest", vDir);
     })).toBeInstanceOf(Error);
     server.addVirtualDir("/test-virtual", vDir);
-    server.addVirtualDir("/vtest/virtual/", vDir);
+    server.addVirtualDir("/vtest/virtual", vDir);
+    expect_1.default(shouldBeError(() => {
+        app.use("/:error", (req, res, next, requestParam) => {
+            //
+        });
+    })).toBeInstanceOf(Error);
 });
 global.sow.server.on("register-view", (app, controller, server) => {
     const streamDir = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
-    server.addVirtualDir("/web-stream", streamDir, (ctx) => {
+    server.addVirtualDir("/web-stream", streamDir, (ctx, requestParam) => {
         if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
             const absPath = path.resolve(`${streamDir}/${ctx.path}`);
             if (!index_1.Util.isExists(absPath, ctx.next))
@@ -93,9 +98,15 @@ global.sow.server.on("register-view", (app, controller, server) => {
         }
         return ctx.next(404);
     });
-    server.addVirtualDir("/static-file", streamDir, (ctx) => {
+    server.addVirtualDir("/static-file", streamDir, (ctx, requestParam) => {
         return mimeHandler.render(ctx, streamDir, true);
     });
+    expect_1.default(shouldBeError(() => {
+        server.addVirtualDir("/static-file/*", streamDir);
+    })).toBeInstanceOf(Error);
+    expect_1.default(shouldBeError(() => {
+        server.addVirtualDir("/:static-file", streamDir);
+    })).toBeInstanceOf(Error);
 });
 global.sow.server.on("register-view", (app, controller, server) => {
     const downloadDir = server.mapPath("/upload/data/");
@@ -103,9 +114,12 @@ global.sow.server.on("register-view", (app, controller, server) => {
         index_1.Util.mkdirSync(server.mapPath("/"), "/upload/data/");
     }
     const tempDir = server.mapPath("/upload/temp/");
-    controller.post('/post', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    controller.post('/post', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
         const task = typeof (ctx.req.query.task) === "string" ? ctx.req.query.task.toString() : void 0;
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
+        if (parser.isMultipart()) {
+            return ctx.next(404);
+        }
         if (task && task === "ERROR") {
             try {
                 yield parser.readDataAsync();
@@ -115,9 +129,6 @@ global.sow.server.on("register-view", (app, controller, server) => {
             }
         }
         parser.readData((err) => {
-            if (parser.isMultipart()) {
-                return ctx.next(404);
-            }
             const result = {};
             if (parser.isAppJson()) {
                 result.isJson = true;
@@ -136,7 +147,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
             }
             return ctx.next(200);
         });
-    })).post('/post-async/:id', (ctx, routeParam) => __awaiter(void 0, void 0, void 0, function* () {
+    })).post('/post-async/:id', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
         if (parser.isUrlEncoded() || parser.isAppJson()) {
             yield parser.readDataAsync();
@@ -202,28 +213,28 @@ global.sow.server.on("register-view", (app, controller, server) => {
 });
 global.sow.server.on("register-view", (app, controller, server) => {
     controller
-        .any('/test-any/*', (ctx, match) => {
-        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-any/*", q: match });
+        .any('/test-any/*', (ctx, requestParam) => {
+        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam });
     })
-        .get('/task/:id/*', (ctx, match) => {
-        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/task/:id/*", q: match });
+        .get('/task/:id/*', (ctx, requestParam) => {
+        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/task/:id/*", q: requestParam });
     })
-        .get('/test-c/:id', (ctx, match) => {
-        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-c/:id", q: match });
+        .get('/test-c/:id', (ctx, requestParam) => {
+        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-c/:id", q: requestParam });
     })
-        .get('/dist/*', (ctx, match) => {
-        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/dist/*", q: match });
+        .get('/dist/*', (ctx, requestParam) => {
+        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/dist/*", q: requestParam });
     })
-        .get('/user/:id/settings', (ctx, match) => {
-        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match });
+        .get('/user/:id/settings', (ctx, requestParam) => {
+        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/user/:id/settings", q: requestParam });
     });
 });
 global.sow.server.on("register-view", (app, controller, server) => {
     controller
-        .get('/get-file', (ctx) => {
+        .get('/get-file', (ctx, requestParam) => {
         return index_1.Util.sendResponse(ctx, server.mapPath("index.html"), "text/plain");
     })
-        .any('/cookie', (ctx) => {
+        .any('/cookie', (ctx, requestParam) => {
         ctx.res.cookie("test-1", "test", {
             domain: "localhost", path: "/",
             expires: new Date(), secure: true,
@@ -242,14 +253,14 @@ global.sow.server.on("register-view", (app, controller, server) => {
         ctx.res.json({ task: "done" });
         return void 0;
     })
-        .any('/echo', (ctx) => {
+        .any('/echo', (ctx, requestParam) => {
         ctx.res.writeHead(200, {
             "Content-Type": ctx.req.headers["content-type"] || "text/plain"
         });
         ctx.req.pipe(ctx.res);
         return void 0;
     })
-        .any('/response', (ctx) => {
+        .any('/response', (ctx, requestParam) => {
         if (ctx.req.method === "GET") {
             if (ctx.req.query.task === "gzip") {
                 const data = ctx.req.query.data;
@@ -261,7 +272,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
         }
         return ctx.next(404);
     })
-        .get('/is-authenticate', (ctx) => {
+        .get('/is-authenticate', (ctx, requestParam) => {
         if (!ctx.req.query.loginId)
             return ctx.next(401);
         if (ctx.session.loginId !== ctx.req.query.loginId)
@@ -269,15 +280,15 @@ global.sow.server.on("register-view", (app, controller, server) => {
         ctx.res.json(ctx.session);
         return ctx.next(200);
     })
-        .any('/redirect', (ctx) => {
+        .any('/redirect', (ctx, requestParam) => {
         return ctx.redirect("/"), ctx.next(301, false);
     })
-        .any('/pass-error', (ctx) => {
+        .any('/pass-error', (ctx, requestParam) => {
         server.addError(ctx, new Error('test pass-error'));
         server.addError(ctx, 'test pass-error');
         return server.passError(ctx), void 0;
     })
-        .get('/authenticate', (ctx) => {
+        .get('/authenticate', (ctx, requestParam) => {
         if (!ctx.req.query.loginId) {
             if (!ctx.req.session.isAuthenticated)
                 return ctx.next(401);

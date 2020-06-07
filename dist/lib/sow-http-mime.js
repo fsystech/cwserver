@@ -65,7 +65,6 @@ class MimeHandler {
         const reqCacheHeader = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
         const cachePath = this.getCachePath(ctx);
         const existsCachFile = _fs.existsSync(cachePath);
-        // tslint:disable-next-line: one-variable-per-declaration
         let lastChangeTime = 0, cfileSize = 0;
         if (existsCachFile) {
             const stat = _fs.statSync(cachePath);
@@ -219,7 +218,6 @@ class MimeHandler {
         return this.servedFromServerFileCache(ctx, absPath, mimeType, stat);
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class HttpMimeHandler {
     constructor() {
         let part = "";

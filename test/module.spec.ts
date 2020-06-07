@@ -4,20 +4,24 @@
 * See the accompanying LICENSE file for terms.
 */
 // 4:38 AM 5/22/2020
+import 'mocha';
 import expect from 'expect';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as request from 'superagent';
+import * as io from 'socket.io-client';
 import * as cwserver from '../index';
 import { Session, ToNumber } from '../lib/sow-static';
 import { IAppUtility, IContext } from '../lib/sow-server';
+import {
+    IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
+} from '../lib/sow-router';
 import { IApps } from '../lib/sow-server-core';
 import { Util } from '../lib/sow-util';
 import { Schema } from '../lib/sow-schema-validator';
-import * as request from 'superagent';
-import * as io from 'socket.io-client';
+import { TemplateCore } from '../lib/sow-template';
 import { shouldBeError } from "./test-view";
 import { Logger } from '../lib/sow-logger';
-import 'mocha';
 let app: IApps;
 const appRoot = process.env.SCRIPT === "TS" ? path.join( path.resolve( __dirname, '..' ), "/dist/test/" ) : __dirname;
 const projectRoot = 'test_web';
@@ -119,7 +123,6 @@ describe( "cwserver-core", () => {
         expect( shouldBeError( () => {
             cwserver.initilizeServer( appRoot );
         } ) ).toBeInstanceOf( Error );
-        process.env.IISNODE_VERSION = "";
         done();
     } );
     it( "initilize server throw error (projectRoot not found)", ( done: Mocha.Done ): void => {
@@ -178,6 +181,35 @@ describe( "cwserver-core", () => {
             appIsLestening = true;
             done();
         } );
+    } );
+} );
+describe( "cwserver-router", () => {
+    it( "router validation", ( done: Mocha.Done ): void => {
+        expect( shouldBeError( () => {
+            getRouteMatcher( "/nobody/" );
+        } ) ).toBeInstanceOf( Error );
+        expect( getRouteMatcher( "/nobody/*" ).repRegExp ).toBeUndefined( );
+        const router: ILayerInfo<string>[] = [];
+        expect( getRouteInfo( "", router, "ANY" ) ).toBeUndefined();
+        router.push( {
+            method: "GET",
+            handler: "",
+            route: "/test/*",
+            pathArray: "/test/*".split( "/" ),
+            routeMatcher: getRouteMatcher( "/test/*" )
+        } );
+        expect( getRouteInfo( "", router, "ANY" ) ).toBeUndefined();
+        router.push( {
+            method: "GET",
+            handler: "",
+            route: "/vertual/*",
+            pathArray: [],
+            routeMatcher: void 0
+        } );
+        expect( getRouteInfo( "/vertual/test/body", router, "GET" ) ).toBeUndefined();
+        expect( pathToArray( "/vertual/test/body", [] ) ).not.toBeInstanceOf( Error );
+        expect( pathToArray( "dfa/", [] ) ).not.toBeInstanceOf( Error );
+        done();
     } );
 } );
 describe( "cwserver-view", () => {
@@ -349,10 +381,12 @@ describe( "cwserver-get", () => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-type"] ).toBe( "application/json" );
+                console.log( res.body );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.servedFrom ).toEqual( '/test-any/*' );
-                expect( res.body.q ).toBeInstanceOf( Array );
-                expect( res.body.q.indexOf( "param" ) ).toBeGreaterThan( -1 );
+                expect( res.body.q.query ).toBeInstanceOf( Object );
+                expect( res.body.q.match ).toBeInstanceOf( Array );
+                expect( res.body.q.match.indexOf( "param" ) ).toBeGreaterThan( -1 );
                 done();
             } );
     } );
@@ -365,15 +399,16 @@ describe( "cwserver-get", () => {
                 expect( res.header["content-type"] ).toBe( "application/json" );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.servedFrom ).toEqual( '/task/:id/*' );
-                expect( res.body.q ).toBeInstanceOf( Array );
-                expect( res.body.q.indexOf( "1" ) ).toBeGreaterThan( -1 );
-                expect( res.body.q.indexOf( "test_request" ) ).toBeGreaterThan( -1 );
+                expect( res.body.q.query ).toBeInstanceOf( Object );
+                expect( res.body.q.query.id ).toEqual( "1" );
+                expect( res.body.q.match ).toBeInstanceOf( Array );
+                expect( res.body.q.match.indexOf( "test_request" ) ).toBeGreaterThan( -1 );
                 done();
             } );
     } );
     it( 'test route target /dist/*', ( done: Mocha.Done ): void => {
         getAgent()
-            .get( `http://localhost:${appUtility.port}/dist` )
+            .get( `http://localhost:${appUtility.port}/dist/` )
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
@@ -412,7 +447,7 @@ describe( "cwserver-get", () => {
     } );
     it( 'target route /*', ( done: Mocha.Done ): void => {
         const route: string = "/*";
-        appUtility.controller.any( route, ( ctx: IContext, routeParam?: string[] ) => {
+        appUtility.controller.any( route, ( ctx: IContext, routeParam?: IRequestParam ) => {
             return ctx.res.json( { reqPath: ctx.path, servedFrom: "/*", q: routeParam } );
         } );
         appUtility.controller.sort();
@@ -526,6 +561,54 @@ describe( "cwserver-template-engine", () => {
                 done();
             } );
     } );
+    it( 'test template utility', ( done: Mocha.Done ): void => {
+        expect( TemplateCore.isScriptTemplate( "" ) ).toBe( false );
+        expect( shouldBeError( () => {
+            const sendBox = TemplateCore.compile();
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/readme.htmls\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
+                console.log( str );
+            } );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            TemplateCore.run( appUtility.server.getPublic(), `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
+                console.log( str );
+            } );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            TemplateCore.run( appUtility.server.getPublic(), `#attach /template/readme.htmls \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
+                console.log( str );
+            } );
+        } ) ).toBeInstanceOf( Error );
+        const filePath: string = path.resolve( `${appRoot}/${projectRoot}/template/invalid.html` );
+        fs.writeFileSync( filePath, "INVALID_FILE" );
+        expect( shouldBeError( () => {
+            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
+                console.log( str );
+            } );
+        } ) ).toBeInstanceOf( Error );
+        fs.writeFileSync( filePath, "<placeholder id><placeholder/>" );
+        expect( shouldBeError( () => {
+            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
+                console.log( str );
+            } );
+        } ) ).toBeInstanceOf( Error );
+        fs.writeFileSync( filePath, '<placeholder id=""><placeholder/>' );
+        expect( shouldBeError( () => {
+            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
+                console.log( str );
+            } );
+        } ) ).toBeInstanceOf( Error );
+        fs.writeFileSync( filePath, '<placeholder id="test">\r\n</placeholder>{% ERROR %} {= NOPX =}\r\n\r\n\r\n' );
+        expect( shouldBeError( () => {
+            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id="test">\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
+                console.log( str );
+            } );
+        } ) ).toBeInstanceOf( Error );
+        fs.unlinkSync( filePath );
+        done();
+    } )
 } );
 describe( "cwserver-bundler", () => {
     let eTag: string = "";
@@ -546,6 +629,7 @@ describe( "cwserver-bundler", () => {
                 ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
             } )
             .end( ( err, res ) => {
+                console.log( err );
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-type"] ).toBe( "application/x-javascript; charset=utf-8" );
@@ -1328,7 +1412,7 @@ describe( "cwserver-controller-reset", () => {
     } );
     it( 'should be route not found', ( done: Mocha.Done ): void => {
         getAgent()
-            .get( `http://localhost:${appUtility.port}/app-error` )
+            .get( `http://localhost:${appUtility.port}/app-errors` )
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 404 );
@@ -1337,7 +1421,7 @@ describe( "cwserver-controller-reset", () => {
     } );
     it( 'no controller found for put', ( done: Mocha.Done ): void => {
         getAgent()
-            .delete( `http://localhost:${appUtility.port}/app-error` )
+            .delete( `http://localhost:${appUtility.port}/app-errors` )
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 404 );
@@ -1363,6 +1447,28 @@ describe( "cwserver-controller-reset", () => {
 } );
 describe( "cwserver-utility", () => {
     it( "test-app-utility", ( done: Mocha.Done ): void => {
+        ( () => {
+            const old = appUtility.server.config.session.cookie;
+            appUtility.server.config.session.cookie = "";
+            expect( shouldBeError( () => {
+                appUtility.server.parseSession( "" );
+            } ) ).toBeInstanceOf( Error );
+            appUtility.server.config.session.cookie = old;
+            expect( appUtility.server.parseSession( "" ).isAuthenticated ).toBeFalsy();
+            expect( appUtility.server.escape() ).toBeDefined();
+            expect( appUtility.server.pathToUrl( `/${projectRoot}/test.png` ) ).toBeDefined();
+            const oldPort: string | number = appUtility.server.config.hostInfo.port;
+            appUtility.server.config.hostInfo.port = 0;
+            const newConfig: { [x: string]: any; } = appUtility.server.config;
+            expect( shouldBeError( () => {
+                appUtility.server.implimentConfig( newConfig );
+            } ) ).toBeInstanceOf( Error );
+            process.env.PORT = "8080";
+            expect( shouldBeError( () => {
+                appUtility.server.implimentConfig( newConfig );
+            } ) ).toBeInstanceOf( Error );
+            appUtility.server.config.hostInfo.port = oldPort;
+        } )();
         expect( shouldBeError( () => {
             cwserver.HttpStatus.isErrorCode( "adz" );
         } ) ).toBeInstanceOf( Error );
@@ -1856,6 +1962,8 @@ describe( "cwserver-schema-validator", () => {
         fs.renameSync( distPath, absPath );
         done();
     } );
+} );
+describe( "finalization", () => {
     it( "shutdown-application", ( done: Mocha.Done ): void => {
         shutdownApp( done );
     } );

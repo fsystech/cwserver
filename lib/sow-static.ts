@@ -29,7 +29,6 @@ export class Session implements ISession {
         this.userData = void 0;
     };
 }
-// tslint:disable-next-line: max-classes-per-file
 export class ResInfo implements IResInfo {
     code: number;
     isValid: boolean;

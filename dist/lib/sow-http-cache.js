@@ -2,7 +2,6 @@
 Object.defineProperty( exports, "__esModule", { value: true } );
 exports.SowHttpCache = void 0;
 const sow_static_1 = require( "./sow-static" );
-// tslint:disable-next-line: no-namespace
 ( function ( SowHttpCache ) {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
     function getIfModifiedSinceUTCTime( headers ) {
@@ -48,7 +47,6 @@ const sow_static_1 = require( "./sow-static" );
     SowHttpCache.writeCacheHeader = writeCacheHeader;
     /** Create and Gets {etag} (timestamp ^ fsize). */
     function getEtag( timestamp, fsize ) {
-        // tslint:disable-next-line: no-bitwise
         return `W/${( timestamp ^ fsize )}`;
     }
     SowHttpCache.getEtag = getEtag;

@@ -44,14 +44,13 @@ function propertiValidate(
 	schemaProperties: IProperties,
 	additionalProperties: boolean
 ): void {
-	// tslint:disable-next-line: forin
 	for ( const prop in configProperties ) {
-		const svalue = schemaProperties[prop];
+		const svalue: IPropertiesDescription | undefined = schemaProperties[prop];
 		if ( !svalue ) {
 			if ( additionalProperties ) continue;
 			throw new Error( `ERROR: Configuration doesn't match the required schema. Data path "${dataPath}" should NOT have additional property (${prop}).` );
 		}
-		const cvalue = configProperties[prop];
+		const cvalue: any = configProperties[prop];
 		if ( svalue.type === "array" ) {
 			if ( !Util.isArrayLike( cvalue ) ) {
 				throw new Error( `ERROR: Data path "${dataPath}.${prop}" should be value type ${svalue.type}` );
@@ -81,9 +80,7 @@ function schemaValidate(
 ): void {
 	// check config properties are valid
 	propertiValidate( dataPath, configProperties, schemaProperties, additionalProperties );
-	// tslint:disable-next-line: forin
 	for ( const prop in schemaProperties ) {
-		// const hasProp = configProperties.hasOwnProperty( prop );
 		const cvalue = configProperties[prop];
 		const svalue = schemaProperties[prop];
 		const valueType = typeof ( cvalue );
@@ -144,7 +141,6 @@ function schemaValidate(
 		}
 	}
 }
-// tslint:disable-next-line: no-namespace
 export namespace Schema {
 	export function Validate( config: { [id: string]: any } | any ): void {
 		const parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ): _path.resolve( __dirname, '../..' );

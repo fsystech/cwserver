@@ -19,7 +19,7 @@ var __importStar = ( this && this.__importStar ) || function ( mod ) {
     return result;
 };
 Object.defineProperty( exports, "__esModule", { value: true } );
-exports.Template = void 0;
+exports.Template = exports.TemplateCore = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -41,7 +41,6 @@ class ParserInfo {
         this.isLastTag = false;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class ScriptTag {
     constructor( l, lre, r, rre, repre ) {
         this.l = l;
@@ -51,22 +50,21 @@ class ScriptTag {
         this.repre = repre;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class Tag {
     constructor() {
         this.script = new ScriptTag( '{%', /{%/g, '%}', /%}/g, /{=(.+?)=}/g );
         this.write = new ScriptTag( '{=', /{=/g, '=}', /=}/g, /{=(.+?)=}/g );
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class ScriptParser {
     constructor() {
         this.tag = new Tag();
     }
     startTage( parserInfo ) {
         if ( parserInfo.line.indexOf( parserInfo.tag ) <= -1 ) {
-            // tslint:disable-next-line: no-unused-expression
-            !parserInfo.isLastTag ? undefined : parserInfo.isTagEnd === true ? parserInfo.line = parserInfo.line + "\x0f; __RSP += \x0f" : '';
+            if ( parserInfo.isLastTag && parserInfo.isTagEnd ) {
+                parserInfo.line = parserInfo.line + "\x0f; __RSP += \x0f";
+            }
             return;
         }
         parserInfo.isTagStart = true;
@@ -116,7 +114,6 @@ class ScriptParser {
         return;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class TemplateParser {
     static implimentAttachment( appRoot, str ) {
         if ( /#attach/gi.test( str ) === false )
@@ -137,7 +134,7 @@ class TemplateParser {
                 throw new Error( `Invalid template format... ${key}` );
             }
             const tmplId = tmplArr[1];
-            if ( !tmplId ) {
+            if ( !tmplId || ( tmplId && tmplId.trim().length === 0 ) ) {
                 throw new Error( `Invalid template format... ${key}` );
             }
             let implStr = void 0;
@@ -163,7 +160,7 @@ class TemplateParser {
                 break;
             }
             const found = match[1];
-            if ( !found ) {
+            if ( !found || ( found && found.trim().length === 0 ) ) {
                 throw new Error( "Invalid template format..." );
             }
             const path = found.replace( /#extends/gi, "" ).replace( /\r\n/gi, "" ).trim();
@@ -204,33 +201,7 @@ class TemplateParser {
 const _tw = {
     cache: {}
 };
-// tslint:disable-next-line: max-classes-per-file
 class TemplateCore {
-    static processResponse( status ) {
-        return ( ctx, body, isCompressed ) => {
-            ctx.res.set( 'Cache-Control', 'no-store' );
-            if ( isCompressed && isCompressed === true ) {
-                return _zlib.gzip( Buffer.from( body ), ( error, buff ) => {
-                    if ( error ) {
-                        ctx.server.addError( ctx, error );
-                        return ctx.next( 500, true );
-                    }
-                    ctx.res.writeHead( status.code, {
-                        'Content-Type': 'text/html',
-                        'Content-Encoding': 'gzip',
-                        'Content-Length': buff.length
-                    } );
-                    ctx.res.end( buff );
-                    ctx.next( status.code, status.isErrorCode === false );
-                } ), void 0;
-            }
-            ctx.res.writeHead( status.code, {
-                'Content-Type': 'text/html',
-                'Content-Length': Buffer.byteLength( body )
-            } );
-            return ctx.res.end( body ), ctx.next( status.code, status.isErrorCode === false );
-        };
-    }
     static compile( str, next ) {
         if ( !str ) {
             throw new Error( "No script found to compile...." );
@@ -250,15 +221,13 @@ class TemplateCore {
     static parseScript( str ) {
         str = str.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
         const script = str.split( '\n' );
-        if ( script.length === 0 || script === null )
-            return void 0;
         let out = "";
         out = '/*__sow_template_script__*/';
         const scriptParser = new ScriptParser();
         const parserInfo = new ParserInfo();
         for ( parserInfo.line of script ) {
             out += "\n";
-            if ( !parserInfo.line ) {
+            if ( !parserInfo.line || ( parserInfo.line && parserInfo.line.trim().length === 0 ) ) {
                 out += "\r\n__RSP += '';";
                 continue;
             }
@@ -315,14 +284,45 @@ class TemplateCore {
         if ( this.isScript( str ) ) {
             return this.compile( this.parseScript( str ), next );
         }
-        // tslint:disable-next-line: no-unused-expression
-        return ( isTemplate ? ( next ? next( str, false ) : void 0 ) : void 0 ), str;
+        if ( isTemplate ) {
+            if ( next )
+                next( str, false );
+        }
+        return str;
+    }
+}
+exports.TemplateCore = TemplateCore;
+class TemplateLink {
+    static processResponse( status ) {
+        return ( ctx, body, isCompressed ) => {
+            ctx.res.set( 'Cache-Control', 'no-store' );
+            if ( isCompressed && isCompressed === true ) {
+                return _zlib.gzip( Buffer.from( body ), ( error, buff ) => {
+                    if ( error ) {
+                        ctx.server.addError( ctx, error );
+                        return ctx.next( 500, true );
+                    }
+                    ctx.res.writeHead( status.code, {
+                        'Content-Type': 'text/html',
+                        'Content-Encoding': 'gzip',
+                        'Content-Length': buff.length
+                    } );
+                    ctx.res.end( buff );
+                    ctx.next( status.code, status.isErrorCode === false );
+                } ), void 0;
+            }
+            ctx.res.writeHead( status.code, {
+                'Content-Type': 'text/html',
+                'Content-Length': Buffer.byteLength( body )
+            } );
+            return ctx.res.end( body ), ctx.next( status.code, status.isErrorCode === false );
+        };
     }
     static tryLive( ctx, path, status ) {
         const url = sow_util_1.Util.isExists( path, ctx.next );
         if ( !url )
             return;
-        const result = this.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
+        const result = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
         if ( typeof ( result ) === "function" ) {
             return result( ctx, this.processResponse( status ), false );
         }
@@ -337,7 +337,7 @@ class TemplateCore {
             const url = sow_util_1.Util.isExists( path, ctx.next );
             if ( !url )
                 return;
-            cache = this.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
+            cache = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
             _tw.cache[key] = cache;
         }
         if ( typeof ( cache ) === "function" ) {
@@ -366,14 +366,14 @@ class TemplateCore {
         }
         let cache;
         if ( !readCache ) {
-            cache = this.run( ctx.server.getPublic(), _fs.readFileSync( filePath, "utf8" ).replace( /^\uFEFF/, '' ), !ctx.server.config.template.cache ? void 0 : ( str ) => {
+            cache = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( filePath, "utf8" ).replace( /^\uFEFF/, '' ), !ctx.server.config.template.cache ? void 0 : ( str ) => {
                 _fs.writeFileSync( cachePath, str );
             } );
         }
         else {
             cache = _fs.readFileSync( cachePath, "utf8" ).replace( /^\uFEFF/, '' );
-            if ( this.isScriptTemplate( cache ) ) {
-                cache = this.compile( cache );
+            if ( TemplateCore.isScriptTemplate( cache ) ) {
+                cache = TemplateCore.compile( cache );
             }
         }
         if ( typeof ( cache ) === "function" ) {
@@ -384,8 +384,6 @@ class TemplateCore {
         return ctx.res.end( cache ), ctx.next( status.code, status.isErrorCode === false );
     }
 }
-// tslint:disable-next-line: max-classes-per-file
-// tslint:disable-next-line: no-namespace
 ( function ( Template ) {
     function parse( ctx, path, status ) {
         if ( !status )
@@ -393,12 +391,12 @@ class TemplateCore {
         try {
             ctx.servedFrom = ctx.server.pathToUrl( path );
             if ( !ctx.server.config.template.cache ) {
-                return TemplateCore.tryLive( ctx, path, status );
+                return TemplateLink.tryLive( ctx, path, status );
             }
             if ( ctx.server.config.template.cache && ctx.server.config.template.cacheType === "MEM" ) {
-                return TemplateCore.tryMemCache( ctx, path, status );
+                return TemplateLink.tryMemCache( ctx, path, status );
             }
-            return TemplateCore.tryFileCacheOrLive( ctx, path, status );
+            return TemplateLink.tryFileCacheOrLive( ctx, path, status );
         }
         catch ( ex ) {
             ctx.path = path;

@@ -8,7 +8,6 @@ exports.Streamer = void 0;
 */
 // 9:19 PM 5/8/2020
 const fs_1 = require( "fs" );
-// tslint:disable-next-line: no-namespace
 ( function ( Streamer ) {
     function stream( ctx, absPath, mimeType, fstat ) {
         var _a;

@@ -12,6 +12,7 @@ exports.App = exports.parseCookie = void 0;
 // 2:40 PM 5/7/2020
 const http_1 = require("http");
 const events_1 = require("events");
+const sow_router_1 = require("./sow-router");
 const sow_static_1 = require("./sow-static");
 const sow_template_1 = require("./sow-template");
 const url_1 = __importDefault(require("url"));
@@ -54,7 +55,7 @@ class Request extends http_1.IncomingMessage {
     init() {
         var _a;
         this.q = url_1.default.parse(this.url || "", true);
-        this.path = this.q.pathname || "";
+        this.path = this.q.pathname ? decodeURIComponent(this.q.pathname) : "";
         if (this.socket.remoteAddress) {
             this.ip = this.socket.remoteAddress;
         }
@@ -118,7 +119,6 @@ const getCommonHeader = (contentType, contentLength, isGzip) => {
     }
     return header;
 };
-// tslint:disable-next-line: max-classes-per-file
 class Response extends http_1.ServerResponse {
     asHTML(code, contentLength, isGzip) {
         return this.writeHead(code, getCommonHeader('text/html; charset=UTF-8', contentLength, isGzip)), this;
@@ -171,39 +171,6 @@ class Response extends http_1.ServerResponse {
         return this;
     }
 }
-const getRouteHandler = (reqPath, handlers) => {
-    const router = handlers.filter(a => {
-        if (a.regexp)
-            return a.regexp.test(reqPath);
-        return false;
-    });
-    if (router.length === 0)
-        return void 0;
-    // if ( router.length > 1 ) {
-    //    // let handler: HandlerFunc | undefined;
-    //    let higestLen = -1;
-    //    let index = -1;
-    //    for ( const row of router ) {
-    //        index++;
-    //        if ( !row.route ) continue;
-    //        if ( row.route.length > higestLen ) {
-    //            higestLen = row.route.length;
-    //        }
-    //    }
-    //    if ( index < 0 || higestLen < 0 ) return void 0;
-    //    return router[index];
-    // }
-    return router[0];
-};
-const pathRegx = new RegExp('/', "gi");
-function getRouteExp(route) {
-    if (route.charAt(route.length - 1) === '/') {
-        route = route.substring(0, route.length - 2);
-    }
-    route = route.replace(pathRegx, "\\/");
-    return new RegExp(`^${route}\/?(?=\/|$)`, "gi");
-}
-// tslint:disable-next-line: max-classes-per-file
 class Application extends events_1.EventEmitter {
     constructor(server) {
         super();
@@ -244,13 +211,16 @@ class Application extends events_1.EventEmitter {
                 return inf.handler.call(this, req, res, _next);
             if (isRouted)
                 return _next();
-            const layer = getRouteHandler(req.path.substring(0, req.path.lastIndexOf("/")) || "/", handlers);
+            const routeInfo = sow_router_1.getRouteInfo(req.path, handlers, "ANY");
             isRouted = true;
-            if (layer) {
-                if (layer.regexp)
-                    req.path = req.path.replace(layer.regexp, "");
+            if (routeInfo) {
+                if (routeInfo.layer.routeMatcher) {
+                    const repRegx = routeInfo.layer.routeMatcher.repRegExp;
+                    if (repRegx)
+                        req.path = req.path.replace(repRegx, "");
+                }
                 try {
-                    return layer.handler.call(this, req, res, _next);
+                    return routeInfo.layer.handler.call(this, req, res, _next);
                 }
                 catch (e) {
                     return next(e);
@@ -290,16 +260,31 @@ class Application extends events_1.EventEmitter {
     prerequisites(handler) {
         if (typeof (handler) !== "function")
             throw new Error("handler should be function....");
-        return this._prerequisitesHandler.push({ handler, regexp: void 0 }), this;
+        return this._prerequisitesHandler.push({
+            handler, routeMatcher: void 0, pathArray: [], method: "ANY", route: ""
+        }), this;
     }
     use(...args) {
         const argtype0 = typeof (args[0]);
         const argtype1 = typeof (args[1]);
         if (argtype0 === "function") {
-            return this._appHandler.push({ handler: args[0], regexp: void 0 }), this;
+            return this._appHandler.push({
+                handler: args[0], routeMatcher: void 0,
+                pathArray: [], method: "ANY", route: ""
+            }), this;
         }
         if (argtype0 === "string" && argtype1 === "function") {
-            return this._appHandler.push({ route: args[0], handler: args[1], regexp: getRouteExp(args[0]) }), this;
+            const route = args[0];
+            if (route.indexOf(":") > -1) {
+                throw new Error(`Unsupported symbol defined. ${route}`);
+            }
+            const isVirtual = typeof (args[2]) === "boolean" ? args[2] : false;
+            return this._appHandler.push({
+                route,
+                handler: args[1],
+                routeMatcher: sow_router_1.getRouteMatcher(route, isVirtual),
+                pathArray: [], method: "ANY"
+            }), this;
         }
         throw new Error("Invalid arguments...");
     }
@@ -317,7 +302,6 @@ class Application extends events_1.EventEmitter {
         }), this;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class Apps extends events_1.EventEmitter {
     constructor() {
         super();
@@ -343,7 +327,6 @@ class Apps extends events_1.EventEmitter {
     getHttpServer() {
         return this._app.server;
     }
-    // tslint:disable-next-line: ban-types
     listen(handle, listeningListener) {
         return this._app.listen(handle, listeningListener), this;
     }

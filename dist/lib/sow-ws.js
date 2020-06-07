@@ -40,7 +40,6 @@ function wsClient() {
     return new WsClientInfo();
 }
 exports.wsClient = wsClient;
-// tslint:disable-next-line: max-classes-per-file
 class SowSocket {
     constructor(server, wsClientInfo) {
         this.implimented = false;
@@ -50,7 +49,7 @@ class SowSocket {
         this._wsClients = wsClientInfo;
     }
     isActiveSocket(token) {
-        return this.socket.some((a) => { return a.token === token; });
+        return this.socket.some(soc => soc.token === token);
     }
     getOwners(group) {
         return group ? this.socket.filter(soc => soc.isOwner === true && soc.group === group) : this.socket.filter(soc => soc.isOwner === true);
@@ -85,9 +84,8 @@ class SowSocket {
         return this.socket.find(soc => soc.token === token);
     }
     removeSocket(token) {
-        let index = -1;
-        this.socket.find((soc, i) => {
-            return (soc.token === token ? (index = i, true) : false);
+        const index = this.socket.findIndex((soc) => {
+            return soc.token === token;
         });
         if (index < 0)
             return false;
@@ -124,14 +122,9 @@ class SowSocket {
         return io.on("connect", (socket) => {
             this.connected = socket.connected;
         }).on('connection', (socket) => {
-            // if ( !socket.request.session ) {
-            //    socket.request.session = this._server.parseSession( socket.handshake.headers.cookie );
-            // }
-            // if ( !this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) return void 0;
             const _me = (() => {
-                const token = sow_util_1.Util.guid();
-                this.socket.push({
-                    token,
+                const socketInfo = {
+                    token: sow_util_1.Util.guid(),
                     loginId: socket.request.session.loginId,
                     hash: socket.request.session.isAuthenticated ? sow_encryption_1.Encryption.toMd5(socket.request.session.loginId) : void 0,
                     socketId: socket.id,
@@ -141,23 +134,18 @@ class SowSocket {
                     isReconnectd: false,
                     getSocket: () => { return socket; },
                     sendMsg: (method, data) => {
-                        if (!socket)
-                            return this;
-                        return socket.emit(method, data), this;
+                        return socket.emit(method, data), void 0;
                     },
-                });
-                const socketInfo = this.getSocket(token);
-                if (!socketInfo)
-                    throw new Error("Should not here...");
+                };
+                this.socket.push(socketInfo);
                 return socketInfo;
             })();
-            socket.on('disconnect', () => {
+            socket.on('disconnect', (...args) => {
                 if (!this.removeSocket(_me.token))
                     return;
                 return this._wsClients.emit("disConnected", _me, this), void 0;
             });
             const client = this._wsClients.client(_me, socket.request.session, this, this._server);
-            // tslint:disable-next-line: forin
             for (const method in client) {
                 socket.on(method, client[method]);
             }

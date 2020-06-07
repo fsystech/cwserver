@@ -25,8 +25,6 @@ export class CryptoInfo implements ICryptoInfo {
         this.key = void 0; this.iv = void 0;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
-// tslint:disable-next-line: no-namespace
 export namespace Encryption {
     export function utf8ToHex( str: string) {
         return Buffer.from( str, 'utf8' ).toString( 'hex' );

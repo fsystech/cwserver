@@ -5,7 +5,6 @@
 */
 // 4:48 PM 5/3/2020
 import * as _fs from 'fs';
-// import { Readable, Writable, Transform } from 'stream';
 import * as _path from 'path';
 import * as _zlib from 'zlib';
 import { Encryption } from './sow-encryption';
@@ -19,10 +18,10 @@ enum ContentType {
     CSS= 1,
     UNKNOWN= -1
 }
-type BundlerFile = { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean };
+type BundlerFiles = { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean };
 interface IBundleInfo {
     error: boolean;
-    files: BundlerFile[];
+    files: BundlerFiles[];
     msg: string | Error;
 }
 const responseWriteGzip = (
@@ -43,7 +42,7 @@ const responseWriteGzip = (
 }
 class BundleInfo implements IBundleInfo {
     error: boolean;
-    files: BundlerFile[];
+    files: BundlerFiles[];
     msg: string | Error;
     constructor() {
         this.error = false;
@@ -51,8 +50,6 @@ class BundleInfo implements IBundleInfo {
         this.msg = "";
     }
 }
-
-// tslint:disable-next-line: max-classes-per-file
 class Bundlew {
     static getInfo(): string {
         return `/*
@@ -92,21 +89,20 @@ This 'Combiner' contains the following files:\n`;
     }
     static getFiles(
         server: ISowServer, str: string,
-        lastChangeTime?: number | void ): IBundleInfo {
+        lastChangeTime?: number | void
+    ): IBundleInfo {
         const result: IBundleInfo = new BundleInfo();
-        if ( typeof ( lastChangeTime ) !== "number" ) lastChangeTime = 0;
+        const lchangeTime: number = typeof ( lastChangeTime ) === "number" ? lastChangeTime : 0;
         try {
-            // let files: Array<{ name: string, absolute: string, change_time: number, is_change: boolean, is_own: boolean }> = [];
-            str.split( "," ).forEach( ( name: string ): void => {
+            const files: string[] = str.split( "," );
+            for ( let name of files ) {
                 let isOwn: boolean = false;
-                const partIndex: number = name.indexOf( "|" );
-                if ( partIndex > 0 ) {
+                if ( name.indexOf( "|" ) > 0 ) {
                     const spl: string[] = name.split( "|" );
                     name = spl[0];
                     if ( spl[1] === "__owner__" ) isOwn = true;
                     spl.length = 0;
                 }
-
                 if ( /\$/gi.test( name ) === false ) {
                     name = `$root/$public/${name}`;
                 }
@@ -128,10 +124,11 @@ This 'Combiner' contains the following files:\n`;
                     name: name.replace( /\$.+?\//gi, "/" ),
                     absolute,
                     changeTime,
-                    isChange: lastChangeTime && lastChangeTime === 0 ? true : ( lastChangeTime && lastChangeTime > 0 && changeTime > lastChangeTime ? true : false ),
+                    isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
                     isOwn
                 } );
-            } );
+            }
+            files.length = 0;
             result.error = false;
             return result;
         } catch ( e ) {
@@ -141,8 +138,8 @@ This 'Combiner' contains the following files:\n`;
         }
     }
     static readBuffer( bundleInfo: IBundleInfo, copyright: string ): Buffer {
-        const out = [];
-        let istr = this.getInfo();
+        const out: Buffer[] = [];
+        let istr: string = this.getInfo();
         bundleInfo.files.forEach( ( inf, index ) => {
             istr += `${index + 1}==>${inf.name}\r\n`;
         } );
@@ -177,9 +174,9 @@ This 'Combiner' contains the following files:\n`;
         if ( !str || !ct ) {
             return ctx.next( 404 );
         }
-        const cte = this.getContentType( ct.toString() );
+        const cte: ContentType = this.getContentType( ct.toString() );
         if ( cte === ContentType.UNKNOWN ) return ctx.next( 404 );
-        const desc = this.decryptFilePath( server, ctx, str.toString() );
+        const desc: string | void = this.decryptFilePath( server, ctx, str.toString() );
         if ( !desc ) return;
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
         const bundleInfo: IBundleInfo = this.getFiles( server, desc.toString(), cngHander.sinceModify );
@@ -187,7 +184,7 @@ This 'Combiner' contains the following files:\n`;
             server.addError( ctx, bundleInfo.msg );
             return ctx.next( 500 );
         }
-        let hasChanged = true;
+        let hasChanged: boolean = true;
         if ( cngHander.sinceModify ) {
             hasChanged = bundleInfo.files.some( a => a.isChange === true );
         }
@@ -216,17 +213,17 @@ This 'Combiner' contains the following files:\n`;
         if ( !str || !cacheKey || !ct ) {
             return ctx.next( 404 );
         }
-        const cte = this.getContentType( ct.toString() );
+        const cte: ContentType = this.getContentType( ct.toString() );
         if ( cte === ContentType.UNKNOWN ) return ctx.next( 404 );
-        const desc = this.decryptFilePath( server, ctx, str.toString() );
+        const desc: string | void = this.decryptFilePath( server, ctx, str.toString() );
         if ( !desc ) return;
-        const cachpath = this.getCachePath( server, desc.toString(), cte, cacheKey.toString() );
+        const cachpath: string = this.getCachePath( server, desc.toString(), cte, cacheKey.toString() );
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
-        const existsCachFile = _fs.existsSync( cachpath );
-        // tslint:disable-next-line: one-variable-per-declaration
-        let lastChangeTime = 0, cfileSize = 0;
+        const existsCachFile: boolean = _fs.existsSync( cachpath );
+        let lastChangeTime: number = 0;
+        let cfileSize: number = 0;
         if ( existsCachFile ) {
-            const stat = _fs.statSync( cachpath );
+            const stat: _fs.Stats = _fs.statSync( cachpath );
             cfileSize = stat.size;
             lastChangeTime = stat.mtime.getTime();
         }
@@ -235,13 +232,13 @@ This 'Combiner' contains the following files:\n`;
             server.addError( ctx, bundleInfo.msg );
             return ctx.next( 500 );
         }
-        let hasChanged = true;
+        let hasChanged: boolean = true;
         if ( existsCachFile ) {
             hasChanged = bundleInfo.files.some( a => a.isChange === true );
         }
-        const etag = cfileSize !== 0 ? SowHttpCache.getEtag( lastChangeTime, cfileSize ) : void 0;
+        const etag: string | undefined = cfileSize !== 0 ? SowHttpCache.getEtag( lastChangeTime, cfileSize ) : void 0;
         if ( !hasChanged && existsCachFile && ( cngHander.etag || cngHander.sinceModify ) ) {
-            let exit = false;
+            let exit: boolean = false;
             if ( etag && cngHander.etag ) {
                 if ( cngHander.etag === etag ) {
                     SowHttpCache.writeCacheHeader( ctx.res, {}, server.config.cacheHeader );
@@ -280,7 +277,7 @@ This 'Combiner' contains the following files:\n`;
         if ( !server.config.bundler.compress ) {
             const buff: Buffer = this.readBuffer( bundleInfo, server.copyright() );
             _fs.writeFileSync( cachpath, buff );
-            const stat = _fs.statSync( cachpath );
+            const stat: _fs.Stats = _fs.statSync( cachpath );
             lastChangeTime = stat.mtime.getTime();
             SowHttpCache.writeCacheHeader( ctx.res, {
                 lastChangeTime,
@@ -299,7 +296,7 @@ This 'Combiner' contains the following files:\n`;
                 return ctx.next( 500 );
             }
             _fs.writeFileSync( cachpath, buff );
-            const stat = _fs.statSync( cachpath );
+            const stat: _fs.Stats = _fs.statSync( cachpath );
             lastChangeTime = stat.mtime.getTime();
             SowHttpCache.writeCacheHeader( ctx.res, {
                 lastChangeTime,
@@ -322,11 +319,10 @@ const isAcceptedEncoding = ( req: IRequest, name: string ): boolean => {
 }
 // tslint:disable-next-line: variable-name
 export const __moduleName: string = "Bundler";
-// tslint:disable-next-line: max-classes-per-file
 export class Bundler {
     public static Init( app: IApplication, controller: IController, server: ISowServer ): void {
         controller.get( server.config.bundler.route, ( ctx: IContext ): void => {
-            const isGzip = isAcceptedEncoding( ctx.req, "gzip" );
+            const isGzip: boolean = isAcceptedEncoding( ctx.req, "gzip" );
             if ( !isGzip || server.config.bundler.fileCache === false ) return Bundlew.createMemmory( server, ctx, isGzip );
             return Bundlew.createServerFileCache( server, ctx );
         } );

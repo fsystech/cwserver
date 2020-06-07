@@ -11,7 +11,8 @@ import { Util } from './sow-util';
 import { HttpStatus } from './sow-http-status';
 import { IResInfo } from './sow-static';
 import { IContext } from './sow-server';
-type SendBox = ( ctx: IContext, next: ( ctx: IContext, body: string, isCompressed?: boolean ) => void, isCompressed?: boolean ) => void;
+type SendBoxNext = ( ctx: IContext, body: string, isCompressed?: boolean ) => void;
+export type SendBox = ( ctx: IContext, next: SendBoxNext, isCompressed?: boolean ) => void;
 interface IScriptTag {
     l: string;
     lre: RegExp;
@@ -49,7 +50,6 @@ class ParserInfo implements IParserInfo {
         this.isLastTag = false;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class ScriptTag implements IScriptTag {
     public l: string;
     public lre: RegExp;
@@ -63,7 +63,6 @@ class ScriptTag implements IScriptTag {
         this.rre = rre; this.repre = repre;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class Tag implements ITag {
     public script: IScriptTag;
     public write: IScriptTag;
@@ -72,7 +71,6 @@ class Tag implements ITag {
         this.write = new ScriptTag( '{=', /{=/g, '=}', /=}/g, /{=(.+?)=}/g );
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class ScriptParser implements IScriptParser {
     tag: ITag;
     constructor() {
@@ -80,8 +78,9 @@ class ScriptParser implements IScriptParser {
     }
     startTage( parserInfo: IParserInfo ): void {
         if ( parserInfo.line.indexOf( parserInfo.tag ) <= -1 ) {
-            // tslint:disable-next-line: no-unused-expression
-            !parserInfo.isLastTag ? undefined : parserInfo.isTagEnd === true ? parserInfo.line = parserInfo.line + "\x0f; __RSP += \x0f" : '';
+            if ( parserInfo.isLastTag && parserInfo.isTagEnd  ) {
+                parserInfo.line = parserInfo.line + "\x0f; __RSP += \x0f";
+            }
             return;
         }
         parserInfo.isTagStart = true;
@@ -130,7 +129,6 @@ class ScriptParser implements IScriptParser {
         return;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class TemplateParser {
     private static implimentAttachment( appRoot: string, str: string ): string {
         if ( /#attach/gi.test( str ) === false ) return str;
@@ -150,7 +148,7 @@ class TemplateParser {
                 throw new Error( `Invalid template format... ${key}` );
             }
             const tmplId = tmplArr[1];
-            if ( !tmplId ) {
+            if ( !tmplId || ( tmplId && tmplId.trim().length === 0 ) ) {
                 throw new Error( `Invalid template format... ${key}` );
             }
             let implStr: any = void 0;
@@ -174,7 +172,7 @@ class TemplateParser {
                 templats.push( str ); break;
             }
             const found: string | undefined = match[1];
-            if ( !found ) {
+            if ( !found || ( found && found.trim().length === 0 ) ) {
                 throw new Error( "Invalid template format..." );
             }
             const path = found.replace( /#extends/gi, "" ).replace( /\r\n/gi, "" ).trim();
@@ -216,34 +214,8 @@ class TemplateParser {
 const _tw: { [x: string]: any } = {
     cache: {}
 }
-// tslint:disable-next-line: max-classes-per-file
-class TemplateCore {
-    private static processResponse( status: IResInfo ): ( ctx: IContext, body: string, isCompressed?: boolean ) => void {
-        return ( ctx: IContext, body: string, isCompressed?: boolean ): void => {
-            ctx.res.set( 'Cache-Control', 'no-store' );
-            if ( isCompressed && isCompressed === true ) {
-                return _zlib.gzip( Buffer.from( body ), ( error: Error | null, buff: Buffer ) => {
-                    if ( error ) {
-                        ctx.server.addError( ctx, error );
-                        return ctx.next( 500, true );
-                    }
-                    ctx.res.writeHead( status.code, {
-                        'Content-Type': 'text/html',
-                        'Content-Encoding': 'gzip',
-                        'Content-Length': buff.length
-                    } );
-                    ctx.res.end( buff );
-                    ctx.next( status.code, status.isErrorCode === false );
-                } ), void 0;
-            }
-            ctx.res.writeHead( status.code, {
-                'Content-Type': 'text/html',
-                'Content-Length': Buffer.byteLength( body )
-            } );
-            return ctx.res.end( body ), ctx.next( status.code, status.isErrorCode === false );
-        }
-    }
-    private static compile(
+export class TemplateCore {
+    public static compile(
         str?: string, next?: ( str: string, isScript?: boolean ) => void
     ): SendBox {
         if ( !str ) {
@@ -267,14 +239,13 @@ class TemplateCore {
     private static parseScript( str: string ): string | undefined {
         str = str.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
         const script = str.split( '\n' );
-        if ( script.length === 0 || script === null ) return void 0;
         let out = "";
         out = '/*__sow_template_script__*/';
         const scriptParser: IScriptParser = new ScriptParser();
         const parserInfo: IParserInfo = new ParserInfo();
         for ( parserInfo.line of script ) {
             out += "\n";
-            if ( !parserInfo.line ) {
+            if ( !parserInfo.line || ( parserInfo.line && parserInfo.line.trim().length === 0 ) ) {
                 out += "\r\n__RSP += '';"; continue;
             }
             // parserInfo.line = parserInfo.line.replace( /^\s*|\s*$/g, ' ' );
@@ -308,19 +279,19 @@ class TemplateCore {
         }
         return false;
     }
-    private static isTemplate( str: string ): boolean {
+    public static isTemplate( str: string ): boolean {
         if ( /#attach/gi.test( str ) === true
             || /#extends/gi.test( str ) === true ) {
             return true;
         }
         return false;
     }
-    private static isScriptTemplate( str: string ): boolean {
+    public static isScriptTemplate( str: string ): boolean {
         const index = str.indexOf( "\n" );
         if ( index < 0 ) return false;
         return str.substring( 0, index ).indexOf( "__sow_template_script__" ) > -1;
     }
-    private static run( appRoot: string, str: string, next?: ( str: string, isScript?: boolean ) => void ): string | SendBox {
+    public static run( appRoot: string, str: string, next?: ( str: string, isScript?: boolean ) => void ): string | SendBox {
         const isTemplate = this.isTemplate( str );
         if ( isTemplate ) {
             str = TemplateParser.parse( appRoot, str );
@@ -328,13 +299,42 @@ class TemplateCore {
         if ( this.isScript( str ) ) {
             return this.compile( this.parseScript( str ), next );
         }
-        // tslint:disable-next-line: no-unused-expression
-        return ( isTemplate ? ( next ? next( str, false ) : void 0 ) : void 0 ), str;
+        if ( isTemplate ) {
+            if ( next ) next( str, false );
+        }
+        return str;
+    }
+}
+class TemplateLink {
+    private static processResponse( status: IResInfo ): SendBoxNext {
+        return ( ctx: IContext, body: string, isCompressed?: boolean ): void => {
+            ctx.res.set( 'Cache-Control', 'no-store' );
+            if ( isCompressed && isCompressed === true ) {
+                return _zlib.gzip( Buffer.from( body ), ( error: Error | null, buff: Buffer ) => {
+                    if ( error ) {
+                        ctx.server.addError( ctx, error );
+                        return ctx.next( 500, true );
+                    }
+                    ctx.res.writeHead( status.code, {
+                        'Content-Type': 'text/html',
+                        'Content-Encoding': 'gzip',
+                        'Content-Length': buff.length
+                    } );
+                    ctx.res.end( buff );
+                    ctx.next( status.code, status.isErrorCode === false );
+                } ), void 0;
+            }
+            ctx.res.writeHead( status.code, {
+                'Content-Type': 'text/html',
+                'Content-Length': Buffer.byteLength( body )
+            } );
+            return ctx.res.end( body ), ctx.next( status.code, status.isErrorCode === false );
+        }
     }
     public static tryLive( ctx: IContext, path: string, status: IResInfo ): void {
         const url = Util.isExists( path, ctx.next );
         if ( !url ) return;
-        const result = this.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
+        const result = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
         if ( typeof ( result ) === "function" ) {
             return result( ctx, this.processResponse( status ), false );
         }
@@ -348,7 +348,7 @@ class TemplateCore {
         if ( !cache ) {
             const url = Util.isExists( path, ctx.next );
             if ( !url ) return;
-            cache = this.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
+            cache = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
             _tw.cache[key] = cache;
         }
         if ( typeof ( cache ) === "function" ) {
@@ -375,37 +375,35 @@ class TemplateCore {
         }
         let cache;
         if ( !readCache ) {
-            cache = this.run( ctx.server.getPublic(), _fs.readFileSync( filePath, "utf8" ).replace( /^\uFEFF/, '' ), !ctx.server.config.template.cache ? void 0 : ( str ) => {
+            cache = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( filePath, "utf8" ).replace( /^\uFEFF/, '' ), !ctx.server.config.template.cache ? void 0 : ( str ) => {
                 _fs.writeFileSync( cachePath, str );
             } );
         } else {
             cache = _fs.readFileSync( cachePath, "utf8" ).replace( /^\uFEFF/, '' );
-            if ( this.isScriptTemplate( cache ) ) {
-                cache = this.compile( cache );
+            if ( TemplateCore.isScriptTemplate( cache ) ) {
+                cache = TemplateCore.compile( cache );
             }
         }
         if ( typeof ( cache ) === "function" ) {
-            return cache( ctx, this.processResponse( status ));
+            return cache( ctx, this.processResponse( status ) );
         }
         ctx.res.set( 'Cache-Control', 'no-store' );// res.setHeader( 'Cache-Control', 'public, max-age=0' )
         ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
         return ctx.res.end( cache ), ctx.next( status.code, status.isErrorCode === false );
     }
 }
-// tslint:disable-next-line: max-classes-per-file
-// tslint:disable-next-line: no-namespace
 export namespace Template {
     export function parse( ctx: IContext, path: string, status?: IResInfo ): void {
         if ( !status ) status = HttpStatus.getResInfo( path, 200 );
         try {
             ctx.servedFrom = ctx.server.pathToUrl( path );
             if ( !ctx.server.config.template.cache ) {
-                return TemplateCore.tryLive( ctx, path, status );
+                return TemplateLink.tryLive( ctx, path, status );
             }
             if ( ctx.server.config.template.cache && ctx.server.config.template.cacheType === "MEM" ) {
-                return TemplateCore.tryMemCache( ctx, path, status );
+                return TemplateLink.tryMemCache( ctx, path, status );
             }
-            return TemplateCore.tryFileCacheOrLive( ctx, path, status );
+            return TemplateLink.tryFileCacheOrLive( ctx, path, status );
         } catch ( ex ) {
             ctx.path = path;
             if ( status.code === 500 ) {

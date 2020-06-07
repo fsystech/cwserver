@@ -9,6 +9,7 @@ import {
     Server, IncomingMessage, ServerResponse
 } from 'http';
 import { EventEmitter } from 'events';
+import { IRequestParam, ILayerInfo, IRouteInfo, getRouteInfo, getRouteMatcher } from './sow-router';
 import { ToResponseTime, ISession, IResInfo } from './sow-static';
 import { IContext } from './sow-server';
 import { Template } from './sow-template';
@@ -18,7 +19,7 @@ import _zlib = require( 'zlib' );
 type ParsedUrlQuery = { [key: string]: string | string[] | undefined; };
 type onError = ( req: IRequest, res: IResponse, err?: Error | number ) => void;
 export type NextFunction = ( err?: any ) => void;
-export type HandlerFunc = ( req: IRequest, res: IResponse, next: NextFunction ) => void;
+export type HandlerFunc = ( req: IRequest, res: IResponse, next: NextFunction, requestParam?: IRequestParam ) => void;
 export interface CookieOptions {
     maxAge?: number;
     signed?: boolean;
@@ -29,10 +30,6 @@ export interface CookieOptions {
     secure?: boolean;
     encode?: ( val: string ) => string;
     sameSite?: boolean | 'lax' | 'strict' | 'none';
-}
-export interface IHandlers {
-    route?: string; handler: HandlerFunc,
-    regexp: RegExp | undefined
 }
 export interface IRequest extends IncomingMessage {
     socket: Socket;
@@ -67,7 +64,7 @@ export interface IApplication {
 }
 export interface IApps {
     use( handler: HandlerFunc ): IApps;
-    use( route: string, handler: HandlerFunc ): IApps;
+    use( route: string, handler: HandlerFunc, isVirtual?: boolean ): IApps;
     listen( handle: any, listeningListener?: () => void ): IApps;
     prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps;
     getHttpServer(): Server;
@@ -106,7 +103,7 @@ class Request extends IncomingMessage implements IRequest {
     }
     init(): Request {
         this.q = urlHelpers.parse( this.url || "", true );
-        this.path = this.q.pathname || "";
+        this.path = this.q.pathname ? decodeURIComponent( this.q.pathname ) : "";
         if ( this.socket.remoteAddress ) {
             this.ip = this.socket.remoteAddress;
         } else {
@@ -160,7 +157,6 @@ const getCommonHeader = ( contentType: string, contentLength?: number, isGzip?: 
     }
     return header;
 }
-// tslint:disable-next-line: max-classes-per-file
 class Response extends ServerResponse implements IResponse {
     asHTML( code: number, contentLength?: number, isGzip?: boolean ): IResponse {
         return this.writeHead( code, getCommonHeader( 'text/html; charset=UTF-8', contentLength, isGzip ) ), this;
@@ -211,48 +207,10 @@ class Response extends ServerResponse implements IResponse {
         return this;
     }
 }
-const getRouteHandler = (
-    reqPath: string,
-    handlers: IHandlers[]
-): {
-    route?: string; handler: HandlerFunc,
-    regexp: RegExp | undefined
-} | undefined => {
-    const router = handlers.filter( a => {
-        if ( a.regexp )
-            return a.regexp.test( reqPath );
-        return false;
-    } );
-    if ( router.length === 0 ) return void 0;
-    // if ( router.length > 1 ) {
-    //    // let handler: HandlerFunc | undefined;
-    //    let higestLen = -1;
-    //    let index = -1;
-    //    for ( const row of router ) {
-    //        index++;
-    //        if ( !row.route ) continue;
-    //        if ( row.route.length > higestLen ) {
-    //            higestLen = row.route.length;
-    //        }
-    //    }
-    //    if ( index < 0 || higestLen < 0 ) return void 0;
-    //    return router[index];
-    // }
-    return router[0];
-}
-const pathRegx = new RegExp( '/', "gi" );
-function getRouteExp( route: string ): RegExp {
-    if ( route.charAt( route.length - 1 ) === '/' ) {
-        route = route.substring( 0, route.length - 2 );
-    }
-    route = route.replace( pathRegx, "\\/" );
-    return new RegExp( `^${route}\/?(?=\/|$)`, "gi" );
-}
-// tslint:disable-next-line: max-classes-per-file
 class Application extends EventEmitter implements IApplication {
     public server: Server;
-    private _appHandler: IHandlers[] = [];
-    private _prerequisitesHandler: IHandlers[] = [];
+    private _appHandler: ILayerInfo<HandlerFunc>[] = [];
+    private _prerequisitesHandler: ILayerInfo<HandlerFunc>[] = [];
     private _hasErrorEvnt: boolean = false;
     private _isRunning: boolean = false;
     constructor( server: Server ) {
@@ -278,7 +236,7 @@ class Application extends EventEmitter implements IApplication {
     }
     _handleRequest(
         req: IRequest, res: IResponse,
-        handlers: IHandlers[],
+        handlers: ILayerInfo<HandlerFunc>[],
         next: NextFunction,
         isPrerequisites: boolean
     ): void {
@@ -291,13 +249,16 @@ class Application extends EventEmitter implements IApplication {
             if ( !inf.route || isPrerequisites === true )
                 return inf.handler.call( this, req, res, _next );
             if ( isRouted ) return _next();
-            const layer: IHandlers | undefined = getRouteHandler( req.path.substring( 0, req.path.lastIndexOf( "/" ) ) || "/", handlers );
+            const routeInfo: IRouteInfo<HandlerFunc> | undefined = getRouteInfo( req.path, handlers, "ANY" );
             isRouted = true;
-            if ( layer ) {
-                if ( layer.regexp )
-                    req.path = req.path.replace( layer.regexp, "" );
+            if ( routeInfo ) {
+                if ( routeInfo.layer.routeMatcher ) {
+                    const repRegx: RegExp | undefined = routeInfo.layer.routeMatcher.repRegExp;
+                    if ( repRegx)
+                        req.path = req.path.replace( repRegx, "" );
+                }
                 try {
-                    return layer.handler.call( this, req, res, _next );
+                    return routeInfo.layer.handler.call( this, req, res, _next );
                 } catch ( e ) {
                     return next( e );
                 }
@@ -334,16 +295,31 @@ class Application extends EventEmitter implements IApplication {
     prerequisites( handler: HandlerFunc ): IApplication {
         if ( typeof ( handler ) !== "function" )
             throw new Error( "handler should be function...." );
-        return this._prerequisitesHandler.push( { handler, regexp: void 0 } ), this;
+        return this._prerequisitesHandler.push( {
+            handler, routeMatcher: void 0, pathArray: [], method: "ANY", route:""
+        } ), this;
     }
     use( ...args: any[] ): IApplication {
         const argtype0 = typeof ( args[0] );
         const argtype1 = typeof ( args[1] );
         if ( argtype0 === "function" ) {
-            return this._appHandler.push( { handler: args[0], regexp: void 0 } ), this;
+            return this._appHandler.push( {
+                handler: args[0], routeMatcher: void 0,
+                pathArray: [], method: "ANY", route: ""
+            } ), this;
         }
         if ( argtype0 === "string" && argtype1 === "function" ) {
-            return this._appHandler.push( { route: args[0], handler: args[1], regexp: getRouteExp( args[0] ) } ), this;
+            const route: string = args[0];
+            if ( route.indexOf( ":" ) > -1 ) {
+                throw new Error( `Unsupported symbol defined. ${route}` );
+            }
+            const isVirtual: boolean = typeof ( args[2] ) === "boolean" ? args[2] : false;
+            return this._appHandler.push( {
+                route,
+                handler: args[1],
+                routeMatcher: getRouteMatcher( route, isVirtual ),
+                pathArray: [], method: "ANY"
+            } ), this;
         }
         throw new Error( "Invalid arguments..." );
     }
@@ -362,7 +338,6 @@ class Application extends EventEmitter implements IApplication {
     }
 
 }
-// tslint:disable-next-line: max-classes-per-file
 class Apps extends EventEmitter implements IApps {
     _app: IApplication;
     constructor( ) {
@@ -388,11 +363,10 @@ class Apps extends EventEmitter implements IApps {
     getHttpServer(): Server {
         return this._app.server;
     }
-    // tslint:disable-next-line: ban-types
     listen( handle: any, listeningListener?: () => void ): IApps {
         return this._app.listen( handle, listeningListener ), this;
     }
-    prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps {
+    prerequisites( handler: HandlerFunc ): IApps {
         return this._app.prerequisites( handler ), this;
     }
 }

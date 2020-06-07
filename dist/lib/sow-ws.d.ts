@@ -70,7 +70,7 @@ export interface ISowSocketInfo {
     isReconnectd: boolean;
     group?: string;
     getSocket(): Socket;
-    sendMsg(method: string, data: any): any;
+    sendMsg(method: string, data: any): void;
 }
 export interface ISowSocket {
     isActiveSocket(token: string): boolean;

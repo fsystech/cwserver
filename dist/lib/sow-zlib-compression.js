@@ -30,7 +30,6 @@ class Gzip {
     }
 }
 exports.Gzip = Gzip;
-// tslint:disable-next-line: max-classes-per-file
 class Compression {
     static isAcceptedEncoding(req, name) {
         const acceptEncoding = req.headers['accept-encoding'];

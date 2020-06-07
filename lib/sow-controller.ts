@@ -7,6 +7,7 @@
 import { HttpMimeHandler } from './sow-http-mime';
 import { IHttpMimeHandler } from './sow-http-mime';
 import { IContext, AppHandler } from './sow-server';
+import { getRouteMatcher, getRouteInfo, ILayerInfo, IRouteInfo } from './sow-router';
 import { Util } from './sow-util';
 export interface IController {
     httpMimeHandler: IHttpMimeHandler;
@@ -18,87 +19,25 @@ export interface IController {
     remove( path: string ): boolean;
     sort(): void;
 }
-export interface IRouterInfo {
-    path: string; handler: AppHandler,
-    pathArray: string[];
-    method: "GET" | "POST" | "ANY"
-}
-const routeInfo: {
+const routeTable: {
     any: { [x: string]: AppHandler };
     get: { [x: string]: AppHandler };
     post: { [x: string]: AppHandler };
-    router: IRouterInfo[];
+    router: ILayerInfo<AppHandler>[];
 } = {
     any: {},
     get: {},
     post: {},
     router: []
 };
-// 1:21 AM 5/28/2020
-const concatArray = ( from: string[], to: string[], index: number ): void => {
-    const l = from.length;
-    for ( let i = index; i < l; i++ ) {
-        to.push( from[i] );
-    }
-};
-// 1:21 AM 5/28/2020
+// 1:16 AM 6/7/2020
 const fireHandler = ( ctx: IContext ): boolean => {
-    if ( routeInfo.router.length === 0 ) return false;
-    const pathArray: string[] = ctx.path.split( "/" );
-    const routeParam: string[] = [];
-    const router: IRouterInfo | undefined = routeInfo.router.find( ( info: IRouterInfo ): boolean => {
-        if ( routeParam.length > 0 ) routeParam.length = 0;
-        if ( info.method !== "ANY" ) {
-            if ( info.method !== ctx.req.method ) return false;
-        }
-        if ( info.pathArray[1] !== "*" && info.pathArray[1].indexOf( ":" ) < 0 && pathArray[1] !== info.pathArray[1] ) return false;
-        let reqPath: string = "";
-        let path: string = "";
-        let index: number = 0;
-        for ( const part of info.pathArray ) {
-            if ( part ) {
-                if ( !pathArray[index] ) {
-                    if ( part === "*" ) {
-                        concatArray( pathArray, routeParam, index );
-                        return true;
-                    }
-                    return false;
-                }
-                reqPath += `/${pathArray[index]}`;
-                if ( part === "*" ) {
-                    if ( index > 1 ) {
-                        concatArray( pathArray, routeParam, index );
-                        return true;
-                    }
-                    path += `/${pathArray[index]}`;
-                    if ( reqPath !== path ) return false;
-                    concatArray( pathArray, routeParam, index );
-                    return true;
-                }
-                if ( part.indexOf( ":" ) > -1 ) {
-                    path += `/${pathArray[index]}`;
-                    routeParam.push( pathArray[index] );
-                } else {
-                    if ( pathArray[index] !== part ) return false;
-                    path += `/${part}`;
-                    if ( reqPath !== path ) return false;
-                }
-            }
-            index++;
-        }
-        if ( path === reqPath ) {
-            if ( info.pathArray.length < pathArray.length ) {
-                if ( info.pathArray[index] !== "*" ) return false;
-            }
-            // if ( pathArray.length > index ) {
-            //    concatArray( pathArray, routeParam, index );
-            // }
-            return true;
-        }
+    if ( routeTable.router.length === 0 ) return false;
+    const routeInfo: IRouteInfo<AppHandler> | undefined = getRouteInfo( ctx.path, routeTable.router, ctx.req.method || "GET" );
+    if ( !routeInfo ) {
         return false;
-    } );
-    if ( !router ) return false;
-    return router.handler( ctx, routeParam ), true;
+    }
+    return routeInfo.layer.handler( ctx, routeInfo.requestParam ), true;
 };
 const getFileName = ( path: string ): string | void => {
     const index = path.lastIndexOf( "/" );
@@ -111,65 +50,68 @@ export class Controller implements IController {
         this.httpMimeHandler = new HttpMimeHandler();
     }
     reset(): void {
-        delete routeInfo.get;
-        delete routeInfo.post;
-        delete routeInfo.any;
-        delete routeInfo.router;
-        routeInfo.get = {};
-        routeInfo.post = {};
-        routeInfo.any = {};
-        routeInfo.router = [];
+        delete routeTable.get;
+        delete routeTable.post;
+        delete routeTable.any;
+        delete routeTable.router;
+        routeTable.get = {};
+        routeTable.post = {};
+        routeTable.any = {};
+        routeTable.router = [];
     }
     public get( route: string, next: AppHandler ): IController {
-        if ( routeInfo.get[route] )
+        if ( routeTable.get[route] )
             throw new Error( `Duplicate get route defined ${route}` );
-        if ( routeInfo.any[route] )
+        if ( routeTable.any[route] )
             throw new Error( `Duplicate get route defined ${route}` );
         if ( route !== "/" && ( route.indexOf( ":" ) > -1 || route.indexOf( "*" ) > -1 ) ) {
-            routeInfo.router.push( {
+            routeTable.router.push( {
                 method: "GET",
                 handler: next,
-                path: route,
-                pathArray: route.split( "/" )
+                route,
+                pathArray: route.split( "/" ),
+                routeMatcher: getRouteMatcher( route )
             } );
         }
-        return routeInfo.get[route] = next, this;
+        return routeTable.get[route] = next, this;
     }
     public post( route: string, next: AppHandler ): IController {
-        if ( routeInfo.post[route] )
+        if ( routeTable.post[route] )
             throw new Error( `Duplicate post route defined ${route}` );
-        if ( routeInfo.any[route] )
+        if ( routeTable.any[route] )
             throw new Error( `Duplicate post route defined ${route}` );
         if ( route !== "/" && ( route.indexOf( ":" ) > -1 || route.indexOf( "*" ) > -1 ) ) {
-            routeInfo.router.push( {
+            routeTable.router.push( {
                 method: "POST",
                 handler: next,
-                path: route,
-                pathArray: route.split( "/" )
+                route,
+                pathArray: route.split( "/" ),
+                routeMatcher: getRouteMatcher( route )
             } );
         }
-        return routeInfo.post[route] = next, this;
+        return routeTable.post[route] = next, this;
     }
     public any( route: string, next: AppHandler ): IController {
-        if ( routeInfo.post[route] )
+        if ( routeTable.post[route] )
             throw new Error( `Duplicate post route defined ${route}` );
-        if ( routeInfo.get[route] )
+        if ( routeTable.get[route] )
             throw new Error( `Duplicate get route defined ${route}` );
-        if ( routeInfo.any[route] )
+        if ( routeTable.any[route] )
             throw new Error( `Duplicate any route defined ${route}` );
         if ( route !== "/" && ( route.indexOf( ":" ) > -1 || route.indexOf( "*" ) > -1 ) ) {
-            routeInfo.router.push( {
+            routeTable.router.push( {
                 method: "ANY",
                 handler: next,
-                path: route,
-                pathArray: route.split( "/" )
+                route,
+                pathArray: route.split( "/" ),
+                routeMatcher: getRouteMatcher( route )
             } );
         }
-        return routeInfo.any[route] = next, this;
+        return routeTable.any[route] = next, this;
     }
     private processGet( ctx: IContext ): void {
-        if ( routeInfo.get[ctx.req.path] ) {
-            return routeInfo.get[ctx.req.path]( ctx );
+        if ( routeTable.get[ctx.req.path] ) {
+            return routeTable.get[ctx.req.path]( ctx );
         }
         if ( fireHandler( ctx ) ) return void 0;
         if ( ctx.extension ) {
@@ -215,40 +157,40 @@ export class Controller implements IController {
         return ctx.next( 404 );
     }
     private processPost( ctx: IContext ): void {
-        if ( routeInfo.post[ctx.req.path] ) {
-            return routeInfo.post[ctx.req.path]( ctx );
+        if ( routeTable.post[ctx.req.path] ) {
+            return routeTable.post[ctx.req.path]( ctx );
         }
         if ( fireHandler( ctx ) ) return void 0;
         return ctx.next( 404 );
     }
     public processAny( ctx: IContext ): void {
-        if ( routeInfo.any[ctx.path] )
-            return routeInfo.any[ctx.req.path]( ctx );
+        if ( routeTable.any[ctx.path] )
+            return routeTable.any[ctx.req.path]( ctx );
         if ( ctx.req.method === "POST" )
             return this.processPost( ctx );
         if ( ctx.req.method === "GET" )
             return this.processGet( ctx );
-        return ctx.next( 404 );
+        return fireHandler( ctx ) ? void 0 : ctx.next( 404 );
     }
     public remove( path: string ): boolean {
         let found: boolean = false;
-        if ( routeInfo.any[path] ) {
-            delete routeInfo.any[path]; found = true;
-        } else if ( routeInfo.post[path] ) {
-            delete routeInfo.post[path]; found = true;
-        } else if ( routeInfo.get[path] ) {
-            delete routeInfo.get[path]; found = true;
+        if ( routeTable.any[path] ) {
+            delete routeTable.any[path]; found = true;
+        } else if ( routeTable.post[path] ) {
+            delete routeTable.post[path]; found = true;
+        } else if ( routeTable.get[path] ) {
+            delete routeTable.get[path]; found = true;
         }
         if ( !found ) return false;
-        const index = routeInfo.router.findIndex( r => r.path === path );
+        const index = routeTable.router.findIndex( r => r.route === path );
         if ( index > -1 ) {
-            routeInfo.router.splice( index, 1 );
+            routeTable.router.splice( index, 1 );
         }
         return true;
     }
     public sort(): void {
-        routeInfo.router = routeInfo.router.sort( ( a, b ) => {
-            return a.path.length - b.path.length;
+        routeTable.router = routeTable.router.sort( ( a, b ) => {
+            return a.route.length - b.route.length;
         } );
     }
 }

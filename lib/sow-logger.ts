@@ -19,7 +19,6 @@ export interface ILogger {
     writeToStream( str: string ): void;
     flush(): boolean;
 }
-// tslint:disable-next-line: one-variable-per-declaration
 const dfo = ( t: any ) => {
     t = t === 0 ? 1 : t;
     return t <= 9 ? "0" + t : t;
@@ -69,7 +68,6 @@ export class ConsoleColor {
     public static BgCyan: string = '\x1b[46m';
     public static BgWhite: string = '\x1b[47m';
 }
-// tslint:disable-next-line: max-classes-per-file
 export class Logger implements ILogger {
     private _userInteractive: boolean;
     private _isDebug: boolean;

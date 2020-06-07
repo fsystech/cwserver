@@ -27,7 +27,6 @@ exports.Bundler = exports.__moduleName = void 0;
 */
 // 4:48 PM 5/3/2020
 const _fs = __importStar(require("fs"));
-// import { Readable, Writable, Transform } from 'stream';
 const _path = __importStar(require("path"));
 const _zlib = __importStar(require("zlib"));
 const sow_encryption_1 = require("./sow-encryption");
@@ -59,7 +58,6 @@ class BundleInfo {
         this.msg = "";
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class Bundlew {
     static getInfo() {
         return `/*
@@ -100,14 +98,12 @@ This 'Combiner' contains the following files:\n`;
     }
     static getFiles(server, str, lastChangeTime) {
         const result = new BundleInfo();
-        if (typeof (lastChangeTime) !== "number")
-            lastChangeTime = 0;
+        const lchangeTime = typeof (lastChangeTime) === "number" ? lastChangeTime : 0;
         try {
-            // let files: Array<{ name: string, absolute: string, change_time: number, is_change: boolean, is_own: boolean }> = [];
-            str.split(",").forEach((name) => {
+            const files = str.split(",");
+            for (let name of files) {
                 let isOwn = false;
-                const partIndex = name.indexOf("|");
-                if (partIndex > 0) {
+                if (name.indexOf("|") > 0) {
                     const spl = name.split("|");
                     name = spl[0];
                     if (spl[1] === "__owner__")
@@ -137,10 +133,11 @@ This 'Combiner' contains the following files:\n`;
                     name: name.replace(/\$.+?\//gi, "/"),
                     absolute,
                     changeTime,
-                    isChange: lastChangeTime && lastChangeTime === 0 ? true : (lastChangeTime && lastChangeTime > 0 && changeTime > lastChangeTime ? true : false),
+                    isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
                     isOwn
                 });
-            });
+            }
+            files.length = 0;
             result.error = false;
             return result;
         }
@@ -237,8 +234,8 @@ This 'Combiner' contains the following files:\n`;
         const cachpath = this.getCachePath(server, desc.toString(), cte, cacheKey.toString());
         const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
         const existsCachFile = _fs.existsSync(cachpath);
-        // tslint:disable-next-line: one-variable-per-declaration
-        let lastChangeTime = 0, cfileSize = 0;
+        let lastChangeTime = 0;
+        let cfileSize = 0;
         if (existsCachFile) {
             const stat = _fs.statSync(cachpath);
             cfileSize = stat.size;
@@ -338,7 +335,6 @@ const isAcceptedEncoding = (req, name) => {
 };
 // tslint:disable-next-line: variable-name
 exports.__moduleName = "Bundler";
-// tslint:disable-next-line: max-classes-per-file
 class Bundler {
     static Init(app, controller, server) {
         controller.get(server.config.bundler.route, (ctx) => {

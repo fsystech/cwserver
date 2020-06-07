@@ -29,7 +29,6 @@ exports.Logger = exports.ConsoleColor = void 0;
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_util_1 = require("./sow-util");
-// tslint:disable-next-line: one-variable-per-declaration
 const dfo = (t) => {
     t = t === 0 ? 1 : t;
     return t <= 9 ? "0" + t : t;
@@ -83,7 +82,6 @@ let ConsoleColor = /** @class */ (() => {
     return ConsoleColor;
 })();
 exports.ConsoleColor = ConsoleColor;
-// tslint:disable-next-line: max-classes-per-file
 class Logger {
     constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
         this._buff = [];

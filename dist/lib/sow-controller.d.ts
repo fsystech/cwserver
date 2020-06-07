@@ -10,12 +10,6 @@ export interface IController {
     remove(path: string): boolean;
     sort(): void;
 }
-export interface IRouterInfo {
-    path: string;
-    handler: AppHandler;
-    pathArray: string[];
-    method: "GET" | "POST" | "ANY";
-}
 export declare class Controller implements IController {
     httpMimeHandler: IHttpMimeHandler;
     constructor();

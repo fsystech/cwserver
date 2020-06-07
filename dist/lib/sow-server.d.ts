@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { ISession, IResInfo } from "./sow-static";
+import { IRequestParam } from './sow-router';
 import { NextFunction, IApps, IRequest, IResponse } from './sow-server-core';
 import { Server } from 'http';
 import { ISowDatabaseType } from './sow-db-type';
@@ -7,7 +8,7 @@ import { IController } from './sow-controller';
 import { ICryptoInfo } from "./sow-encryption";
 import { ILogger } from "./sow-logger";
 export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
-export declare type AppHandler = (ctx: IContext, routeParam?: string[]) => void;
+export declare type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 export interface IContext {
     [key: string]: any;
     error?: string;

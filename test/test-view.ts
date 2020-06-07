@@ -2,9 +2,15 @@
 import expect from 'expect';
 import * as path from "path";
 import * as fs from "fs";
-import { IApps } from '../lib/sow-server-core';
+import {
+	IRequestParam
+} from '../lib/sow-router';
+import {
+	IApps, IRequest,
+	IResponse, NextFunction
+} from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
-import { ISowServer } from '../lib/sow-server';
+import { ISowServer, IContext } from '../lib/sow-server';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import { PayloadParser, socketInitilizer, HttpMimeHandler, Streamer, Util, Encryption } from '../index';
 const mimeHandler = new HttpMimeHandler();
@@ -16,7 +22,7 @@ export function shouldBeError( next: () => void ): Error | void {
 	}
 };
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
-	app.use( "/app-error", ( req, res, next ) => {
+	app.use( "/app-error", ( req: IRequest, res: IResponse, next: NextFunction ) => {
 		throw new Error( "Application should be fire Error event" );
 	} );
 	expect( shouldBeError( () => { socketInitilizer( server, SocketErr1() ) } ) ).toBeInstanceOf( Error );
@@ -26,7 +32,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 	ws.create( io );
 	expect( ws.create( io ) ).toEqual( false );
 	expect( ws.isConnectd ).toEqual( true );
-	controller.get( '/ws-server-event', ( ctx ) => {
+	controller.get( '/ws-server-event', ( ctx: IContext, requestParam?: IRequestParam  ): void => {
 		ctx.res.json( ws.wsEvent ); ctx.next( 200 );
 		return void 0;
 	} );
@@ -34,7 +40,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
 	expect( shouldBeError( () => { mimeHandler.getMimeType( "NO_EXT" ); } ) ).toBeInstanceOf( Error );
 	const vDir: string = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
-	server.addVirtualDir( "/vtest", vDir, ( ctx ) => {
+	server.addVirtualDir( "/vtest", vDir, ( ctx: IContext ): void => {
 		if ( !mimeHandler.isValidExtension( ctx.extension ) ) return ctx.next( 404 );
 		mimeHandler.getMimeType( ctx.extension );
 		return mimeHandler.render( ctx, vDir, true );
@@ -43,11 +49,16 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		server.addVirtualDir( "/vtest", vDir );
 	} ) ).toBeInstanceOf( Error );
 	server.addVirtualDir( "/test-virtual", vDir );
-	server.addVirtualDir( "/vtest/virtual/", vDir );
+	server.addVirtualDir( "/vtest/virtual", vDir );
+	expect( shouldBeError( () => {
+		app.use( "/:error", ( req: IRequest, res: IResponse, next: NextFunction, requestParam?: IRequestParam ) => {
+			//
+		} );
+	} ) ).toBeInstanceOf( Error );
 } );
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
 	const streamDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
-	server.addVirtualDir( "/web-stream", streamDir, ( ctx ) => {
+	server.addVirtualDir( "/web-stream", streamDir, ( ctx: IContext, requestParam?: IRequestParam  ): void => {
 		if ( ctx.server.config.liveStream.indexOf( ctx.extension ) > -1 ) {
 			const absPath = path.resolve( `${streamDir}/${ctx.path}` );
 			if ( !Util.isExists( absPath, ctx.next ) ) return;
@@ -56,9 +67,15 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		}
 		return ctx.next( 404 );
 	} );
-	server.addVirtualDir( "/static-file", streamDir, ( ctx ) => {
+	server.addVirtualDir( "/static-file", streamDir, ( ctx: IContext, requestParam?: IRequestParam  ): void => {
 		return mimeHandler.render( ctx, streamDir, true );
 	} );
+	expect( shouldBeError( () => {
+		server.addVirtualDir( "/static-file/*", streamDir );
+	} ) ).toBeInstanceOf( Error );
+	expect( shouldBeError( () => {
+		server.addVirtualDir( "/:static-file", streamDir );
+	} ) ).toBeInstanceOf( Error );
 } );
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
 	const downloadDir = server.mapPath( "/upload/data/" );
@@ -66,9 +83,12 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		Util.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
 	}
 	const tempDir: string = server.mapPath( "/upload/temp/" );
-	controller.post( '/post', async ( ctx ) => {
+	controller.post( '/post', async ( ctx: IContext, requestParam?: IRequestParam  ) => {
 		const task: string | void = typeof ( ctx.req.query.task ) === "string" ? ctx.req.query.task.toString() : void 0;
 		const parser = new PayloadParser( ctx.req, tempDir );
+		if ( parser.isMultipart() ) {
+			return ctx.next( 404 );
+		}
 		if ( task && task === "ERROR" ) {
 			try {
 				await parser.readDataAsync();
@@ -77,9 +97,6 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			}
 		}
 		parser.readData( ( err ) => {
-			if ( parser.isMultipart() ) {
-				return ctx.next( 404 );
-			}
 			const result: { [key: string]: any; } = {};
 			if ( parser.isAppJson() ) {
 				result.isJson = true;
@@ -97,7 +114,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			}
 			return ctx.next( 200 );
 		} );
-	} ).post( '/post-async/:id', async ( ctx, routeParam ) => {
+	} ).post( '/post-async/:id', async ( ctx: IContext, requestParam?: IRequestParam ) => {
 		const parser = new PayloadParser( ctx.req, tempDir );
 		if ( parser.isUrlEncoded() || parser.isAppJson() ) {
 			await parser.readDataAsync();
@@ -168,29 +185,29 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 } );
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
 	controller
-		.any( '/test-any/*', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: match } );
+		.any( '/test-any/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
 		} )
-		.get( '/task/:id/*', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/task/:id/*", q: match } );
+		.get( '/task/:id/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/task/:id/*", q: requestParam } );
 		} )
-		.get( '/test-c/:id', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-c/:id", q: match } );
+		.get( '/test-c/:id', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-c/:id", q: requestParam } );
 		} )
-		.get( '/dist/*', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/dist/*", q: match } );
+		.get( '/dist/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/dist/*", q: requestParam } );
 		} )
-		.get( '/user/:id/settings', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match } );
+		.get( '/user/:id/settings', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: requestParam } );
 		} );
 
 } );
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
 	controller
-		.get( '/get-file', ( ctx ) => {
+		.get( '/get-file', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			return Util.sendResponse( ctx, server.mapPath( "index.html" ), "text/plain" );
 		} )
-		.any( '/cookie', ( ctx ) => {
+		.any( '/cookie', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			ctx.res.cookie( "test-1", "test", {
 				domain: "localhost", path: "/",
 				expires: new Date(), secure: true,
@@ -209,14 +226,14 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			ctx.res.json( { task: "done" } );
 			return void 0;
 		} )
-		.any( '/echo', ( ctx ) => {
+		.any( '/echo', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			ctx.res.writeHead( 200, {
 				"Content-Type": ctx.req.headers["content-type"] || "text/plain"
 			} );
 			ctx.req.pipe( ctx.res );
 			return void 0;
 		} )
-		.any( '/response', ( ctx ) => {
+		.any( '/response', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			if ( ctx.req.method === "GET" ) {
 				if ( ctx.req.query.task === "gzip" ) {
 					const data = ctx.req.query.data;
@@ -228,20 +245,20 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			}
 			return ctx.next( 404 );
 		} )
-		.get( '/is-authenticate', ( ctx ) => {
+		.get( '/is-authenticate', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			if ( !ctx.req.query.loginId ) return ctx.next( 401 );
 			if ( ctx.session.loginId !== ctx.req.query.loginId ) return ctx.next( 401 );
 			ctx.res.json( ctx.session ); return ctx.next( 200 );
 		} )
-		.any( '/redirect', ( ctx ) => {
+		.any( '/redirect', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			return ctx.redirect( "/" ), ctx.next( 301, false );
 		} )
-		.any( '/pass-error', ( ctx ) => {
+		.any( '/pass-error', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			server.addError( ctx, new Error( 'test pass-error' ) );
 			server.addError( ctx, 'test pass-error' );
 			return server.passError( ctx ), void 0;
 		} )
-		.get( '/authenticate', ( ctx ) => {
+		.get( '/authenticate', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			if ( !ctx.req.query.loginId ) {
 				if ( !ctx.req.session.isAuthenticated ) return ctx.next( 401 );
 				return ctx.res.status( 301 ).redirect( "/" ), ctx.next( 301, false );

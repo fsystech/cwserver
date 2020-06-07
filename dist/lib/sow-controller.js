@@ -8,88 +8,23 @@ exports.Controller = void 0;
 */
 // 11:16 PM 5/2/2020
 const sow_http_mime_1 = require("./sow-http-mime");
+const sow_router_1 = require("./sow-router");
 const sow_util_1 = require("./sow-util");
-const routeInfo = {
+const routeTable = {
     any: {},
     get: {},
     post: {},
     router: []
 };
-// 1:21 AM 5/28/2020
-const concatArray = (from, to, index) => {
-    const l = from.length;
-    for (let i = index; i < l; i++) {
-        to.push(from[i]);
-    }
-};
-// 1:21 AM 5/28/2020
+// 1:16 AM 6/7/2020
 const fireHandler = (ctx) => {
-    if (routeInfo.router.length === 0)
+    if (routeTable.router.length === 0)
         return false;
-    const pathArray = ctx.path.split("/");
-    const routeParam = [];
-    const router = routeInfo.router.find((info) => {
-        if (routeParam.length > 0)
-            routeParam.length = 0;
-        if (info.method !== "ANY") {
-            if (info.method !== ctx.req.method)
-                return false;
-        }
-        if (info.pathArray[1] !== "*" && info.pathArray[1].indexOf(":") < 0 && pathArray[1] !== info.pathArray[1])
-            return false;
-        let reqPath = "";
-        let path = "";
-        let index = 0;
-        for (const part of info.pathArray) {
-            if (part) {
-                if (!pathArray[index]) {
-                    if (part === "*") {
-                        concatArray(pathArray, routeParam, index);
-                        return true;
-                    }
-                    return false;
-                }
-                reqPath += `/${pathArray[index]}`;
-                if (part === "*") {
-                    if (index > 1) {
-                        concatArray(pathArray, routeParam, index);
-                        return true;
-                    }
-                    path += `/${pathArray[index]}`;
-                    if (reqPath !== path)
-                        return false;
-                    concatArray(pathArray, routeParam, index);
-                    return true;
-                }
-                if (part.indexOf(":") > -1) {
-                    path += `/${pathArray[index]}`;
-                    routeParam.push(pathArray[index]);
-                }
-                else {
-                    if (pathArray[index] !== part)
-                        return false;
-                    path += `/${part}`;
-                    if (reqPath !== path)
-                        return false;
-                }
-            }
-            index++;
-        }
-        if (path === reqPath) {
-            if (info.pathArray.length < pathArray.length) {
-                if (info.pathArray[index] !== "*")
-                    return false;
-            }
-            // if ( pathArray.length > index ) {
-            //    concatArray( pathArray, routeParam, index );
-            // }
-            return true;
-        }
+    const routeInfo = sow_router_1.getRouteInfo(ctx.path, routeTable.router, ctx.req.method || "GET");
+    if (!routeInfo) {
         return false;
-    });
-    if (!router)
-        return false;
-    return router.handler(ctx, routeParam), true;
+    }
+    return routeInfo.layer.handler(ctx, routeInfo.requestParam), true;
 };
 const getFileName = (path) => {
     const index = path.lastIndexOf("/");
@@ -102,65 +37,68 @@ class Controller {
         this.httpMimeHandler = new sow_http_mime_1.HttpMimeHandler();
     }
     reset() {
-        delete routeInfo.get;
-        delete routeInfo.post;
-        delete routeInfo.any;
-        delete routeInfo.router;
-        routeInfo.get = {};
-        routeInfo.post = {};
-        routeInfo.any = {};
-        routeInfo.router = [];
+        delete routeTable.get;
+        delete routeTable.post;
+        delete routeTable.any;
+        delete routeTable.router;
+        routeTable.get = {};
+        routeTable.post = {};
+        routeTable.any = {};
+        routeTable.router = [];
     }
     get(route, next) {
-        if (routeInfo.get[route])
+        if (routeTable.get[route])
             throw new Error(`Duplicate get route defined ${route}`);
-        if (routeInfo.any[route])
+        if (routeTable.any[route])
             throw new Error(`Duplicate get route defined ${route}`);
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
-            routeInfo.router.push({
+            routeTable.router.push({
                 method: "GET",
                 handler: next,
-                path: route,
-                pathArray: route.split("/")
+                route,
+                pathArray: route.split("/"),
+                routeMatcher: sow_router_1.getRouteMatcher(route)
             });
         }
-        return routeInfo.get[route] = next, this;
+        return routeTable.get[route] = next, this;
     }
     post(route, next) {
-        if (routeInfo.post[route])
+        if (routeTable.post[route])
             throw new Error(`Duplicate post route defined ${route}`);
-        if (routeInfo.any[route])
+        if (routeTable.any[route])
             throw new Error(`Duplicate post route defined ${route}`);
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
-            routeInfo.router.push({
+            routeTable.router.push({
                 method: "POST",
                 handler: next,
-                path: route,
-                pathArray: route.split("/")
+                route,
+                pathArray: route.split("/"),
+                routeMatcher: sow_router_1.getRouteMatcher(route)
             });
         }
-        return routeInfo.post[route] = next, this;
+        return routeTable.post[route] = next, this;
     }
     any(route, next) {
-        if (routeInfo.post[route])
+        if (routeTable.post[route])
             throw new Error(`Duplicate post route defined ${route}`);
-        if (routeInfo.get[route])
+        if (routeTable.get[route])
             throw new Error(`Duplicate get route defined ${route}`);
-        if (routeInfo.any[route])
+        if (routeTable.any[route])
             throw new Error(`Duplicate any route defined ${route}`);
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
-            routeInfo.router.push({
+            routeTable.router.push({
                 method: "ANY",
                 handler: next,
-                path: route,
-                pathArray: route.split("/")
+                route,
+                pathArray: route.split("/"),
+                routeMatcher: sow_router_1.getRouteMatcher(route)
             });
         }
-        return routeInfo.any[route] = next, this;
+        return routeTable.any[route] = next, this;
     }
     processGet(ctx) {
-        if (routeInfo.get[ctx.req.path]) {
-            return routeInfo.get[ctx.req.path](ctx);
+        if (routeTable.get[ctx.req.path]) {
+            return routeTable.get[ctx.req.path](ctx);
         }
         if (fireHandler(ctx))
             return void 0;
@@ -217,47 +155,47 @@ class Controller {
         return ctx.next(404);
     }
     processPost(ctx) {
-        if (routeInfo.post[ctx.req.path]) {
-            return routeInfo.post[ctx.req.path](ctx);
+        if (routeTable.post[ctx.req.path]) {
+            return routeTable.post[ctx.req.path](ctx);
         }
         if (fireHandler(ctx))
             return void 0;
         return ctx.next(404);
     }
     processAny(ctx) {
-        if (routeInfo.any[ctx.path])
-            return routeInfo.any[ctx.req.path](ctx);
+        if (routeTable.any[ctx.path])
+            return routeTable.any[ctx.req.path](ctx);
         if (ctx.req.method === "POST")
             return this.processPost(ctx);
         if (ctx.req.method === "GET")
             return this.processGet(ctx);
-        return ctx.next(404);
+        return fireHandler(ctx) ? void 0 : ctx.next(404);
     }
     remove(path) {
         let found = false;
-        if (routeInfo.any[path]) {
-            delete routeInfo.any[path];
+        if (routeTable.any[path]) {
+            delete routeTable.any[path];
             found = true;
         }
-        else if (routeInfo.post[path]) {
-            delete routeInfo.post[path];
+        else if (routeTable.post[path]) {
+            delete routeTable.post[path];
             found = true;
         }
-        else if (routeInfo.get[path]) {
-            delete routeInfo.get[path];
+        else if (routeTable.get[path]) {
+            delete routeTable.get[path];
             found = true;
         }
         if (!found)
             return false;
-        const index = routeInfo.router.findIndex(r => r.path === path);
+        const index = routeTable.router.findIndex(r => r.route === path);
         if (index > -1) {
-            routeInfo.router.splice(index, 1);
+            routeTable.router.splice(index, 1);
         }
         return true;
     }
     sort() {
-        routeInfo.router = routeInfo.router.sort((a, b) => {
-            return a.path.length - b.path.length;
+        routeTable.router = routeTable.router.sort((a, b) => {
+            return a.route.length - b.route.length;
         });
     }
 }

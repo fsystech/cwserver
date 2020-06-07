@@ -11,7 +11,6 @@ class Session {
     ;
 }
 exports.Session = Session;
-// tslint:disable-next-line: max-classes-per-file
 class ResInfo {
     constructor() {
         this.code = 0;

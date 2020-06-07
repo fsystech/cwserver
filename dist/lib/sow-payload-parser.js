@@ -35,9 +35,7 @@ const sow_static_1 = require("./sow-static");
 const sow_util_1 = require("./sow-util");
 const guid = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        // tslint:disable-next-line: no-bitwise
         const r = Math.random() * 16 | 0;
-        // tslint:disable-next-line: no-bitwise
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
@@ -114,7 +112,7 @@ const parseHeader = (data) => {
     // This is hairy: Netscape and IE don't encode the filenames
     // The RFC says they should be encoded, so I will assume they are.
     filename = decodeURIComponent(filename);
-    return new PostedFileInfo(disposition, name ? name.replace(/"/gi, "") : name, filename, cType);
+    return new PostedFileInfo(disposition, name.replace(/"/gi, ""), filename, cType);
 };
 class PostedFileInfo {
     constructor(disposition, fname, fileName, fcontentType) {
@@ -181,7 +179,6 @@ class PostedFileInfo {
     }
 }
 exports.PostedFileInfo = PostedFileInfo;
-// tslint:disable-next-line: max-classes-per-file
 class PayloadDataParser {
     constructor(tempDir, contentType, contentTypeEnum) {
         this._blockSize = 0;
@@ -321,7 +318,6 @@ class PayloadDataParser {
             delete this._errors;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class PayloadParser {
     constructor(req, tempDir) {
         this._isDisposed = false;

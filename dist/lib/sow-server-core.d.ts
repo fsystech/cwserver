@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { Server, IncomingMessage, ServerResponse } from 'http';
+import { IRequestParam } from './sow-router';
 import { ISession, IResInfo } from './sow-static';
 import { IContext } from './sow-server';
 import { UrlWithParsedQuery } from 'url';
@@ -9,7 +10,7 @@ declare type ParsedUrlQuery = {
 };
 declare type onError = (req: IRequest, res: IResponse, err?: Error | number) => void;
 export declare type NextFunction = (err?: any) => void;
-export declare type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunction) => void;
+export declare type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunction, requestParam?: IRequestParam) => void;
 export interface CookieOptions {
     maxAge?: number;
     signed?: boolean;
@@ -20,11 +21,6 @@ export interface CookieOptions {
     secure?: boolean;
     encode?: (val: string) => string;
     sameSite?: boolean | 'lax' | 'strict' | 'none';
-}
-export interface IHandlers {
-    route?: string;
-    handler: HandlerFunc;
-    regexp: RegExp | undefined;
 }
 export interface IRequest extends IncomingMessage {
     socket: Socket;
@@ -62,7 +58,7 @@ export interface IApplication {
 }
 export interface IApps {
     use(handler: HandlerFunc): IApps;
-    use(route: string, handler: HandlerFunc): IApps;
+    use(route: string, handler: HandlerFunc, isVirtual?: boolean): IApps;
     listen(handle: any, listeningListener?: () => void): IApps;
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApps;
     getHttpServer(): Server;

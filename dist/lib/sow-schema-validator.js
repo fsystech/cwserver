@@ -42,7 +42,6 @@ function readSchemaAsync( absPath ) {
     }
 }
 function propertiValidate( dataPath, configProperties, schemaProperties, additionalProperties ) {
-    // tslint:disable-next-line: forin
     for ( const prop in configProperties ) {
         const svalue = schemaProperties[prop];
         if ( !svalue ) {
@@ -75,9 +74,7 @@ function fillUpType( type ) {
 function schemaValidate( dataPath, schemaProperties, configProperties, additionalProperties ) {
     // check config properties are valid
     propertiValidate( dataPath, configProperties, schemaProperties, additionalProperties );
-    // tslint:disable-next-line: forin
     for ( const prop in schemaProperties ) {
-        // const hasProp = configProperties.hasOwnProperty( prop );
         const cvalue = configProperties[prop];
         const svalue = schemaProperties[prop];
         const valueType = typeof ( cvalue );
@@ -138,7 +135,6 @@ function schemaValidate( dataPath, schemaProperties, configProperties, additiona
         }
     }
 }
-// tslint:disable-next-line: no-namespace
 ( function ( Schema ) {
     function Validate( config ) {
         const parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ) : _path.resolve( __dirname, '../..' );

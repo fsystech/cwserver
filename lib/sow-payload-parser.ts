@@ -35,15 +35,13 @@ export interface IPayloadParser {
 }
 const guid = (): string => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, ( c: string ) => {
-        // tslint:disable-next-line: no-bitwise
-        const r = Math.random() * 16 | 0;
-        // tslint:disable-next-line: no-bitwise
-        const v = c === 'x' ? r : ( r & 0x3 | 0x8 );
+        const r: number = Math.random() * 16 | 0;
+        const v: number = c === 'x' ? r : ( r & 0x3 | 0x8 );
         return v.toString( 16 );
     } );
 }
 const getLine = ( req: IRequest, data: Buffer[] ): string => {
-    let outstr = '';
+    let outstr: string = '';
     for ( ; ; ) {
         let c = req.read( 1 );
         if ( !c ) return outstr;
@@ -67,7 +65,7 @@ const getLine = ( req: IRequest, data: Buffer[] ): string => {
     }
 }
 const getHeader = ( headers: IncomingHttpHeaders, key: string ): string => {
-    const result = headers[key];
+    const result: string | string[] | undefined = headers[key];
     return typeof ( result ) === "string" ? result.toString() : "";
 }
 const createDir = ( dir: string ): void => {
@@ -96,9 +94,9 @@ const extractBetween = (
     separator1: string,
     separator2: string
 ): string => {
-    let result = "";
-    let start = 0;
-    let limit = 0;
+    let result: string = "";
+    let start: number = 0;
+    let limit: number = 0;
     start = data.indexOf( separator1 );
     if ( start >= 0 ) {
         start += separator1.length;
@@ -109,17 +107,17 @@ const extractBetween = (
     return result;
 }
 const parseHeader = ( data: string ): IPostedFileInfo => {
-    const end = "\r\n";
-    let part = data.substring( 0, data.indexOf( end ) );
-    const disposition = extractBetween( part, "Content-Disposition: ", ";" );
-    const name = extractBetween( part, "name=\"", ";" );
-    let filename = extractBetween( part, "filename=\"", "\"" );
+    const end: string = "\r\n";
+    let part: string = data.substring( 0, data.indexOf( end ) );
+    const disposition: string = extractBetween( part, "Content-Disposition: ", ";" );
+    const name: string = extractBetween( part, "name=\"", ";" );
+    let filename: string = extractBetween( part, "filename=\"", "\"" );
     part = data.substring( part.length + end.length );
-    const cType = extractBetween( part, "Content-Type: ", "\r\n\r\n" );
+    const cType: string = extractBetween( part, "Content-Type: ", "\r\n\r\n" );
     // This is hairy: Netscape and IE don't encode the filenames
     // The RFC says they should be encoded, so I will assume they are.
     filename = decodeURIComponent( filename );
-    return new PostedFileInfo( disposition, name ? name.replace( /"/gi, "" ) : name, filename, cType );
+    return new PostedFileInfo( disposition, name.replace( /"/gi, "" ), filename, cType );
 }
 export class PostedFileInfo implements IPostedFileInfo {
     _fcontentDisposition: string;
@@ -190,7 +188,6 @@ export class PostedFileInfo implements IPostedFileInfo {
         if ( this._tempFile ) delete this._tempFile;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 class PayloadDataParser {
     public files: IPostedFileInfo[];
     public payloadStr: string;
@@ -275,7 +272,7 @@ class PayloadDataParser {
                 this._postedFile = void 0;
                 return;
             }
-            const tempFile = _path.resolve( `${this._tempDir}/${guid()}.temp` );
+            const tempFile: string = _path.resolve( `${this._tempDir}/${guid()}.temp` );
             this._writeStream = _fs.createWriteStream( tempFile );
             this._postedFile.setInfo( tempFile );
             this._isStart = true;
@@ -333,7 +330,6 @@ class PayloadDataParser {
             delete this._errors;
     }
 }
-// tslint:disable-next-line: max-classes-per-file
 export class PayloadParser implements IPayloadParser {
     private _contentType: string;
     private _contentTypeEnum: ContentType;
@@ -404,7 +400,7 @@ export class PayloadParser implements IPayloadParser {
         return void 0;
     }
     public getJson(): { [key: string]: any; } {
-        const payLoadStr = this.getData();
+        const payLoadStr: string = this.getData();
         if ( this._contentTypeEnum === ContentType.APP_JSON ) {
             return JSON.parse( payLoadStr );
         }
@@ -442,7 +438,7 @@ export class PayloadParser implements IPayloadParser {
                 while ( true ) {
                     if ( !this._clientConnected ) break;
                     const buffer: Buffer[] = [];
-                    const data = getLine( this._req, buffer );
+                    const data: string = getLine( this._req, buffer );
                     if ( data === '' ) { break; }
                     this._payloadDataParser.onRawData( data );
                     buffer.length = 0;
@@ -453,7 +449,7 @@ export class PayloadParser implements IPayloadParser {
                 while ( true ) {
                     if ( !this._clientConnected ) break;
                     const buffer: Buffer[] = [];
-                    const data = getLine( this._req, buffer );
+                    const data: string = getLine( this._req, buffer );
                     if ( data === '' ) { break; }
                     const promise = this._payloadDataParser.onData( data, Buffer.concat( buffer ) );
                     buffer.length = 0;
@@ -474,7 +470,7 @@ export class PayloadParser implements IPayloadParser {
         this._req.on( "end", () => {
             this._payloadDataParser.onEnd();
             this._isReadEnd = true;
-            const error = this._payloadDataParser.getError();
+            const error: string | void = this._payloadDataParser.getError();
             if ( error ) return onReadEnd( new Error( error ) );
             return onReadEnd();
         } );

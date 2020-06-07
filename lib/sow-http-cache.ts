@@ -11,7 +11,6 @@ export type IChangeHeader = {
     sinceModify?: number | void;
     etag?: string;
 };
-// tslint:disable-next-line: no-namespace
 export namespace SowHttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
     export function getIfModifiedSinceUTCTime( headers: IncomingHttpHeaders ): number | void {
@@ -59,7 +58,6 @@ export namespace SowHttpCache {
     }
     /** Create and Gets {etag} (timestamp ^ fsize). */
     export function getEtag( timestamp: number, fsize: number ): string {
-        // tslint:disable-next-line: no-bitwise
         return `W/${( timestamp ^ fsize )}`;
     }
 }

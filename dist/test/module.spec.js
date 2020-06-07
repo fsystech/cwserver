@@ -37,18 +37,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 * See the accompanying LICENSE file for terms.
 */
 // 4:38 AM 5/22/2020
+require("mocha");
 const expect_1 = __importDefault(require("expect"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const cwserver = __importStar(require("../index"));
-const sow_static_1 = require("../lib/sow-static");
-const sow_util_1 = require("../lib/sow-util");
-const sow_schema_validator_1 = require("../lib/sow-schema-validator");
 const request = __importStar(require("superagent"));
 const io = __importStar(require("socket.io-client"));
+const cwserver = __importStar(require("../index"));
+const sow_static_1 = require("../lib/sow-static");
+const sow_router_1 = require("../lib/sow-router");
+const sow_util_1 = require("../lib/sow-util");
+const sow_schema_validator_1 = require("../lib/sow-schema-validator");
+const sow_template_1 = require("../lib/sow-template");
 const test_view_1 = require("./test-view");
 const sow_logger_1 = require("../lib/sow-logger");
-require("mocha");
 let app;
 const appRoot = process.env.SCRIPT === "TS" ? path.join(path.resolve(__dirname, '..'), "/dist/test/") : __dirname;
 const projectRoot = 'test_web';
@@ -153,7 +155,6 @@ describe("cwserver-core", () => {
         expect_1.default(test_view_1.shouldBeError(() => {
             cwserver.initilizeServer(appRoot);
         })).toBeInstanceOf(Error);
-        process.env.IISNODE_VERSION = "";
         done();
     });
     it("initilize server throw error (projectRoot not found)", (done) => {
@@ -212,6 +213,35 @@ describe("cwserver-core", () => {
             appIsLestening = true;
             done();
         });
+    });
+});
+describe("cwserver-router", () => {
+    it("router validation", (done) => {
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_router_1.getRouteMatcher("/nobody/");
+        })).toBeInstanceOf(Error);
+        expect_1.default(sow_router_1.getRouteMatcher("/nobody/*").repRegExp).toBeUndefined();
+        const router = [];
+        expect_1.default(sow_router_1.getRouteInfo("", router, "ANY")).toBeUndefined();
+        router.push({
+            method: "GET",
+            handler: "",
+            route: "/test/*",
+            pathArray: "/test/*".split("/"),
+            routeMatcher: sow_router_1.getRouteMatcher("/test/*")
+        });
+        expect_1.default(sow_router_1.getRouteInfo("", router, "ANY")).toBeUndefined();
+        router.push({
+            method: "GET",
+            handler: "",
+            route: "/vertual/*",
+            pathArray: [],
+            routeMatcher: void 0
+        });
+        expect_1.default(sow_router_1.getRouteInfo("/vertual/test/body", router, "GET")).toBeUndefined();
+        expect_1.default(sow_router_1.pathToArray("/vertual/test/body", [])).not.toBeInstanceOf(Error);
+        expect_1.default(sow_router_1.pathToArray("dfa/", [])).not.toBeInstanceOf(Error);
+        done();
     });
 });
 describe("cwserver-view", () => {
@@ -383,10 +413,12 @@ describe("cwserver-get", () => {
             expect_1.default(err).not.toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(200);
             expect_1.default(res.header["content-type"]).toBe("application/json");
+            console.log(res.body);
             expect_1.default(res.body).toBeInstanceOf(Object);
             expect_1.default(res.body.servedFrom).toEqual('/test-any/*');
-            expect_1.default(res.body.q).toBeInstanceOf(Array);
-            expect_1.default(res.body.q.indexOf("param")).toBeGreaterThan(-1);
+            expect_1.default(res.body.q.query).toBeInstanceOf(Object);
+            expect_1.default(res.body.q.match).toBeInstanceOf(Array);
+            expect_1.default(res.body.q.match.indexOf("param")).toBeGreaterThan(-1);
             done();
         });
     });
@@ -399,15 +431,16 @@ describe("cwserver-get", () => {
             expect_1.default(res.header["content-type"]).toBe("application/json");
             expect_1.default(res.body).toBeInstanceOf(Object);
             expect_1.default(res.body.servedFrom).toEqual('/task/:id/*');
-            expect_1.default(res.body.q).toBeInstanceOf(Array);
-            expect_1.default(res.body.q.indexOf("1")).toBeGreaterThan(-1);
-            expect_1.default(res.body.q.indexOf("test_request")).toBeGreaterThan(-1);
+            expect_1.default(res.body.q.query).toBeInstanceOf(Object);
+            expect_1.default(res.body.q.query.id).toEqual("1");
+            expect_1.default(res.body.q.match).toBeInstanceOf(Array);
+            expect_1.default(res.body.q.match.indexOf("test_request")).toBeGreaterThan(-1);
             done();
         });
     });
     it('test route target /dist/*', (done) => {
         getAgent()
-            .get(`http://localhost:${appUtility.port}/dist`)
+            .get(`http://localhost:${appUtility.port}/dist/`)
             .end((err, res) => {
             expect_1.default(err).not.toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(200);
@@ -560,6 +593,54 @@ describe("cwserver-template-engine", () => {
             done();
         });
     });
+    it('test template utility', (done) => {
+        expect_1.default(sow_template_1.TemplateCore.isScriptTemplate("")).toBe(false);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            const sendBox = sow_template_1.TemplateCore.compile();
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/readme.htmls\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
+                console.log(str);
+            });
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
+                console.log(str);
+            });
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#attach /template/readme.htmls \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
+                console.log(str);
+            });
+        })).toBeInstanceOf(Error);
+        const filePath = path.resolve(`${appRoot}/${projectRoot}/template/invalid.html`);
+        fs.writeFileSync(filePath, "INVALID_FILE");
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
+                console.log(str);
+            });
+        })).toBeInstanceOf(Error);
+        fs.writeFileSync(filePath, "<placeholder id><placeholder/>");
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
+                console.log(str);
+            });
+        })).toBeInstanceOf(Error);
+        fs.writeFileSync(filePath, '<placeholder id=""><placeholder/>');
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
+                console.log(str);
+            });
+        })).toBeInstanceOf(Error);
+        fs.writeFileSync(filePath, '<placeholder id="test">\r\n</placeholder>{% ERROR %} {= NOPX =}\r\n\r\n\r\n');
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id="test">\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
+                console.log(str);
+            });
+        })).toBeInstanceOf(Error);
+        fs.unlinkSync(filePath);
+        done();
+    });
 });
 describe("cwserver-bundler", () => {
     let eTag = "";
@@ -579,6 +660,7 @@ describe("cwserver-bundler", () => {
             ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
         })
             .end((err, res) => {
+            console.log(err);
             expect_1.default(err).not.toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(200);
             expect_1.default(res.header["content-type"]).toBe("application/x-javascript; charset=utf-8");
@@ -1349,7 +1431,7 @@ describe("cwserver-controller-reset", () => {
     });
     it('should be route not found', (done) => {
         getAgent()
-            .get(`http://localhost:${appUtility.port}/app-error`)
+            .get(`http://localhost:${appUtility.port}/app-errors`)
             .end((err, res) => {
             expect_1.default(err).toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(404);
@@ -1358,7 +1440,7 @@ describe("cwserver-controller-reset", () => {
     });
     it('no controller found for put', (done) => {
         getAgent()
-            .delete(`http://localhost:${appUtility.port}/app-error`)
+            .delete(`http://localhost:${appUtility.port}/app-errors`)
             .end((err, res) => {
             expect_1.default(err).toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(404);
@@ -1384,6 +1466,28 @@ describe("cwserver-controller-reset", () => {
 });
 describe("cwserver-utility", () => {
     it("test-app-utility", (done) => {
+        (() => {
+            const old = appUtility.server.config.session.cookie;
+            appUtility.server.config.session.cookie = "";
+            expect_1.default(test_view_1.shouldBeError(() => {
+                appUtility.server.parseSession("");
+            })).toBeInstanceOf(Error);
+            appUtility.server.config.session.cookie = old;
+            expect_1.default(appUtility.server.parseSession("").isAuthenticated).toBeFalsy();
+            expect_1.default(appUtility.server.escape()).toBeDefined();
+            expect_1.default(appUtility.server.pathToUrl(`/${projectRoot}/test.png`)).toBeDefined();
+            const oldPort = appUtility.server.config.hostInfo.port;
+            appUtility.server.config.hostInfo.port = 0;
+            const newConfig = appUtility.server.config;
+            expect_1.default(test_view_1.shouldBeError(() => {
+                appUtility.server.implimentConfig(newConfig);
+            })).toBeInstanceOf(Error);
+            process.env.PORT = "8080";
+            expect_1.default(test_view_1.shouldBeError(() => {
+                appUtility.server.implimentConfig(newConfig);
+            })).toBeInstanceOf(Error);
+            appUtility.server.config.hostInfo.port = oldPort;
+        })();
         expect_1.default(test_view_1.shouldBeError(() => {
             cwserver.HttpStatus.isErrorCode("adz");
         })).toBeInstanceOf(Error);
@@ -1906,6 +2010,8 @@ describe("cwserver-schema-validator", () => {
         fs.renameSync(distPath, absPath);
         done();
     });
+});
+describe("finalization", () => {
     it("shutdown-application", (done) => {
         shutdownApp(done);
     });

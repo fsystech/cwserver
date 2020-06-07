@@ -6,7 +6,6 @@
 // 9:19 PM 5/8/2020
 import { Stats, ReadStream, createReadStream as fsCreateReadStream } from 'fs';
 import { IContext } from './sow-server';
-// tslint:disable-next-line: no-namespace
 export namespace Streamer {
     export function stream(
         ctx: IContext, absPath: string,
