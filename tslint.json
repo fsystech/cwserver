@@ -5,7 +5,13 @@
   ],
   "jsRules": {},
   "rules": {
-    "no-console": false
+    "no-console": false,
+    "no-bitwise": false,
+    "max-classes-per-file": false,
+    "one-variable-per-declaration": false,
+    "forin": false,
+    "no-namespace": false,
+    "radix": false
   },
   "rulesDirectory": []
 }
