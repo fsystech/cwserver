@@ -357,13 +357,15 @@ ${appRoot}\\www_public
     setHeader(res) {
         res.setHeader('x-timestamp', Date.now());
         res.setHeader('server', 'SOW Frontend');
-        res.setHeader('x-app-version', '1.0.0012');
+        res.setHeader('x-app-version', '1.0.14');
         res.setHeader('x-powered-by', 'safeonline.world');
         res.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
         res.setHeader('x-xss-protection', '1; mode=block');
         res.setHeader('x-content-type-options', 'nosniff');
         res.setHeader('x-frame-options', 'sameorigin');
-        res.setHeader('expect-ct', 'max-age=0, report-uri="https://report.safeonline.world/ct/cache.jsxh');
+        if (this.config.hostInfo.hostName && this.config.hostInfo.hostName.length > 0) {
+            res.setHeader('expect-ct', 'max-age=0, report-uri="https://report.safeonline.world/ct/cache.jsxh');
+        }
         res.setHeader('feature-policy', "magnetometer 'none'");
         if (this.config.hostInfo.frameAncestors) {
             res.setHeader('content-security-policy', `frame-ancestors ${this.config.hostInfo.frameAncestors}`);

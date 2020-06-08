@@ -28,6 +28,12 @@ export function getRouteMatcher( route: string, rRepRegx?: boolean ): IRouteMatc
     if ( route.charAt( route.length - 1 ) === '/' ) {
         throw new Error( `Invalid route defined ${route}` );
     }
+    const wildcardIndex: number = route.lastIndexOf( "*" );
+    if ( wildcardIndex > -1 ) {
+        if ( route.charAt( route.length - 1 ) !== "*" ) {
+            throw new Error( `Invalid route defined ${route}` );
+        }
+    }
     const croute: string = route
         .replace( pathRegx, "\\/" )
         .replace( /\*/gi, '(.*)' )
@@ -105,16 +111,13 @@ export function getRouteInfo<T>(
                     pathToArray( mstr, requestParam.match );
                     continue;
                 }
-                nextIndex = info.pathArray.findIndex( str => str.indexOf( ":" ) > -1 );
+                nextIndex = info.pathArray.findIndex( ( str, index ) => index >= nextIndex && str.indexOf( ":" ) > -1 );
                 if ( nextIndex < 0 ) {
                     requestParam.match.push( mstr );
                     continue;
                 }
                 const part = info.pathArray[nextIndex];
-                if ( part.indexOf( ":" ) > -1 ) {
-                    requestParam.query[part.replace( /:/gi, "" )] = pathArray[nextIndex];
-                }
-                continue;
+                requestParam.query[part.replace( /:/gi, "" )] = pathArray[nextIndex];
             }
             return {
                 layer: info,

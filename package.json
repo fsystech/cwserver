@@ -1,6 +1,6 @@
 {
   "name": "cwserver",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "SOW Web Server (All in one) for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,7 +19,7 @@
     "build": "node clean.js && tsc",
     "lint": "tslint --config tslint.json --project tsconfig.json",
     "test:cov": "nyc node_modules/mocha/bin/_mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts",
-    "test:mocha": "_mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts"
+    "test:mocha": "node_modules/mocha/bin/_mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts"
   },
   "keywords": [
     "web",

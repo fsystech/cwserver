@@ -36,6 +36,7 @@ exports.shouldBeError = void 0;
 const expect_1 = __importDefault(require("expect"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
+const sow_server_core_1 = require("../lib/sow-server-core");
 const socket_client_1 = require("./socket-client");
 const index_1 = require("../index");
 const mimeHandler = new index_1.HttpMimeHandler();
@@ -50,6 +51,8 @@ function shouldBeError(next) {
 exports.shouldBeError = shouldBeError;
 ;
 global.sow.server.on("register-view", (app, controller, server) => {
+    expect_1.default(sow_server_core_1.parseCookie(["test"])).toBeInstanceOf(Object);
+    expect_1.default(sow_server_core_1.parseCookie({})).toBeInstanceOf(Object);
     app.use("/app-error", (req, res, next) => {
         throw new Error("Application should be fire Error event");
     });

@@ -188,7 +188,10 @@ describe( "cwserver-router", () => {
         expect( shouldBeError( () => {
             getRouteMatcher( "/nobody/" );
         } ) ).toBeInstanceOf( Error );
-        expect( getRouteMatcher( "/nobody/*" ).repRegExp ).toBeUndefined( );
+        expect( getRouteMatcher( "/nobody/*" ).repRegExp ).toBeUndefined();
+        expect( shouldBeError( () => {
+            getRouteMatcher( "/nobody/*/:id" );
+        } ) ).toBeInstanceOf( Error );
         const router: ILayerInfo<string>[] = [];
         expect( getRouteInfo( "", router, "ANY" ) ).toBeUndefined();
         router.push( {
@@ -207,6 +210,15 @@ describe( "cwserver-router", () => {
             routeMatcher: void 0
         } );
         expect( getRouteInfo( "/vertual/test/body", router, "GET" ) ).toBeUndefined();
+        router.length = 0;
+        router.push( {
+            method: "GET",
+            handler: "",
+            route: "/test/:id/zoo/ticket/*",
+            pathArray: "/test/:id/zoo/ticket/*".split( "/" ),
+            routeMatcher: getRouteMatcher( "/test/:id/zoo/ticket/*" )
+        } );
+        expect( getRouteInfo( "/test/1/zoo/ticket/nothing/todo", router, "GET" ) ).toBeDefined();
         expect( pathToArray( "/vertual/test/body", [] ) ).not.toBeInstanceOf( Error );
         expect( pathToArray( "dfa/", [] ) ).not.toBeInstanceOf( Error );
         done();
@@ -381,7 +393,6 @@ describe( "cwserver-get", () => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-type"] ).toBe( "application/json" );
-                console.log( res.body );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.servedFrom ).toEqual( '/test-any/*' );
                 expect( res.body.q.query ).toBeInstanceOf( Object );
@@ -1965,6 +1976,9 @@ describe( "cwserver-schema-validator", () => {
 } );
 describe( "finalization", () => {
     it( "shutdown-application", ( done: Mocha.Done ): void => {
-        shutdownApp( done );
+        ( async () => {
+            await app.shutdown();
+            done();
+        } )();
     } );
 } );

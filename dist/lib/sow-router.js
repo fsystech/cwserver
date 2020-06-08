@@ -6,6 +6,12 @@ function getRouteMatcher(route, rRepRegx) {
     if (route.charAt(route.length - 1) === '/') {
         throw new Error(`Invalid route defined ${route}`);
     }
+    const wildcardIndex = route.lastIndexOf("*");
+    if (wildcardIndex > -1) {
+        if (route.charAt(route.length - 1) !== "*") {
+            throw new Error(`Invalid route defined ${route}`);
+        }
+    }
     const croute = route
         .replace(pathRegx, "\\/")
         .replace(/\*/gi, '(.*)')
@@ -91,16 +97,13 @@ function getRouteInfo(reqPath, handlerInfos, method) {
                     pathToArray(mstr, requestParam.match);
                     continue;
                 }
-                nextIndex = info.pathArray.findIndex(str => str.indexOf(":") > -1);
+                nextIndex = info.pathArray.findIndex((str, index) => index >= nextIndex && str.indexOf(":") > -1);
                 if (nextIndex < 0) {
                     requestParam.match.push(mstr);
                     continue;
                 }
                 const part = info.pathArray[nextIndex];
-                if (part.indexOf(":") > -1) {
-                    requestParam.query[part.replace(/:/gi, "")] = pathArray[nextIndex];
-                }
-                continue;
+                requestParam.query[part.replace(/:/gi, "")] = pathArray[nextIndex];
             }
             return {
                 layer: info,

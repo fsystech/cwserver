@@ -4,7 +4,7 @@
 [![npm version](https://badge.fury.io/js/cwserver.svg)](https://badge.fury.io/js/cwserver)
 ![Downloads](https://img.shields.io/npm/dt/cwserver)
 [![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/safeonlineworld/cwserver.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/safeonlineworld/cwserver/context:javascript)
-[![Coverage Status](https://coveralls.io/repos/github/safeonlineworld/cwserver/badge.svg?branch=master&v=2)](https://coveralls.io/github/safeonlineworld/cwserver?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/safeonlineworld/cwserver/badge.svg?branch=master&v=3)](https://coveralls.io/github/safeonlineworld/cwserver?branch=master)
 [![Known Vulnerabilities](https://snyk.io/test/github/safeonlineworld/cwserver/badge.svg?targetFile=package.json)](https://snyk.io/test/github/safeonlineworld/cwserver?targetFile=package.json)
 [![Dependency Status](https://david-dm.org/safeonlineworld/cwserver.svg)](https://david-dm.org/safeonlineworld/cwserver)
 [![devDependency Status](https://david-dm.org/safeonlineworld/cwserver/dev-status.svg)](https://david-dm.org/safeonlineworld/cwserver#info=devDependencies)

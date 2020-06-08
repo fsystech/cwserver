@@ -7,7 +7,7 @@ import {
 } from '../lib/sow-router';
 import {
 	IApps, IRequest,
-	IResponse, NextFunction
+	IResponse, NextFunction, parseCookie
 } from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
 import { ISowServer, IContext } from '../lib/sow-server';
@@ -22,6 +22,8 @@ export function shouldBeError( next: () => void ): Error | void {
 	}
 };
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
+	expect( parseCookie( ["test"] ) ).toBeInstanceOf( Object );
+	expect( parseCookie( {} ) ).toBeInstanceOf( Object );
 	app.use( "/app-error", ( req: IRequest, res: IResponse, next: NextFunction ) => {
 		throw new Error( "Application should be fire Error event" );
 	} );

@@ -221,6 +221,9 @@ describe("cwserver-router", () => {
             sow_router_1.getRouteMatcher("/nobody/");
         })).toBeInstanceOf(Error);
         expect_1.default(sow_router_1.getRouteMatcher("/nobody/*").repRegExp).toBeUndefined();
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_router_1.getRouteMatcher("/nobody/*/:id");
+        })).toBeInstanceOf(Error);
         const router = [];
         expect_1.default(sow_router_1.getRouteInfo("", router, "ANY")).toBeUndefined();
         router.push({
@@ -239,6 +242,15 @@ describe("cwserver-router", () => {
             routeMatcher: void 0
         });
         expect_1.default(sow_router_1.getRouteInfo("/vertual/test/body", router, "GET")).toBeUndefined();
+        router.length = 0;
+        router.push({
+            method: "GET",
+            handler: "",
+            route: "/test/:id/zoo/ticket/*",
+            pathArray: "/test/:id/zoo/ticket/*".split("/"),
+            routeMatcher: sow_router_1.getRouteMatcher("/test/:id/zoo/ticket/*")
+        });
+        expect_1.default(sow_router_1.getRouteInfo("/test/1/zoo/ticket/nothing/todo", router, "GET")).toBeDefined();
         expect_1.default(sow_router_1.pathToArray("/vertual/test/body", [])).not.toBeInstanceOf(Error);
         expect_1.default(sow_router_1.pathToArray("dfa/", [])).not.toBeInstanceOf(Error);
         done();
@@ -413,7 +425,6 @@ describe("cwserver-get", () => {
             expect_1.default(err).not.toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(200);
             expect_1.default(res.header["content-type"]).toBe("application/json");
-            console.log(res.body);
             expect_1.default(res.body).toBeInstanceOf(Object);
             expect_1.default(res.body.servedFrom).toEqual('/test-any/*');
             expect_1.default(res.body.q.query).toBeInstanceOf(Object);
@@ -2013,7 +2024,10 @@ describe("cwserver-schema-validator", () => {
 });
 describe("finalization", () => {
     it("shutdown-application", (done) => {
-        shutdownApp(done);
+        (() => __awaiter(void 0, void 0, void 0, function* () {
+            yield app.shutdown();
+            done();
+        }))();
     });
 });
 //# sourceMappingURL=module.spec.js.map
