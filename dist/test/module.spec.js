@@ -746,7 +746,7 @@ describe("cwserver-bundler", () => {
                     return setTimeout(() => {
                         tryCount++;
                         return sendReq(done, tryCount);
-                    }, 100), void 0;
+                    }, 300), void 0;
                 }
                 expect_1.default(err).toBeInstanceOf(Error);
                 expect_1.default(res.status).toBe(304);
@@ -800,7 +800,7 @@ describe("cwserver-bundler", () => {
                     return setTimeout(() => {
                         tryCount++;
                         return sendReq(done, tryCount);
-                    }, 100), void 0;
+                    }, 300), void 0;
                 }
                 expect_1.default(err).toBeInstanceOf(Error);
                 expect_1.default(res.status).toEqual(304);

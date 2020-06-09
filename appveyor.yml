@@ -1,0 +1,47 @@
+environment:
+  matrix:
+    - nodejs_version: "10.19"
+    - nodejs_version: "12.17"
+cache:
+  - node_modules
+install:
+  # Install Node.js
+  - ps: >-
+      try { Install-Product node $env:nodejs_version -ErrorAction Stop }
+      catch { Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version) }
+  # Configure npm
+  - ps: |
+      # Skip updating shrinkwrap / lock
+      npm config set shrinkwrap false
+  # Remove all non-test dependencies
+  - ps: |
+      # Remove example dependencies
+      npm rm --silent --save-dev connect-redis
+  # Setup Node.js version-specific dependencies
+  - ps: |
+      # mocha for testing
+      npm install --silent --save-dev superagent
+      npm install --silent --save-dev expect
+      npm install --silent --save-dev socket.io-client
+      npm install --silent --save-dev socket.io
+      npm install --silent --save-dev mocha
+  # Update Node.js modules
+  - ps: |
+      # Prune & rebuild node_modules
+      if (Test-Path -Path node_modules) {
+        npm prune
+        npm rebuild
+      }
+  # Install Node.js modules
+  - npm install
+build: off
+test_script:
+  # Output version data
+  - ps: |
+      node --version
+      npm --version
+  # Run test script
+  - npm run test:cov
+  # Run linting
+  - npm run lint
+version: "{build}"
