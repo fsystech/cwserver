@@ -96,7 +96,7 @@ This 'Combiner' contains the following files:\n`;
         }
         return _path.resolve(path);
     }
-    static getFiles(server, str, lastChangeTime) {
+    static getBundleInfo(server, str, lastChangeTime) {
         const result = new BundleInfo();
         const lchangeTime = typeof (lastChangeTime) === "number" ? lastChangeTime : 0;
         try {
@@ -191,7 +191,7 @@ This 'Combiner' contains the following files:\n`;
         if (!desc)
             return;
         const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
-        const bundleInfo = this.getFiles(server, desc.toString(), cngHander.sinceModify);
+        const bundleInfo = this.getBundleInfo(server, desc.toString(), cngHander.sinceModify);
         if (bundleInfo.error === true) {
             server.addError(ctx, bundleInfo.msg);
             return ctx.next(500);
@@ -241,7 +241,7 @@ This 'Combiner' contains the following files:\n`;
             cfileSize = stat.size;
             lastChangeTime = stat.mtime.getTime();
         }
-        const bundleInfo = this.getFiles(server, desc.toString(), lastChangeTime);
+        const bundleInfo = this.getBundleInfo(server, desc.toString(), lastChangeTime);
         if (bundleInfo.error === true) {
             server.addError(ctx, bundleInfo.msg);
             return ctx.next(500);

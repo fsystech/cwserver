@@ -87,7 +87,7 @@ This 'Combiner' contains the following files:\n`;
         }
         return _path.resolve( path );
     }
-    static getFiles(
+    static getBundleInfo(
         server: ISowServer, str: string,
         lastChangeTime?: number | void
     ): IBundleInfo {
@@ -179,7 +179,7 @@ This 'Combiner' contains the following files:\n`;
         const desc: string | void = this.decryptFilePath( server, ctx, str.toString() );
         if ( !desc ) return;
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
-        const bundleInfo: IBundleInfo = this.getFiles( server, desc.toString(), cngHander.sinceModify );
+        const bundleInfo: IBundleInfo = this.getBundleInfo( server, desc.toString(), cngHander.sinceModify );
         if ( bundleInfo.error === true ) {
             server.addError( ctx, bundleInfo.msg );
             return ctx.next( 500 );
@@ -227,7 +227,7 @@ This 'Combiner' contains the following files:\n`;
             cfileSize = stat.size;
             lastChangeTime = stat.mtime.getTime();
         }
-        const bundleInfo: IBundleInfo = this.getFiles( server, desc.toString(), lastChangeTime );
+        const bundleInfo: IBundleInfo = this.getBundleInfo( server, desc.toString(), lastChangeTime );
         if ( bundleInfo.error === true ) {
             server.addError( ctx, bundleInfo.msg );
             return ctx.next( 500 );

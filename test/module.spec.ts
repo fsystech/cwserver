@@ -787,7 +787,10 @@ describe( "cwserver-bundler", () => {
             expect( lastModified.length ).toBeGreaterThan( 0 );
             appUtility.server.config.bundler.fileCache = false;
             appUtility.server.config.bundler.compress = true;
-            return sendReq( done, 0 );
+            setTimeout( () => {
+                sendReq( done, 0 );
+            }, 300 );
+            return void 0;
         };
     } )() );
     it( 'js file bundler not gizp response (no server cache)', ( done: Mocha.Done ): void => {
@@ -845,7 +848,7 @@ describe( "cwserver-bundler", () => {
                 ),
                 ck: "bundle_no_zip", ct: "text/javascript", rc: "Y"
             } )
-            .end( async ( err, res ) => {
+            .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-type"] ).toBe( "application/x-javascript; charset=utf-8" );
@@ -855,7 +858,25 @@ describe( "cwserver-bundler", () => {
     } );
 } );
 describe( "cwserver-bundler-error", () => {
-    it( 'bundler should be virtual file error', ( done: Mocha.Done ): void => {
+    it( 'bundler should be virtual file error (server cache)', ( done: Mocha.Done ): void => {
+        appUtility.server.config.bundler.fileCache = true;
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
+            .query( {
+                g: appUtility.server.createBundle( `
+                    $virtual_vtest/xsocket-client.js,
+                    $root/$public/static/script/test-1.js,
+                    $root/$public/static/script/test-2.js|__owner__`
+                ),
+                ck: "bundle_test_jsx", ct: "text/javascript", rc: "Y"
+            } )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 500 );
+                done();
+            } );
+    } );
+    it( 'bundler should be virtual file error (no server cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )

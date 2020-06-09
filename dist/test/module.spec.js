@@ -812,7 +812,10 @@ describe("cwserver-bundler", () => {
             expect_1.default(lastModified.length).toBeGreaterThan(0);
             appUtility.server.config.bundler.fileCache = false;
             appUtility.server.config.bundler.compress = true;
-            return sendReq(done, 0);
+            setTimeout(() => {
+                sendReq(done, 0);
+            }, 300);
+            return void 0;
         };
     })());
     it('js file bundler not gizp response (no server cache)', (done) => {
@@ -867,17 +870,34 @@ describe("cwserver-bundler", () => {
                     static/script/test-1.js`),
             ck: "bundle_no_zip", ct: "text/javascript", rc: "Y"
         })
-            .end((err, res) => __awaiter(void 0, void 0, void 0, function* () {
+            .end((err, res) => {
             expect_1.default(err).not.toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(200);
             expect_1.default(res.header["content-type"]).toBe("application/x-javascript; charset=utf-8");
             expect_1.default(res.header["content-encoding"]).toBeUndefined();
             done();
-        }));
+        });
     });
 });
 describe("cwserver-bundler-error", () => {
-    it('bundler should be virtual file error', (done) => {
+    it('bundler should be virtual file error (server cache)', (done) => {
+        appUtility.server.config.bundler.fileCache = true;
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
+            .query({
+            g: appUtility.server.createBundle(`
+                    $virtual_vtest/xsocket-client.js,
+                    $root/$public/static/script/test-1.js,
+                    $root/$public/static/script/test-2.js|__owner__`),
+            ck: "bundle_test_jsx", ct: "text/javascript", rc: "Y"
+        })
+            .end((err, res) => {
+            expect_1.default(err).toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(500);
+            done();
+        });
+    });
+    it('bundler should be virtual file error (no server cache)', (done) => {
         appUtility.server.config.bundler.fileCache = false;
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
