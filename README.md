@@ -1,13 +1,14 @@
 [![Cwserver Logo](https://i.imgur.com/ePQ32xo.png)](http://cwserver.safeonline.world/)
 
-[![Build Status](https://api.travis-ci.org/safeonlineworld/cwserver.svg?branch=master)](https://travis-ci.org/github/safeonlineworld/cwserver)
-[![npm version](https://badge.fury.io/js/cwserver.svg)](https://badge.fury.io/js/cwserver)
-![Downloads](https://img.shields.io/npm/dt/cwserver)
-[![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/safeonlineworld/cwserver.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/safeonlineworld/cwserver/context:javascript)
-[![Coverage Status](https://coveralls.io/repos/github/safeonlineworld/cwserver/badge.svg?branch=master&v=4)](https://coveralls.io/github/safeonlineworld/cwserver?branch=master)
-[![Known Vulnerabilities](https://snyk.io/test/github/safeonlineworld/cwserver/badge.svg?targetFile=package.json)](https://snyk.io/test/github/safeonlineworld/cwserver?targetFile=package.json)
-[![Dependency Status](https://david-dm.org/safeonlineworld/cwserver.svg)](https://david-dm.org/safeonlineworld/cwserver)
-[![devDependency Status](https://david-dm.org/safeonlineworld/cwserver/dev-status.svg)](https://david-dm.org/safeonlineworld/cwserver#info=devDependencies)
+[![Linux Build][travis-image]][travis-url]
+[![Windows Build][appveyor-image]][appveyor-url]
+[![npm version][npm-version-image]][npm-version-url]
+[![NPM Downloads][downloads-image]][downloads-url]
+[![Language grade: JavaScript][language-garde-image]][language-garde-url]
+[![Coverage Status][coveralls-image]][coveralls-url]
+[![Known Vulnerabilities][kvulnerabilities-image]][kvulnerabilities-url]
+[![Dependency Status][david-dep-image]][david-dep-url]
+[![devDependency Status][david-dev-image]][david-dev-url]
 
 Install ```cwserver``` by this command ```npm i cwserver```<br/>
 Create ```createProjectTemplate.js``` as following
@@ -244,3 +245,22 @@ app.listen( server.port, () => server.log.write( `
 ```
 Read more about [app.config.json](https://github.com/safeonlineworld/cwserver/blob/master/schema.json)<br/> 
 run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
+
+[travis-image]: https://img.shields.io/travis/safeonlineworld/cwserver/master.svg?label=linux
+[travis-url]: https://travis-ci.org/github/safeonlineworld/cwserver
+[appveyor-image]: https://img.shields.io/appveyor/build/rktuxyn/cwserver/master.svg?label=windows
+[appveyor-url]: https://ci.appveyor.com/project/rktuxyn/cwserver
+[npm-version-url]: https://badge.fury.io/js/cwserver
+[npm-version-image]: https://badge.fury.io/js/cwserver.svg
+[downloads-image]: https://img.shields.io/npm/dt/cwserver.svg
+[downloads-url]: https://npmcharts.com/compare/express?minimal=true
+[language-garde-image]: https://img.shields.io/lgtm/grade/javascript/g/safeonlineworld/cwserver.svg?logo=lgtm&logoWidth=18
+[language-garde-url]: https://lgtm.com/projects/g/safeonlineworld/cwserver/context:javascript
+[coveralls-image]: https://img.shields.io/coveralls/github/safeonlineworld/cwserver/master
+[coveralls-url]: https://coveralls.io/github/safeonlineworld/cwserver?branch=master
+[kvulnerabilities-image]: https://snyk.io/test/github/safeonlineworld/cwserver/badge.svg?targetFile=package.json
+[kvulnerabilities-url]: https://snyk.io/test/github/safeonlineworld/cwserver?targetFile=package.json
+[david-dev-image]: https://img.shields.io/david/dev/safeonlineworld/cwserver
+[david-dev-url]: https://david-dm.org/safeonlineworld/cwserver#info=devDependencies
+[david-dep-image]: https://img.shields.io/david/safeonlineworld/cwserver
+[david-dep-url]: https://david-dm.org/safeonlineworld/cwserver

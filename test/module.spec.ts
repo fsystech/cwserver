@@ -682,11 +682,11 @@ describe( "cwserver-bundler", () => {
                     ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
                 } )
                 .end( ( err, res ) => {
-                    if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                    if ( ( err === null || !err || !( err instanceof Error ) ) && tryCount === 0 ) {
                         return setTimeout( () => {
                             tryCount++;
                             return sendReq( done, tryCount );
-                        }, 100 ), void 0;
+                        }, 300 ), void 0;
                     }
                     expect( err ).toBeInstanceOf( Error );
                     expect( res.status ).toBe( 304 );
@@ -715,7 +715,7 @@ describe( "cwserver-bundler", () => {
                     ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
                 } )
                 .end( ( err, res ) => {
-                    if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                    if ( ( err === null || !err || !( err instanceof Error ) ) && tryCount === 0 ) {
                         return setTimeout( () => {
                             tryCount++;
                             return sendReq( done, tryCount );
@@ -771,7 +771,7 @@ describe( "cwserver-bundler", () => {
                     ck: "bundle_no_cache_js", ct: "text/javascript", rc: "Y"
                 } )
                 .end( ( err, res ) => {
-                    if ( ( !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                    if ( ( err === null || !err || !( err instanceof Error ) ) && tryCount === 0 ) {
                         return setTimeout( () => {
                             tryCount++;
                             return sendReq( done, tryCount );
