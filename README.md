@@ -253,7 +253,7 @@ run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
 [npm-version-url]: https://badge.fury.io/js/cwserver
 [npm-version-image]: https://badge.fury.io/js/cwserver.svg
 [downloads-image]: https://img.shields.io/npm/dt/cwserver.svg
-[downloads-url]: https://npmcharts.com/compare/express?minimal=true
+[downloads-url]: https://npmcharts.com/compare/cwserver?minimal=true
 [language-garde-image]: https://img.shields.io/lgtm/grade/javascript/g/safeonlineworld/cwserver.svg?logo=lgtm&logoWidth=18
 [language-garde-url]: https://lgtm.com/projects/g/safeonlineworld/cwserver/context:javascript
 [coveralls-image]: https://img.shields.io/coveralls/github/safeonlineworld/cwserver/master
