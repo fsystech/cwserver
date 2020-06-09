@@ -10,9 +10,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as request from 'superagent';
 import * as io from 'socket.io-client';
+import { HttpStatus } from "../lib/sow-http-status";
 import * as cwserver from '../index';
 import { Session, ToNumber } from '../lib/sow-static';
-import { IAppUtility, IContext } from '../lib/sow-server';
+import {
+    IAppUtility, IContext,
+    readAppVersion
+} from '../lib/sow-server';
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
 } from '../lib/sow-router';
@@ -143,6 +147,7 @@ describe( "cwserver-core", () => {
         }
         appUtility = cwserver.initilizeServer( appRoot, projectRoot );
         expect( appUtility.public ).toEqual( projectRoot );
+        console.log( `\t\t\tcwserver ${appUtility.server.version}` );
         done();
     } );
     it( "initilize server throw error (Server instance can initilize 1 time)", ( done: Mocha.Done ): void => {
@@ -274,7 +279,7 @@ describe( "cwserver-view", () => {
     it( 'should throw error (After initilize view, you should not register new veiw)', ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             // tslint:disable-next-line: no-empty
-            global.sow.server.on( "register-view", ( _app, controller, server ) => {} );
+            global.sow.server.on( "register-view", ( _app, controller, server ) => { } );
         } ) ).toBeInstanceOf( Error );
         done();
     } );
@@ -510,7 +515,7 @@ describe( "cwserver-template-engine", () => {
     it( 'should throw template runtime error', ( done: Mocha.Done ): void => {
         const filePath: string = appUtility.server.mapPath( "/test.html" );
         expect( fs.existsSync( filePath ) ).toEqual( false );
-        fs.writeFileSync( filePath, "{% server.invalid_method() %}" );
+        fs.writeFileSync( filePath, "{% ctx.server.transferRequest(); %}" );
         expect( fs.existsSync( filePath ) ).toEqual( true );
         getAgent()
             .get( `http://localhost:${appUtility.port}/test` )
@@ -524,6 +529,16 @@ describe( "cwserver-template-engine", () => {
     it( 'send get request should be 404 response config.defaultExt = .html', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/index.html` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 404 );
+                expect( res.header["content-type"] ).toBe( "text/html" );
+                done();
+            } );
+    } );
+    it( 'send get request should be 404 response', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/404` )
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 404 );
@@ -640,7 +655,6 @@ describe( "cwserver-bundler", () => {
                 ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
             } )
             .end( ( err, res ) => {
-                console.log( err );
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-type"] ).toBe( "application/x-javascript; charset=utf-8" );
@@ -1325,7 +1339,7 @@ describe( "cwserver-socket-io-implementation", () => {
             reconnection: true, transportOptions: {
                 polling: {
                     extraHeaders: {
-                        'Cookie': authCookies[0].substring( 0, authCookies[0].indexOf(";") )
+                        'Cookie': authCookies[0].substring( 0, authCookies[0].indexOf( ";" ) )
                     }
                 }
             }
@@ -1342,7 +1356,7 @@ describe( "cwserver-socket-io-implementation", () => {
 } );
 describe( "cwserver-echo", () => {
     it( 'echo-server', ( done: Mocha.Done ): void => {
-        const reqMd5 = cwserver.md5( "Test" );
+        const reqMd5 = cwserver.Encryption.toMd5( "Test" );
         const hex = cwserver.Encryption.utf8ToHex( reqMd5 );
         getAgent()
             .post( `http://localhost:${appUtility.port}/echo` )
@@ -1459,6 +1473,22 @@ describe( "cwserver-controller-reset", () => {
 describe( "cwserver-utility", () => {
     it( "test-app-utility", ( done: Mocha.Done ): void => {
         ( () => {
+            process.env.SCRIPT = "JS";
+            expect( shouldBeError( () => {
+                readAppVersion();
+            } ) ).toBeInstanceOf( Error );
+            process.env.SCRIPT = "TS";
+            const parent = path.resolve( __dirname, '..' );
+            const absPath = path.resolve( `${parent}/package.json` );
+            fs.renameSync( absPath, `${absPath}.bak` );
+            fs.writeFileSync( absPath, "INVALID_JSON" );
+            expect( shouldBeError( () => {
+                readAppVersion();
+            } ) ).toBeInstanceOf( Error );
+            fs.unlinkSync( absPath );
+            fs.renameSync( `${absPath}.bak`, absPath );
+        } )();
+        ( () => {
             const old = appUtility.server.config.session.cookie;
             appUtility.server.config.session.cookie = "";
             expect( shouldBeError( () => {
@@ -1481,16 +1511,16 @@ describe( "cwserver-utility", () => {
             appUtility.server.config.hostInfo.port = oldPort;
         } )();
         expect( shouldBeError( () => {
-            cwserver.HttpStatus.isErrorCode( "adz" );
+            HttpStatus.isErrorCode( "adz" );
         } ) ).toBeInstanceOf( Error );
         expect( shouldBeError( () => {
-            cwserver.HttpStatus.getDescription( 45510 );
+            HttpStatus.getDescription( 45510 );
         } ) ).toBeInstanceOf( Error );
-        expect( cwserver.HttpStatus.fromPath( "result", 200 ) ).toEqual( 200 );
-        expect( cwserver.HttpStatus.fromPath( "/result", 200 ) ).toEqual( 200 );
-        expect( cwserver.HttpStatus.getResInfo( "/result", 0 ).isValid ).toEqual( false );
-        expect( cwserver.HttpStatus.isValidCode( 45510 ) ).toEqual( false );
-        expect( cwserver.HttpStatus.statusCode ).toBeInstanceOf( Object );
+        expect( HttpStatus.fromPath( "result", 200 ) ).toEqual( 200 );
+        expect( HttpStatus.fromPath( "/result", 200 ) ).toEqual( 200 );
+        expect( HttpStatus.getResInfo( "/result", 0 ).isValid ).toEqual( false );
+        expect( HttpStatus.isValidCode( 45510 ) ).toEqual( false );
+        expect( HttpStatus.statusCode ).toBeInstanceOf( Object );
         expect( ToNumber( null ) ).toEqual( 0 );
         expect( shouldBeError( () => {
             cwserver.Encryption.encrypt( "nothing", {
@@ -1525,6 +1555,8 @@ describe( "cwserver-utility", () => {
         expect( Util.extend( {}, () => {
             return new Session();
         }, true ) ).toBeInstanceOf( Object );
+        expect( Util.extend( {}, { "__proto__": "__no_proto__", "constructor"() { return {}; } } ) ).toBeInstanceOf( Object );
+        expect( Util.extend( {}, { "__proto__": "__no_proto__", "constructor"() { return {}; } }, true ) ).toBeInstanceOf( Object );
         expect( shouldBeError( () => {
             Util.extend( "", {} );
         } ) ).toBeInstanceOf( Error );
@@ -1623,6 +1655,27 @@ describe( "cwserver-utility", () => {
                     throw e;
                 }
             } ) ).toBeInstanceOf( Error );
+            ( () => {
+                const parent = path.resolve( __dirname, '..' );
+                const absPath = path.resolve( `${parent}/dist/project_template/test/db-module.js` );
+                appUtility.server.config.database = [{
+                    module: "dbContext",
+                    path: absPath,
+                    dbConn: {
+                        database: "sysdb", password: "xyz"
+                    }
+                }, {
+                    module: "dbContext",
+                    path: absPath,
+                    dbConn: {
+                        database: "sysdb", password: "xyz"
+                    }
+                }];
+                expect( shouldBeError( () => {
+                    appUtility.server.initilize();
+                } ) ).toBeInstanceOf( Error );
+                Util.extend( appUtility.server.config, untouchedConfig );
+            } )();
             done();
         } );
         it( 'override', ( done: Mocha.Done ): void => {
@@ -1773,10 +1826,13 @@ describe( "cwserver-utility", () => {
         expect( shouldBeError( () => {
             logger.flush();
         } ) ).toBeInstanceOf( Error );
-        logger.reset( );
+        logger.reset();
         logger.dispose(); logger.dispose();
         logger = new Logger( logDir, void 0, "+6", void 0, false );
         logger.write( "test" );
+        logger.dispose();
+        logger = new Logger( void 0, void 0, "+6", false );
+        logger.write( cwserver.ConsoleColor.Cyan( "User Interactive" ) );
         logger.dispose();
         appUtility.server.log.dispose();
         logger = new Logger( logDir, projectRoot, "+6", true, true, 100 );
@@ -1786,7 +1842,7 @@ describe( "cwserver-utility", () => {
         logger.writeToStream( "log-test" );
         logger.writeToStream( "log-test" );
         logger.writeToStream( "log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test" );
-        logger.writeToStream( "log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test ");
+        logger.writeToStream( "log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test log-test " );
         logger.writeToStream( "log-test" );
         logger.reset();
         logger.dispose();

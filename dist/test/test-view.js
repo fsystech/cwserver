@@ -37,6 +37,7 @@ const expect_1 = __importDefault(require("expect"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const sow_server_core_1 = require("../lib/sow-server-core");
+const sow_server_1 = require("../lib/sow-server");
 const socket_client_1 = require("./socket-client");
 const index_1 = require("../index");
 const mimeHandler = new index_1.HttpMimeHandler();
@@ -217,7 +218,14 @@ global.sow.server.on("register-view", (app, controller, server) => {
 global.sow.server.on("register-view", (app, controller, server) => {
     controller
         .any('/test-any/*', (ctx, requestParam) => {
-        return ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam });
+        expect_1.default(server.passError(ctx)).toBeFalsy();
+        ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam });
+        server.addError(ctx, new Error("__INVALID___"));
+        expect_1.default(server.passError(ctx)).toBeFalsy();
+        sow_server_1.disposeContext(ctx);
+        sow_server_1.disposeContext(ctx);
+        sow_server_1.removeContext("12");
+        sow_server_1.getMyContext("12");
     })
         .get('/task/:id/*', (ctx, requestParam) => {
         return ctx.res.json({ reqPath: ctx.path, servedFrom: "/task/:id/*", q: requestParam });
@@ -230,6 +238,9 @@ global.sow.server.on("register-view", (app, controller, server) => {
     })
         .get('/user/:id/settings', (ctx, requestParam) => {
         return ctx.res.json({ reqPath: ctx.path, servedFrom: "/user/:id/settings", q: requestParam });
+    })
+        .get('/404', (ctx, requestParam) => {
+        return index_1.Util.sendResponse(ctx, "/invalid/not-found/no.html");
     });
 });
 global.sow.server.on("register-view", (app, controller, server) => {

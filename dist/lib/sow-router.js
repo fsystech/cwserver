@@ -14,7 +14,7 @@ function getRouteMatcher(route, rRepRegx) {
     }
     const croute = route
         .replace(pathRegx, "\\/")
-        .replace(/\*/gi, '(.*)')
+        .replace(/\*/gi, "(.*)")
         .replace(/:([\s\S]+?)\/|:([\s\S]+?).*/gi, (str) => {
         if (str.indexOf("\\/") > -1) {
             return "(?:([^\/]+?))\\/";

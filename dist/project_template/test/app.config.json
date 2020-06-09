@@ -4,7 +4,7 @@
   "appName": "cwserver",
   "version": "0.0.1",
   "packageVersion": "1",
-  "isDebug": false,
+  "isDebug": true,
   "template": {
     "cache": false,
     "cacheType": "MEM"
@@ -52,8 +52,8 @@
   "hostInfo": {
     "origin": [],
     "root": "www",
-    "hostName": "",
-    "frameAncestors": "http://localhost",
+    "hostName": "cwserver.safeonline.world",
+    "frameAncestors": "http://www.safeonline.world",
     "tls": false,
     "cert": {},
     "port": 8080

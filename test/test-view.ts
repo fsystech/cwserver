@@ -10,7 +10,10 @@ import {
 	IResponse, NextFunction, parseCookie
 } from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
-import { ISowServer, IContext } from '../lib/sow-server';
+import {
+	ISowServer, IContext,
+	disposeContext, getMyContext, removeContext
+} from '../lib/sow-server';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import { PayloadParser, socketInitilizer, HttpMimeHandler, Streamer, Util, Encryption } from '../index';
 const mimeHandler = new HttpMimeHandler();
@@ -188,7 +191,14 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
 	controller
 		.any( '/test-any/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
+			expect( server.passError( ctx ) ).toBeFalsy();
+			ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
+			server.addError( ctx, new Error( "__INVALID___" ) );
+			expect( server.passError( ctx ) ).toBeFalsy( );
+			disposeContext( ctx );
+			disposeContext( ctx );
+			removeContext( "12" );
+			getMyContext( "12" );
 		} )
 		.get( '/task/:id/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/task/:id/*", q: requestParam } );
@@ -201,6 +211,9 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		} )
 		.get( '/user/:id/settings', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: requestParam } );
+		} )
+		.get( '/404', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			return Util.sendResponse( ctx, "/invalid/not-found/no.html" );
 		} );
 
 } );

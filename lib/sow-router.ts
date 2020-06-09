@@ -36,7 +36,7 @@ export function getRouteMatcher( route: string, rRepRegx?: boolean ): IRouteMatc
     }
     const croute: string = route
         .replace( pathRegx, "\\/" )
-        .replace( /\*/gi, '(.*)' )
+        .replace( /\*/gi, "(.*)" )
         .replace( /:([\s\S]+?)\/|:([\s\S]+?).*/gi, ( str: string ): string => {
             if ( str.indexOf( "\\/" ) > -1 ) {
                 return "(?:([^\/]+?))\\/";
@@ -45,10 +45,10 @@ export function getRouteMatcher( route: string, rRepRegx?: boolean ): IRouteMatc
         } );
     let repStr: string | void;
     if ( rRepRegx === true && route.indexOf( ":" ) < 0 ) {
-        const nRoute = route.substring( 0, route.lastIndexOf( "/" ) ).replace( pathRegx, "\\/" );
+        const nRoute: string = route.substring( 0, route.lastIndexOf( "/" ) ).replace( pathRegx, "\\/" );
         repStr = `^${nRoute}\/?(?=\/|$)`;
     }
-    const regx = `^${croute}\\/?$`;
+    const regx: string = `^${croute}\\/?$`;
     return {
         get regExp() {
             return new RegExp( regx, "gi" );

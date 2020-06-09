@@ -43,8 +43,10 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const request = __importStar(require("superagent"));
 const io = __importStar(require("socket.io-client"));
+const sow_http_status_1 = require("../lib/sow-http-status");
 const cwserver = __importStar(require("../index"));
 const sow_static_1 = require("../lib/sow-static");
+const sow_server_1 = require("../lib/sow-server");
 const sow_router_1 = require("../lib/sow-router");
 const sow_util_1 = require("../lib/sow-util");
 const sow_schema_validator_1 = require("../lib/sow-schema-validator");
@@ -175,6 +177,7 @@ describe("cwserver-core", () => {
         }
         appUtility = cwserver.initilizeServer(appRoot, projectRoot);
         expect_1.default(appUtility.public).toEqual(projectRoot);
+        console.log(`\t\t\tcwserver ${appUtility.server.version}`);
         done();
     });
     it("initilize server throw error (Server instance can initilize 1 time)", (done) => {
@@ -542,7 +545,7 @@ describe("cwserver-template-engine", () => {
     it('should throw template runtime error', (done) => {
         const filePath = appUtility.server.mapPath("/test.html");
         expect_1.default(fs.existsSync(filePath)).toEqual(false);
-        fs.writeFileSync(filePath, "{% server.invalid_method() %}");
+        fs.writeFileSync(filePath, "{% ctx.server.transferRequest(); %}");
         expect_1.default(fs.existsSync(filePath)).toEqual(true);
         getAgent()
             .get(`http://localhost:${appUtility.port}/test`)
@@ -556,6 +559,16 @@ describe("cwserver-template-engine", () => {
     it('send get request should be 404 response config.defaultExt = .html', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/index.html`)
+            .end((err, res) => {
+            expect_1.default(err).toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(404);
+            expect_1.default(res.header["content-type"]).toBe("text/html");
+            done();
+        });
+    });
+    it('send get request should be 404 response', (done) => {
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/404`)
             .end((err, res) => {
             expect_1.default(err).toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(404);
@@ -671,7 +684,6 @@ describe("cwserver-bundler", () => {
             ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
         })
             .end((err, res) => {
-            console.log(err);
             expect_1.default(err).not.toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(200);
             expect_1.default(res.header["content-type"]).toBe("application/x-javascript; charset=utf-8");
@@ -1361,7 +1373,7 @@ describe("cwserver-socket-io-implementation", () => {
 });
 describe("cwserver-echo", () => {
     it('echo-server', (done) => {
-        const reqMd5 = cwserver.md5("Test");
+        const reqMd5 = cwserver.Encryption.toMd5("Test");
         const hex = cwserver.Encryption.utf8ToHex(reqMd5);
         getAgent()
             .post(`http://localhost:${appUtility.port}/echo`)
@@ -1478,6 +1490,22 @@ describe("cwserver-controller-reset", () => {
 describe("cwserver-utility", () => {
     it("test-app-utility", (done) => {
         (() => {
+            process.env.SCRIPT = "JS";
+            expect_1.default(test_view_1.shouldBeError(() => {
+                sow_server_1.readAppVersion();
+            })).toBeInstanceOf(Error);
+            process.env.SCRIPT = "TS";
+            const parent = path.resolve(__dirname, '..');
+            const absPath = path.resolve(`${parent}/package.json`);
+            fs.renameSync(absPath, `${absPath}.bak`);
+            fs.writeFileSync(absPath, "INVALID_JSON");
+            expect_1.default(test_view_1.shouldBeError(() => {
+                sow_server_1.readAppVersion();
+            })).toBeInstanceOf(Error);
+            fs.unlinkSync(absPath);
+            fs.renameSync(`${absPath}.bak`, absPath);
+        })();
+        (() => {
             const old = appUtility.server.config.session.cookie;
             appUtility.server.config.session.cookie = "";
             expect_1.default(test_view_1.shouldBeError(() => {
@@ -1500,16 +1528,16 @@ describe("cwserver-utility", () => {
             appUtility.server.config.hostInfo.port = oldPort;
         })();
         expect_1.default(test_view_1.shouldBeError(() => {
-            cwserver.HttpStatus.isErrorCode("adz");
+            sow_http_status_1.HttpStatus.isErrorCode("adz");
         })).toBeInstanceOf(Error);
         expect_1.default(test_view_1.shouldBeError(() => {
-            cwserver.HttpStatus.getDescription(45510);
+            sow_http_status_1.HttpStatus.getDescription(45510);
         })).toBeInstanceOf(Error);
-        expect_1.default(cwserver.HttpStatus.fromPath("result", 200)).toEqual(200);
-        expect_1.default(cwserver.HttpStatus.fromPath("/result", 200)).toEqual(200);
-        expect_1.default(cwserver.HttpStatus.getResInfo("/result", 0).isValid).toEqual(false);
-        expect_1.default(cwserver.HttpStatus.isValidCode(45510)).toEqual(false);
-        expect_1.default(cwserver.HttpStatus.statusCode).toBeInstanceOf(Object);
+        expect_1.default(sow_http_status_1.HttpStatus.fromPath("result", 200)).toEqual(200);
+        expect_1.default(sow_http_status_1.HttpStatus.fromPath("/result", 200)).toEqual(200);
+        expect_1.default(sow_http_status_1.HttpStatus.getResInfo("/result", 0).isValid).toEqual(false);
+        expect_1.default(sow_http_status_1.HttpStatus.isValidCode(45510)).toEqual(false);
+        expect_1.default(sow_http_status_1.HttpStatus.statusCode).toBeInstanceOf(Object);
         expect_1.default(sow_static_1.ToNumber(null)).toEqual(0);
         expect_1.default(test_view_1.shouldBeError(() => {
             cwserver.Encryption.encrypt("nothing", {
@@ -1544,6 +1572,8 @@ describe("cwserver-utility", () => {
         expect_1.default(sow_util_1.Util.extend({}, () => {
             return new sow_static_1.Session();
         }, true)).toBeInstanceOf(Object);
+        expect_1.default(sow_util_1.Util.extend({}, { "__proto__": "__no_proto__", "constructor"() { return {}; } })).toBeInstanceOf(Object);
+        expect_1.default(sow_util_1.Util.extend({}, { "__proto__": "__no_proto__", "constructor"() { return {}; } }, true)).toBeInstanceOf(Object);
         expect_1.default(test_view_1.shouldBeError(() => {
             sow_util_1.Util.extend("", {});
         })).toBeInstanceOf(Error);
@@ -1648,6 +1678,27 @@ describe("cwserver-utility", () => {
                     throw e;
                 }
             })).toBeInstanceOf(Error);
+            (() => {
+                const parent = path.resolve(__dirname, '..');
+                const absPath = path.resolve(`${parent}/dist/project_template/test/db-module.js`);
+                appUtility.server.config.database = [{
+                        module: "dbContext",
+                        path: absPath,
+                        dbConn: {
+                            database: "sysdb", password: "xyz"
+                        }
+                    }, {
+                        module: "dbContext",
+                        path: absPath,
+                        dbConn: {
+                            database: "sysdb", password: "xyz"
+                        }
+                    }];
+                expect_1.default(test_view_1.shouldBeError(() => {
+                    appUtility.server.initilize();
+                })).toBeInstanceOf(Error);
+                sow_util_1.Util.extend(appUtility.server.config, untouchedConfig);
+            })();
             done();
         });
         it('override', (done) => {
@@ -1811,6 +1862,9 @@ describe("cwserver-utility", () => {
         logger.dispose();
         logger = new sow_logger_1.Logger(logDir, void 0, "+6", void 0, false);
         logger.write("test");
+        logger.dispose();
+        logger = new sow_logger_1.Logger(void 0, void 0, "+6", false);
+        logger.write(cwserver.ConsoleColor.Cyan("User Interactive"));
         logger.dispose();
         appUtility.server.log.dispose();
         logger = new sow_logger_1.Logger(logDir, projectRoot, "+6", true, true, 100);

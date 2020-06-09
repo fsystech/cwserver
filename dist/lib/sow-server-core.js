@@ -1,9 +1,28 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.App = exports.parseCookie = void 0;
+exports.App = exports.getClientIp = exports.parseCookie = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -15,8 +34,9 @@ const events_1 = require("events");
 const sow_router_1 = require("./sow-router");
 const sow_static_1 = require("./sow-static");
 const sow_template_1 = require("./sow-template");
+const sow_util_1 = require("./sow-util");
 const url_1 = __importDefault(require("url"));
-const _zlib = require("zlib");
+const _zlib = __importStar(require("zlib"));
 const getCook = (cooks) => {
     const cookies = {};
     cooks.forEach((value) => {
@@ -37,37 +57,6 @@ function parseCookie(cook) {
     return getCook(cook.split(";"));
 }
 exports.parseCookie = parseCookie;
-class Request extends http_1.IncomingMessage {
-    constructor() {
-        super(...arguments);
-        this.q = Object.create(null);
-        this._cookies = {};
-        this.session = Object.create(null);
-        this.path = "";
-        this.ip = "";
-    }
-    get cookies() {
-        return this._cookies;
-    }
-    get query() {
-        return this.q.query;
-    }
-    init() {
-        var _a;
-        this.q = url_1.default.parse(this.url || "", true);
-        this.path = this.q.pathname ? decodeURIComponent(this.q.pathname) : "";
-        if (this.socket.remoteAddress) {
-            this.ip = this.socket.remoteAddress;
-        }
-        else {
-            const remoteAddress = (_a = (this.headers['x-forwarded-for'] || this.connection.remoteAddress)) === null || _a === void 0 ? void 0 : _a.toString();
-            if (remoteAddress)
-                this.ip = remoteAddress;
-        }
-        this._cookies = parseCookie(this.headers.cookie);
-        return this;
-    }
-}
 const createCookie = (name, val, options) => {
     let str = `${name}=${val}`;
     if (options.domain)
@@ -119,6 +108,56 @@ const getCommonHeader = (contentType, contentLength, isGzip) => {
     }
     return header;
 };
+function getClientIp(req) {
+    var _a;
+    if (req.socket.remoteAddress) {
+        return req.socket.remoteAddress;
+    }
+    else {
+        const remoteAddress = (_a = (req.headers['x-forwarded-for'] || req.connection.remoteAddress)) === null || _a === void 0 ? void 0 : _a.toString();
+        if (remoteAddress)
+            return remoteAddress;
+    }
+    return undefined;
+}
+exports.getClientIp = getClientIp;
+class Request extends http_1.IncomingMessage {
+    constructor() {
+        super(...arguments);
+        this.q = Object.create(null);
+        this._cookies = {};
+        this.session = Object.create(null);
+        this.path = "";
+        this.ip = "";
+        this._id = "";
+    }
+    get cookies() {
+        return this._cookies;
+    }
+    get id() {
+        return this._id;
+    }
+    get query() {
+        return this.q.query;
+    }
+    init() {
+        this._id = sow_util_1.Util.guid();
+        this.q = url_1.default.parse(this.url || "", true);
+        this.path = this.q.pathname ? decodeURIComponent(this.q.pathname) : "";
+        this.ip = getClientIp(this) || "";
+        this._cookies = parseCookie(this.headers.cookie);
+        return this;
+    }
+    dispose() {
+        delete this._id;
+        delete this.q;
+        delete this.path;
+        delete this.ip;
+        delete this._cookies;
+        this.removeAllListeners();
+        this.destroy();
+    }
+}
 class Response extends http_1.ServerResponse {
     asHTML(code, contentLength, isGzip) {
         return this.writeHead(code, getCommonHeader('text/html; charset=UTF-8', contentLength, isGzip)), this;
@@ -147,6 +186,11 @@ class Response extends http_1.ServerResponse {
         }
         sCookie.push(createCookie(name, val, options));
         return this.setHeader("Set-Cookie", sCookie), this;
+    }
+    dispose() {
+        this.removeAllListeners();
+        this.destroy();
+        return;
     }
     json(body, compress, next) {
         const json = JSON.stringify(body);
@@ -309,6 +353,10 @@ class Apps extends events_1.EventEmitter {
             const req = Object.setPrototypeOf(request, Request.prototype);
             const res = Object.setPrototypeOf(response, Response.prototype);
             req.init();
+            res.on("close", (...args) => {
+                this.emit("response-end", req, res);
+            });
+            this.emit("request-begain", req);
             this._app.handleRequest(req, res);
         }));
     }

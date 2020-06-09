@@ -18,8 +18,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initilizeServer = exports.SowServer = exports.ServerConfig = exports.Context = exports.ServerEncryption = void 0;
+exports.initilizeServer = exports.SowServer = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.readAppVersion = exports.appVersion = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
 const sow_server_core_1 = require("./sow-server-core");
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
@@ -31,27 +32,71 @@ const sow_encryption_1 = require("./sow-encryption");
 const sow_http_status_1 = require("./sow-http-status");
 const sow_logger_1 = require("./sow-logger");
 // -------------------------------------------------------
-// const _Error = ( msg: string ): Error => {
-//    if ( process.env.SCRIPT === "TS" ) return new Error( msg );
-//    if ( process.env.IISNODE_VERSION || process.env.PORT ) {
-//        console.log( msg );
-//    } else {
-//        console.log( '\x1b[31m', msg );
-//        console.log( '\x1b[0m' );
-//    }
-//    return new Error( msg );
-// }
-const cleanContext = (ctx) => {
-    delete ctx.server;
-    delete ctx.res;
-    delete ctx.req;
-    delete ctx.path;
-    delete ctx.extension;
-    delete ctx.root;
-    delete ctx.session;
-    delete ctx.servedFrom;
-    delete ctx.error;
-};
+_a = (() => {
+    const _curContext = {};
+    const _readAppVersion = () => {
+        try {
+            const parent = process.env.SCRIPT === "TS" ? _path.resolve(__dirname, '..') : _path.resolve(__dirname, '../..');
+            const absPath = _path.resolve(`${parent}/package.json`);
+            const packageConfig = sow_util_1.Util.readJsonAsync(absPath);
+            if (packageConfig) {
+                return packageConfig.version;
+            }
+            throw new Error("`Invalid package.json` please re-install cwserver.");
+        }
+        catch (e) {
+            throw e;
+        }
+    };
+    const _appVersion = (() => {
+        return _readAppVersion() || "";
+    })();
+    return {
+        get appVersion() {
+            return _appVersion;
+        },
+        get readAppVersion() {
+            return _readAppVersion;
+        },
+        disposeContext: (ctx) => {
+            if (!ctx.server)
+                return void 0;
+            delete ctx.server;
+            delete ctx.path;
+            ctx.res.dispose();
+            delete ctx.res;
+            delete ctx.extension;
+            delete ctx.root;
+            delete ctx.session;
+            delete ctx.servedFrom;
+            delete ctx.error;
+            if (_curContext[ctx.req.id]) {
+                delete _curContext[ctx.req.id];
+            }
+            ctx.req.dispose();
+            delete ctx.req;
+            return void 0;
+        },
+        getMyContext: (id) => {
+            const ctx = _curContext[id];
+            if (!ctx)
+                return;
+            return ctx;
+        },
+        removeContext: (id) => {
+            const ctx = _curContext[id];
+            if (!ctx)
+                return;
+            exports.disposeContext(ctx);
+            return void 0;
+        },
+        getContext: (server, req, res) => {
+            const context = new Context(server, req, res, req.session);
+            _curContext[req.id] = context;
+            return context;
+        }
+    };
+})(), exports.disposeContext = _a.disposeContext, exports.removeContext = _a.removeContext, exports.getContext = _a.getContext, exports.getMyContext = _a.getMyContext, exports.appVersion = _a.appVersion, exports.readAppVersion = _a.readAppVersion;
 function isDefined(a) {
     return a !== null && a !== undefined;
 }
@@ -249,6 +294,9 @@ ${appRoot}\\www_public
         this.encryption = new ServerEncryption(this.config.encryptionKey);
         return;
     }
+    get version() {
+        return exports.appVersion;
+    }
     on(ev, handler) {
         throw new Error("Method not implemented.");
     }
@@ -347,7 +395,7 @@ ${appRoot}\\www_public
         return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext(req, res, next) {
-        const _context = new Context(this, req, res, req.session);
+        const _context = exports.getContext(this, req, res);
         _context.path = decodeURIComponent(req.path);
         _context.root = _context.path;
         _context.next = next;
@@ -357,14 +405,14 @@ ${appRoot}\\www_public
     setHeader(res) {
         res.setHeader('x-timestamp', Date.now());
         res.setHeader('server', 'SOW Frontend');
-        res.setHeader('x-app-version', '1.0.14');
+        res.setHeader('x-app-version', this.version);
         res.setHeader('x-powered-by', 'safeonline.world');
         res.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
         res.setHeader('x-xss-protection', '1; mode=block');
         res.setHeader('x-content-type-options', 'nosniff');
         res.setHeader('x-frame-options', 'sameorigin');
         if (this.config.hostInfo.hostName && this.config.hostInfo.hostName.length > 0) {
-            res.setHeader('expect-ct', 'max-age=0, report-uri="https://report.safeonline.world/ct/cache.jsxh');
+            res.setHeader('expect-ct', `max-age=0, report-uri="https://${this.config.hostInfo.hostName}/report/?ct=browser&version=${exports.appVersion}`);
         }
         res.setHeader('feature-policy', "magnetometer 'none'");
         if (this.config.hostInfo.frameAncestors) {
@@ -388,8 +436,7 @@ ${appRoot}\\www_public
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new sow_static_1.Session();
         cookies = this.parseCookie(cookies);
-        if (!cookies)
-            return session;
+        // if ( !cookies ) return session;
         const value = cookies[this.config.session.cookie];
         if (!value)
             return session;
@@ -402,8 +449,6 @@ ${appRoot}\\www_public
         return session;
     }
     setSession(ctx, loginId, roleId, userData) {
-        if (!this.config.session)
-            throw Error("You are unable to add session without session config. see your app_config.json");
         return ctx.res.cookie(this.config.session.cookie, sow_encryption_1.Encryption.encryptToHex(JSON.stringify({
             loginId, roleId, userData
         }), this.config.session.key), {
@@ -415,10 +460,9 @@ ${appRoot}\\www_public
     passError(ctx) {
         if (!ctx.error)
             return false;
-        ctx.res.writeHead(500, { 'Content-Type': 'text/html' });
         try {
             const msg = `<pre>${this.escape(ctx.error.replace(/<pre[^>]*>/gi, "").replace(/\\/gi, '/').replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
-            return ctx.res.end(msg), true;
+            return ctx.res.asHTML(500).end(msg), true;
         }
         catch (e) {
             this.log.error(e.stack);
@@ -427,7 +471,7 @@ ${appRoot}\\www_public
     }
     transferRequest(ctx, path, status) {
         if (!ctx)
-            throw new Error("No context argument defined...");
+            throw new Error("Invalid argument defined...");
         if (!status)
             status = sow_http_status_1.HttpStatus.getResInfo(path, 200);
         if (status.isErrorCode && status.isInternalErrorCode === false) {
@@ -439,10 +483,10 @@ ${appRoot}\\www_public
                 return _next(rcode, false);
             }
             if (!rcode || rcode === 200)
-                return cleanContext(ctx);
+                return void 0;
             if (rcode < 0) {
                 this.log.error(`Active connection closed by client. Request path ${ctx.path}`).reset();
-                return cleanContext(ctx);
+                return exports.disposeContext(ctx);
             }
             if (!this.passError(ctx)) {
                 ctx.res.status(rcode).end('Page Not found 404');
@@ -557,19 +601,12 @@ function initilizeServer(appRoot, wwwName) {
                         _server.log.error(`Active connection closed by client. Request path ${ctx.path}`).reset();
                         code = code * -1;
                     }
-                    else if (code && sow_http_status_1.HttpStatus.isErrorCode(code)) {
-                        _server.log.error(`Send ${code} ${ctx.path}`).reset();
-                    }
-                    else {
-                        _server.log.success(`Send ${code || 200} ${ctx.path}`).reset();
-                    }
                 }
-                cleanContext(ctx);
                 if (code)
                     return void 0;
                 return next();
             }
-            _server.log.error(`Send ${code} ${ctx.path}`).reset();
+            // _server.log.error( `Send ${code} ${ctx.path}` ).reset();
             if (_server.config.errorPage[code]) {
                 return _server.transferRequest(ctx, _server.config.errorPage[code]);
             }
@@ -588,18 +625,36 @@ function initilizeServer(appRoot, wwwName) {
         _server.on = (ev, handler) => {
             _app.on(ev, handler);
         };
+        if (_server.config.isDebug) {
+            _app.on("request-begain", (req) => {
+                _server.log.success(`${req.method} ${req.path}`);
+            });
+        }
+        _app.on("response-end", (req, res) => {
+            if (_server.config.isDebug) {
+                let resPath = "";
+                const ctx = exports.getMyContext(req.id);
+                if (ctx) {
+                    resPath = ctx.path;
+                }
+                else {
+                    resPath = req.path;
+                }
+                if (res.statusCode && sow_http_status_1.HttpStatus.isErrorCode(res.statusCode)) {
+                    _server.log.error(`Send ${res.statusCode} ${resPath}`);
+                }
+                else {
+                    _server.log.success(`Send ${res.statusCode || 200} ${resPath}`);
+                }
+            }
+            exports.removeContext(req.id);
+        });
         _app.prerequisites((req, res, next) => {
             req.session = _server.parseSession(req.cookies);
             _server.setHeader(res);
             return next();
         });
         const _virtualDir = [];
-        if (_server.config.isDebug) {
-            _app.prerequisites((req, res, next) => {
-                _server.log.success(`${req.method} ${req.path}`);
-                return next();
-            });
-        }
         _server.virtualInfo = (route) => {
             const v = _virtualDir.find((a) => a.route === route);
             if (!v)
@@ -621,9 +676,8 @@ function initilizeServer(appRoot, wwwName) {
                 const _ctx = _server.createContext(req, res, next);
                 const _next = next;
                 _ctx.next = (code, transfer) => {
-                    if (!code || code === 200) {
-                        return _server.log.success(`Send ${code || 200} ${route}${_ctx.path}`).reset(), cleanContext(_ctx);
-                    }
+                    if (!code || code === 200)
+                        return;
                     return _processNext.render(code, _ctx, _next, transfer);
                 };
                 if (!sow_util_1.Util.isExists(`${root}/${_ctx.path}`, _ctx.next))

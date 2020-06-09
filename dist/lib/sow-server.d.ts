@@ -10,7 +10,6 @@ import { ILogger } from "./sow-logger";
 export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 export declare type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 export interface IContext {
-    [key: string]: any;
     error?: string;
     res: IResponse;
     req: IRequest;
@@ -99,6 +98,7 @@ export interface IServerConfig {
     };
 }
 export interface ISowServer {
+    version: string;
     errorPage: {
         [x: string]: any;
     };
@@ -145,6 +145,7 @@ export interface ISowServer {
     on(ev: 'shutdown', handler: () => void): void;
 }
 export declare type IViewHandler = (app: IApps, controller: IController, server: ISowServer) => void;
+export declare const disposeContext: (ctx: IContext) => void, removeContext: (id: string) => void, getContext: (server: ISowServer, req: IRequest, res: IResponse) => IContext, getMyContext: (id: string) => IContext | undefined, appVersion: string, readAppVersion: () => string | undefined;
 export declare class ServerEncryption implements IServerEncryption {
     private cryptoInfo;
     constructor(inf: ICryptoInfo);
@@ -156,7 +157,6 @@ export declare class ServerEncryption implements IServerEncryption {
     decryptUri(encryptedText: string): string;
 }
 export declare class Context implements IContext {
-    [key: string]: any;
     error?: string;
     res: IResponse;
     req: IRequest;
@@ -231,6 +231,7 @@ export declare class ServerConfig implements IServerConfig {
     constructor();
 }
 export declare class SowServer implements ISowServer {
+    get version(): string;
     config: IServerConfig;
     root: string;
     public: string;

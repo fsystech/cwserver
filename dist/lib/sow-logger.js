@@ -53,9 +53,15 @@ const dfo = (t) => {
 };
 let ConsoleColor = /** @class */ (() => {
     class ConsoleColor {
+        static Cyan(str) {
+            return `\x1b[36m${str}\x1b[0m`;
+        }
+        ;
+        static Yellow(str) {
+            return `\x1b[33m${str}\x1b[0m`;
+        }
+        ;
     }
-    ConsoleColor.Cyan = '\x1b[36m%s\x1b[0m';
-    ConsoleColor.Yellow = '\x1b[33m%s\x1b[0m';
     ConsoleColor.Reset = '\x1b[0m';
     ConsoleColor.Bright = '\x1b[1m';
     ConsoleColor.Dim = '\x1b[2m';
@@ -150,20 +156,30 @@ class Logger {
     _log(color, msg) {
         if (!this._isDebug && !this._userInteractive)
             return this._write(msg), this;
-        return !this._userInteractive ? console.log(msg) : console.log(color || ConsoleColor.Yellow, msg), this._write(msg), this;
+        if (!this._userInteractive) {
+            console.log(msg);
+        }
+        else {
+            this._write(msg);
+            if (color) {
+                msg = `${color}${msg}`;
+            }
+            console.log(`${ConsoleColor.FgMagenta}cwserver ${msg}`);
+        }
+        return this;
     }
     write(msg, color) {
-        return this._log(color || ConsoleColor.Yellow, msg);
+        return this._log(color, msg);
     }
     log(msg, color) {
         if (!this._isDebug)
             return this;
-        return this._log(color || ConsoleColor.Yellow, msg);
+        return this._log(color, msg);
     }
     info(msg) {
         if (!this._isDebug)
             return this;
-        return this._log(ConsoleColor.Yellow, msg);
+        return this._log(void 0, ConsoleColor.Yellow(msg));
     }
     success(msg) {
         if (!this._isDebug)

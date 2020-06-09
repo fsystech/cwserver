@@ -5,7 +5,6 @@
 */
 import CryptoJS from 'crypto-js';
 import * as crypto from 'crypto';
-
 export interface ICryptoInfo {
     oldKey: string;
     md5?: string;

@@ -42,8 +42,12 @@ const dfo = ( t: any ) => {
     return `${date.getFullYear()}-${dfm( date.getMonth() )}-${dfo( date.getDate() )} ${dfo( date.getHours() )}:${dfo( date.getMinutes() )}:${dfo( date.getSeconds() )}`;
 };
 export class ConsoleColor {
-    public static Cyan: string = '\x1b[36m%s\x1b[0m';
-    public static Yellow: string = '\x1b[33m%s\x1b[0m';
+    public static Cyan( str: string): string {
+        return `\x1b[36m${str}\x1b[0m`;
+    };
+    public static Yellow( str: string ): string {
+        return `\x1b[33m${str}\x1b[0m`;
+    };
     public static Reset: string = '\x1b[0m';
     public static Bright: string = '\x1b[1m';
     public static Dim: string = '\x1b[2m';
@@ -137,18 +141,27 @@ export class Logger implements ILogger {
     }
     private _log( color?: string, msg?: any ): ILogger {
         if ( !this._isDebug && !this._userInteractive ) return this._write( msg ), this;
-        return !this._userInteractive ? console.log( msg ) : console.log( color || ConsoleColor.Yellow, msg ), this._write( msg ), this;
+        if ( !this._userInteractive ) {
+            console.log( msg );
+        } else {
+            this._write( msg );
+            if ( color ) {
+                msg = `${color}${msg}`;
+            }
+            console.log( `${ConsoleColor.FgMagenta}cwserver ${msg}` );
+        }
+        return  this;
     }
     public write( msg: any, color?: string ): ILogger {
-        return this._log( color || ConsoleColor.Yellow, msg );
+        return this._log( color, msg );
     }
     public log( msg: any, color?: string ): ILogger {
         if ( !this._isDebug ) return this;
-        return this._log( color || ConsoleColor.Yellow, msg );
+        return this._log( color, msg );
     }
     public info( msg: any ): ILogger {
         if ( !this._isDebug ) return this;
-        return this._log( ConsoleColor.Yellow, msg );
+        return this._log( void 0, ConsoleColor.Yellow( msg ) );
     }
     public success( msg: any ): ILogger {
         if ( !this._isDebug ) return this;

@@ -28,7 +28,7 @@ export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => void;
 export type AppHandler = ( ctx: IContext, requestParam?: IRequestParam ) => void;
 // -------------------------------------------------------
 export interface IContext {
-    [key: string]: any;
+    // [key: string]: any;
     error?: string;
     res: IResponse;
     req: IRequest;
@@ -57,7 +57,6 @@ export interface IDatabaseConfig {
     dbConn: { database: string, password: string };
 }
 export interface IServerConfig {
-    // [Symbol.iterator](): Iterator<IServerConfig>;
     [key: string]: any;
     Author: string;
     appName: string;
@@ -111,6 +110,7 @@ export interface IServerConfig {
     };
 }
 export interface ISowServer {
+    version: string;
     errorPage: { [x: string]: any; };
     copyright(): string;
     log: ILogger;
@@ -149,23 +149,65 @@ export interface ISowServer {
 }
 export type IViewHandler = ( app: IApps, controller: IController, server: ISowServer ) => void;
 // -------------------------------------------------------
-// const _Error = ( msg: string ): Error => {
-//    if ( process.env.SCRIPT === "TS" ) return new Error( msg );
-//    if ( process.env.IISNODE_VERSION || process.env.PORT ) {
-//        console.log( msg );
-//    } else {
-//        console.log( '\x1b[31m', msg );
-//        console.log( '\x1b[0m' );
-//    }
-//    return new Error( msg );
-// }
-const cleanContext = ( ctx: IContext ): void => {
-    delete ctx.server; delete ctx.res;
-    delete ctx.req; delete ctx.path;
-    delete ctx.extension; delete ctx.root;
-    delete ctx.session; delete ctx.servedFrom
-    delete ctx.error;
-}
+export const {
+    disposeContext, removeContext, getContext,
+    getMyContext, appVersion, readAppVersion
+} = ( () => {
+    const _curContext: { [key: string]: IContext } = {};
+        const _readAppVersion = (): string | undefined => {
+            try {
+                const parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ) : _path.resolve( __dirname, '../..' );
+                const absPath = _path.resolve( `${parent}/package.json` );
+                const packageConfig: void | { [id: string]: any } = Util.readJsonAsync( absPath );
+                if ( packageConfig ) {
+                    return packageConfig.version;
+                }
+                throw new Error("`Invalid package.json` please re-install cwserver.");
+            } catch ( e ) {
+                throw e;
+            }
+        }
+    const _appVersion: string = ( (): string => {
+        return _readAppVersion() || "";
+    } )();
+    return {
+        get appVersion() {
+            return _appVersion;
+        },
+        get readAppVersion() {
+            return _readAppVersion;
+        },
+        disposeContext: ( ctx: IContext ): void => {
+            if ( !ctx.server ) return void 0;
+            delete ctx.server; delete ctx.path;
+            ctx.res.dispose(); delete ctx.res;
+            delete ctx.extension; delete ctx.root;
+            delete ctx.session; delete ctx.servedFrom
+            delete ctx.error;
+            if ( _curContext[ctx.req.id] ) {
+                delete _curContext[ctx.req.id];
+            }
+            ctx.req.dispose(); delete ctx.req;
+            return void 0;
+        },
+        getMyContext: ( id: string ): IContext | undefined => {
+            const ctx: IContext = _curContext[id];
+            if ( !ctx ) return;
+            return ctx;
+        },
+        removeContext: ( id: string ): void => {
+            const ctx: IContext = _curContext[id];
+            if ( !ctx ) return;
+            disposeContext( ctx );
+            return void 0;
+        },
+        getContext: ( server: ISowServer, req: IRequest, res: IResponse ): IContext => {
+            const context: IContext = new Context( server, req, res, req.session );
+            _curContext[req.id] = context;
+            return context;
+        }
+    };
+} )();
 function isDefined<T>( a: T | null | undefined ): a is T {
     return a !== null && a !== undefined;
 }
@@ -232,7 +274,7 @@ export class ServerEncryption implements IServerEncryption {
     }
 }
 export class Context implements IContext {
-    [key: string]: any;
+    // key: string]: any;
     error?: string;
     res: IResponse;
     req: IRequest;
@@ -368,6 +410,9 @@ export class ServerConfig implements IServerConfig {
     }
 }
 export class SowServer implements ISowServer {
+    get version() {
+        return appVersion;
+    }
     config: IServerConfig;
     root: string;
     public: string;
@@ -525,7 +570,7 @@ ${appRoot}\\www_public
         return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext {
-        const _context = new Context( this, req, res, req.session );
+        const _context = getContext( this, req, res );
         _context.path = decodeURIComponent( req.path ); _context.root = _context.path;
         _context.next = next;
         _context.extension = Util.getExtension( _context.path ) || "";
@@ -534,14 +579,14 @@ ${appRoot}\\www_public
     setHeader( res: IResponse ): void {
         res.setHeader( 'x-timestamp', Date.now() );
         res.setHeader( 'server', 'SOW Frontend' );
-        res.setHeader( 'x-app-version', '1.0.14' );
+        res.setHeader( 'x-app-version', this.version );
         res.setHeader( 'x-powered-by', 'safeonline.world' );
         res.setHeader( 'strict-transport-security', 'max-age=31536000; includeSubDomains; preload' );
         res.setHeader( 'x-xss-protection', '1; mode=block' );
         res.setHeader( 'x-content-type-options', 'nosniff' );
         res.setHeader( 'x-frame-options', 'sameorigin' );
         if ( this.config.hostInfo.hostName && this.config.hostInfo.hostName.length > 0 ) {
-            res.setHeader( 'expect-ct', 'max-age=0, report-uri="https://report.safeonline.world/ct/cache.jsxh' );
+            res.setHeader( 'expect-ct', `max-age=0, report-uri="https://${this.config.hostInfo.hostName}/report/?ct=browser&version=${appVersion}` );
         }
         res.setHeader( 'feature-policy', "magnetometer 'none'" );
         if ( this.config.hostInfo.frameAncestors ) {
@@ -563,7 +608,7 @@ ${appRoot}\\www_public
             throw Error( "You are unable to add session without session config. see your app_config.json" );
         const session = new Session();
         cookies = this.parseCookie( cookies );
-        if ( !cookies ) return session;
+        // if ( !cookies ) return session;
         const value = cookies[this.config.session.cookie];
         if ( !value ) return session;
         const str = Encryption.decryptFromHex( value, this.config.session.key );
@@ -575,8 +620,6 @@ ${appRoot}\\www_public
         return session;
     }
     setSession( ctx: IContext, loginId: string, roleId: string, userData: any ): boolean {
-        if ( !this.config.session )
-            throw Error( "You are unable to add session without session config. see your app_config.json" )
         return ctx.res.cookie(
             this.config.session.cookie,
             Encryption.encryptToHex( JSON.stringify( {
@@ -589,36 +632,35 @@ ${appRoot}\\www_public
     }
     passError( ctx: IContext ): boolean {
         if ( !ctx.error ) return false;
-        ctx.res.writeHead( 500, { 'Content-Type': 'text/html' } );
         try {
             const msg = `<pre>${this.escape( ctx.error.replace( /<pre[^>]*>/gi, "" ).replace( /\\/gi, '/' ).replace( this.rootregx, "$root" ).replace( this.publicregx, "$public/" ) )}</pre>`;
-            return ctx.res.end( msg ), true;
+            return ctx.res.asHTML( 500 ).end( msg ), true;
         } catch ( e ) {
             this.log.error( e.stack );
             return false;
         }
     }
     transferRequest( ctx: IContext, path: string, status?: IResInfo ): void {
-        if ( !ctx ) throw new Error( "No context argument defined..." );
+        if ( !ctx ) throw new Error( "Invalid argument defined..." );
         if ( !status ) status = HttpStatus.getResInfo( path, 200 );
         if ( status.isErrorCode && status.isInternalErrorCode === false ) {
             this.addError( ctx, `${status.code} ${HttpStatus.getDescription( status.code )}` );
         }
         const _next = ctx.next;
-        ctx.next = ( rcode?: number | undefined, transfer?: boolean ): any => {
+        ctx.next = ( rcode?: number | undefined, transfer?: boolean ): void => {
             if ( typeof ( transfer ) === "boolean" && transfer === false ) {
                 return _next( rcode, false );
             }
-            if ( !rcode || rcode === 200 ) return cleanContext( ctx );
+            if ( !rcode || rcode === 200 ) return void 0;
             if ( rcode < 0 ) {
                 this.log.error( `Active connection closed by client. Request path ${ctx.path}` ).reset();
-                return cleanContext( ctx );
+                return disposeContext( ctx );
             }
             if ( !this.passError( ctx ) ) {
                 ctx.res.status( rcode ).end( 'Page Not found 404' );
             }
             return _next( rcode, false );
-        };
+        }
         return ctx.res.render( ctx, path, status );
     }
     mapPath( path: string ): string {
@@ -745,17 +787,12 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
                     if ( code && code < 0 ) {
                         _server.log.error( `Active connection closed by client. Request path ${ctx.path}` ).reset();
                         code = code * -1;
-                    } else if ( code && HttpStatus.isErrorCode( code ) ) {
-                        _server.log.error( `Send ${code} ${ctx.path}` ).reset();
-                    } else {
-                        _server.log.success( `Send ${code || 200} ${ctx.path}` ).reset();
                     }
                 }
-                cleanContext( ctx );
                 if ( code ) return void 0;
                 return next();
             }
-            _server.log.error( `Send ${code} ${ctx.path}` ).reset();
+            // _server.log.error( `Send ${code} ${ctx.path}` ).reset();
             if ( _server.config.errorPage[code] ) {
                 return _server.transferRequest( ctx, _server.config.errorPage[code] );
             }
@@ -774,18 +811,34 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
         _server.on = ( ev: "shutdown", handler: ()=>void ): void => {
             _app.on( ev, handler );
         };
+        if ( _server.config.isDebug ) {
+            _app.on( "request-begain", ( req: IRequest ): void => {
+                _server.log.success( `${req.method} ${req.path}` );
+            } );
+        }
+        _app.on( "response-end", ( req: IRequest, res: IResponse ): void => {
+            if ( _server.config.isDebug ) {
+                let resPath: string = "";
+                const ctx: IContext | undefined = getMyContext( req.id );
+                if ( ctx ) {
+                    resPath = ctx.path;
+                } else {
+                    resPath = req.path;
+                }
+                if ( res.statusCode && HttpStatus.isErrorCode( res.statusCode ) ) {
+                    _server.log.error( `Send ${res.statusCode} ${resPath}` );
+                } else {
+                    _server.log.success( `Send ${res.statusCode || 200} ${resPath}` );
+                }
+            }
+            removeContext( req.id );
+        } );
         _app.prerequisites( ( req: IRequest, res: IResponse, next: NextFunction ): void => {
             req.session = _server.parseSession( req.cookies );
             _server.setHeader( res );
             return next();
         } );
         const _virtualDir: { [x: string]: string; }[] = [];
-        if ( _server.config.isDebug ) {
-            _app.prerequisites( ( req: IRequest, res: IResponse, next: NextFunction ) => {
-                _server.log.success( `${req.method} ${req.path}` );
-                return next();
-            } );
-        }
         _server.virtualInfo = ( route: string ): { route: string; root: string; } | void => {
             const v = _virtualDir.find( ( a ) => a.route === route );
             if ( !v ) return void 0;
@@ -806,9 +859,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
                 const _ctx = _server.createContext( req, res, next );
                 const _next = next;
                 _ctx.next = ( code?: number | undefined, transfer?: boolean ): any => {
-                    if ( !code || code === 200 ) {
-                        return _server.log.success( `Send ${code || 200} ${route}${_ctx.path}` ).reset(), cleanContext( _ctx );
-                    }
+                    if ( !code || code === 200 ) return;
                     return _processNext.render( code, _ctx, _next, transfer );
                 }
                 if ( !Util.isExists( `${root}/${_ctx.path}`, _ctx.next ) ) return;

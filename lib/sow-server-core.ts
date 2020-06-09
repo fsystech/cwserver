@@ -13,9 +13,10 @@ import { IRequestParam, ILayerInfo, IRouteInfo, getRouteInfo, getRouteMatcher } 
 import { ToResponseTime, ISession, IResInfo } from './sow-static';
 import { IContext } from './sow-server';
 import { Template } from './sow-template';
+import { Util } from './sow-util';
 import urlHelpers, { UrlWithParsedQuery } from 'url';
 import { Socket } from 'net';
-import _zlib = require( 'zlib' );
+import * as _zlib from 'zlib';
 type ParsedUrlQuery = { [key: string]: string | string[] | undefined; };
 type onError = ( req: IRequest, res: IResponse, err?: Error | number ) => void;
 export type NextFunction = ( err?: any ) => void;
@@ -34,12 +35,14 @@ export interface CookieOptions {
 export interface IRequest extends IncomingMessage {
     socket: Socket;
     q: UrlWithParsedQuery;
+    id: string;
     init(): IRequest;
     path: string;
     cookies: { [key: string]: string; };
     readonly query: ParsedUrlQuery;
     session: ISession;
     ip: string;
+    dispose(): void;
 }
 export interface IResponse extends ServerResponse {
     json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void;
@@ -51,6 +54,7 @@ export interface IResponse extends ServerResponse {
     set( field: string, value: number | string | string[] ): IResponse;
     redirect( url: string ): void;
     render( ctx: IContext, path: string, status?: IResInfo ): void;
+    dispose(): void;
 }
 export interface IApplication {
     server: Server;
@@ -66,10 +70,12 @@ export interface IApps {
     use( handler: HandlerFunc ): IApps;
     use( route: string, handler: HandlerFunc, isVirtual?: boolean ): IApps;
     listen( handle: any, listeningListener?: () => void ): IApps;
-    prerequisites( handler: ( req: IRequest, res: IResponse, next: NextFunction ) => void ): IApps;
+    prerequisites( handler: HandlerFunc ): IApps;
     getHttpServer(): Server;
     onError( handler: ( req: IRequest, res: IResponse, err?: Error | number ) => void ): void;
-    on( ev: 'shutdown', handler: ()=>void ): IApps;
+    on( ev: 'shutdown', handler: () => void ): IApps;
+    on( ev: 'response-end', handler: ( req: IRequest, res: IResponse ) => void ): IApps;
+    on( ev: 'request-begain', handler: ( req: IRequest ) => void ): IApps;
     shutdown( next?: ( err?: Error ) => void ): Promise<void> | void;
 }
 const getCook = ( cooks: string[] ): { [x: string]: string; } => {
@@ -88,32 +94,6 @@ export function parseCookie(
     if ( cook instanceof Array ) return getCook( cook );
     if ( cook instanceof Object ) return cook;
     return getCook( cook.split( ";" ) );
-}
-class Request extends IncomingMessage implements IRequest {
-    public q: UrlWithParsedQuery = Object.create( null );
-    private _cookies: { [key: string]: string; } = {};
-    public get cookies() {
-        return this._cookies;
-    }
-    public session: ISession = Object.create( null );
-    public path: string = "";
-    public ip: string = "";
-    public get query(): ParsedUrlQuery {
-        return this.q.query;
-    }
-    init(): Request {
-        this.q = urlHelpers.parse( this.url || "", true );
-        this.path = this.q.pathname ? decodeURIComponent( this.q.pathname ) : "";
-        if ( this.socket.remoteAddress ) {
-            this.ip = this.socket.remoteAddress;
-        } else {
-            const remoteAddress = ( this.headers['x-forwarded-for'] || this.connection.remoteAddress )?.toString();
-            if ( remoteAddress )
-                this.ip = remoteAddress;
-        }
-        this._cookies = parseCookie( this.headers.cookie );
-        return this;
-    }
 }
 const createCookie = ( name: string, val: string, options: CookieOptions ): string => {
     let str = `${name}=${val}`;
@@ -157,6 +137,50 @@ const getCommonHeader = ( contentType: string, contentLength?: number, isGzip?: 
     }
     return header;
 }
+export function getClientIp( req: IRequest ): string | undefined {
+    if ( req.socket.remoteAddress ) {
+        return req.socket.remoteAddress;
+    } else {
+        const remoteAddress = ( req.headers['x-forwarded-for'] || req.connection.remoteAddress )?.toString();
+        if ( remoteAddress )
+            return remoteAddress;
+    }
+    return undefined;
+}
+class Request extends IncomingMessage implements IRequest {
+    public q: UrlWithParsedQuery = Object.create( null );
+    private _cookies: { [key: string]: string; } = {};
+    public get cookies() {
+        return this._cookies;
+    }
+    public session: ISession = Object.create( null );
+    public path: string = "";
+    public ip: string = "";
+    private _id: string = "";
+    public get id() {
+        return this._id;
+    }
+    public get query(): ParsedUrlQuery {
+        return this.q.query;
+    }
+    init(): Request {
+        this._id = Util.guid();
+        this.q = urlHelpers.parse( this.url || "", true );
+        this.path = this.q.pathname ? decodeURIComponent( this.q.pathname ) : "";
+        this.ip = getClientIp( this ) || "";
+        this._cookies = parseCookie( this.headers.cookie );
+        return this;
+    }
+    dispose(): void {
+        delete this._id;
+        delete this.q;
+        delete this.path;
+        delete this.ip;
+        delete this._cookies;
+        this.removeAllListeners();
+        this.destroy();
+    }
+}
 class Response extends ServerResponse implements IResponse {
     asHTML( code: number, contentLength?: number, isGzip?: boolean ): IResponse {
         return this.writeHead( code, getCommonHeader( 'text/html; charset=UTF-8', contentLength, isGzip ) ), this;
@@ -184,6 +208,11 @@ class Response extends ServerResponse implements IResponse {
         }
         sCookie.push( createCookie( name, val, options ) );
         return this.setHeader( "Set-Cookie", sCookie ), this;
+    }
+    dispose(): void {
+        this.removeAllListeners();
+        this.destroy();
+        return;
     }
     json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void {
         const json = JSON.stringify( body );
@@ -296,7 +325,7 @@ class Application extends EventEmitter implements IApplication {
         if ( typeof ( handler ) !== "function" )
             throw new Error( "handler should be function...." );
         return this._prerequisitesHandler.push( {
-            handler, routeMatcher: void 0, pathArray: [], method: "ANY", route:""
+            handler, routeMatcher: void 0, pathArray: [], method: "ANY", route: ""
         } ), this;
     }
     use( ...args: any[] ): IApplication {
@@ -346,6 +375,10 @@ class Apps extends EventEmitter implements IApps {
             const req: IRequest = Object.setPrototypeOf( request, Request.prototype );
             const res: IResponse = Object.setPrototypeOf( response, Response.prototype );
             req.init();
+            res.on( "close", ( ...args: any[] ): void => {
+                this.emit( "response-end", req, res );
+            } );
+            this.emit( "request-begain", req );
             this._app.handleRequest( req, res );
         } ) );
     }

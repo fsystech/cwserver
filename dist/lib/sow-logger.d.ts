@@ -11,8 +11,8 @@ export interface ILogger {
     flush(): boolean;
 }
 export declare class ConsoleColor {
-    static Cyan: string;
-    static Yellow: string;
+    static Cyan(str: string): string;
+    static Yellow(str: string): string;
     static Reset: string;
     static Bright: string;
     static Dim: string;

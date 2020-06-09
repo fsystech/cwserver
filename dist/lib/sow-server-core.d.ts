@@ -25,6 +25,7 @@ export interface CookieOptions {
 export interface IRequest extends IncomingMessage {
     socket: Socket;
     q: UrlWithParsedQuery;
+    id: string;
     init(): IRequest;
     path: string;
     cookies: {
@@ -33,6 +34,7 @@ export interface IRequest extends IncomingMessage {
     readonly query: ParsedUrlQuery;
     session: ISession;
     ip: string;
+    dispose(): void;
 }
 export interface IResponse extends ServerResponse {
     json(body: {
@@ -45,6 +47,7 @@ export interface IResponse extends ServerResponse {
     set(field: string, value: number | string | string[]): IResponse;
     redirect(url: string): void;
     render(ctx: IContext, path: string, status?: IResInfo): void;
+    dispose(): void;
 }
 export interface IApplication {
     server: Server;
@@ -60,10 +63,12 @@ export interface IApps {
     use(handler: HandlerFunc): IApps;
     use(route: string, handler: HandlerFunc, isVirtual?: boolean): IApps;
     listen(handle: any, listeningListener?: () => void): IApps;
-    prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApps;
+    prerequisites(handler: HandlerFunc): IApps;
     getHttpServer(): Server;
     onError(handler: (req: IRequest, res: IResponse, err?: Error | number) => void): void;
     on(ev: 'shutdown', handler: () => void): IApps;
+    on(ev: 'response-end', handler: (req: IRequest, res: IResponse) => void): IApps;
+    on(ev: 'request-begain', handler: (req: IRequest) => void): IApps;
     shutdown(next?: (err?: Error) => void): Promise<void> | void;
 }
 export declare function parseCookie(cook: undefined | string[] | string | {
@@ -71,5 +76,6 @@ export declare function parseCookie(cook: undefined | string[] | string | {
 }): {
     [x: string]: string;
 };
+export declare function getClientIp(req: IRequest): string | undefined;
 export declare function App(): IApps;
 export {};
