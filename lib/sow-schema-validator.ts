@@ -7,7 +7,7 @@
 import * as _fs from 'fs';
 import * as _path from 'path';
 import { Util } from './sow-util';
-interface IPropertiesDescription {
+export interface IPropertiesDescription {
 	type?: string;
 	minLength: number;
 	enum?: string[];
@@ -18,10 +18,10 @@ interface IPropertiesDescription {
 	const?: any;
 	additionalProperties?: boolean;
 }
-interface IProperties {
+export interface IProperties {
 	[id: string]: IPropertiesDescription;
 }
-interface ISchema {
+export interface ISchema {
 	$schema: string;
 	type: string;
 	additionalProperties: boolean;
@@ -62,7 +62,7 @@ function propertiValidate(
 		}
 	}
 }
-function fillUpType( type?: string ): any {
+export function fillUpType( type?: string ): any {
 	switch ( type ) {
 		case "array": return [];
 		case "number": return 0;
@@ -72,7 +72,7 @@ function fillUpType( type?: string ): any {
 	}
 	return void 0;
 }
-function schemaValidate(
+export function schemaValidate(
 	dataPath: string,
 	schemaProperties: IProperties,
 	configProperties: { [id: string]: any },

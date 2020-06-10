@@ -22,7 +22,7 @@ import {
 } from '../lib/sow-router';
 import { IApps } from '../lib/sow-server-core';
 import { Util } from '../lib/sow-util';
-import { Schema } from '../lib/sow-schema-validator';
+import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
 import { TemplateCore } from '../lib/sow-template';
 import { shouldBeError } from "./test-view";
 import { Logger } from '../lib/sow-logger';
@@ -70,7 +70,8 @@ const its = ( name: string, func: ( done: Mocha.Done ) => void ): void => {
     } );
 };
 describe( "cwserver-default-project-template", () => {
-    it( "create project template", ( done: Mocha.Done ): void => {
+    it( "create project template", function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
         cwserver.createProjectTemplate( {
             appRoot,
             projectRoot,
@@ -156,7 +157,8 @@ describe( "cwserver-core", () => {
         } ) ).toBeInstanceOf( Error );
         done();
     } );
-    it( "initilize application", ( done: Mocha.Done ): void => {
+    it( "initilize application", function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
         app = appUtility.init();
         done();
     } );
@@ -755,7 +757,7 @@ describe( "cwserver-bundler", () => {
                 done();
             } );
     } );
-    its( 'bundler should compair if-modified-since header and send 304 (no server cache)', ( () => {
+    ( () => {
         const sendReq = ( done: Mocha.Done, tryCount: number ): void => {
             if ( tryCount > 0 ) {
                 appUtility.server.log.info( `Try Count: ${tryCount} and if-modified-since: ${lastModified}` );
@@ -783,7 +785,8 @@ describe( "cwserver-bundler", () => {
                     return done();
                 } );
         };
-        return ( done: Mocha.Done ): void => {
+        it( "bundler should compair if-modified-since header and send 304 (no server cache)", function ( done: Mocha.Done ): void {
+            this.timeout( 5000 );
             expect( lastModified.length ).toBeGreaterThan( 0 );
             appUtility.server.config.bundler.fileCache = false;
             appUtility.server.config.bundler.compress = true;
@@ -791,8 +794,8 @@ describe( "cwserver-bundler", () => {
                 sendReq( done, 0 );
             }, 300 );
             return void 0;
-        };
-    } )() );
+        } );
+    } )();
     it( 'js file bundler not gizp response (no server cache)', ( done: Mocha.Done ): void => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = false;
@@ -1492,7 +1495,8 @@ describe( "cwserver-controller-reset", () => {
     } );
 } );
 describe( "cwserver-utility", () => {
-    it( "test-app-utility", ( done: Mocha.Done ): void => {
+    it( "test-app-utility", function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
         ( () => {
             process.env.SCRIPT = "JS";
             expect( shouldBeError( () => {
@@ -1599,7 +1603,8 @@ describe( "cwserver-utility", () => {
     } );
     describe( 'config', () => {
         let untouchedConfig: { [x: string]: any; } = {};
-        it( 'database', ( done: Mocha.Done ): void => {
+        it( 'database', function ( done: Mocha.Done ): void {
+            this.timeout( 5000 );
             untouchedConfig = cwserver.Util.clone( appUtility.server.config );
             expect( shouldBeError( () => {
                 try {
@@ -1699,7 +1704,8 @@ describe( "cwserver-utility", () => {
             } )();
             done();
         } );
-        it( 'override', ( done: Mocha.Done ): void => {
+        it( 'override', function ( done: Mocha.Done ): void {
+            this.timeout( 5000 );
             expect( shouldBeError( () => {
                 const oldKey = appUtility.server.config.encryptionKey;
                 try {
@@ -1835,7 +1841,8 @@ describe( "cwserver-utility", () => {
             done();
         } );
     } );
-    it( 'log', ( done: Mocha.Done ): void => {
+    it( 'log', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
         appUtility.server.log.log( "log-test" );
         appUtility.server.log.info( "log-info-test" );
         appUtility.server.log.dispose();
@@ -1872,6 +1879,60 @@ describe( "cwserver-utility", () => {
 } );
 describe( "cwserver-schema-validator", () => {
     it( "validate-schema", ( done: Mocha.Done ): void => {
+        expect( fillUpType( "array" ) ).toBeInstanceOf( Array );
+        expect( fillUpType( "number" ) ).toEqual( 0 );
+        expect( fillUpType( "boolean" ) ).toBeFalsy();
+        expect( fillUpType( "string" ) ).toBeDefined( );
+        expect( fillUpType( "object" ) ).toBeInstanceOf( Object );
+        expect( fillUpType() ).toBeUndefined();
+        ( () => {
+            const schemaProperties: IProperties = {
+                "session": {
+                    "type": "array",
+                    "minLength": 1,
+                    "description": "Effect on server.setSession",
+                    "additionalProperties": true,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "cookie": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Session cookie name"
+                            },
+                            "maxAge": {
+                                "type": "string",
+                                "minLength": 2,
+                                "description": "maxAge = m = Month | d = Day | h = Hour | m = Minute."
+                            },
+                            "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "This encryption key will be use session cookie encryption"
+                            },
+                            "isSecure": {
+                                "type": "boolean",
+                                "minLength": 1,
+                                "description": "Session cookie send for secure connections"
+                            }
+                        }
+                    },
+                }
+            };
+            expect( schemaValidate( "root.session", schemaProperties, {
+                "session": [{
+                    "cookie": "_session",
+                    "maxAge": "1d",
+                    "key": "adfasf$aa",
+                    "isSecure": false
+                }]
+            }, true ) ).not.toBeInstanceOf( Error );
+            expect( shouldBeError( () => {
+                schemaValidate( "root.session", schemaProperties, {
+                    "session": [""]
+                }, true );
+            } ) ).toBeInstanceOf( Error );
+        } )();
         const config = Util.readJsonAsync( appUtility.server.mapPath( "/config/app.config.json" ) );
         expect( config ).toBeInstanceOf( Object );
         if ( !config ) throw new Error( "unreachable..." );

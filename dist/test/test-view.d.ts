@@ -1,1 +1,1 @@
-export declare function shouldBeError(next: () => void): Error | void;
+export declare function shouldBeError(next: () => void, printerr?: boolean): Error | void;

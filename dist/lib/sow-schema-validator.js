@@ -19,7 +19,7 @@ var __importStar = ( this && this.__importStar ) || function ( mod ) {
     return result;
 };
 Object.defineProperty( exports, "__esModule", { value: true } );
-exports.Schema = void 0;
+exports.Schema = exports.schemaValidate = exports.fillUpType = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -71,6 +71,7 @@ function fillUpType( type ) {
     }
     return void 0;
 }
+exports.fillUpType = fillUpType;
 function schemaValidate( dataPath, schemaProperties, configProperties, additionalProperties ) {
     // check config properties are valid
     propertiValidate( dataPath, configProperties, schemaProperties, additionalProperties );
@@ -135,6 +136,7 @@ function schemaValidate( dataPath, schemaProperties, configProperties, additiona
         }
     }
 }
+exports.schemaValidate = schemaValidate;
 ( function ( Schema ) {
     function Validate( config ) {
         const parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ) : _path.resolve( __dirname, '../..' );

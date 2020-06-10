@@ -100,7 +100,8 @@ const its = (name, func) => {
     });
 };
 describe("cwserver-default-project-template", () => {
-    it("create project template", (done) => {
+    it("create project template", function (done) {
+        this.timeout(5000);
         cwserver.createProjectTemplate({
             appRoot,
             projectRoot,
@@ -186,7 +187,8 @@ describe("cwserver-core", () => {
         })).toBeInstanceOf(Error);
         done();
     });
-    it("initilize application", (done) => {
+    it("initilize application", function (done) {
+        this.timeout(5000);
         app = appUtility.init();
         done();
     });
@@ -781,7 +783,7 @@ describe("cwserver-bundler", () => {
             done();
         });
     });
-    its('bundler should compair if-modified-since header and send 304 (no server cache)', (() => {
+    (() => {
         const sendReq = (done, tryCount) => {
             if (tryCount > 0) {
                 appUtility.server.log.info(`Try Count: ${tryCount} and if-modified-since: ${lastModified}`);
@@ -808,7 +810,8 @@ describe("cwserver-bundler", () => {
                 return done();
             });
         };
-        return (done) => {
+        it("bundler should compair if-modified-since header and send 304 (no server cache)", function (done) {
+            this.timeout(5000);
             expect_1.default(lastModified.length).toBeGreaterThan(0);
             appUtility.server.config.bundler.fileCache = false;
             appUtility.server.config.bundler.compress = true;
@@ -816,8 +819,8 @@ describe("cwserver-bundler", () => {
                 sendReq(done, 0);
             }, 300);
             return void 0;
-        };
-    })());
+        });
+    })();
     it('js file bundler not gizp response (no server cache)', (done) => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = false;
@@ -1508,7 +1511,8 @@ describe("cwserver-controller-reset", () => {
     });
 });
 describe("cwserver-utility", () => {
-    it("test-app-utility", (done) => {
+    it("test-app-utility", function (done) {
+        this.timeout(5000);
         (() => {
             process.env.SCRIPT = "JS";
             expect_1.default(test_view_1.shouldBeError(() => {
@@ -1615,7 +1619,8 @@ describe("cwserver-utility", () => {
     });
     describe('config', () => {
         let untouchedConfig = {};
-        it('database', (done) => {
+        it('database', function (done) {
+            this.timeout(5000);
             untouchedConfig = cwserver.Util.clone(appUtility.server.config);
             expect_1.default(test_view_1.shouldBeError(() => {
                 try {
@@ -1721,7 +1726,8 @@ describe("cwserver-utility", () => {
             })();
             done();
         });
-        it('override', (done) => {
+        it('override', function (done) {
+            this.timeout(5000);
             expect_1.default(test_view_1.shouldBeError(() => {
                 const oldKey = appUtility.server.config.encryptionKey;
                 try {
@@ -1865,7 +1871,8 @@ describe("cwserver-utility", () => {
             done();
         });
     });
-    it('log', (done) => {
+    it('log', function (done) {
+        this.timeout(5000);
         appUtility.server.log.log("log-test");
         appUtility.server.log.info("log-info-test");
         appUtility.server.log.dispose();
@@ -1903,6 +1910,60 @@ describe("cwserver-utility", () => {
 });
 describe("cwserver-schema-validator", () => {
     it("validate-schema", (done) => {
+        expect_1.default(sow_schema_validator_1.fillUpType("array")).toBeInstanceOf(Array);
+        expect_1.default(sow_schema_validator_1.fillUpType("number")).toEqual(0);
+        expect_1.default(sow_schema_validator_1.fillUpType("boolean")).toBeFalsy();
+        expect_1.default(sow_schema_validator_1.fillUpType("string")).toBeDefined();
+        expect_1.default(sow_schema_validator_1.fillUpType("object")).toBeInstanceOf(Object);
+        expect_1.default(sow_schema_validator_1.fillUpType()).toBeUndefined();
+        (() => {
+            const schemaProperties = {
+                "session": {
+                    "type": "array",
+                    "minLength": 1,
+                    "description": "Effect on server.setSession",
+                    "additionalProperties": true,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "cookie": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Session cookie name"
+                            },
+                            "maxAge": {
+                                "type": "string",
+                                "minLength": 2,
+                                "description": "maxAge = m = Month | d = Day | h = Hour | m = Minute."
+                            },
+                            "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "This encryption key will be use session cookie encryption"
+                            },
+                            "isSecure": {
+                                "type": "boolean",
+                                "minLength": 1,
+                                "description": "Session cookie send for secure connections"
+                            }
+                        }
+                    },
+                }
+            };
+            expect_1.default(sow_schema_validator_1.schemaValidate("root.session", schemaProperties, {
+                "session": [{
+                        "cookie": "_session",
+                        "maxAge": "1d",
+                        "key": "adfasf$aa",
+                        "isSecure": false
+                    }]
+            }, true)).not.toBeInstanceOf(Error);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                sow_schema_validator_1.schemaValidate("root.session", schemaProperties, {
+                    "session": [""]
+                }, true);
+            })).toBeInstanceOf(Error);
+        })();
         const config = sow_util_1.Util.readJsonAsync(appUtility.server.mapPath("/config/app.config.json"));
         expect_1.default(config).toBeInstanceOf(Object);
         if (!config)

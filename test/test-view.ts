@@ -17,10 +17,11 @@ import {
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import { PayloadParser, socketInitilizer, HttpMimeHandler, Streamer, Util, Encryption } from '../index';
 const mimeHandler = new HttpMimeHandler();
-export function shouldBeError( next: () => void ): Error | void {
+export function shouldBeError( next: () => void, printerr?: boolean ): Error | void {
 	try {
 		 next();
 	} catch ( e ) {
+		if ( printerr === true ) console.log( e );
 		return e;
 	}
 };

@@ -41,11 +41,13 @@ const sow_server_1 = require("../lib/sow-server");
 const socket_client_1 = require("./socket-client");
 const index_1 = require("../index");
 const mimeHandler = new index_1.HttpMimeHandler();
-function shouldBeError(next) {
+function shouldBeError(next, printerr) {
     try {
         next();
     }
     catch (e) {
+        if (printerr === true)
+            console.log(e);
         return e;
     }
 }
