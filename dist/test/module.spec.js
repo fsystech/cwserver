@@ -127,19 +127,22 @@ describe("cwserver-core", () => {
         sow_util_1.Util.rmdirSync(root);
         done();
     });
-    it("initilize server throw error (invalid app.config.json)", (done) => {
-        const root = path.resolve(`${appRoot}/ewww`); // path.resolve( appRoot, "/ewww" );
+    it("initilize server throw error (invalid app.config.json)", function (done) {
+        this.timeout(5000);
+        const root = path.resolve(`${appRoot}/ewww`);
         sow_util_1.Util.mkdirSync(appRoot, "/ewww/config");
         expect_1.default(fs.existsSync(root)).toEqual(true);
         const filePath = path.resolve(root + "/config/app.config.json");
         fs.writeFileSync(filePath, "INVALID_FILE");
         const orginalCfg = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
-        expect_1.default(sow_util_1.Util.compairFile(filePath, orginalCfg)).toEqual(true);
-        expect_1.default(test_view_1.shouldBeError(() => {
-            cwserver.initilizeServer(appRoot, `ewww`);
-        })).toBeInstanceOf(Error);
-        sow_util_1.Util.rmdirSync(root);
-        done();
+        setTimeout(() => {
+            expect_1.default(sow_util_1.Util.compairFile(filePath, orginalCfg)).toEqual(true);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                cwserver.initilizeServer(appRoot, `ewww`);
+            })).toBeInstanceOf(Error);
+            sow_util_1.Util.rmdirSync(root);
+            done();
+        }, 100);
     });
     it("initilize server throw error (projectRoot not provided)", (done) => {
         expect_1.default(test_view_1.shouldBeError(() => {

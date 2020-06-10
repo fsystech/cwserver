@@ -97,19 +97,22 @@ describe( "cwserver-core", () => {
         Util.rmdirSync( root );
         done();
     } );
-    it( "initilize server throw error (invalid app.config.json)", ( done: Mocha.Done ): void => {
-        const root: string = path.resolve( `${appRoot}/ewww` ); // path.resolve( appRoot, "/ewww" );
+    it( "initilize server throw error (invalid app.config.json)", function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
+        const root: string = path.resolve( `${appRoot}/ewww` );
         Util.mkdirSync( appRoot, "/ewww/config" );
         expect( fs.existsSync( root ) ).toEqual( true );
         const filePath: string = path.resolve( root + "/config/app.config.json" );
         fs.writeFileSync( filePath, "INVALID_FILE" );
         const orginalCfg: string = path.resolve( `${appRoot}/${projectRoot}/config/app.config.json` );
-        expect( Util.compairFile( filePath, orginalCfg ) ).toEqual( true );
-        expect( shouldBeError( () => {
-            cwserver.initilizeServer( appRoot, `ewww` );
-        } ) ).toBeInstanceOf( Error );
-        Util.rmdirSync( root );
-        done();
+        setTimeout( () => {
+            expect( Util.compairFile( filePath, orginalCfg ) ).toEqual( true );
+            expect( shouldBeError( () => {
+                cwserver.initilizeServer( appRoot, `ewww` );
+            } ) ).toBeInstanceOf( Error );
+            Util.rmdirSync( root );
+            done();
+        }, 100 );
     } );
     it( "initilize server throw error (projectRoot not provided)", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
