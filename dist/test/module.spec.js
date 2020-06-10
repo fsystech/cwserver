@@ -441,6 +441,18 @@ describe("cwserver-get", () => {
             done();
         });
     });
+    it('test context', (done) => {
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/test-context`)
+            .end((err, res) => {
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(200);
+            expect_1.default(res.header["content-type"]).toBe("application/json");
+            expect_1.default(res.body).toBeInstanceOf(Object);
+            expect_1.default(res.body.done).toBeTruthy();
+            done();
+        });
+    });
     it('test route target /task/:id/*', (done) => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/task/1/test_request/next`)
@@ -558,6 +570,23 @@ describe("cwserver-template-engine", () => {
             expect_1.default(err).toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(500);
             expect_1.default(res.header["content-type"]).toBe("text/html");
+            fs.unlinkSync(filePath);
+            done();
+        });
+    });
+    it('should template response as gzip', (done) => {
+        const filePath = appUtility.server.mapPath("/test.html");
+        expect_1.default(fs.existsSync(filePath)).toEqual(false);
+        fs.writeFileSync(filePath, "{% isCompressed = true; %}\r\nHello world...");
+        expect_1.default(fs.existsSync(filePath)).toEqual(true);
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/test`)
+            .end((err, res) => {
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(200);
+            expect_1.default(res.header["content-type"]).toBe("text/html");
+            expect_1.default(res.header["content-encoding"]).toBe("gzip");
+            fs.unlinkSync(filePath);
             done();
         });
     });
@@ -632,6 +661,9 @@ describe("cwserver-template-engine", () => {
                 console.log(str);
             });
         })).toBeInstanceOf(Error);
+        sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#attach /template/readme.html`, (str, isScript) => {
+            console.log(str);
+        });
         expect_1.default(test_view_1.shouldBeError(() => {
             sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
                 console.log(str);
@@ -1908,6 +1940,8 @@ describe("cwserver-utility", () => {
         logger.writeToStream("log-test");
         logger.reset();
         logger.dispose();
+        expect_1.default(sow_logger_1.LogTime.dfo(0)).toEqual("01");
+        expect_1.default(sow_logger_1.LogTime.dfm(11)).toEqual("12");
         done();
     });
 });
@@ -1923,7 +1957,7 @@ describe("cwserver-schema-validator", () => {
             const schemaProperties = {
                 "session": {
                     "type": "array",
-                    "minLength": 1,
+                    "minLength": 0,
                     "description": "Effect on server.setSession",
                     "additionalProperties": true,
                     "items": {
@@ -1966,6 +2000,9 @@ describe("cwserver-schema-validator", () => {
                     "session": [""]
                 }, true);
             })).toBeInstanceOf(Error);
+            sow_schema_validator_1.schemaValidate("root.nsession", schemaProperties, {
+                "nsession": []
+            }, true);
         })();
         const config = sow_util_1.Util.readJsonAsync(appUtility.server.mapPath("/config/app.config.json"));
         expect_1.default(config).toBeInstanceOf(Object);

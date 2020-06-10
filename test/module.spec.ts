@@ -25,7 +25,7 @@ import { Util } from '../lib/sow-util';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
 import { TemplateCore } from '../lib/sow-template';
 import { shouldBeError } from "./test-view";
-import { Logger } from '../lib/sow-logger';
+import { Logger, LogTime } from '../lib/sow-logger';
 let app: IApps;
 const appRoot = process.env.SCRIPT === "TS" ? path.join( path.resolve( __dirname, '..' ), "/dist/test/" ) : __dirname;
 const projectRoot = 'test_web';
@@ -411,6 +411,18 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
+    it( 'test context', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/test-context` )
+            .end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                expect( res.header["content-type"] ).toBe( "application/json" );
+                expect( res.body ).toBeInstanceOf( Object );
+                expect( res.body.done ).toBeTruthy();
+                done();
+            } );
+    } );
     it( 'test route target /task/:id/*', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/task/1/test_request/next` )
@@ -528,6 +540,23 @@ describe( "cwserver-template-engine", () => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 500 );
                 expect( res.header["content-type"] ).toBe( "text/html" );
+                fs.unlinkSync( filePath );
+                done();
+            } );
+    } );
+    it( 'should template response as gzip', ( done: Mocha.Done ): void => {
+        const filePath: string = appUtility.server.mapPath( "/test.html" );
+        expect( fs.existsSync( filePath ) ).toEqual( false );
+        fs.writeFileSync( filePath, "{% isCompressed = true; %}\r\nHello world..." );
+        expect( fs.existsSync( filePath ) ).toEqual( true );
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/test` )
+            .end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                expect( res.header["content-type"] ).toBe( "text/html" );
+                expect( res.header["content-encoding"] ).toBe( "gzip" );
+                fs.unlinkSync( filePath );
                 done();
             } );
     } );
@@ -602,6 +631,9 @@ describe( "cwserver-template-engine", () => {
                 console.log( str );
             } );
         } ) ).toBeInstanceOf( Error );
+        TemplateCore.run( appUtility.server.getPublic(), `#attach /template/readme.html`, ( str, isScript ) => {
+            console.log( str );
+        } );
         expect( shouldBeError( () => {
             TemplateCore.run( appUtility.server.getPublic(), `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
                 console.log( str );
@@ -1877,6 +1909,8 @@ describe( "cwserver-utility", () => {
         logger.writeToStream( "log-test" );
         logger.reset();
         logger.dispose();
+        expect( LogTime.dfo( 0 ) ).toEqual( "01" );
+        expect( LogTime.dfm( 11 ) ).toEqual( "12" );
         done();
     } );
 } );
@@ -1892,7 +1926,7 @@ describe( "cwserver-schema-validator", () => {
             const schemaProperties: IProperties = {
                 "session": {
                     "type": "array",
-                    "minLength": 1,
+                    "minLength": 0,
                     "description": "Effect on server.setSession",
                     "additionalProperties": true,
                     "items": {
@@ -1935,6 +1969,9 @@ describe( "cwserver-schema-validator", () => {
                     "session": [""]
                 }, true );
             } ) ).toBeInstanceOf( Error );
+            schemaValidate( "root.nsession", schemaProperties, {
+                "nsession": []
+            }, true );
         } )();
         const config = Util.readJsonAsync( appUtility.server.mapPath( "/config/app.config.json" ) );
         expect( config ).toBeInstanceOf( Object );

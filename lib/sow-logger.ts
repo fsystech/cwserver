@@ -19,28 +19,33 @@ export interface ILogger {
     writeToStream( str: string ): void;
     flush(): boolean;
 }
-const dfo = ( t: any ) => {
-    t = t === 0 ? 1 : t;
-    return t <= 9 ? "0" + t : t;
-}, dfm = ( t: any ) => {
-    t += 1;
-    return t <= 9 ? "0" + t : t;
-}, getLocalDateTime = ( offset: any ): Date => {
-    // create Date object for current location
-    const d = new Date();
-    // convert to msec
-    // subtract local time zone offset
-    // get UTC time in msec
-    const utc = d.getTime() + ( d.getTimezoneOffset() * 60000 );
-    // create new Date object for different city
-    // using supplied offset
-    const nd = new Date( utc + ( 3600000 * offset ) );
-    // return date
-    return nd;
-}, getTime = ( tz: string ) => {
-    const date = getLocalDateTime( tz );
-    return `${date.getFullYear()}-${dfm( date.getMonth() )}-${dfo( date.getDate() )} ${dfo( date.getHours() )}:${dfo( date.getMinutes() )}:${dfo( date.getSeconds() )}`;
-};
+export class LogTime {
+    public static dfo( t: number ): string {
+        t = t === 0 ? 1 : t;
+        return String( t <= 9 ? "0" + t : t );
+    }
+    public static dfm( t: number ): string {
+        t += 1;
+        return String( t <= 9 ? "0" + t : t );
+    }
+    public static getLocalDateTime( offset: any ): Date {
+        // create Date object for current location
+        const d = new Date();
+        // convert to msec
+        // subtract local time zone offset
+        // get UTC time in msec
+        const utc = d.getTime() + ( d.getTimezoneOffset() * 60000 );
+        // create new Date object for different city
+        // using supplied offset
+        const nd = new Date( utc + ( 3600000 * offset ) );
+        // return date
+        return nd;
+    }
+    public static getTime( tz: string ): string {
+        const date = this.getLocalDateTime( tz );
+        return `${date.getFullYear()}-${this.dfm( date.getMonth() )}-${this.dfo( date.getDate() )} ${this.dfo( date.getHours() )}:${this.dfo( date.getMinutes() )}:${this.dfo( date.getSeconds() )}`;
+    }
+}
 export class ConsoleColor {
     public static Cyan( str: string): string {
         return `\x1b[36m${str}\x1b[0m`;
@@ -99,14 +104,14 @@ export class Logger implements ILogger {
         if ( typeof ( maxBlockSize ) === "number" ) {
             this._maxBlockSize = maxBlockSize;
         }
-        const date = getLocalDateTime( this._tz );
-        name = `${name || String( Math.random().toString( 36 ).slice( 2 ) + Date.now() )}_${date.getFullYear()}_${dfm( date.getMonth() )}_${dfo( date.getDate() )}.log`;
+        const date = LogTime.getLocalDateTime( this._tz );
+        name = `${name || String( Math.random().toString( 36 ).slice( 2 ) + Date.now() )}_${date.getFullYear()}_${LogTime.dfm( date.getMonth() )}_${LogTime.dfo( date.getDate() )}.log`;
         const path = _path.resolve( `${dir}/${name}` );
         const exists = _fs.existsSync( path );
         this._fd = _fs.openSync( path, 'a' );
         this._canWrite = true;
         if ( exists === false ) {
-            this.writeToStream( `Log Genarte On ${getTime( this._tz )}\r\n-------------------------------------------------------------------\r\n` );
+            this.writeToStream( `Log Genarte On ${LogTime.getTime( this._tz )}\r\n-------------------------------------------------------------------\r\n` );
         } else {
             this.newLine();
         }
@@ -137,7 +142,7 @@ export class Logger implements ILogger {
     private _write( buffer: any ): void {
         if ( typeof ( buffer ) !== "string" )
             buffer = String( buffer );
-        return this.writeToStream( `${getTime( this._tz )}\t${buffer.replace( /\t/gi, "" )}\r\n` );
+        return this.writeToStream( `${LogTime.getTime( this._tz )}\t${buffer.replace( /\t/gi, "" )}\r\n` );
     }
     private _log( color?: string, msg?: any ): ILogger {
         if ( !this._isDebug && !this._userInteractive ) return this._write( msg ), this;

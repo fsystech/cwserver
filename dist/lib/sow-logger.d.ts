@@ -10,6 +10,12 @@ export interface ILogger {
     writeToStream(str: string): void;
     flush(): boolean;
 }
+export declare class LogTime {
+    static dfo(t: number): string;
+    static dfm(t: number): string;
+    static getLocalDateTime(offset: any): Date;
+    static getTime(tz: string): string;
+}
 export declare class ConsoleColor {
     static Cyan(str: string): string;
     static Yellow(str: string): string;

@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Logger = exports.ConsoleColor = void 0;
+exports.Logger = exports.ConsoleColor = exports.LogTime = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -29,28 +29,34 @@ exports.Logger = exports.ConsoleColor = void 0;
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_util_1 = require("./sow-util");
-const dfo = (t) => {
-    t = t === 0 ? 1 : t;
-    return t <= 9 ? "0" + t : t;
-}, dfm = (t) => {
-    t += 1;
-    return t <= 9 ? "0" + t : t;
-}, getLocalDateTime = (offset) => {
-    // create Date object for current location
-    const d = new Date();
-    // convert to msec
-    // subtract local time zone offset
-    // get UTC time in msec
-    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-    // create new Date object for different city
-    // using supplied offset
-    const nd = new Date(utc + (3600000 * offset));
-    // return date
-    return nd;
-}, getTime = (tz) => {
-    const date = getLocalDateTime(tz);
-    return `${date.getFullYear()}-${dfm(date.getMonth())}-${dfo(date.getDate())} ${dfo(date.getHours())}:${dfo(date.getMinutes())}:${dfo(date.getSeconds())}`;
-};
+class LogTime {
+    static dfo(t) {
+        t = t === 0 ? 1 : t;
+        return String(t <= 9 ? "0" + t : t);
+    }
+    static dfm(t) {
+        t += 1;
+        return String(t <= 9 ? "0" + t : t);
+    }
+    static getLocalDateTime(offset) {
+        // create Date object for current location
+        const d = new Date();
+        // convert to msec
+        // subtract local time zone offset
+        // get UTC time in msec
+        const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+        // create new Date object for different city
+        // using supplied offset
+        const nd = new Date(utc + (3600000 * offset));
+        // return date
+        return nd;
+    }
+    static getTime(tz) {
+        const date = this.getLocalDateTime(tz);
+        return `${date.getFullYear()}-${this.dfm(date.getMonth())}-${this.dfo(date.getDate())} ${this.dfo(date.getHours())}:${this.dfo(date.getMinutes())}:${this.dfo(date.getSeconds())}`;
+    }
+}
+exports.LogTime = LogTime;
 let ConsoleColor = /** @class */ (() => {
     class ConsoleColor {
         static Cyan(str) {
@@ -110,14 +116,14 @@ class Logger {
         if (typeof (maxBlockSize) === "number") {
             this._maxBlockSize = maxBlockSize;
         }
-        const date = getLocalDateTime(this._tz);
-        name = `${name || String(Math.random().toString(36).slice(2) + Date.now())}_${date.getFullYear()}_${dfm(date.getMonth())}_${dfo(date.getDate())}.log`;
+        const date = LogTime.getLocalDateTime(this._tz);
+        name = `${name || String(Math.random().toString(36).slice(2) + Date.now())}_${date.getFullYear()}_${LogTime.dfm(date.getMonth())}_${LogTime.dfo(date.getDate())}.log`;
         const path = _path.resolve(`${dir}/${name}`);
         const exists = _fs.existsSync(path);
         this._fd = _fs.openSync(path, 'a');
         this._canWrite = true;
         if (exists === false) {
-            this.writeToStream(`Log Genarte On ${getTime(this._tz)}\r\n-------------------------------------------------------------------\r\n`);
+            this.writeToStream(`Log Genarte On ${LogTime.getTime(this._tz)}\r\n-------------------------------------------------------------------\r\n`);
         }
         else {
             this.newLine();
@@ -151,7 +157,7 @@ class Logger {
     _write(buffer) {
         if (typeof (buffer) !== "string")
             buffer = String(buffer);
-        return this.writeToStream(`${getTime(this._tz)}\t${buffer.replace(/\t/gi, "")}\r\n`);
+        return this.writeToStream(`${LogTime.getTime(this._tz)}\t${buffer.replace(/\t/gi, "")}\r\n`);
     }
     _log(color, msg) {
         if (!this._isDebug && !this._userInteractive)

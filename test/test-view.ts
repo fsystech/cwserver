@@ -191,6 +191,35 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 } );
 global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
 	controller
+		.get( "/test-context", ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			const nctx: IContext = server.createContext( ctx.req, ctx.res, ctx.next );
+			nctx.path = "/not-found/404/";
+			nctx.req.path = "/not-found/404/";
+			nctx.next = ( code, transfer ) => {
+				// Nothing to do....!
+				expect( code ).toEqual( 404 );
+			}
+			const oldDoc: string[] = server.config.defaultDoc;
+			server.config.defaultDoc = [];
+			controller.processAny( nctx );
+			server.config.defaultDoc = oldDoc;
+			nctx.path = "";
+			nctx.req.path = "";
+			controller.processAny( nctx );
+			const oldext: string = server.config.defaultExt;
+			server.config.defaultExt = "";
+			server.config.defaultDoc = [];
+			controller.processAny( nctx );
+			nctx.path = "/not-found/";
+			nctx.req.path = "/not-found/";
+			controller.processAny( nctx );
+			server.config.defaultExt = oldext;
+			server.config.defaultDoc = oldDoc;
+			nctx.path = "/not-found/index";
+			nctx.req.path = "/not-found/index";
+			controller.processAny( nctx );
+			ctx.res.json( { done: true } );
+		} )
 		.any( '/test-any/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			expect( server.passError( ctx ) ).toBeFalsy();
 			ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
