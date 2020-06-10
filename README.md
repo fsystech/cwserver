@@ -1,4 +1,4 @@
-[![Cwserver Logo](https://i.imgur.com/ePQ32xo.png)](http://cwserver.safeonline.world/)
+[![Cwserver Logo][cwserver-logo]][cwserver-url]
 
 [![Linux Build][travis-image]][travis-url]
 [![Windows Build][appveyor-image]][appveyor-url]
@@ -264,3 +264,5 @@ run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
 [david-dev-url]: https://david-dm.org/safeonlineworld/cwserver#info=devDependencies
 [david-dep-image]: https://img.shields.io/david/safeonlineworld/cwserver
 [david-dep-url]: https://david-dm.org/safeonlineworld/cwserver
+[cwserver-logo]: https://i.imgur.com/ePQ32xo.png
+[cwserver-url]: http://cwserver.safeonline.world/

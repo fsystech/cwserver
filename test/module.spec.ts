@@ -814,7 +814,13 @@ describe( "cwserver-bundler", () => {
                             return sendReq( done, tryCount );
                         }, 300 ), void 0;
                     }
-                    expect( err ).toBeInstanceOf( Error );
+                    try {
+                        expect( err ).toBeInstanceOf( Error );
+                    } catch ( e ) {
+                        console.log( e );
+                        console.log( err );
+                        throw e;
+                    }
                     expect( res.status ).toEqual( 304 );
                     expect( res.header["x-server-revalidate"] ).toEqual( "true" );
                     return done();
