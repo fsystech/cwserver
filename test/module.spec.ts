@@ -12,7 +12,7 @@ import * as request from 'superagent';
 import * as io from 'socket.io-client';
 import { HttpStatus } from "../lib/sow-http-status";
 import * as cwserver from '../index';
-import { Session, ToNumber } from '../lib/sow-static';
+import { Session, ToNumber, ToResponseTime } from '../lib/sow-static';
 import {
     IAppUtility, IContext,
     readAppVersion
@@ -411,7 +411,8 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'test context', ( done: Mocha.Done ): void => {
+    it( 'test context', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
         getAgent()
             .get( `http://localhost:${appUtility.port}/test-context` )
             .end( ( err, res ) => {
@@ -621,7 +622,8 @@ describe( "cwserver-template-engine", () => {
                 done();
             } );
     } );
-    it( 'test template utility', ( done: Mocha.Done ): void => {
+    it( 'test template utility', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
         expect( TemplateCore.isScriptTemplate( "" ) ).toBe( false );
         expect( shouldBeError( () => {
             const sendBox = TemplateCore.compile();
@@ -632,7 +634,7 @@ describe( "cwserver-template-engine", () => {
             } );
         } ) ).toBeInstanceOf( Error );
         TemplateCore.run( appUtility.server.getPublic(), `#attach /template/readme.html`, ( str, isScript ) => {
-            console.log( str );
+            expect( str ).toBeDefined();
         } );
         expect( shouldBeError( () => {
             TemplateCore.run( appUtility.server.getPublic(), `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
@@ -706,7 +708,7 @@ describe( "cwserver-bundler", () => {
     it( 'bundler should compair if-modified-since header and send 304 (server file cache)', ( () => {
         const sendReq = ( done: Mocha.Done, tryCount: number ): void => {
             if ( tryCount > 0 ) {
-                appUtility.server.log.info( `Try Count: ${tryCount} and if-modified-since: ${lastModified}` );
+                console.log( `Try Count: ${tryCount} and if-modified-since: ${lastModified}` );
             }
             createRequest( "GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-modified-since" )
                 .set( "if-modified-since", lastModified )
@@ -719,7 +721,7 @@ describe( "cwserver-bundler", () => {
                     ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
                 } )
                 .end( ( err, res ) => {
-                    if ( ( err === null || !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                    if ( !Util.isError( err ) && tryCount === 0 ) {
                         return setTimeout( () => {
                             tryCount++;
                             return sendReq( done, tryCount );
@@ -739,7 +741,7 @@ describe( "cwserver-bundler", () => {
     it( 'bundler should compair if-none-match and send 304 (server file cache)', ( () => {
         const sendReq = ( done: Mocha.Done, tryCount: number ): void => {
             if ( tryCount > 0 ) {
-                appUtility.server.log.info( `Try Count: ${tryCount} and if-none-match: ${eTag}` );
+                console.log( `Try Count: ${tryCount} and if-none-match: ${eTag}` );
             }
             createRequest( "GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-none-match" )
                 .set( "if-none-match", eTag )
@@ -752,7 +754,7 @@ describe( "cwserver-bundler", () => {
                     ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
                 } )
                 .end( ( err, res ) => {
-                    if ( ( err === null || !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                    if ( !Util.isError( err ) && tryCount === 0 ) {
                         return setTimeout( () => {
                             tryCount++;
                             return sendReq( done, tryCount );
@@ -795,7 +797,7 @@ describe( "cwserver-bundler", () => {
     ( () => {
         const sendReq = ( done: Mocha.Done, tryCount: number ): void => {
             if ( tryCount > 0 ) {
-                appUtility.server.log.info( `Try Count: ${tryCount} and if-modified-since: ${lastModified}` );
+                console.log( `Try Count: ${tryCount} and if-modified-since: ${lastModified}` );
             }
             createRequest( "GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-modified-since" )
                 .set( "if-modified-since", lastModified )
@@ -808,7 +810,7 @@ describe( "cwserver-bundler", () => {
                     ck: "bundle_no_cache_js", ct: "text/javascript", rc: "Y"
                 } )
                 .end( ( err, res ) => {
-                    if ( ( err === null || !err || !( err instanceof Error ) ) && tryCount === 0 ) {
+                    if ( !Util.isError( err ) && tryCount === 0 ) {
                         return setTimeout( () => {
                             tryCount++;
                             return sendReq( done, tryCount );
@@ -819,6 +821,7 @@ describe( "cwserver-bundler", () => {
                     } catch ( e ) {
                         console.log( e );
                         console.log( err );
+                        console.log( typeof ( err ) );
                         throw e;
                     }
                     expect( res.status ).toEqual( 304 );
@@ -1588,6 +1591,9 @@ describe( "cwserver-utility", () => {
         expect( HttpStatus.isValidCode( 45510 ) ).toEqual( false );
         expect( HttpStatus.statusCode ).toBeInstanceOf( Object );
         expect( ToNumber( null ) ).toEqual( 0 );
+        expect( ToResponseTime() ).toBeDefined();
+        expect( ToResponseTime( new Date( "2020-01-01" ).getTime() ) ).toBeDefined();
+        expect( ToResponseTime( new Date( "2020-01-05" ).getTime() ) ).toBeDefined();
         expect( shouldBeError( () => {
             cwserver.Encryption.encrypt( "nothing", {
                 oldKey: "",
@@ -1921,7 +1927,8 @@ describe( "cwserver-utility", () => {
     } );
 } );
 describe( "cwserver-schema-validator", () => {
-    it( "validate-schema", ( done: Mocha.Done ): void => {
+    it( "validate-schema", function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
         expect( fillUpType( "array" ) ).toBeInstanceOf( Array );
         expect( fillUpType( "number" ) ).toEqual( 0 );
         expect( fillUpType( "boolean" ) ).toBeFalsy();

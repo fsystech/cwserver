@@ -10,6 +10,24 @@
 [![Dependency Status][david-dep-image]][david-dep-url]
 [![devDependency Status][david-dev-image]][david-dev-url]
 
+## cwserver ##
+The aim of the project is to create an easy to use, lightweight, ```Complete Web Server Framework``` with default ```NodeJs HTTP Server```.
+- The framework also provides default
+  - ```Secure User Session```,
+  - ```Cookie Parser```,
+  - ```Flexible Router```,
+  - ```Multiple Views```,
+  - ```Virtual Directory```,
+  - ```Hidden Directory```,
+  - ```Template Engine```,
+  - ```Nested Master Template Engine```,
+  - ```Post Data Handler (with multipart form data and large file)```,
+  - ```Mimetype Handler```,
+  - ```WebStream Handler```,
+  - ```JS/CSS Bundler```,
+  - ```socket.io Interface```,
+  - ```Easy way to bind with IIS/NGINX```
+
 Install ```cwserver``` by this command ```npm i cwserver```<br/>
 Create ```createProjectTemplate.js``` as following
 ```
@@ -37,7 +55,7 @@ appRoot
 └─ README.md
 ```
 After, run this command ```node server www /**your project root*/```<br/>
-# How to setup middleware
+### How to setup middleware ###
 First process ```app.prerequisites``` every request and then run ```app.use```
 ```
 global.sow.server.on( "register-view", ( app, controller, server ) => {
@@ -51,7 +69,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 	} );
 } );
 ```
-# How to setup router ?
+### How to setup router ? ###
 ```
 global.sow.server.on( "register-view", ( app, controller, server ) => {
     controller
@@ -69,7 +87,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
         } );
 } );
 ```
-# How to add Virtual Directory ?
+### How to add Virtual Directory ? ###
 ```
 global.sow.server.on( "register-view", ( app, controller, server ) => {
     const vDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
@@ -80,7 +98,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
     server.addVirtualDir( "/vtest/virtual/", vDir );
 } );
 ```
-# Handle post data
+### Handle post data ###
 ```
 global.sow.server.on( "register-view", ( app, controller, server ) => {
     const downloadDir = server.mapPath( "/upload/data/" );
@@ -115,7 +133,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 } );
 ```
 [See more test here](https://github.com/safeonlineworld/cwserver/blob/master/test/test-view.ts)<br/> 
-# Template Engine<br/>
+### Template Engine ###
 Template can run ```config.defaultExt``` file extension or ```ctx.res.render( ctx, to_file_path )``` <br/>
 Example of server-side script in ```config.defaultExt``` or ```.htm|.html```<br/>
 ```
@@ -163,7 +181,7 @@ Response write: ```{= myVar =}``` or ```ctx.write(myVar)```<br/>
 </table>
 {% } %}
 ```
-# Nested Master Template<br/>
+### Nested Master Template ###
 ```#extends``` keyword define my master template<br/>
 You can add multiple file by ```#attach``` keyword
 ```
@@ -211,7 +229,7 @@ master.html ==> root master template
 --------------------------------------------
 ```
 see more about template /dist/project_template/www <br/><br/>
-# server.js
+### server.js ###
 You may create server.js file by you:
 ```
 const { ConsoleColor, initilizeServer } = require( 'cwserver' );
@@ -261,7 +279,7 @@ run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
 [kvulnerabilities-image]: https://snyk.io/test/github/safeonlineworld/cwserver/badge.svg?targetFile=package.json
 [kvulnerabilities-url]: https://snyk.io/test/github/safeonlineworld/cwserver?targetFile=package.json
 [david-dev-image]: https://img.shields.io/david/dev/safeonlineworld/cwserver
-[david-dev-url]: https://david-dm.org/safeonlineworld/cwserver#info=devDependencies
+[david-dev-url]: https://david-dm.org/safeonlineworld/cwserver?type=dev
 [david-dep-image]: https://img.shields.io/david/safeonlineworld/cwserver
 [david-dep-url]: https://david-dm.org/safeonlineworld/cwserver
 [cwserver-logo]: https://i.imgur.com/ePQ32xo.png

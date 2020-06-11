@@ -15,8 +15,11 @@ const _extend = ( destination: any, source: any ): { [x: string]: any; } => {
         throw new TypeError( `Invalid arguments defined. Arguments should be Object instance. destination type ${typeof ( destination )} and source type ${typeof ( source )}` );
     for ( const property in source ) {
         if ( property === "__proto__" || property === "constructor" ) continue;
-        if ( !source.hasOwnProperty( property ) ) continue;
-        destination[property] = source[property];
+        if ( !destination.hasOwnProperty( property ) ) {
+            destination[property] = source[property];
+        } else {
+            destination[property] = source[property];
+        }
     }
     return destination;
 }
@@ -26,7 +29,9 @@ const _deepExtend = ( destination: any, source: any ): { [x: string]: any; } => 
         throw new TypeError( `Invalid arguments defined. Arguments should be Object instance. destination type ${typeof ( destination )} and source type ${typeof ( source )}` );
     for ( const property in source ) {
         if ( property === "__proto__" || property === "constructor" ) continue;
-        if ( !source.hasOwnProperty( property ) ) continue;
+        if ( !destination.hasOwnProperty( property ) ) {
+            destination[property] = void 0;
+        }
         const s = source[property];
         const d = destination[property];
         if ( _isPlainObject( d ) && _isPlainObject( s ) ) {
@@ -61,6 +66,9 @@ export namespace Util {
         if ( obj === null || obj === undefined ) return false;
         const result = Object.prototype.toString.call( obj );
         return result === "[object NodeList]" || result === "[object Array]" ? true : false;
+    }
+    export function isError( obj: any ): obj is Error {
+        return Object.prototype.toString.call( obj ) === "[object Error]";
     }
     /** compair a stat.mtime > b stat.mtime */
     export function compairFile( a: string, b: string ): boolean {

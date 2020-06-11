@@ -6,14 +6,15 @@ import {
 	IRequestParam
 } from '../lib/sow-router';
 import {
-	IApps, IRequest,
-	IResponse, NextFunction, parseCookie
+	IApps, IRequest, IResponse, NextFunction,
+	parseCookie
 } from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
 import {
 	ISowServer, IContext,
 	disposeContext, getMyContext, removeContext
 } from '../lib/sow-server';
+import { SowHttpCache } from '../lib/sow-http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import { PayloadParser, socketInitilizer, HttpMimeHandler, Streamer, Util, Encryption } from '../index';
 const mimeHandler = new HttpMimeHandler();
@@ -39,7 +40,9 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 	expect( ws.create( io ) ).toEqual( false );
 	expect( ws.isConnectd ).toEqual( true );
 	controller.get( '/ws-server-event', ( ctx: IContext, requestParam?: IRequestParam  ): void => {
-		ctx.res.json( ws.wsEvent ); ctx.next( 200 );
+		const event = ws.wsEvent;
+		expect( event ).toBeInstanceOf( Object );
+		ctx.res.json( ws.wsEvent || {} ); ctx.next( 200 );
 		return void 0;
 	} );
 } );
@@ -218,7 +221,21 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			nctx.path = "/not-found/index";
 			nctx.req.path = "/not-found/index";
 			controller.processAny( nctx );
-			ctx.res.json( { done: true } );
+			const oldEncoding = ctx.req.headers['accept-encoding'];
+			ctx.req.headers['accept-encoding'] = void 0;
+			expect( SowHttpCache.isAcceptedEncoding( ctx.req.headers, "NOTHING" ) ).toBeFalsy();
+			ctx.req.headers['accept-encoding'] = oldEncoding;
+			const treq = ctx.transferRequest;
+			ctx.transferRequest = ( toPath: string ): void => {
+				expect( toPath.indexOf( "404" ) ).toBeGreaterThan( -1 );
+			}
+			mimeHandler.render( ctx );
+			expect( mimeHandler.isValidExtension( ctx.extension ) ).toBeFalsy();
+			ctx.transferRequest = treq;
+			// ctx.extension = "";
+			ctx.res.json( {
+				done: true
+			} );
 		} )
 		.any( '/test-any/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			expect( server.passError( ctx ) ).toBeFalsy();

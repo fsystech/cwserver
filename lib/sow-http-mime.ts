@@ -18,11 +18,6 @@ export interface IHttpMimeHandler {
     getMimeType( extension: string ): string;
     isValidExtension( extension: string ): boolean;
 }
-const isAcceptedEncoding = ( req: IRequest, name: string ): boolean => {
-    const acceptEncoding: string | string[] | undefined = req.headers['accept-encoding'];
-    if ( !acceptEncoding ) return false;
-    return acceptEncoding.indexOf( name ) > -1;
-}
 interface ITaskDeff {
     cache: boolean; ext: string; gzip: boolean
 }
@@ -195,7 +190,7 @@ class MimeHandler {
         }
         let noCache: boolean = false;
         const taskDeff: ITaskDeff | undefined = TaskDeff.find( a => a.ext === ctx.extension );
-        let isGzip: boolean = ( !ctx.server.config.staticFile.compression ? false : isAcceptedEncoding( ctx.req, "gzip" ) );
+        let isGzip: boolean = ( !ctx.server.config.staticFile.compression ? false : SowHttpCache.isAcceptedEncoding( ctx.req.headers, "gzip" ) );
         if ( isGzip ) {
             if ( ctx.server.config.staticFile.minCompressionSize > 0 && stat.size < ctx.server.config.staticFile.minCompressionSize ) {
                 isGzip = false;

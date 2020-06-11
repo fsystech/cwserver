@@ -11,16 +11,16 @@ export namespace Streamer {
         ctx: IContext, absPath: string,
         mimeType: string, fstat: Stats
     ): void {
-        const total = fstat.size;
+        const total: number = fstat.size;
         let openenedFile: ReadStream = Object.create( null );
         if ( ctx.req.headers.range ) {
-            const range = ctx.req.headers.range?.toString();
-            const parts = range.replace( /bytes=/, "" ).split( "-" );
-            const partialstart = parts[0];
-            const partialend = parts[1];
-            const start = parseInt( partialstart, 10 );
-            const end = partialend ? parseInt( partialend, 10 ) : total - 1;
-            const chunksize = ( end - start ) + 1;
+            const range: string = ctx.req.headers.range;
+            const parts: string[] = range.replace( /bytes=/, "" ).split( "-" );
+            const partialstart: string = parts[0];
+            const partialend: string = parts[1];
+            const start: number = parseInt( partialstart, 10 );
+            const end: number = partialend ? parseInt( partialend, 10 ) : total - 1;
+            const chunksize: number = ( end - start ) + 1;
             openenedFile = fsCreateReadStream( absPath, {
                 start, end
             } );

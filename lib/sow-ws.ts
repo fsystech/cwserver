@@ -51,7 +51,7 @@ export interface IWsClientInfo {
     on( ev: 'disConnected' | 'connected', handler: IEvtHandler ): void;
     on( ev: 'beforeInitiateConnection', handler: IWsNext ): void;
     emit( ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket ): void;
-    getServerEvent(): { [x: string]: any; };
+    getServerEvent(): { [x: string]: any; } | void;
     beforeInitiateConnection: IWsNext;
     client: IWsClient;
 }
@@ -87,10 +87,11 @@ class WsClientInfo implements IWsClientInfo {
     beforeInitiateConnection: IWsNext = Object.create( null );
     client: IWsClient = Object.create( null );
     event: { [id: string]: any } = {};
-    getServerEvent(): { [x: string]: any; } {
+    getServerEvent(): { [x: string]: any; } | void {
         const obj = this.event.getClient();
-        if ( obj instanceof Object ) return obj;
-        return {};
+        if ( obj instanceof Object ) {
+            return obj;
+        }
     }
     on( ev: string, handler: any ): void {
         if ( ev === "getClient" ) {
@@ -101,11 +102,12 @@ class WsClientInfo implements IWsClientInfo {
             return this.beforeInitiateConnection = handler, void 0;
         }
         this.event[ev] = handler;
+        return void 0;
     }
-    emit( ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket ): void;
     emit( ev: string, me: ISowSocketInfo, wsServer: ISowSocket ): void {
-        if ( !this.event[ev] ) return void 0;
-        return this.event[ev]( me, wsServer );
+        if ( this.event[ev] ) {
+            return this.event[ev]( me, wsServer );
+        }
     }
 }
 export function wsClient( ): IWsClientInfo {
@@ -197,8 +199,9 @@ class SowSocket implements ISowSocket {
         }
         io.use( ( socket: Socket, next: ( err?: any ) => void ): void => {
             socket.request.session = this._server.parseSession( socket.request.headers.cookie );
-            if ( !this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) return void 0;
-            return next();
+            if ( this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) {
+                return next();
+            }
         } );
         return io.on( "connect", ( socket: Socket ): void => {
             this.connected = socket.connected;
@@ -236,7 +239,7 @@ class SowSocket implements ISowSocket {
 /** If you want to use it you've to install socket.io */
 export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
     isConnectd: boolean;
-    wsEvent: { [x: string]: any; };
+    wsEvent: { [x: string]: any; } | void;
     create: ( ioserver: ioServer ) => boolean;
 } {
     if ( typeof ( wsClientInfo.client ) !== "function" ) {
@@ -245,13 +248,13 @@ export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInf
     if ( typeof ( wsClientInfo.beforeInitiateConnection ) !== "function" ) {
         throw new Error( "`beforeInitiateConnection` event did not registered..." );
     }
-    let _wsEvent: { [x: string]: any; } | undefined = void 0;
+    let _wsEvent: { [x: string]: any; } | void = void 0;
     const _ws: SowSocket = new SowSocket( server, wsClientInfo );
     return {
         get isConnectd(): boolean {
             return _ws.implimented;
         },
-        get wsEvent(): { [x: string]: any; } {
+        get wsEvent(): { [x: string]: any; } | void {
             return _wsEvent ? _wsEvent : ( _wsEvent = wsClientInfo.getServerEvent(), _wsEvent );
         },
         create( ioserver: ioServer ): boolean {

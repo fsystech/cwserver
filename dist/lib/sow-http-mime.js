@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -33,12 +33,6 @@ const sow_http_cache_1 = require("./sow-http-cache");
 const sow_web_streamer_1 = require("./sow-web-streamer");
 const sow_encryption_1 = require("./sow-encryption");
 const sow_util_1 = require("./sow-util");
-const isAcceptedEncoding = (req, name) => {
-    const acceptEncoding = req.headers['accept-encoding'];
-    if (!acceptEncoding)
-        return false;
-    return acceptEncoding.indexOf(name) > -1;
-};
 let HttpMimeType = {};
 // "exe", "zip", "doc", "docx", "pdf", "ppt", "pptx", "gz"
 const TaskDeff = [
@@ -194,7 +188,7 @@ class MimeHandler {
         }
         let noCache = false;
         const taskDeff = TaskDeff.find(a => a.ext === ctx.extension);
-        let isGzip = (!ctx.server.config.staticFile.compression ? false : isAcceptedEncoding(ctx.req, "gzip"));
+        let isGzip = (!ctx.server.config.staticFile.compression ? false : sow_http_cache_1.SowHttpCache.isAcceptedEncoding(ctx.req.headers, "gzip"));
         if (isGzip) {
             if (ctx.server.config.staticFile.minCompressionSize > 0 && stat.size < ctx.server.config.staticFile.minCompressionSize) {
                 isGzip = false;

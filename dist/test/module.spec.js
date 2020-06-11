@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -441,7 +441,8 @@ describe("cwserver-get", () => {
             done();
         });
     });
-    it('test context', (done) => {
+    it('test context', function (done) {
+        this.timeout(5000);
         getAgent()
             .get(`http://localhost:${appUtility.port}/test-context`)
             .end((err, res) => {
@@ -651,7 +652,8 @@ describe("cwserver-template-engine", () => {
             done();
         });
     });
-    it('test template utility', (done) => {
+    it('test template utility', function (done) {
+        this.timeout(5000);
         expect_1.default(sow_template_1.TemplateCore.isScriptTemplate("")).toBe(false);
         expect_1.default(test_view_1.shouldBeError(() => {
             const sendBox = sow_template_1.TemplateCore.compile();
@@ -662,7 +664,7 @@ describe("cwserver-template-engine", () => {
             });
         })).toBeInstanceOf(Error);
         sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#attach /template/readme.html`, (str, isScript) => {
-            console.log(str);
+            expect_1.default(str).toBeDefined();
         });
         expect_1.default(test_view_1.shouldBeError(() => {
             sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
@@ -735,7 +737,7 @@ describe("cwserver-bundler", () => {
     it('bundler should compair if-modified-since header and send 304 (server file cache)', (() => {
         const sendReq = (done, tryCount) => {
             if (tryCount > 0) {
-                appUtility.server.log.info(`Try Count: ${tryCount} and if-modified-since: ${lastModified}`);
+                console.log(`Try Count: ${tryCount} and if-modified-since: ${lastModified}`);
             }
             createRequest("GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-modified-since")
                 .set("if-modified-since", lastModified)
@@ -747,7 +749,7 @@ describe("cwserver-bundler", () => {
                 ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
             })
                 .end((err, res) => {
-                if ((err === null || !err || !(err instanceof Error)) && tryCount === 0) {
+                if (!sow_util_1.Util.isError(err) && tryCount === 0) {
                     return setTimeout(() => {
                         tryCount++;
                         return sendReq(done, tryCount);
@@ -767,7 +769,7 @@ describe("cwserver-bundler", () => {
     it('bundler should compair if-none-match and send 304 (server file cache)', (() => {
         const sendReq = (done, tryCount) => {
             if (tryCount > 0) {
-                appUtility.server.log.info(`Try Count: ${tryCount} and if-none-match: ${eTag}`);
+                console.log(`Try Count: ${tryCount} and if-none-match: ${eTag}`);
             }
             createRequest("GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-none-match")
                 .set("if-none-match", eTag)
@@ -779,7 +781,7 @@ describe("cwserver-bundler", () => {
                 ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
             })
                 .end((err, res) => {
-                if ((err === null || !err || !(err instanceof Error)) && tryCount === 0) {
+                if (!sow_util_1.Util.isError(err) && tryCount === 0) {
                     return setTimeout(() => {
                         tryCount++;
                         return sendReq(done, tryCount);
@@ -821,7 +823,7 @@ describe("cwserver-bundler", () => {
     (() => {
         const sendReq = (done, tryCount) => {
             if (tryCount > 0) {
-                appUtility.server.log.info(`Try Count: ${tryCount} and if-modified-since: ${lastModified}`);
+                console.log(`Try Count: ${tryCount} and if-modified-since: ${lastModified}`);
             }
             createRequest("GET", `http://localhost:${appUtility.port}/app/api/bundle/`, "if-modified-since")
                 .set("if-modified-since", lastModified)
@@ -833,7 +835,7 @@ describe("cwserver-bundler", () => {
                 ck: "bundle_no_cache_js", ct: "text/javascript", rc: "Y"
             })
                 .end((err, res) => {
-                if ((err === null || !err || !(err instanceof Error)) && tryCount === 0) {
+                if (!sow_util_1.Util.isError(err) && tryCount === 0) {
                     return setTimeout(() => {
                         tryCount++;
                         return sendReq(done, tryCount);
@@ -845,6 +847,7 @@ describe("cwserver-bundler", () => {
                 catch (e) {
                     console.log(e);
                     console.log(err);
+                    console.log(typeof (err));
                     throw e;
                 }
                 expect_1.default(res.status).toEqual(304);
@@ -1605,6 +1608,9 @@ describe("cwserver-utility", () => {
         expect_1.default(sow_http_status_1.HttpStatus.isValidCode(45510)).toEqual(false);
         expect_1.default(sow_http_status_1.HttpStatus.statusCode).toBeInstanceOf(Object);
         expect_1.default(sow_static_1.ToNumber(null)).toEqual(0);
+        expect_1.default(sow_static_1.ToResponseTime()).toBeDefined();
+        expect_1.default(sow_static_1.ToResponseTime(new Date("2020-01-01").getTime())).toBeDefined();
+        expect_1.default(sow_static_1.ToResponseTime(new Date("2020-01-05").getTime())).toBeDefined();
         expect_1.default(test_view_1.shouldBeError(() => {
             cwserver.Encryption.encrypt("nothing", {
                 oldKey: "",
@@ -1953,7 +1959,8 @@ describe("cwserver-utility", () => {
     });
 });
 describe("cwserver-schema-validator", () => {
-    it("validate-schema", (done) => {
+    it("validate-schema", function (done) {
+        this.timeout(5000);
         expect_1.default(sow_schema_validator_1.fillUpType("array")).toBeInstanceOf(Array);
         expect_1.default(sow_schema_validator_1.fillUpType("number")).toEqual(0);
         expect_1.default(sow_schema_validator_1.fillUpType("boolean")).toBeFalsy();

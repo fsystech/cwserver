@@ -182,7 +182,7 @@ export const {
             delete ctx.server; delete ctx.path;
             ctx.res.dispose(); delete ctx.res;
             delete ctx.extension; delete ctx.root;
-            delete ctx.session; delete ctx.servedFrom
+            delete ctx.session; delete ctx.servedFrom;
             delete ctx.error;
             if ( _curContext[ctx.req.id] ) {
                 delete _curContext[ctx.req.id];

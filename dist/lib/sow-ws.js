@@ -16,9 +16,9 @@ class WsClientInfo {
     }
     getServerEvent() {
         const obj = this.event.getClient();
-        if (obj instanceof Object)
+        if (obj instanceof Object) {
             return obj;
-        return {};
+        }
     }
     on(ev, handler) {
         if (ev === "getClient") {
@@ -29,11 +29,12 @@ class WsClientInfo {
             return this.beforeInitiateConnection = handler, void 0;
         }
         this.event[ev] = handler;
+        return void 0;
     }
     emit(ev, me, wsServer) {
-        if (!this.event[ev])
-            return void 0;
-        return this.event[ev](me, wsServer);
+        if (this.event[ev]) {
+            return this.event[ev](me, wsServer);
+        }
     }
 }
 function wsClient() {
@@ -115,9 +116,9 @@ class SowSocket {
         }
         io.use((socket, next) => {
             socket.request.session = this._server.parseSession(socket.request.headers.cookie);
-            if (!this._wsClients.beforeInitiateConnection(socket.request.session, socket))
-                return void 0;
-            return next();
+            if (this._wsClients.beforeInitiateConnection(socket.request.session, socket)) {
+                return next();
+            }
         });
         return io.on("connect", (socket) => {
             this.connected = socket.connected;

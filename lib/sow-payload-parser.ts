@@ -33,13 +33,6 @@ export interface IPayloadParser {
     readData( onReadEnd: ( err?: Error | string ) => void ): void;
     readDataAsync(): Promise<void>;
 }
-const guid = (): string => {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, ( c: string ) => {
-        const r: number = Math.random() * 16 | 0;
-        const v: number = c === 'x' ? r : ( r & 0x3 | 0x8 );
-        return v.toString( 16 );
-    } );
-}
 const getLine = ( req: IRequest, data: Buffer[] ): string => {
     let outstr: string = '';
     for ( ; ; ) {
@@ -272,7 +265,7 @@ class PayloadDataParser {
                 this._postedFile = void 0;
                 return;
             }
-            const tempFile: string = _path.resolve( `${this._tempDir}/${guid()}.temp` );
+            const tempFile: string = _path.resolve( `${this._tempDir}/${Util.guid()}.temp` );
             this._writeStream = _fs.createWriteStream( tempFile );
             this._postedFile.setInfo( tempFile );
             this._isStart = true;

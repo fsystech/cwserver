@@ -60,4 +60,9 @@ export namespace SowHttpCache {
     export function getEtag( timestamp: number, fsize: number ): string {
         return `W/${( timestamp ^ fsize )}`;
     }
+    export function isAcceptedEncoding( headers: IncomingHttpHeaders, name: string ): boolean {
+        const acceptEncoding = headers['accept-encoding'];
+        if( !acceptEncoding ) return false;
+        return acceptEncoding.indexOf( name ) > -1;
+    }
 }

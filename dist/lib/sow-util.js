@@ -14,7 +14,7 @@ var __setModuleDefault = ( this && this.__setModuleDefault ) || ( Object.create 
 var __importStar = ( this && this.__importStar ) || function ( mod ) {
     if ( mod && mod.__esModule ) return mod;
     var result = {};
-    if ( mod != null ) for ( var k in mod ) if ( Object.hasOwnProperty.call( mod, k ) ) __createBinding( result, mod, k );
+    if ( mod != null ) for ( var k in mod ) if ( k !== "default" && Object.hasOwnProperty.call( mod, k ) ) __createBinding( result, mod, k );
     __setModuleDefault( result, mod );
     return result;
 };
@@ -33,9 +33,12 @@ const _extend = ( destination, source ) => {
     for ( const property in source ) {
         if ( property === "__proto__" || property === "constructor" )
             continue;
-        if ( !source.hasOwnProperty( property ) )
-            continue;
-        destination[property] = source[property];
+        if ( !destination.hasOwnProperty( property ) ) {
+            destination[property] = source[property];
+        }
+        else {
+            destination[property] = source[property];
+        }
     }
     return destination;
 };
@@ -47,8 +50,9 @@ const _deepExtend = ( destination, source ) => {
     for ( const property in source ) {
         if ( property === "__proto__" || property === "constructor" )
             continue;
-        if ( !source.hasOwnProperty( property ) )
-            continue;
+        if ( !destination.hasOwnProperty( property ) ) {
+            destination[property] = void 0;
+        }
         const s = source[property];
         const d = destination[property];
         if ( _isPlainObject( d ) && _isPlainObject( s ) ) {
@@ -91,6 +95,10 @@ const _deepExtend = ( destination, source ) => {
         return result === "[object NodeList]" || result === "[object Array]" ? true : false;
     }
     Util.isArrayLike = isArrayLike;
+    function isError( obj ) {
+        return Object.prototype.toString.call( obj ) === "[object Error]";
+    }
+    Util.isError = isError;
     /** compair a stat.mtime > b stat.mtime */
     function compairFile( a, b ) {
         const astat = _fs.statSync( a );

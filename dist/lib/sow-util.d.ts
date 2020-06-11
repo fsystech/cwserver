@@ -15,6 +15,7 @@ export declare namespace Util {
     };
     /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise. */
     function isArrayLike(obj?: any): obj is [];
+    function isError(obj: any): obj is Error;
     /** compair a stat.mtime > b stat.mtime */
     function compairFile(a: string, b: string): boolean;
     function pipeOutputStream(absPath: string, ctx: IContext): void;

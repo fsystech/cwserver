@@ -50,5 +50,12 @@ const sow_static_1 = require( "./sow-static" );
         return `W/${( timestamp ^ fsize )}`;
     }
     SowHttpCache.getEtag = getEtag;
+    function isAcceptedEncoding( headers, name ) {
+        const acceptEncoding = headers['accept-encoding'];
+        if ( !acceptEncoding )
+            return false;
+        return acceptEncoding.indexOf( name ) > -1;
+    }
+    SowHttpCache.isAcceptedEncoding = isAcceptedEncoding;
 } )( exports.SowHttpCache || ( exports.SowHttpCache = {} ) );
 //# sourceMappingURL=sow-http-cache.js.map

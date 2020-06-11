@@ -23,4 +23,5 @@ export declare namespace SowHttpCache {
     }): void;
     /** Create and Gets {etag} (timestamp ^ fsize). */
     function getEtag(timestamp: number, fsize: number): string;
+    function isAcceptedEncoding(headers: IncomingHttpHeaders, name: string): boolean;
 }

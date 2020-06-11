@@ -10,11 +10,10 @@ exports.Streamer = void 0;
 const fs_1 = require( "fs" );
 ( function ( Streamer ) {
     function stream( ctx, absPath, mimeType, fstat ) {
-        var _a;
         const total = fstat.size;
         let openenedFile = Object.create( null );
         if ( ctx.req.headers.range ) {
-            const range = ( _a = ctx.req.headers.range ) === null || _a === void 0 ? void 0 : _a.toString();
+            const range = ctx.req.headers.range;
             const parts = range.replace( /bytes=/, "" ).split( "-" );
             const partialstart = parts[0];
             const partialend = parts[1];

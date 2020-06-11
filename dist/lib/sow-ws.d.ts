@@ -56,7 +56,7 @@ export interface IWsClientInfo {
     emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket): void;
     getServerEvent(): {
         [x: string]: any;
-    };
+    } | void;
     beforeInitiateConnection: IWsNext;
     client: IWsClient;
 }
@@ -98,7 +98,7 @@ export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsCl
     isConnectd: boolean;
     wsEvent: {
         [x: string]: any;
-    };
+    } | void;
     create: (ioserver: ioServer) => boolean;
 };
 export {};

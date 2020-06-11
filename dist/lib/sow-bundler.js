@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -327,18 +327,12 @@ This 'Combiner' contains the following files:\n`;
         }), void 0;
     }
 }
-const isAcceptedEncoding = (req, name) => {
-    const acceptEncoding = req.headers['accept-encoding'];
-    if (!acceptEncoding)
-        return false;
-    return acceptEncoding.indexOf(name) > -1;
-};
 // tslint:disable-next-line: variable-name
 exports.__moduleName = "Bundler";
 class Bundler {
     static Init(app, controller, server) {
         controller.get(server.config.bundler.route, (ctx) => {
-            const isGzip = isAcceptedEncoding(ctx.req, "gzip");
+            const isGzip = sow_http_cache_1.SowHttpCache.isAcceptedEncoding(ctx.req.headers, "gzip");
             if (!isGzip || server.config.bundler.fileCache === false)
                 return Bundlew.createMemmory(server, ctx, isGzip);
             return Bundlew.createServerFileCache(server, ctx);

@@ -37,7 +37,21 @@ clientInfo.on("getClient", (me, session, wsServer, server) => {
             expect_1.default(wsServer.getClientByExceptToken(me.token, me.group || "no_group").length).toEqual(0);
             expect_1.default(wsServer.sendMsg("XX-INVALID-TOKEN", "on-test-msg", data)).toEqual(false);
             expect_1.default(wsServer.removeSocket("XX-INVALID-TOKEN")).toEqual(false);
-            return wsServer.sendMsg(me.token, "on-test-msg", data);
+            me.isOwner = true;
+            me.group = "TEST_GROUP";
+            expect_1.default(wsServer.getOwners(me.group).length).toBeGreaterThan(0);
+            if (me.hash && me.loginId) {
+                expect_1.default(wsServer.toList(wsServer.getClientByExceptHash("INVALID_HASH", me.group)).length).toBeGreaterThan(0);
+                expect_1.default(wsServer.getClientByExceptLogin("INVALID_LOGIN", me.group).length).toBeGreaterThan(0);
+                expect_1.default(wsServer.getClientByExceptToken("INVALID_TOKEN", me.group).length).toBeGreaterThan(0);
+            }
+            wsServer.sendMsg(me.token, "on-test-msg", data);
+            const socket = wsServer.getSocket(me.token);
+            if (socket) {
+                socket.getSocket().emit("disconnect");
+            }
+            expect_1.default(wsServer.removeSocket(me.token)).toBeFalsy();
+            return void 0;
         }
     };
     return !me ? {

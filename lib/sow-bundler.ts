@@ -312,17 +312,12 @@ This 'Combiner' contains the following files:\n`;
         } ), void 0;
     }
 }
-const isAcceptedEncoding = ( req: IRequest, name: string ): boolean => {
-    const acceptEncoding = req.headers['accept-encoding'];
-    if ( !acceptEncoding ) return false;
-    return acceptEncoding.indexOf( name ) > -1;
-}
 // tslint:disable-next-line: variable-name
 export const __moduleName: string = "Bundler";
 export class Bundler {
     public static Init( app: IApplication, controller: IController, server: ISowServer ): void {
         controller.get( server.config.bundler.route, ( ctx: IContext ): void => {
-            const isGzip: boolean = isAcceptedEncoding( ctx.req, "gzip" );
+            const isGzip: boolean = SowHttpCache.isAcceptedEncoding( ctx.req.headers, "gzip" );
             if ( !isGzip || server.config.bundler.fileCache === false ) return Bundlew.createMemmory( server, ctx, isGzip );
             return Bundlew.createServerFileCache( server, ctx );
         } );

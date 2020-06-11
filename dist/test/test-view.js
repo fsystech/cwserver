@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -38,6 +38,7 @@ const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const sow_server_core_1 = require("../lib/sow-server-core");
 const sow_server_1 = require("../lib/sow-server");
+const sow_http_cache_1 = require("../lib/sow-http-cache");
 const socket_client_1 = require("./socket-client");
 const index_1 = require("../index");
 const mimeHandler = new index_1.HttpMimeHandler();
@@ -67,7 +68,9 @@ global.sow.server.on("register-view", (app, controller, server) => {
     expect_1.default(ws.create(io)).toEqual(false);
     expect_1.default(ws.isConnectd).toEqual(true);
     controller.get('/ws-server-event', (ctx, requestParam) => {
-        ctx.res.json(ws.wsEvent);
+        const event = ws.wsEvent;
+        expect_1.default(event).toBeInstanceOf(Object);
+        ctx.res.json(ws.wsEvent || {});
         ctx.next(200);
         return void 0;
     });
@@ -246,7 +249,21 @@ global.sow.server.on("register-view", (app, controller, server) => {
         nctx.path = "/not-found/index";
         nctx.req.path = "/not-found/index";
         controller.processAny(nctx);
-        ctx.res.json({ done: true });
+        const oldEncoding = ctx.req.headers['accept-encoding'];
+        ctx.req.headers['accept-encoding'] = void 0;
+        expect_1.default(sow_http_cache_1.SowHttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
+        ctx.req.headers['accept-encoding'] = oldEncoding;
+        const treq = ctx.transferRequest;
+        ctx.transferRequest = (toPath) => {
+            expect_1.default(toPath.indexOf("404")).toBeGreaterThan(-1);
+        };
+        mimeHandler.render(ctx);
+        expect_1.default(mimeHandler.isValidExtension(ctx.extension)).toBeFalsy();
+        ctx.transferRequest = treq;
+        // ctx.extension = "";
+        ctx.res.json({
+            done: true
+        });
     })
         .any('/test-any/*', (ctx, requestParam) => {
         expect_1.default(server.passError(ctx)).toBeFalsy();

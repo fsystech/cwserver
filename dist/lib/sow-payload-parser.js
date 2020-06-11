@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -33,13 +33,6 @@ const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_static_1 = require("./sow-static");
 const sow_util_1 = require("./sow-util");
-const guid = () => {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-};
 const getLine = (req, data) => {
     let outstr = '';
     for (;;) {
@@ -257,7 +250,7 @@ class PayloadDataParser {
                 this._postedFile = void 0;
                 return;
             }
-            const tempFile = _path.resolve(`${this._tempDir}/${guid()}.temp`);
+            const tempFile = _path.resolve(`${this._tempDir}/${sow_util_1.Util.guid()}.temp`);
             this._writeStream = _fs.createWriteStream(tempFile);
             this._postedFile.setInfo(tempFile);
             this._isStart = true;

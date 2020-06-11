@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -57,43 +57,40 @@ class LogTime {
     }
 }
 exports.LogTime = LogTime;
-let ConsoleColor = /** @class */ (() => {
-    class ConsoleColor {
-        static Cyan(str) {
-            return `\x1b[36m${str}\x1b[0m`;
-        }
-        ;
-        static Yellow(str) {
-            return `\x1b[33m${str}\x1b[0m`;
-        }
-        ;
+class ConsoleColor {
+    static Cyan(str) {
+        return `\x1b[36m${str}\x1b[0m`;
     }
-    ConsoleColor.Reset = '\x1b[0m';
-    ConsoleColor.Bright = '\x1b[1m';
-    ConsoleColor.Dim = '\x1b[2m';
-    ConsoleColor.Underscore = '\x1b[4m';
-    ConsoleColor.Blink = '\x1b[5m';
-    ConsoleColor.Reverse = '\x1b[7m';
-    ConsoleColor.Hidden = '\x1b[8m';
-    ConsoleColor.FgBlack = '\x1b[30m';
-    ConsoleColor.FgRed = '\x1b[31m';
-    ConsoleColor.FgGreen = '\x1b[32m';
-    ConsoleColor.FgYellow = '\x1b[33m';
-    ConsoleColor.FgBlue = '\x1b[34m';
-    ConsoleColor.FgMagenta = '\x1b[35m';
-    ConsoleColor.FgCyan = '\x1b[36m';
-    ConsoleColor.FgWhite = '\x1b[37m';
-    ConsoleColor.BgBlack = '\x1b[40m';
-    ConsoleColor.BgRed = '\x1b[41m';
-    ConsoleColor.BgGreen = '\x1b[42m';
-    ConsoleColor.BgYellow = '\x1b[43m';
-    ConsoleColor.BgBlue = '\x1b[44m';
-    ConsoleColor.BgMagenta = '\x1b[45m';
-    ConsoleColor.BgCyan = '\x1b[46m';
-    ConsoleColor.BgWhite = '\x1b[47m';
-    return ConsoleColor;
-})();
+    ;
+    static Yellow(str) {
+        return `\x1b[33m${str}\x1b[0m`;
+    }
+    ;
+}
 exports.ConsoleColor = ConsoleColor;
+ConsoleColor.Reset = '\x1b[0m';
+ConsoleColor.Bright = '\x1b[1m';
+ConsoleColor.Dim = '\x1b[2m';
+ConsoleColor.Underscore = '\x1b[4m';
+ConsoleColor.Blink = '\x1b[5m';
+ConsoleColor.Reverse = '\x1b[7m';
+ConsoleColor.Hidden = '\x1b[8m';
+ConsoleColor.FgBlack = '\x1b[30m';
+ConsoleColor.FgRed = '\x1b[31m';
+ConsoleColor.FgGreen = '\x1b[32m';
+ConsoleColor.FgYellow = '\x1b[33m';
+ConsoleColor.FgBlue = '\x1b[34m';
+ConsoleColor.FgMagenta = '\x1b[35m';
+ConsoleColor.FgCyan = '\x1b[36m';
+ConsoleColor.FgWhite = '\x1b[37m';
+ConsoleColor.BgBlack = '\x1b[40m';
+ConsoleColor.BgRed = '\x1b[41m';
+ConsoleColor.BgGreen = '\x1b[42m';
+ConsoleColor.BgYellow = '\x1b[43m';
+ConsoleColor.BgBlue = '\x1b[44m';
+ConsoleColor.BgMagenta = '\x1b[45m';
+ConsoleColor.BgCyan = '\x1b[46m';
+ConsoleColor.BgWhite = '\x1b[47m';
 class Logger {
     constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
         this._buff = [];

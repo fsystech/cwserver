@@ -1,5 +1,5 @@
 import expect from 'expect';
-import { wsClient } from '../index';
+import { wsClient, Util } from '../index';
 const clientInfo = wsClient();
 clientInfo.on( "beforeInitiateConnection", ( session, socket ) => {
     /*if ( !session.isAuthenticated ) {
@@ -9,7 +9,7 @@ clientInfo.on( "beforeInitiateConnection", ( session, socket ) => {
 } );
 clientInfo.on( "getClient", ( me, session, wsServer, server ) => {
     const _client = {
-        'test-msg': ( data: any ) => {
+        'test-msg': ( data: any ): void => {
             expect( me.getSocket() ).toBeDefined();
             expect( wsServer.isActiveSocket( me.token ) ).toEqual( true );
             expect( wsServer.getOwners( me.group || "no_group" ).length ).toEqual( 0 );
@@ -31,7 +31,21 @@ clientInfo.on( "getClient", ( me, session, wsServer, server ) => {
             expect( wsServer.getClientByExceptToken( me.token, me.group || "no_group" ).length ).toEqual( 0 );
             expect( wsServer.sendMsg( "XX-INVALID-TOKEN", "on-test-msg", data ) ).toEqual( false );
             expect( wsServer.removeSocket( "XX-INVALID-TOKEN" ) ).toEqual( false );
-            return wsServer.sendMsg( me.token, "on-test-msg", data );
+            me.isOwner = true;
+            me.group = "TEST_GROUP";
+            expect( wsServer.getOwners( me.group ).length ).toBeGreaterThan( 0 );
+            if ( me.hash && me.loginId ) {
+                expect( wsServer.toList( wsServer.getClientByExceptHash( "INVALID_HASH", me.group ) ).length ).toBeGreaterThan( 0 );
+                expect( wsServer.getClientByExceptLogin( "INVALID_LOGIN", me.group ).length ).toBeGreaterThan( 0 );
+                expect( wsServer.getClientByExceptToken( "INVALID_TOKEN", me.group ).length ).toBeGreaterThan( 0 );
+            }
+            wsServer.sendMsg( me.token, "on-test-msg", data );
+            const socket = wsServer.getSocket( me.token );
+            if ( socket ) {
+                socket.getSocket().emit( "disconnect" );
+            }
+            expect( wsServer.removeSocket( me.token ) ).toBeFalsy();
+            return void 0;
         }
     };
     return !me ? {
