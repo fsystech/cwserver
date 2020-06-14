@@ -61,11 +61,6 @@ const getHeader = ( headers: IncomingHttpHeaders, key: string ): string => {
     const result: string | string[] | undefined = headers[key];
     return typeof ( result ) === "string" ? result.toString() : "";
 }
-const createDir = ( dir: string ): void => {
-    if ( !_fs.existsSync( dir ) ) {
-        Util.mkdirSync( dir );
-    }
-}
 const incomingContentType: {
     [key: string]: any;
     URL_ENCODE: string;
@@ -195,11 +190,14 @@ class PayloadDataParser {
     private _postedFile?: IPostedFileInfo;
     private _byteCount: number;
     private _errors: string;
-    private _isDisposed: boolean;
     private _blockSize: number = 0;
-    private _maxBlockSize: number = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
+    private get _maxBlockSize() {
+        return 10485760;  /* (Max block size (1024*1024)*10) = 10 MB */
+    }
     constructor(
-        tempDir: string, contentType: string, contentTypeEnum: ContentType
+        tempDir: string,
+        contentType: string,
+        contentTypeEnum: ContentType
     ) {
         this._errors = "";
         this._contentTypeEnum = contentTypeEnum;
@@ -215,7 +213,6 @@ class PayloadDataParser {
         }
         this._isStart = false; this._byteCount = 0;
         this._waitCount = 0; this._headerInfo = "";
-        this._isDisposed = false;
     }
     public onRawData( str: string ): void {
         this.payloadStr += str;
@@ -234,9 +231,12 @@ class PayloadDataParser {
             } );
         }
     }
-    public onData( line: string, buffer: Buffer ): void | Promise<void> {
+    public onData( line: string, buffer: Buffer ): void | boolean | Promise<void> {
         if ( this._waitCount === 0 && ( line.length < this._sepLen || line.indexOf( this._separator ) < 0 ) ) {
-            if ( !this._isStart ) return;
+            if ( !this._isStart ) {
+                this._errors += "Malformed trailing data...";
+                return false;
+            }
             if ( this._writeStream ) {
                 const readLen = buffer.byteLength;
                 this._byteCount += readLen;
@@ -266,7 +266,7 @@ class PayloadDataParser {
                 return;
             }
             const tempFile: string = _path.resolve( `${this._tempDir}/${Util.guid()}.temp` );
-            this._writeStream = _fs.createWriteStream( tempFile );
+            this._writeStream = _fs.createWriteStream( tempFile, { 'flags': 'a' } );
             this._postedFile.setInfo( tempFile );
             this._isStart = true;
             return;
@@ -310,15 +310,9 @@ class PayloadDataParser {
         }
     }
     public clear(): void {
-        if ( this._isDisposed ) return;
-        this._isDisposed = true;
         this.files.forEach( pf => pf.clear() );
         this.endCurrentStream( true );
         this.files.length = 0;
-        if ( this._writeStream )
-            delete this._writeStream;
-        if ( this._postedFile )
-            delete this._postedFile;
         if ( this._errors )
             delete this._errors;
     }
@@ -331,10 +325,13 @@ export class PayloadParser implements IPayloadParser {
     private _req: IRequest;
     private _isReadEnd: boolean;
     private _isDisposed: boolean;
-    private _clientConnected: boolean;
-    constructor( req: IRequest, tempDir: string ) {
+    constructor(
+        req: IRequest,
+        tempDir: string
+    ) {
         this._isDisposed = false;
-        createDir( tempDir );
+        if ( !Util.mkdirSync( tempDir ) )
+            throw new Error( `Invalid outdir dir ${tempDir}` );
         this._contentType = getHeader( req.headers, "content-type" );
         this._contentLength = ToNumber( getHeader( req.headers, "content-length" ) );
         if ( this._contentType.indexOf( incomingContentType.MULTIPART ) > -1 ) {
@@ -353,7 +350,7 @@ export class PayloadParser implements IPayloadParser {
             this._payloadDataParser = Object.create( null );
             this._req = Object.create( null );
         }
-        this._isReadEnd = false; this._clientConnected = true;
+        this._isReadEnd = false;
     }
     public isUrlEncoded(): boolean {
         return this._contentTypeEnum === ContentType.URL_ENCODE;
@@ -374,12 +371,10 @@ export class PayloadParser implements IPayloadParser {
             throw new Error( "Data did not read finished yet..." );
         if ( this._contentTypeEnum !== ContentType.MULTIPART )
             throw new Error( "Multipart form data required...." );
-        createDir( outdir );
-        if ( !_fs.statSync( outdir ).isDirectory() ) {
+        if ( !Util.mkdirSync( outdir ) )
             throw new Error( `Invalid outdir dir ${outdir}` );
-        }
         this._payloadDataParser.files.forEach( pf => {
-            pf.saveAs( _path.resolve( `${outdir}/${pf.getFileName()}` ) );
+            pf.saveAs( _path.resolve( `${outdir}/${Util.guid()}_${pf.getFileName()}` ) );
         } );
     }
     public getFiles( next: ( file: IPostedFileInfo ) => void ): void {
@@ -429,7 +424,6 @@ export class PayloadParser implements IPayloadParser {
         if ( this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON ) {
             this._req.on( "readable", ( ...args: any[] ): void => {
                 while ( true ) {
-                    if ( !this._clientConnected ) break;
                     const buffer: Buffer[] = [];
                     const data: string = getLine( this._req, buffer );
                     if ( data === '' ) { break; }
@@ -440,20 +434,22 @@ export class PayloadParser implements IPayloadParser {
         } else {
             this._req.on( "readable", async ( ...args: any[] ) => {
                 while ( true ) {
-                    if ( !this._clientConnected ) break;
                     const buffer: Buffer[] = [];
                     const data: string = getLine( this._req, buffer );
                     if ( data === '' ) { break; }
                     const promise = this._payloadDataParser.onData( data, Buffer.concat( buffer ) );
                     buffer.length = 0;
-                    if ( promise ) {
+                    if ( typeof ( promise ) === "boolean" ) {
+                        this._req.pause();
+                        this._req.emit( "end" ); break;
+                    }
+                    else {
                         await promise;
                     }
                 }
             } );
         }
         this._req.on( "close", () => {
-            this._clientConnected = false;
             if ( !this._isReadEnd ) {
                 this._isReadEnd = true;
                 this.clear();

@@ -1,24 +1,24 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
+var __createBinding = ( this && this.__createBinding ) || ( Object.create ? ( function ( o, m, k, k2 ) {
+    if ( k2 === undefined ) k2 = k;
+    Object.defineProperty( o, k2, { enumerable: true, get: function () { return m[k]; } } );
+} ) : ( function ( o, m, k, k2 ) {
+    if ( k2 === undefined ) k2 = k;
     o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
+} ) );
+var __setModuleDefault = ( this && this.__setModuleDefault ) || ( Object.create ? ( function ( o, v ) {
+    Object.defineProperty( o, "default", { enumerable: true, value: v } );
+} ) : function ( o, v ) {
     o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
+} );
+var __importStar = ( this && this.__importStar ) || function ( mod ) {
+    if ( mod && mod.__esModule ) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
+    if ( mod != null ) for ( var k in mod ) if ( k !== "default" && Object.hasOwnProperty.call( mod, k ) ) __createBinding( result, mod, k );
+    __setModuleDefault( result, mod );
     return result;
 };
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty( exports, "__esModule", { value: true } );
 exports.Logger = exports.ConsoleColor = exports.LogTime = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
@@ -26,43 +26,43 @@ exports.Logger = exports.ConsoleColor = exports.LogTime = void 0;
 * See the accompanying LICENSE file for terms.
 */
 // 11:26 PM 9/28/2019
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
-const sow_util_1 = require("./sow-util");
+const _fs = __importStar( require( "fs" ) );
+const _path = __importStar( require( "path" ) );
+const sow_util_1 = require( "./sow-util" );
 class LogTime {
-    static dfo(t) {
+    static dfo( t ) {
         t = t === 0 ? 1 : t;
-        return String(t <= 9 ? "0" + t : t);
+        return String( t <= 9 ? "0" + t : t );
     }
-    static dfm(t) {
+    static dfm( t ) {
         t += 1;
-        return String(t <= 9 ? "0" + t : t);
+        return String( t <= 9 ? "0" + t : t );
     }
-    static getLocalDateTime(offset) {
+    static getLocalDateTime( offset ) {
         // create Date object for current location
         const d = new Date();
         // convert to msec
         // subtract local time zone offset
         // get UTC time in msec
-        const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+        const utc = d.getTime() + ( d.getTimezoneOffset() * 60000 );
         // create new Date object for different city
         // using supplied offset
-        const nd = new Date(utc + (3600000 * offset));
+        const nd = new Date( utc + ( 3600000 * offset ) );
         // return date
         return nd;
     }
-    static getTime(tz) {
-        const date = this.getLocalDateTime(tz);
-        return `${date.getFullYear()}-${this.dfm(date.getMonth())}-${this.dfo(date.getDate())} ${this.dfo(date.getHours())}:${this.dfo(date.getMinutes())}:${this.dfo(date.getSeconds())}`;
+    static getTime( tz ) {
+        const date = this.getLocalDateTime( tz );
+        return `${date.getFullYear()}-${this.dfm( date.getMonth() )}-${this.dfo( date.getDate() )} ${this.dfo( date.getHours() )}:${this.dfo( date.getMinutes() )}:${this.dfo( date.getSeconds() )}`;
     }
 }
 exports.LogTime = LogTime;
 class ConsoleColor {
-    static Cyan(str) {
+    static Cyan( str ) {
         return `\x1b[36m${str}\x1b[0m`;
     }
     ;
-    static Yellow(str) {
+    static Yellow( str ) {
         return `\x1b[33m${str}\x1b[0m`;
     }
     ;
@@ -92,117 +92,117 @@ ConsoleColor.BgMagenta = '\x1b[45m';
 ConsoleColor.BgCyan = '\x1b[46m';
 ConsoleColor.BgWhite = '\x1b[47m';
 class Logger {
-    constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
+    constructor( dir, name, tz, userInteractive, isDebug, maxBlockSize ) {
         this._buff = [];
         this._blockSize = 0;
         this._maxBlockSize = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
         this._fd = -1;
-        this._userInteractive = typeof (userInteractive) !== "boolean" ? true : userInteractive;
-        this._isDebug = typeof (isDebug) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
+        this._userInteractive = typeof ( userInteractive ) !== "boolean" ? true : userInteractive;
+        this._isDebug = typeof ( isDebug ) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false;
         this._tz = "+6";
-        if (!dir)
+        if ( !dir )
             return;
-        dir = _path.resolve(dir);
-        if (!tz)
+        dir = _path.resolve( dir );
+        if ( !tz )
             tz = '+6';
         this._tz = tz;
-        if (!_fs.existsSync(dir)) {
-            sow_util_1.Util.mkdirSync(dir);
+        if ( !_fs.existsSync( dir ) ) {
+            sow_util_1.Util.mkdirSync( dir );
         }
-        if (typeof (maxBlockSize) === "number") {
+        if ( typeof ( maxBlockSize ) === "number" ) {
             this._maxBlockSize = maxBlockSize;
         }
-        const date = LogTime.getLocalDateTime(this._tz);
-        name = `${name || String(Math.random().toString(36).slice(2) + Date.now())}_${date.getFullYear()}_${LogTime.dfm(date.getMonth())}_${LogTime.dfo(date.getDate())}.log`;
-        const path = _path.resolve(`${dir}/${name}`);
-        const exists = _fs.existsSync(path);
-        this._fd = _fs.openSync(path, 'a');
+        const date = LogTime.getLocalDateTime( this._tz );
+        name = `${name || String( Math.random().toString( 36 ).slice( 2 ) + Date.now() )}_${date.getFullYear()}_${LogTime.dfm( date.getMonth() )}_${LogTime.dfo( date.getDate() )}.log`;
+        const path = _path.resolve( `${dir}/${name}` );
+        const exists = _fs.existsSync( path );
+        this._fd = _fs.openSync( path, 'a' );
         this._canWrite = true;
-        if (exists === false) {
-            this.writeToStream(`Log Genarte On ${LogTime.getTime(this._tz)}\r\n-------------------------------------------------------------------\r\n`);
+        if ( exists === false ) {
+            this.writeToStream( `Log Genarte On ${LogTime.getTime( this._tz )}\r\n-------------------------------------------------------------------\r\n` );
         }
         else {
             this.newLine();
         }
     }
     flush() {
-        if (this._fd < 0) {
-            throw new Error("File not open yet....");
+        if ( this._fd < 0 ) {
+            throw new Error( "File not open yet...." );
         }
-        if (this._buff.length === 0)
+        if ( this._buff.length === 0 )
             return false;
-        _fs.appendFileSync(this._fd, Buffer.concat(this._buff));
+        _fs.appendFileSync( this._fd, Buffer.concat( this._buff ) );
         this._buff.length = 0;
         this._blockSize = 0;
         return true;
     }
-    writeToStream(str) {
-        if (this._canWrite === false)
+    writeToStream( str ) {
+        if ( this._canWrite === false )
             return void 0;
-        const buff = Buffer.from(str);
+        const buff = Buffer.from( str );
         this._blockSize += buff.byteLength;
-        this._buff.push(buff);
-        if (this._blockSize < this._maxBlockSize) {
+        this._buff.push( buff );
+        if ( this._blockSize < this._maxBlockSize ) {
             return void 0;
         }
         return this.flush(), void 0;
     }
     newLine() {
-        return this.writeToStream('-------------------------------------------------------------------\r\n');
+        return this.writeToStream( '-------------------------------------------------------------------\r\n' );
     }
-    _write(buffer) {
-        if (typeof (buffer) !== "string")
-            buffer = String(buffer);
-        return this.writeToStream(`${LogTime.getTime(this._tz)}\t${buffer.replace(/\t/gi, "")}\r\n`);
+    _write( buffer ) {
+        if ( typeof ( buffer ) !== "string" )
+            buffer = String( buffer );
+        return this.writeToStream( `${LogTime.getTime( this._tz )}\t${buffer.replace( /\t/gi, "" )}\r\n` );
     }
-    _log(color, msg) {
-        if (!this._isDebug && !this._userInteractive)
-            return this._write(msg), this;
-        if (!this._userInteractive) {
-            console.log(msg);
+    _log( color, msg ) {
+        if ( !this._isDebug && !this._userInteractive )
+            return this._write( msg ), this;
+        if ( !this._userInteractive ) {
+            console.log( msg );
         }
         else {
-            this._write(msg);
-            if (color) {
+            this._write( msg );
+            if ( color ) {
                 msg = `${color}${msg}`;
             }
-            console.log(`${ConsoleColor.FgMagenta}cwserver ${msg}`);
+            console.log( `${ConsoleColor.FgMagenta}cwserver ${msg}` );
         }
         return this;
     }
-    write(msg, color) {
-        return this._log(color, msg);
+    write( msg, color ) {
+        return this._log( color, msg );
     }
-    log(msg, color) {
-        if (!this._isDebug)
+    log( msg, color ) {
+        if ( !this._isDebug )
             return this;
-        return this._log(color, msg);
+        return this._log( color, msg );
     }
-    info(msg) {
-        if (!this._isDebug)
+    info( msg ) {
+        if ( !this._isDebug )
             return this;
-        return this._log(void 0, ConsoleColor.Yellow(msg));
+        return this._log( void 0, ConsoleColor.Yellow( msg ) );
     }
-    success(msg) {
-        if (!this._isDebug)
+    success( msg ) {
+        if ( !this._isDebug )
             return this;
-        return this._log(ConsoleColor.FgGreen, msg);
+        return this._log( ConsoleColor.FgGreen, msg );
     }
-    error(msg) {
-        if (!this._isDebug)
+    error( msg ) {
+        if ( !this._isDebug )
             return this;
-        return this._log(ConsoleColor.FgRed, msg);
+        return this._log( ConsoleColor.FgRed, msg );
     }
     reset() {
-        if (!this._isDebug)
+        if ( !this._isDebug )
             return this;
-        return console.log(ConsoleColor.Reset), this;
+        return console.log( ConsoleColor.Reset ), this;
     }
     dispose() {
-        if (this._fd > 0) {
+        if ( this._fd > 0 ) {
             this.flush();
-            _fs.closeSync(this._fd);
+            _fs.closeSync( this._fd );
             this._fd = -1;
             this._canWrite = false;
         }

@@ -148,6 +148,7 @@ export namespace Util {
         return url;
     }
     export function mkdirSync( rootDir: string, targetDir?: string ): boolean {
+        if ( rootDir.length === 0 ) return false;
         let fullPath: string = "";
         let sep: string = "";
         if ( targetDir ) {
@@ -161,7 +162,10 @@ export namespace Util {
             sep = _path.sep;
             rootDir = _path.isAbsolute( targetDir ) ? sep : '';
         }
-        if ( _fs.existsSync( fullPath ) ) return true;
+        if ( _fs.existsSync( fullPath ) ) {
+            return _fs.statSync( fullPath ).isDirectory();
+        }
+        if ( _path.parse( fullPath ).ext ) return false;
         targetDir.split( sep ).reduce( ( parentDir, childDir ) => {
             if ( !childDir ) return parentDir;
             const curDir = _path.resolve( parentDir, childDir );

@@ -1,3 +1,8 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 /// <reference types="node" />
 import { IRequest } from './sow-server-core';
 export interface IPostedFileInfo {
@@ -6,10 +11,10 @@ export interface IPostedFileInfo {
     getName(): string;
     getFileName(): string;
     getContentType(): string;
-    saveAs(absPath: string): void;
+    saveAs( absPath: string ): void;
     read(): Buffer;
     getTempPath(): string | undefined;
-    setInfo(tempFile?: string, fileSize?: number): void;
+    setInfo( tempFile?: string, fileSize?: number ): void;
     isEmptyHeader(): boolean;
     clear(): void;
 }
@@ -18,9 +23,9 @@ export interface IPayloadParser {
     isAppJson(): boolean;
     isMultipart(): boolean;
     isValidRequest(): boolean;
-    getFiles(next: (file: IPostedFileInfo) => void): void;
+    getFiles( next: ( file: IPostedFileInfo ) => void ): void;
     getData(): string;
-    readData(onReadEnd: (err?: Error | string) => void): void;
+    readData( onReadEnd: ( err?: Error | string ) => void ): void;
     readDataAsync(): Promise<void>;
 }
 export declare enum ContentType {
@@ -38,8 +43,8 @@ export declare class PostedFileInfo implements IPostedFileInfo {
     _isMoved: boolean;
     _tempFile?: string;
     _isDisposed: boolean;
-    constructor(disposition: string, fname: string, fileName: string, fcontentType: string);
-    setInfo(tempFile?: string, fileSize?: number): void;
+    constructor( disposition: string, fname: string, fileName: string, fcontentType: string );
+    setInfo( tempFile?: string, fileSize?: number ): void;
     isEmptyHeader(): boolean;
     getTempPath(): string | undefined;
     getContentDisposition(): string;
@@ -48,7 +53,7 @@ export declare class PostedFileInfo implements IPostedFileInfo {
     getFileName(): string;
     getContentType(): string;
     read(): Buffer;
-    saveAs(absPath: string): void;
+    saveAs( absPath: string ): void;
     clear(): void;
 }
 export declare class PayloadParser implements IPayloadParser {
@@ -59,19 +64,18 @@ export declare class PayloadParser implements IPayloadParser {
     private _req;
     private _isReadEnd;
     private _isDisposed;
-    private _clientConnected;
-    constructor(req: IRequest, tempDir: string);
+    constructor( req: IRequest, tempDir: string );
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
     isValidRequest(): boolean;
-    saveAs(outdir: string): void;
-    getFiles(next: (file: IPostedFileInfo) => void): void;
+    saveAs( outdir: string ): void;
+    getFiles( next: ( file: IPostedFileInfo ) => void ): void;
     getJson(): {
         [key: string]: any;
     };
     getData(): string;
     readDataAsync(): Promise<void>;
-    readData(onReadEnd: (err?: Error | string) => void): void;
+    readData( onReadEnd: ( err?: Error | string ) => void ): void;
     clear(): void;
 }

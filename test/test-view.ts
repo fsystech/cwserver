@@ -132,8 +132,77 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		}
 		parser.saveAs( downloadDir );
 		return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
-	} ).post( '/upload', async ( ctx ) => {
+	} ).post( '/upload-error', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
+		const parser = new PayloadParser( ctx.req, tempDir );
+		let err: Error | undefined;
+		try {
+			await parser.readDataAsync();
+		} catch ( e ) {
+			err = e;
+		}
+		expect( err ).toBeInstanceOf( Error );
+		if ( err ) {
+			if ( err.message.indexOf( "CLIENET_DISCONNECTED" ) > -1 ) return ctx.next( -404, false );
+		}
+		throw new Error( "Should not here..." );
+	} ).post( '/upload-malformed-data', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
+		ctx.req.push( "This is normal line\n".repeat( 5 ) );
+		const parser = new PayloadParser( ctx.req, tempDir );
+		let err: Error | undefined;
+		try {
+			await parser.readDataAsync();
+		} catch ( e ) {
+			err = e;
+		}
+		parser.clear();
+		if ( err ) {
+			server.addError( ctx, err );
+			return server.transferRequest( ctx, server.config.errorPage["500"] );
+		}
+		throw new Error( "Should not here..." );
+	} ).post( '/upload-test', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
+		try {
+			const parser = new PayloadParser( ctx.req, tempDir );
+			expect( shouldBeError( () => {
+				parser.getFiles( ( pf ) => {
+					console.log( pf.getName() );
+				} );
+			} ) ).toBeInstanceOf( Error );
+			expect( shouldBeError( () => {
+				parser.getData();
+			} ) ).toBeInstanceOf( Error );
+			await parser.readDataAsync();
+			const data: {
+				[key: string]: any;
+				content_type: string;
+				name: string;
+				file_name: string;
+				content_disposition: string;
+				file_size: number;
+			}[] = [];
+			parser.getFiles( ( file ) => {
+				data.push( {
+					content_type: file.getContentType(),
+					name: file.getName(),
+					file_name: file.getFileName(),
+					content_disposition: file.getContentDisposition(),
+					file_size: file.getFileSize(),
+					temp_path: file.getTempPath()
+				} );
+			} );
+			parser.saveAs( downloadDir );
+			parser.clear();
+			ctx.res.json( data.shift() || {} );
+			ctx.next( 200 );
+		} catch ( e ) {
+			throw e;
+		}
+
+	} ).post( '/upload', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		const saveTo = typeof ( ctx.req.query.saveto ) === "string" ? ctx.req.query.saveto.toString() : void 0;
+		expect( shouldBeError( () => {
+			const p = new PayloadParser( ctx.req, server.mapPath( "/upload/data/schema.json" ) );
+		} ) ).toBeInstanceOf( Error );
 		const parser = new PayloadParser( ctx.req, tempDir );
 		expect( shouldBeError( () => {
 			parser.saveAs( downloadDir );
@@ -180,6 +249,9 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 					} ) ).toBeInstanceOf( Error );
 				} );
 				if ( saveTo && saveTo !== "C" ) {
+					expect( shouldBeError( () => {
+						parser.saveAs( server.mapPath( "/upload/data/schema.json" ) );
+					} ) ).toBeInstanceOf( Error );
 					parser.saveAs( downloadDir );
 				}
 				expect( shouldBeError( () => {
@@ -189,6 +261,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 				ctx.next( 200 );
 			}
 			parser.clear();
+			expect( parser.clear() ).not.toBeInstanceOf( Error );
 		} );
 	} );
 } );
@@ -232,10 +305,19 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			mimeHandler.render( ctx );
 			expect( mimeHandler.isValidExtension( ctx.extension ) ).toBeFalsy();
 			ctx.transferRequest = treq;
-			// ctx.extension = "";
+			( () => {
+				const parser = new PayloadParser( ctx.req, server.mapPath( "/upload/temp/" ) );
+				expect( shouldBeError( () => {
+					parser.getData();
+				} ) ).toBeInstanceOf( Error );
+				parser.clear();
+			} )();
 			ctx.res.json( {
 				done: true
 			} );
+		} )
+		.get( '/controller-error', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			throw new Error( "runtime-error" );
 		} )
 		.any( '/test-any/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			expect( server.passError( ctx ) ).toBeFalsy();

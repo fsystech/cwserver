@@ -185,6 +185,8 @@ const _deepExtend = ( destination, source ) => {
     }
     Util.isExists = isExists;
     function mkdirSync( rootDir, targetDir ) {
+        if ( rootDir.length === 0 )
+            return false;
         let fullPath = "";
         let sep = "";
         if ( targetDir ) {
@@ -200,8 +202,11 @@ const _deepExtend = ( destination, source ) => {
             sep = _path.sep;
             rootDir = _path.isAbsolute( targetDir ) ? sep : '';
         }
-        if ( _fs.existsSync( fullPath ) )
-            return true;
+        if ( _fs.existsSync( fullPath ) ) {
+            return _fs.statSync( fullPath ).isDirectory();
+        }
+        if ( _path.parse( fullPath ).ext )
+            return false;
         targetDir.split( sep ).reduce( ( parentDir, childDir ) => {
             if ( !childDir )
                 return parentDir;

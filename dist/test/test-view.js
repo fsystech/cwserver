@@ -165,8 +165,73 @@ global.sow.server.on("register-view", (app, controller, server) => {
         }
         parser.saveAs(downloadDir);
         return ctx.res.asHTML(200).end("<h1>success</h1>");
-    })).post('/upload', (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    })).post('/upload-error', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
+        const parser = new index_1.PayloadParser(ctx.req, tempDir);
+        let err;
+        try {
+            yield parser.readDataAsync();
+        }
+        catch (e) {
+            err = e;
+        }
+        expect_1.default(err).toBeInstanceOf(Error);
+        if (err) {
+            if (err.message.indexOf("CLIENET_DISCONNECTED") > -1)
+                return ctx.next(-404, false);
+        }
+        throw new Error("Should not here...");
+    })).post('/upload-malformed-data', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
+        ctx.req.push("This is normal line\n".repeat(5));
+        const parser = new index_1.PayloadParser(ctx.req, tempDir);
+        let err;
+        try {
+            yield parser.readDataAsync();
+        }
+        catch (e) {
+            err = e;
+        }
+        parser.clear();
+        if (err) {
+            server.addError(ctx, err);
+            return server.transferRequest(ctx, server.config.errorPage["500"]);
+        }
+        throw new Error("Should not here...");
+    })).post('/upload-test', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            const parser = new index_1.PayloadParser(ctx.req, tempDir);
+            expect_1.default(shouldBeError(() => {
+                parser.getFiles((pf) => {
+                    console.log(pf.getName());
+                });
+            })).toBeInstanceOf(Error);
+            expect_1.default(shouldBeError(() => {
+                parser.getData();
+            })).toBeInstanceOf(Error);
+            yield parser.readDataAsync();
+            const data = [];
+            parser.getFiles((file) => {
+                data.push({
+                    content_type: file.getContentType(),
+                    name: file.getName(),
+                    file_name: file.getFileName(),
+                    content_disposition: file.getContentDisposition(),
+                    file_size: file.getFileSize(),
+                    temp_path: file.getTempPath()
+                });
+            });
+            parser.saveAs(downloadDir);
+            parser.clear();
+            ctx.res.json(data.shift() || {});
+            ctx.next(200);
+        }
+        catch (e) {
+            throw e;
+        }
+    })).post('/upload', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
         const saveTo = typeof (ctx.req.query.saveto) === "string" ? ctx.req.query.saveto.toString() : void 0;
+        expect_1.default(shouldBeError(() => {
+            const p = new index_1.PayloadParser(ctx.req, server.mapPath("/upload/data/schema.json"));
+        })).toBeInstanceOf(Error);
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
         expect_1.default(shouldBeError(() => {
             parser.saveAs(downloadDir);
@@ -208,6 +273,9 @@ global.sow.server.on("register-view", (app, controller, server) => {
                     })).toBeInstanceOf(Error);
                 });
                 if (saveTo && saveTo !== "C") {
+                    expect_1.default(shouldBeError(() => {
+                        parser.saveAs(server.mapPath("/upload/data/schema.json"));
+                    })).toBeInstanceOf(Error);
                     parser.saveAs(downloadDir);
                 }
                 expect_1.default(shouldBeError(() => {
@@ -217,6 +285,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
                 ctx.next(200);
             }
             parser.clear();
+            expect_1.default(parser.clear()).not.toBeInstanceOf(Error);
         });
     }));
 });
@@ -260,10 +329,19 @@ global.sow.server.on("register-view", (app, controller, server) => {
         mimeHandler.render(ctx);
         expect_1.default(mimeHandler.isValidExtension(ctx.extension)).toBeFalsy();
         ctx.transferRequest = treq;
-        // ctx.extension = "";
+        (() => {
+            const parser = new index_1.PayloadParser(ctx.req, server.mapPath("/upload/temp/"));
+            expect_1.default(shouldBeError(() => {
+                parser.getData();
+            })).toBeInstanceOf(Error);
+            parser.clear();
+        })();
         ctx.res.json({
             done: true
         });
+    })
+        .get('/controller-error', (ctx, requestParam) => {
+        throw new Error("runtime-error");
     })
         .any('/test-any/*', (ctx, requestParam) => {
         expect_1.default(server.passError(ctx)).toBeFalsy();

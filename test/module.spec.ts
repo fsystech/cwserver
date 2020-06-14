@@ -23,7 +23,7 @@ import {
 import { IApps } from '../lib/sow-server-core';
 import { Util } from '../lib/sow-util';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
-import { TemplateCore } from '../lib/sow-template';
+import { TemplateCore, templateNext } from '../lib/sow-template';
 import { shouldBeError } from "./test-view";
 import { Logger, LogTime } from '../lib/sow-logger';
 let app: IApps;
@@ -197,6 +197,9 @@ describe( "cwserver-router", () => {
     it( "router validation", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
             getRouteMatcher( "/nobody/" );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            getRouteMatcher( "/*/nobody/*" );
         } ) ).toBeInstanceOf( Error );
         expect( getRouteMatcher( "/nobody/*" ).repRegExp ).toBeUndefined();
         expect( shouldBeError( () => {
@@ -625,6 +628,9 @@ describe( "cwserver-template-engine", () => {
     it( 'test template utility', function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
         expect( TemplateCore.isScriptTemplate( "" ) ).toBe( false );
+        expect( shouldBeError( () => {
+            templateNext( Object.create( null ), Object.create( null ) );
+        } ) ).toBeInstanceOf( Error );
         expect( shouldBeError( () => {
             const sendBox = TemplateCore.compile();
         } ) ).toBeInstanceOf( Error );
@@ -1148,7 +1154,7 @@ describe( "cwserver-post", () => {
     } );
 } );
 describe( "cwserver-multipart-paylod-parser", () => {
-    const processReq = ( done: Mocha.Done, saveto?: string ): void => {
+    const processReq = ( done: Mocha.Done, saveto?: string, reqPath?: string ): void => {
         let fileName = "";
         let filePath = "";
         let contentType = "";
@@ -1162,21 +1168,27 @@ describe( "cwserver-multipart-paylod-parser", () => {
             filePath = path.resolve( `./dist/test/${fileName}` );
         }
         const readStream = fs.createReadStream( filePath );
-        getAgent()
-            .post( `http://localhost:${appUtility.port}/upload` )
-            .query( { saveto } )
-            .field( 'post-file', readStream )
-            .end( ( err, res ) => {
-                readStream.close();
-                expect( err ).not.toBeInstanceOf( Error );
-                expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
-                expect( res.body ).toBeInstanceOf( Object );
-                expect( res.body.content_type ).toBe( contentType );
-                expect( res.body.file_name ).toBe( fileName );
-                expect( res.body.name ).toBe( "post-file" );
-                done();
-            } );
+        const req: request.SuperAgentRequest = getAgent()
+            .post( `http://localhost:${appUtility.port}${reqPath || "/upload"}` )
+            .query( { saveto } );
+        if ( !reqPath ) {
+            req.field( 'post-file', readStream )
+                .field( 'post-file_2', readStream )
+                .field( 'post-file_3', readStream );
+        } else {
+            req.field( 'post-file', readStream );
+        }
+        req.end( ( err, res ) => {
+            readStream.close();
+            expect( err ).not.toBeInstanceOf( Error );
+            expect( res.status ).toBe( 200 );
+            expect( res.header["content-type"] ).toBe( "application/json" );
+            expect( res.body ).toBeInstanceOf( Object );
+            expect( res.body.content_type ).toBe( contentType );
+            expect( res.body.file_name ).toBe( fileName );
+            expect( res.body.name ).toBe( "post-file" );
+            done();
+        } );
     }
     it( 'should post multipart post file', ( done: Mocha.Done ): void => {
         processReq( done );
@@ -1186,6 +1198,78 @@ describe( "cwserver-multipart-paylod-parser", () => {
     } );
     it( 'test multipart post file and clear', ( done: Mocha.Done ): void => {
         processReq( done, "C" );
+    } );
+    it( 'test multipart post file test', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 * 10 );
+        const leargeFile: string = appUtility.server.mapPath( "/web/learge.txt" );
+        const writer: fs.WriteStream = fs.createWriteStream( leargeFile );
+        let size: number = 0;
+        function write( wdone: () => void ) {
+            while ( true ) {
+                const buff: Buffer = Buffer.from( "This is normal line\n".repeat( 5 ) );
+                size += buff.byteLength;
+                if ( !writer.write( buff ) ) {
+                    writer.once( "drain", () => {
+                        write( wdone );
+                    } );
+                }
+                if ( size >= ( 16400 + 200 ) ) {
+                    return wdone();
+                }
+            }
+        }
+        write( () => {
+            writer.end( () => {
+                const readStream = fs.createReadStream( leargeFile );
+                getAgent()
+                    .post( `http://localhost:${appUtility.port}/upload-test` )
+                    .field( 'post-file', readStream )
+                    .end( ( err, res ) => {
+                        readStream.close();
+                        if ( err ) {
+                            console.log( err );
+                        }
+                        expect( err ).not.toBeInstanceOf( Error );
+                        expect( res.status ).toBe( 200 );
+                        expect( res.header["content-type"] ).toBe( "application/json" );
+                        expect( res.body ).toBeInstanceOf( Object );
+                        expect( res.body.name ).toBe( "post-file" );
+                        done();
+                    } );
+            } );
+        } );
+    } );
+    it( 'test multipart post file abort test', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 * 10 );
+        const leargeFile: string = appUtility.server.mapPath( "/web/learge.txt" );
+        const readStream = fs.createReadStream( leargeFile );
+        const req: request.SuperAgentRequest = getAgent()
+            .post( `http://localhost:${appUtility.port}/upload-error` )
+            .field( 'post-file', readStream );
+        req.on( "progress", ( event ) => {
+            if ( event.total ) {
+                if ( ( event.total - event.loaded ) <= 1000 ) {
+                    req.abort();
+                    readStream.close(); done();
+                }
+            }
+        } );
+        req.end( ( err, res ) => {
+            done( new Error( "Should not here...." ) );
+        } );
+    } );
+    it( 'test malformed data', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 * 10 );
+        const leargeFile: string = appUtility.server.mapPath( "/web/learge.txt" );
+        const readStream = fs.createReadStream( leargeFile );
+        const req: request.SuperAgentRequest = getAgent()
+            .post( `http://localhost:${appUtility.port}/upload-malformed-data` )
+            .field( 'post-file', readStream );
+        req.end( ( err, res ) => {
+            readStream.close();
+            expect( err ).toBeInstanceOf( Error );
+            done();
+        } );
     } );
 } );
 describe( "cwserver-gzip-response", () => {
@@ -1477,6 +1561,15 @@ describe( "cwserver-error", () => {
                 done();
             } );
     } );
+    it( 'should be throw controller error', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/controller-error` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 500 );
+                done();
+            } );
+    } );
     it( 'should be pass server error', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/pass-error` )
@@ -1539,6 +1632,19 @@ describe( "cwserver-controller-reset", () => {
     } );
 } );
 describe( "cwserver-utility", () => {
+    const getConfig = ( () => {
+        const configFile: string = path.resolve( `${appRoot}/${projectRoot}/config/app.config.json` );
+        let config: { [x: string]: any; } | void;
+        return (): { [x: string]: any; } => {
+            if ( config ) return Util.clone( config );
+            const cjson = Util.readJsonAsync( configFile );
+            if ( cjson ) {
+                config = cjson;
+            }
+            if ( config ) return Util.clone( config );
+            return {};
+        }
+    } )();
     it( "test-app-utility", function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
         ( () => {
@@ -1567,6 +1673,7 @@ describe( "cwserver-utility", () => {
             expect( appUtility.server.parseSession( "" ).isAuthenticated ).toBeFalsy();
             expect( appUtility.server.escape() ).toBeDefined();
             expect( appUtility.server.pathToUrl( `/${projectRoot}/test.png` ) ).toBeDefined();
+            expect( appUtility.server.pathToUrl( `${projectRoot}/test.png` ) ).toBeDefined();
             const oldPort: string | number = appUtility.server.config.hostInfo.port;
             appUtility.server.config.hostInfo.port = 0;
             const newConfig: { [x: string]: any; } = appUtility.server.config;
@@ -1611,6 +1718,7 @@ describe( "cwserver-utility", () => {
         expect( shouldBeError( () => {
             Util.mkdirSync( logDir, "./" );
         } ) ).toBeInstanceOf( Error );
+        expect( Util.mkdirSync( "" ) ).toBeFalsy();
         expect( shouldBeError( () => {
             Util.copyFileSync( `${logDir}/temp/`, "./" );
         } ) ).toBeInstanceOf( Error );
@@ -1753,6 +1861,49 @@ describe( "cwserver-utility", () => {
         } );
         it( 'override', function ( done: Mocha.Done ): void {
             this.timeout( 5000 );
+            /* [Error Page] */
+            expect( shouldBeError( () => {
+                const newConfig: { [x: string]: any; } = getConfig();
+                newConfig.errorPage = {};
+                appUtility.server.implimentConfig( newConfig );
+                appUtility.server.initilize();
+            }, true ) ).not.toBeInstanceOf( Error );
+            expect( shouldBeError( () => {
+                const newConfig: { [x: string]: any; } = appUtility.server.config;
+                newConfig.errorPage = void 0;
+                appUtility.server.initilize();
+            } ) ).not.toBeInstanceOf( Error );
+            expect( shouldBeError( () => {
+                appUtility.server.config.errorPage = {
+                    "404": appUtility.server.errorPage["404"]
+                };
+                appUtility.server.initilize();
+            }, true ) ).not.toBeInstanceOf( Error );
+            expect( shouldBeError( () => {
+                const oldkey = appUtility.server.config.errorPage;
+                try {
+                    const newConfig: { [x: string]: any; } = appUtility.server.config;
+                    newConfig.errorPage = [];
+                    appUtility.server.initilize();
+                } catch ( e ) {
+                    appUtility.server.config.errorPage = oldkey;
+                    throw e;
+                }
+            } ) ).toBeInstanceOf( Error );
+            expect( shouldBeError( () => {
+                const oldkey = appUtility.server.config.errorPage;
+                try {
+                    const newConfig: { [x: string]: any; } = appUtility.server.config;
+                    newConfig.errorPage = {
+                        "405": "g/nopx/404.html"
+                    };
+                    appUtility.server.initilize();
+                } catch ( e ) {
+                    appUtility.server.config.errorPage = oldkey;
+                    throw e;
+                }
+            } ) ).toBeInstanceOf( Error );
+            /* [/Error Page] */
             expect( shouldBeError( () => {
                 const oldKey = appUtility.server.config.encryptionKey;
                 try {
@@ -1784,49 +1935,6 @@ describe( "cwserver-utility", () => {
                     appUtility.server.implimentConfig( newConfig );
                 } catch ( e ) {
                     appUtility.server.config.session = oldkey;
-                    throw e;
-                }
-            } ) ).toBeInstanceOf( Error );
-            expect( shouldBeError( () => {
-                const oldkey = appUtility.server.config.errorPage;
-                try {
-                    const newConfig: { [x: string]: any; } = appUtility.server.config;
-                    newConfig.errorPage = {};
-                    appUtility.server.implimentConfig( newConfig );
-                    appUtility.server.initilize();
-                } catch ( e ) {
-                    appUtility.server.config.errorPage = oldkey;
-                    throw e;
-                }
-            } ) ).toBeInstanceOf( Error );
-            expect( shouldBeError( () => {
-                const oldkey = appUtility.server.config.errorPage;
-                const newConfig: { [x: string]: any; } = appUtility.server.config;
-                newConfig.errorPage = void 0;
-                appUtility.server.initilize();
-                appUtility.server.config.errorPage = oldkey;
-            } ) ).not.toBeInstanceOf( Error );
-            expect( shouldBeError( () => {
-                const oldkey = appUtility.server.config.errorPage;
-                try {
-                    const newConfig: { [x: string]: any; } = appUtility.server.config;
-                    newConfig.errorPage = [];
-                    appUtility.server.initilize();
-                } catch ( e ) {
-                    appUtility.server.config.errorPage = oldkey;
-                    throw e;
-                }
-            } ) ).toBeInstanceOf( Error );
-            expect( shouldBeError( () => {
-                const oldkey = appUtility.server.config.errorPage;
-                try {
-                    const newConfig: { [x: string]: any; } = appUtility.server.config;
-                    newConfig.errorPage = {
-                        "405": "g/nopx/404.html"
-                    };
-                    appUtility.server.initilize();
-                } catch ( e ) {
-                    appUtility.server.config.errorPage = oldkey;
                     throw e;
                 }
             } ) ).toBeInstanceOf( Error );

@@ -1,3 +1,8 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 /// <reference types="node" />
 import { ISession, IResInfo } from "./sow-static";
 import { IRequestParam } from './sow-router';
@@ -7,8 +12,8 @@ import { ISowDatabaseType } from './sow-db-type';
 import { IController } from './sow-controller';
 import { ICryptoInfo } from "./sow-encryption";
 import { ILogger } from "./sow-logger";
-export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
-export declare type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
+export declare type CtxNext = ( code?: number | undefined, transfer?: boolean ) => void;
+export declare type AppHandler = ( ctx: IContext, requestParam?: IRequestParam ) => void;
 export interface IContext {
     error?: string;
     res: IResponse;
@@ -20,17 +25,17 @@ export interface IContext {
     servedFrom?: string;
     server: ISowServer;
     next: CtxNext;
-    redirect(url: string): void;
-    transferRequest(toPath: string): void;
-    write(str: string): void;
+    redirect( url: string ): void;
+    transferRequest( toPath: string ): void;
+    write( str: string ): void;
 }
 export interface IServerEncryption {
-    encrypt(plainText: string): string;
-    decrypt(encryptedText: string): string;
-    encryptToHex(plainText: string): string;
-    decryptFromHex(encryptedText: string): string;
-    encryptUri(plainText: string): string;
-    decryptUri(encryptedText: string): string;
+    encrypt( plainText: string ): string;
+    decrypt( encryptedText: string ): string;
+    encryptToHex( plainText: string ): string;
+    decryptFromHex( encryptedText: string ): string;
+    encryptUri( plainText: string ): string;
+    decryptUri( encryptedText: string ): string;
 }
 export interface IDatabaseConfig {
     module: string;
@@ -104,57 +109,57 @@ export interface ISowServer {
     };
     copyright(): string;
     log: ILogger;
-    createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
+    createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext;
     config: IServerConfig;
     initilize(): void;
-    implimentConfig(config: {
+    implimentConfig( config: {
         [x: string]: any;
-    }): void;
-    setHeader(res: IResponse): void;
-    parseCookie(cook: {
+    } ): void;
+    setHeader( res: IResponse ): void;
+    parseCookie( cook: {
         [x: string]: string;
-    } | string): {
+    } | string ): {
         [x: string]: string;
     };
-    parseSession(cookies: {
+    parseSession( cookies: {
         [x: string]: string;
-    } | string): ISession;
-    setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
-    passError(ctx: IContext): boolean;
-    transferRequest(ctx: IContext, path: string, status?: IResInfo): void;
-    mapPath(path: string): string;
-    pathToUrl(path: string): string;
-    addError(ctx: IContext, ex: Error | string): IContext;
-    escape(unsafe?: string): string;
-    addVirtualDir(route: string, root: string, evt?: (ctx: IContext) => void): void;
-    virtualInfo(route: string): {
+    } | string ): ISession;
+    setSession( ctx: IContext, loginId: string, roleId: string, userData: any ): boolean;
+    passError( ctx: IContext ): boolean;
+    transferRequest( ctx: IContext, path: string, status?: IResInfo ): void;
+    mapPath( path: string ): string;
+    pathToUrl( path: string ): string;
+    addError( ctx: IContext, ex: Error | string ): IContext;
+    escape( unsafe?: string ): string;
+    addVirtualDir( route: string, root: string, evt?: ( ctx: IContext ) => void ): void;
+    virtualInfo( route: string ): {
         route: string;
         root: string;
     } | void;
-    formatPath(name: string): string;
-    createBundle(str: string): string;
+    formatPath( name: string ): string;
+    createBundle( str: string ): string;
     getHttpServer(): Server;
     getRoot(): string;
     getPublic(): string;
     getPublicDirName(): string;
     encryption: IServerEncryption;
-    parseMaxAge(maxAge: any): number;
+    parseMaxAge( maxAge: any ): number;
     db: {
         [x: string]: ISowDatabaseType;
     };
-    on(ev: 'shutdown', handler: () => void): void;
+    on( ev: 'shutdown', handler: () => void ): void;
 }
-export declare type IViewHandler = (app: IApps, controller: IController, server: ISowServer) => void;
-export declare const disposeContext: (ctx: IContext) => void, removeContext: (id: string) => void, getContext: (server: ISowServer, req: IRequest, res: IResponse) => IContext, getMyContext: (id: string) => IContext | undefined, appVersion: string, readAppVersion: () => string | undefined;
+export declare type IViewHandler = ( app: IApps, controller: IController, server: ISowServer ) => void;
+export declare const disposeContext: ( ctx: IContext ) => void, removeContext: ( id: string ) => void, getContext: ( server: ISowServer, req: IRequest, res: IResponse ) => IContext, getMyContext: ( id: string ) => IContext | undefined, appVersion: string, readAppVersion: () => string | undefined;
 export declare class ServerEncryption implements IServerEncryption {
     private cryptoInfo;
-    constructor(inf: ICryptoInfo);
-    encrypt(plainText: string): string;
-    decrypt(encryptedText: string): string;
-    encryptToHex(plainText: string): string;
-    decryptFromHex(encryptedText: string): string;
-    encryptUri(plainText: string): string;
-    decryptUri(encryptedText: string): string;
+    constructor( inf: ICryptoInfo );
+    encrypt( plainText: string ): string;
+    decrypt( encryptedText: string ): string;
+    encryptToHex( plainText: string ): string;
+    decryptFromHex( encryptedText: string ): string;
+    encryptUri( plainText: string ): string;
+    decryptUri( encryptedText: string ): string;
 }
 export declare class Context implements IContext {
     error?: string;
@@ -167,10 +172,10 @@ export declare class Context implements IContext {
     servedFrom?: string;
     server: ISowServer;
     next: CtxNext;
-    constructor(_server: ISowServer, _req: IRequest, _res: IResponse, _session: ISession);
-    redirect(url: string): void;
-    write(str: string): void;
-    transferRequest(path: string): void;
+    constructor( _server: ISowServer, _req: IRequest, _res: IResponse, _session: ISession );
+    redirect( url: string ): void;
+    write( str: string ): void;
+    transferRequest( path: string ): void;
 }
 export declare class ServerConfig implements IServerConfig {
     [key: string]: any;
@@ -248,47 +253,47 @@ export declare class SowServer implements ISowServer {
     errorPage: {
         [x: string]: string;
     };
-    constructor(appRoot: string, wwwName?: string);
-    on(ev: "shutdown", handler: () => void): void;
+    constructor( appRoot: string, wwwName?: string );
+    on( ev: "shutdown", handler: () => void ): void;
     getHttpServer(): Server;
     getRoot(): string;
-    parseMaxAge(maxAge: any): number;
+    parseMaxAge( maxAge: any ): number;
     getPublic(): string;
     getPublicDirName(): string;
-    implimentConfig(config: {
+    implimentConfig( config: {
         [x: string]: any;
-    }): void;
+    } ): void;
     initilize(): void;
     copyright(): string;
-    createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
-    setHeader(res: IResponse): void;
-    parseCookie(cook: string | {
+    createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext;
+    setHeader( res: IResponse ): void;
+    parseCookie( cook: string | {
         [x: string]: string;
-    }): {
+    } ): {
         [x: string]: string;
     };
-    parseSession(cookies: string | {
+    parseSession( cookies: string | {
         [x: string]: any;
-    }): ISession;
-    setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
-    passError(ctx: IContext): boolean;
-    transferRequest(ctx: IContext, path: string, status?: IResInfo): void;
-    mapPath(path: string): string;
-    pathToUrl(path: string): string;
-    addError(ctx: IContext, ex: string | Error): IContext;
-    escape(unsafe?: string): string;
-    addVirtualDir(route: string, root: string, evt?: (ctx: IContext) => void): void;
-    virtualInfo(_route: string): {
+    } ): ISession;
+    setSession( ctx: IContext, loginId: string, roleId: string, userData: any ): boolean;
+    passError( ctx: IContext ): boolean;
+    transferRequest( ctx: IContext, path: string, status?: IResInfo ): void;
+    mapPath( path: string ): string;
+    pathToUrl( path: string ): string;
+    addError( ctx: IContext, ex: string | Error ): IContext;
+    escape( unsafe?: string ): string;
+    addVirtualDir( route: string, root: string, evt?: ( ctx: IContext ) => void ): void;
+    virtualInfo( _route: string ): {
         route: string;
         root: string;
     } | void;
-    formatPath(name: string): string;
-    createBundle(str: string): string;
+    formatPath( name: string ): string;
+    createBundle( str: string ): string;
 }
-declare type IViewRegister = (app: IApps, controller: IController, server: ISowServer) => void;
+declare type IViewRegister = ( app: IApps, controller: IController, server: ISowServer ) => void;
 interface ISowGlobalServer {
-    on(ev: "register-view", next: IViewRegister): void;
-    emit(ev: "register-view", app: IApps, controller: IController, server: ISowServer): void;
+    on( ev: "register-view", next: IViewRegister ): void;
+    emit( ev: "register-view", app: IApps, controller: IController, server: ISowServer ): void;
 }
 interface ISowGlobal {
     isInitilized: boolean;
@@ -310,5 +315,5 @@ export interface IAppUtility {
     readonly server: ISowServer;
     readonly controller: IController;
 }
-export declare function initilizeServer(appRoot: string, wwwName?: string): IAppUtility;
-export {};
+export declare function initilizeServer( appRoot: string, wwwName?: string ): IAppUtility;
+export { };

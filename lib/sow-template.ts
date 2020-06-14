@@ -214,6 +214,11 @@ class TemplateParser {
 const _tw: { [x: string]: any } = {
     cache: {}
 }
+export function templateNext(
+    ctx: IContext, next: SendBoxNext, isCompressed?: boolean
+): void {
+    throw new Error( "Method not implemented." );
+}
 export class TemplateCore {
     public static compile(
         str?: string, next?: ( str: string, isScript?: boolean ) => void
@@ -222,13 +227,7 @@ export class TemplateCore {
             throw new Error("No script found to compile....");
         }
         const context: { [x: string]: SendBox; } = {
-            thisNext: (
-                ctx: IContext,
-                _next: ( ctx: IContext, body: string, isCompressed?: boolean ) => void,
-                isCompressed?: boolean
-            ): void => {
-                throw new Error( "Method not implemented." );
-            }
+            thisNext: templateNext
         };
         const script = new _vm.Script( `thisNext = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};` );
         _vm.createContext( context );

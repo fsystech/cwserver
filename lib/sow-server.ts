@@ -541,7 +541,7 @@ ${appRoot}\\www_public
         if ( !this.config.errorPage || ( Util.isPlainObject( this.config.errorPage ) && Object.keys( this.config.errorPage ).length === 0 ) ) {
             if ( !this.config.errorPage ) this.config.errorPage = {};
             for ( const property in this.errorPage ) {
-                if ( this.errorPage.hasOwnProperty( property ) ) {
+                if ( !Object.hasOwnProperty.call( this.config.errorPage, property ) ) {
                     this.config.errorPage[property] = this.errorPage[property];
                 }
             }
@@ -549,17 +549,20 @@ ${appRoot}\\www_public
             if ( Util.isPlainObject( this.config.errorPage ) === false )
                 throw new Error( "errorPage property should be Object." );
             for ( const property in this.config.errorPage ) {
-                if ( !this.config.errorPage.hasOwnProperty( property ) ) continue;
-                const path: string = this.config.errorPage[property];
-                const code: number = parseInt( property );
-                const statusCode: number = HttpStatus.fromPath( path, code );
-                if ( !statusCode || statusCode !== code || !HttpStatus.isErrorCode( statusCode ) ) {
-                    throw new Error( `Invalid Server/Client error page... ${path} and code ${code}}` );
+                if ( Object.hasOwnProperty.call( this.config.errorPage, property ) ) {
+                    const path: string = this.config.errorPage[property];
+                    const code: number = parseInt( property );
+                    const statusCode: number = HttpStatus.fromPath( path, code );
+                    if ( !statusCode || statusCode !== code || !HttpStatus.isErrorCode( statusCode ) ) {
+                        throw new Error( `Invalid Server/Client error page... ${path} and code ${code}}` );
+                    }
+                    this.config.errorPage[property] = this.formatPath( path );
                 }
-                this.config.errorPage[property] = this.formatPath( path );
             }
-            if ( !this.config.errorPage["500"] ) {
-                this.config.errorPage["500"] = this.errorPage["500"];
+            for ( const property in this.errorPage ) {
+                if ( !Object.hasOwnProperty.call( this.config.errorPage, property ) ) {
+                    this.config.errorPage[property] = this.errorPage[property];
+                }
             }
         }
         this.config.views.forEach( ( name: string, index: number ) => {
@@ -676,7 +679,7 @@ ${appRoot}\\www_public
             path = path.replace( this.rootregx, "/$root" );
         }
         index = path.lastIndexOf( "." );
-        if ( index < 0 ) return path;
+        // if ( index < 0 ) return path;
         return path.substring( 0, index ).replace( /\\/gi, "/" );
     }
     addError( ctx: IContext, ex: string | Error ): IContext {

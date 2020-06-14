@@ -1,7 +1,7 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty( exports, "__esModule", { value: true } );
 exports.HttpStatus = exports.HttpStatusCode = void 0;
-const sow_static_1 = require("./sow-static");
+const sow_static_1 = require( "./sow-static" );
 exports.HttpStatusCode = {
     continue: 100,
     switchingprotocols: 101,
@@ -75,63 +75,63 @@ const _group = {
 };
 class HttpStatus {
     static get statusCode() { return exports.HttpStatusCode; }
-    static getDescription(statusCode) {
-        for (const description in exports.HttpStatusCode) {
-            if (exports.HttpStatusCode[description] === statusCode)
+    static getDescription( statusCode ) {
+        for ( const description in exports.HttpStatusCode ) {
+            if ( exports.HttpStatusCode[description] === statusCode )
                 return description;
         }
-        throw new Error(`Invalid ==> ${statusCode}...`);
+        throw new Error( `Invalid ==> ${statusCode}...` );
     }
-    static fromPath(path, statusCode) {
+    static fromPath( path, statusCode ) {
         const outStatusCode = statusCode;
-        let index = path.lastIndexOf("/");
-        if (index < 0)
-            index = path.lastIndexOf("\\");
-        if (index < 0)
+        let index = path.lastIndexOf( "/" );
+        if ( index < 0 )
+            index = path.lastIndexOf( "\\" );
+        if ( index < 0 )
             return outStatusCode;
-        const file = path.substring(index + 1);
-        index = file.lastIndexOf(".");
-        if (index < 0)
+        const file = path.substring( index + 1 );
+        index = file.lastIndexOf( "." );
+        if ( index < 0 )
             return outStatusCode;
-        const code = file.substring(0, index);
+        const code = file.substring( 0, index );
         // check is valid server status code here...
-        statusCode = sow_static_1.ToNumber(code);
-        if (statusCode === 0)
+        statusCode = sow_static_1.ToNumber( code );
+        if ( statusCode === 0 )
             return outStatusCode;
         // if ( this.isValidCode( statusCode ) ) return outStatusCode;
         return statusCode;
     }
-    static isValidCode(statusCode) {
-        for (const name in exports.HttpStatusCode) {
-            if (exports.HttpStatusCode[name] === statusCode)
+    static isValidCode( statusCode ) {
+        for ( const name in exports.HttpStatusCode ) {
+            if ( exports.HttpStatusCode[name] === statusCode )
                 return true;
         }
         return false;
     }
-    static getResInfo(path, code) {
-        code = sow_static_1.ToNumber(code);
+    static getResInfo( path, code ) {
+        code = sow_static_1.ToNumber( code );
         const out = new sow_static_1.ResInfo();
-        out.code = this.fromPath(path, code);
+        out.code = this.fromPath( path, code );
         out.isValid = false;
         out.isErrorCode = false;
         out.isInternalErrorCode = false;
         out.tryServer = false;
-        if (out.code > 0) {
-            out.isValid = this.isValidCode(out.code);
+        if ( out.code > 0 ) {
+            out.isValid = this.isValidCode( out.code );
         }
         else {
             out.isValid = false;
         }
-        if (out.isValid)
-            out.isErrorCode = this.isErrorCode(out.code);
-        if (out.isErrorCode)
+        if ( out.isValid )
+            out.isErrorCode = this.isErrorCode( out.code );
+        if ( out.isErrorCode )
             out.isInternalErrorCode = out.code === 500;
         return out;
     }
-    static isErrorCode(code) {
-        const inf = _group[String(code).charAt(0)];
-        if (!inf)
-            throw new Error(`Invalid http status code ${code}...`);
+    static isErrorCode( code ) {
+        const inf = _group[String( code ).charAt( 0 )];
+        if ( !inf )
+            throw new Error( `Invalid http status code ${code}...` );
         return inf.error;
     }
 }

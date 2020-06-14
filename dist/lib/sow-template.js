@@ -19,7 +19,7 @@ var __importStar = ( this && this.__importStar ) || function ( mod ) {
     return result;
 };
 Object.defineProperty( exports, "__esModule", { value: true } );
-exports.Template = exports.TemplateCore = void 0;
+exports.Template = exports.TemplateCore = exports.templateNext = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -201,15 +201,17 @@ class TemplateParser {
 const _tw = {
     cache: {}
 };
+function templateNext( ctx, next, isCompressed ) {
+    throw new Error( "Method not implemented." );
+}
+exports.templateNext = templateNext;
 class TemplateCore {
     static compile( str, next ) {
         if ( !str ) {
             throw new Error( "No script found to compile...." );
         }
         const context = {
-            thisNext: ( ctx, _next, isCompressed ) => {
-                throw new Error( "Method not implemented." );
-            }
+            thisNext: templateNext
         };
         const script = new _vm.Script( `thisNext = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};` );
         _vm.createContext( context );

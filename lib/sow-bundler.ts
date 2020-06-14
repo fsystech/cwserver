@@ -9,7 +9,7 @@ import * as _path from 'path';
 import * as _zlib from 'zlib';
 import { Encryption } from './sow-encryption';
 import { SowHttpCache, IChangeHeader } from './sow-http-cache';
-import { IApplication, IRequest } from './sow-server-core';
+import { IApplication } from './sow-server-core';
 import { ISowServer, IContext } from './sow-server';
 import { IController } from './sow-controller';
 import { Util } from './sow-util';
