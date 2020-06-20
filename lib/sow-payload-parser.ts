@@ -10,14 +10,26 @@ import * as _fs from 'fs';
 import * as _path from 'path';
 import { ToNumber } from './sow-static';
 import { Util } from './sow-util';
+import * as fsw from './sow-fsw';
+import { ErrorHandler } from './sow-fsw';
+export type UploadFileInfo = {
+    contentType: string;
+    name: string;
+    fileName: string;
+    contentDisposition: string;
+    fileSize: number;
+    tempPath: string | undefined
+};
 export interface IPostedFileInfo {
     getContentDisposition(): string;
     getFileSize(): number;
     getName(): string;
     getFileName(): string;
     getContentType(): string;
-    saveAs( absPath: string ): void;
-    read(): Buffer;
+    saveAsSync( absPath: string ): void;
+    saveAs( absPath: string, next: ( err: Error | NodeJS.ErrnoException | null ) => void ): void;
+    readSync(): Buffer;
+    read( next: ( err: Error | NodeJS.ErrnoException | null, data: Buffer ) => void ): void;
     getTempPath(): string | undefined;
     setInfo( tempFile?: string, fileSize?: number ): void;
     isEmptyHeader(): boolean;
@@ -28,7 +40,11 @@ export interface IPayloadParser {
     isAppJson(): boolean;
     isMultipart(): boolean;
     isValidRequest(): boolean;
-    getFiles( next: ( file: IPostedFileInfo ) => void ): void;
+    saveAsSync( absPath: string ): void;
+    saveAs( outdir: string, next: ( err: Error | NodeJS.ErrnoException | null ) => void, errorHandler: ErrorHandler ): void;
+    getUploadFileInfo(): UploadFileInfo[];
+    getFilesSync( next: ( file: IPostedFileInfo ) => void ): void;
+    getFiles( next: ( file?: IPostedFileInfo, done?: () => void ) => void ): void;
     getData(): string;
     readData( onReadEnd: ( err?: Error | string ) => void ): void;
     readDataAsync(): Promise<void>;
@@ -105,17 +121,17 @@ const parseHeader = ( data: string ): IPostedFileInfo => {
     // This is hairy: Netscape and IE don't encode the filenames
     // The RFC says they should be encoded, so I will assume they are.
     filename = decodeURIComponent( filename );
-    return new PostedFileInfo( disposition, name.replace( /"/gi, "" ), filename, cType );
+    return new PostedFileInfo( disposition, name.replace( /"/gi, "" ), filename, cType.trim() );
 }
 export class PostedFileInfo implements IPostedFileInfo {
-    _fcontentDisposition: string;
-    _fname: string;
-    _fileName: string;
-    _fcontentType: string;
-    _fileSize: number;
-    _isMoved: boolean;
-    _tempFile?: string;
-    _isDisposed: boolean;
+    private _fcontentDisposition: string;
+    private _fname: string;
+    private _fileName: string;
+    private _fcontentType: string;
+    private _fileSize: number;
+    private _isMoved: boolean;
+    private _tempFile?: string;
+    private _isDisposed: boolean;
     constructor(
         disposition: string,
         fname: string,
@@ -128,42 +144,62 @@ export class PostedFileInfo implements IPostedFileInfo {
         this._fileSize = 0; this._isMoved = false;
         this._isDisposed = false;
     }
-    setInfo( tempFile?: string, fileSize?: number ): void {
+    public setInfo( tempFile?: string, fileSize?: number ): void {
         if ( tempFile ) this._tempFile = tempFile;
         if ( fileSize ) this._fileSize = fileSize;
     }
-    isEmptyHeader(): boolean {
+    public isEmptyHeader(): boolean {
         return this._fcontentType.length === 0;
     }
-    getTempPath(): string | undefined {
+    public getTempPath(): string | undefined {
         return this._tempFile;
     }
-    getContentDisposition(): string {
+    public getContentDisposition(): string {
         return this._fcontentDisposition;
     }
-    getFileSize(): number {
+    public getFileSize(): number {
         return this._fileSize;
     }
-    getName(): string {
+    public getName(): string {
         return this._fname;
     }
-    getFileName(): string {
+    public getFileName(): string {
         return this._fileName;
     }
-    getContentType(): string {
+    public getContentType(): string {
         return this._fcontentType;
     }
-    read(): Buffer {
+    private validate( arg: any ): arg is string {
+        if ( !this._tempFile || this._isMoved )
+            throw new Error( "This file already moved or not created yet." );
+        return true;
+    }
+    public readSync(): Buffer {
         if ( !this._tempFile || this._isMoved )
             throw new Error( "This file already moved or not created yet." );
         return _fs.readFileSync( this._tempFile );
     }
-    saveAs( absPath: string ): void {
-        if ( !this._tempFile || this._isMoved === true ) throw new Error( "This file already moved or not created yet." );
-        _fs.renameSync( this._tempFile, absPath ); delete this._tempFile;
-        this._isMoved = true;
+    public read( next: ( err: Error | NodeJS.ErrnoException | null, data: Buffer ) => void ): void {
+        if ( this.validate( this._tempFile ) )
+            return _fs.readFile( this._tempFile, next );
     }
-    clear(): void {
+    public saveAsSync( absPath: string ): void {
+        if ( this.validate( this._tempFile ) ) {
+            _fs.renameSync( this._tempFile, absPath );
+            delete this._tempFile;
+            this._isMoved = true;
+        }
+    }
+    public saveAs( absPath: string, next: ( err: Error | NodeJS.ErrnoException | null ) => void ): void {
+        if ( this.validate( this._tempFile ) ) {
+            return _fs.rename( this._tempFile, absPath, ( err: NodeJS.ErrnoException | null ): void => {
+                delete this._tempFile;
+                this._isMoved = true;
+                return next( err );
+            } );
+        }
+    }
+    public clear(): void {
         if ( this._isDisposed ) return;
         this._isDisposed = true;
         if ( !this._isMoved && this._tempFile ) {
@@ -242,9 +278,8 @@ class PayloadDataParser {
                 this._byteCount += readLen;
                 this._blockSize += readLen;
                 if ( this._writeStream.write( buffer ) ) return this.drain( false );
-                return this.drain( true );
             }
-            return;
+            return this.drain( true );
         }
         if ( this._isStart && this._writeStream ) {
             this._writeStream.end(); this._isStart = false;
@@ -259,12 +294,13 @@ class PayloadDataParser {
             this._waitCount = 0;
             this._headerInfo += line; // skip crlf
             this._postedFile = parseHeader( this._headerInfo );
-            this._headerInfo = "";
             if ( this._postedFile.isEmptyHeader() ) {
                 this._postedFile.clear();
                 this._postedFile = void 0;
-                return;
+                this._errors = `Invalid file header\r\nFound:${this._headerInfo}`;
+                return false;
             }
+            this._headerInfo = "";
             const tempFile: string = _path.resolve( `${this._tempDir}/${Util.guid()}.temp` );
             this._writeStream = _fs.createWriteStream( tempFile, { 'flags': 'a' } );
             this._postedFile.setInfo( tempFile );
@@ -325,13 +361,12 @@ export class PayloadParser implements IPayloadParser {
     private _req: IRequest;
     private _isReadEnd: boolean;
     private _isDisposed: boolean;
+    private _isConnectionActive: boolean;
     constructor(
         req: IRequest,
         tempDir: string
     ) {
-        this._isDisposed = false;
-        if ( !Util.mkdirSync( tempDir ) )
-            throw new Error( `Invalid outdir dir ${tempDir}` );
+        this._isDisposed = false; this._isConnectionActive = true;
         this._contentType = getHeader( req.headers, "content-type" );
         this._contentLength = ToNumber( getHeader( req.headers, "content-length" ) );
         if ( this._contentType.indexOf( incomingContentType.MULTIPART ) > -1 ) {
@@ -364,28 +399,78 @@ export class PayloadParser implements IPayloadParser {
     public isValidRequest(): boolean {
         return this._contentLength > 0 && this._contentTypeEnum !== ContentType.UNKNOWN;
     }
-    public saveAs( outdir: string ): void {
+    private validate( isMultipart: boolean ): void {
         if ( !this.isValidRequest() )
             throw new Error( "Invalid request defiend...." );
         if ( !this._isReadEnd )
             throw new Error( "Data did not read finished yet..." );
-        if ( this._contentTypeEnum !== ContentType.MULTIPART )
-            throw new Error( "Multipart form data required...." );
-        if ( !Util.mkdirSync( outdir ) )
+        if ( isMultipart ) {
+            if ( this._contentTypeEnum !== ContentType.MULTIPART )
+                throw new Error( "Multipart form data required...." );
+            return;
+        }
+        if ( !( this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON ) ) {
+            throw new Error( "You can invoke this method only URL_ENCODE | APP_JSON content type..." );
+        }
+    }
+    public saveAsSync( outdir: string ): void {
+        this.validate( true );
+        if ( !fsw.mkdirSync( outdir ) )
             throw new Error( `Invalid outdir dir ${outdir}` );
-        this._payloadDataParser.files.forEach( pf => {
-            pf.saveAs( _path.resolve( `${outdir}/${Util.guid()}_${pf.getFileName()}` ) );
+        return this._payloadDataParser.files.forEach( pf => {
+            return pf.saveAsSync( _path.resolve( `${outdir}/${Util.guid()}_${pf.getFileName()}` ) );
         } );
     }
-    public getFiles( next: ( file: IPostedFileInfo ) => void ): void {
-        if ( !this.isValidRequest() )
-            throw new Error( "Invalid request defiend...." );
-        if ( !this._isReadEnd )
-            throw new Error( "Data did not read finished yet..." );
-        if ( this._contentTypeEnum !== ContentType.MULTIPART )
-            throw new Error( "Multipart form data required...." );
-        this._payloadDataParser.files.forEach( ( pf ) => next( pf ) );
-        return void 0;
+    public saveAs(
+        outdir: string,
+        next: ( err: Error | NodeJS.ErrnoException | null ) => void,
+        errorHandler: ErrorHandler
+    ): void {
+        this.validate( true );
+        return fsw.mkdir( outdir, "", ( err: NodeJS.ErrnoException | null ): void => {
+            return errorHandler( err, () => {
+                return this.getFiles( ( file?: IPostedFileInfo, done?: () => void ): void => {
+                    if ( !file || !done ) return next( null );
+                    return file.saveAs( _path.resolve( `${outdir}/${Util.guid()}_${file.getFileName()}` ), ( serr: Error | NodeJS.ErrnoException | null ): void => {
+                        return errorHandler( serr, () => {
+                            return done();
+                        } );
+                    } );
+                } );
+            } );
+        }, errorHandler );
+    }
+    public getUploadFileInfo(): UploadFileInfo[] {
+        this.validate( true );
+        const data: UploadFileInfo[] = [];
+        this._payloadDataParser.files.forEach( ( file: IPostedFileInfo ): void => {
+            data.push( {
+                contentType: file.getContentType(),
+                name: file.getName(),
+                fileName: file.getFileName(),
+                contentDisposition: file.getContentDisposition(),
+                fileSize: file.getFileSize(),
+                tempPath: file.getTempPath()
+            } );
+        } );
+        return data;
+    }
+    public getFilesSync( next: ( file: IPostedFileInfo ) => void ): void {
+        this.validate( true );
+        return this._payloadDataParser.files.forEach( pf => next( pf ) );
+    }
+    public getFiles( next: ( file?: IPostedFileInfo, done?: () => void ) => void ): void {
+        this.validate( true );
+        let index: number = -1;
+        const forward = (): void => {
+            index++;
+            const pf: IPostedFileInfo | undefined = this._payloadDataParser.files[index];
+            if ( !pf ) return next();
+            return next( pf, () => {
+                return forward();
+            } );
+        };
+        return forward();
     }
     public getJson(): { [key: string]: any; } {
         const payLoadStr: string = this.getData();
@@ -393,22 +478,18 @@ export class PayloadParser implements IPayloadParser {
             return JSON.parse( payLoadStr );
         }
         const outObj: { [key: string]: any; } = {};
-        payLoadStr.split( "&" ).forEach( part => {
-            const kv = part.split( "=" );
-            if ( kv.length === 0 ) return;
-            const val = kv[1];
-            outObj[decodeURIComponent( kv[0] )] = val ? decodeURIComponent( val ) : void 0;
+        payLoadStr.split( "&" ).forEach( ( part: string ): void => {
+            const kv: string[] = part.split( "=" );
+            if ( kv.length > 0 ) {
+                const val = kv[1];
+                outObj[decodeURIComponent( kv[0] )] = val ? decodeURIComponent( val ) : void 0;
+            }
         } );
         return outObj;
     }
     public getData(): string {
-        if ( !this.isValidRequest() )
-            throw new Error( "Invalid request defiend...." );
-        if ( !this._isReadEnd )
-            throw new Error( "Data did not read finished yet..." );
-        if ( this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON )
-            return this._payloadDataParser.payloadStr;
-        throw new Error( "You can invoke this method only URL_ENCODE | APP_JSON content type..." );
+        this.validate( false );
+        return this._payloadDataParser.payloadStr;
     }
     public readDataAsync(): Promise<void> {
         return new Promise( ( resolve, reject ) => {
@@ -424,6 +505,7 @@ export class PayloadParser implements IPayloadParser {
         if ( this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON ) {
             this._req.on( "readable", ( ...args: any[] ): void => {
                 while ( true ) {
+                    if ( !this._isConnectionActive ) { break; }
                     const buffer: Buffer[] = [];
                     const data: string = getLine( this._req, buffer );
                     if ( data === '' ) { break; }
@@ -434,6 +516,7 @@ export class PayloadParser implements IPayloadParser {
         } else {
             this._req.on( "readable", async ( ...args: any[] ) => {
                 while ( true ) {
+                    if ( !this._isConnectionActive ) { break; }
                     const buffer: Buffer[] = [];
                     const data: string = getLine( this._req, buffer );
                     if ( data === '' ) { break; }
@@ -450,6 +533,7 @@ export class PayloadParser implements IPayloadParser {
             } );
         }
         this._req.on( "close", () => {
+            this._isConnectionActive = false;
             if ( !this._isReadEnd ) {
                 this._isReadEnd = true;
                 this.clear();
@@ -457,6 +541,7 @@ export class PayloadParser implements IPayloadParser {
             }
         } );
         this._req.on( "end", () => {
+            this._isConnectionActive = false;
             this._payloadDataParser.onEnd();
             this._isReadEnd = true;
             const error: string | void = this._payloadDataParser.getError();
@@ -464,7 +549,7 @@ export class PayloadParser implements IPayloadParser {
             return onReadEnd();
         } );
     }
-    clear(): void {
+    public clear(): void {
         if ( this._isDisposed ) return;
         this._isDisposed = true;
         if ( this._isReadEnd ) {

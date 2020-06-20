@@ -43,6 +43,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const request = __importStar(require("superagent"));
 const io = __importStar(require("socket.io-client"));
+const fsw = __importStar(require("../lib/sow-fsw"));
 const sow_http_status_1 = require("../lib/sow-http-status");
 const cwserver = __importStar(require("../index"));
 const sow_static_1 = require("../lib/sow-static");
@@ -92,13 +93,6 @@ const shutdownApp = (done) => {
         return done(e);
     }
 };
-const its = (name, func) => {
-    it(name, (done) => {
-        setTimeout(() => {
-            func(done);
-        }, 100);
-    });
-};
 describe("cwserver-default-project-template", () => {
     it("create project template", function (done) {
         this.timeout(5000);
@@ -112,37 +106,46 @@ describe("cwserver-default-project-template", () => {
         done();
     });
 });
+function handleError(err, next) {
+    sow_util_1.Util.throwIfError(err);
+    return next();
+}
 describe("cwserver-core", () => {
     it("initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", (done) => {
         const root = path.resolve(`${appRoot}/ewww`); // path.resolve( appRoot, "/ewww" );
-        sow_util_1.Util.mkdirSync(appRoot, "/ewww/config");
-        expect_1.default(fs.existsSync(root)).toEqual(true);
-        const filePath = path.resolve(root + "/config/app.config.json");
-        const fromFile = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
-        expect_1.default(fs.existsSync(fromFile)).toEqual(true);
-        fs.copyFileSync(fromFile, filePath);
-        expect_1.default(test_view_1.shouldBeError(() => {
-            cwserver.initilizeServer(appRoot, `ewww`);
-        })).toBeInstanceOf(Error);
-        sow_util_1.Util.rmdirSync(root);
-        done();
+        fsw.mkdir(appRoot, "/ewww/config", (err) => {
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(fs.existsSync(root)).toEqual(true);
+            const filePath = path.resolve(root + "/config/app.config.json");
+            const fromFile = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
+            expect_1.default(fs.existsSync(fromFile)).toEqual(true);
+            fs.copyFileSync(fromFile, filePath);
+            expect_1.default(test_view_1.shouldBeError(() => {
+                cwserver.initilizeServer(appRoot, `ewww`);
+            })).toBeInstanceOf(Error);
+            done();
+        }, handleError);
     });
     it("initilize server throw error (invalid app.config.json)", function (done) {
         this.timeout(5000);
         const root = path.resolve(`${appRoot}/ewww`);
-        sow_util_1.Util.mkdirSync(appRoot, "/ewww/config");
-        expect_1.default(fs.existsSync(root)).toEqual(true);
+        // Util.mkdirSync( appRoot, "/ewww/config" );
+        // expect( fs.existsSync( root ) ).toEqual( true );
         const filePath = path.resolve(root + "/config/app.config.json");
-        fs.writeFileSync(filePath, "INVALID_FILE");
-        const orginalCfg = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
-        setTimeout(() => {
-            expect_1.default(sow_util_1.Util.compairFile(filePath, orginalCfg)).toEqual(true);
-            expect_1.default(test_view_1.shouldBeError(() => {
-                cwserver.initilizeServer(appRoot, `ewww`);
-            })).toBeInstanceOf(Error);
-            sow_util_1.Util.rmdirSync(root);
-            done();
-        }, 100);
+        fs.writeFile(filePath, "INVALID_FILE", (err) => {
+            const orginalCfg = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
+            setTimeout(() => {
+                fsw.compairFileSync(filePath, orginalCfg);
+                fsw.compairFileSync(filePath, filePath);
+                expect_1.default(test_view_1.shouldBeError(() => {
+                    cwserver.initilizeServer(appRoot, `ewww`);
+                })).toBeInstanceOf(Error);
+                fsw.rmdir(path.join(root, "nobody"), (nerr) => {
+                    expect_1.default(nerr).toBeNull();
+                    done();
+                }, handleError);
+            }, 300);
+        });
     });
     it("initilize server throw error (projectRoot not provided)", (done) => {
         expect_1.default(test_view_1.shouldBeError(() => {
@@ -177,7 +180,7 @@ describe("cwserver-core", () => {
     });
     it("initilize server", (done) => {
         if (fs.existsSync(logDir)) {
-            sow_util_1.Util.rmdirSync(logDir);
+            fsw.rmdirSync(logDir);
         }
         appUtility = cwserver.initilizeServer(appRoot, projectRoot);
         expect_1.default(appUtility.public).toEqual(projectRoot);
@@ -265,6 +268,15 @@ describe("cwserver-router", () => {
         expect_1.default(sow_router_1.pathToArray("/vertual/test/body", [])).not.toBeInstanceOf(Error);
         expect_1.default(sow_router_1.pathToArray("dfa/", [])).not.toBeInstanceOf(Error);
         done();
+    });
+    it("test head", (done) => {
+        getAgent()
+            .head(`http://localhost:${appUtility.port}/test-head`)
+            .end((err, res) => {
+            expect_1.default(err).not.toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(200);
+            done();
+        });
     });
 });
 describe("cwserver-view", () => {
@@ -661,54 +673,79 @@ describe("cwserver-template-engine", () => {
         expect_1.default(test_view_1.shouldBeError(() => {
             sow_template_1.templateNext(Object.create(null), Object.create(null));
         })).toBeInstanceOf(Error);
-        expect_1.default(test_view_1.shouldBeError(() => {
-            const sendBox = sow_template_1.TemplateCore.compile();
-        })).toBeInstanceOf(Error);
-        expect_1.default(test_view_1.shouldBeError(() => {
-            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/readme.htmls\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
-                console.log(str);
-            });
-        })).toBeInstanceOf(Error);
-        sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#attach /template/readme.html`, (str, isScript) => {
-            expect_1.default(str).toBeDefined();
+        sow_template_1.TemplateCore.compile(void 0, (params) => {
+            expect_1.default(params.err).toBeInstanceOf(Error);
         });
-        expect_1.default(test_view_1.shouldBeError(() => {
-            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
-                console.log(str);
-            });
-        })).toBeInstanceOf(Error);
-        expect_1.default(test_view_1.shouldBeError(() => {
-            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#attach /template/readme.htmls \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
-                console.log(str);
-            });
-        })).toBeInstanceOf(Error);
         const filePath = path.resolve(`${appRoot}/${projectRoot}/template/invalid.html`);
-        fs.writeFileSync(filePath, "INVALID_FILE");
-        expect_1.default(test_view_1.shouldBeError(() => {
-            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
-                console.log(str);
+        const tasks = [];
+        const forward = () => {
+            const nextFunc = tasks.shift();
+            if (!nextFunc) {
+                if (fs.existsSync(filePath))
+                    fs.unlinkSync(filePath);
+                return done();
+            }
+            return nextFunc();
+        };
+        const ctx = appUtility.server.createContext(Object.create({ id: sow_util_1.Util.guid() }), Object.create(null), (err) => {
+            expect_1.default(err).not.toBeInstanceOf(Error);
+        });
+        ctx.handleError = (err, next) => {
+            if (sow_util_1.Util.isError(err)) {
+                return forward();
+            }
+            return next();
+        };
+        ctx.transferError = (err) => {
+            return forward();
+        };
+        const spublic = appUtility.server.getPublic();
+        tasks.push(() => {
+            sow_template_1.TemplateCore.run(ctx, spublic, `#extends /template/readme.htmls\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (params) => {
+                return forward();
             });
-        })).toBeInstanceOf(Error);
-        fs.writeFileSync(filePath, "<placeholder id><placeholder/>");
-        expect_1.default(test_view_1.shouldBeError(() => {
-            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
-                console.log(str);
+        });
+        tasks.push(() => {
+            sow_template_1.TemplateCore.run(ctx, spublic, `#attach /template/readme.html\r\n`, (params) => {
+                expect_1.default(params.str).toBeDefined();
+                return forward();
             });
-        })).toBeInstanceOf(Error);
-        fs.writeFileSync(filePath, '<placeholder id=""><placeholder/>');
-        expect_1.default(test_view_1.shouldBeError(() => {
-            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
-                console.log(str);
+        });
+        tasks.push(() => {
+            sow_template_1.TemplateCore.run(ctx, spublic, `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (params) => {
+                return forward();
             });
-        })).toBeInstanceOf(Error);
-        fs.writeFileSync(filePath, '<placeholder id="test">\r\n</placeholder>{% ERROR %} {= NOPX =}\r\n\r\n\r\n');
-        expect_1.default(test_view_1.shouldBeError(() => {
-            sow_template_1.TemplateCore.run(appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id="test">\r\nNO\r\n</impl-placeholder>`, (str, isScript) => {
-                console.log(str);
+        });
+        tasks.push(() => {
+            sow_template_1.TemplateCore.run(ctx, spublic, `#attach /template/readme.htmls \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (params) => {
+                return forward();
             });
-        })).toBeInstanceOf(Error);
-        fs.unlinkSync(filePath);
-        done();
+        });
+        tasks.push(() => {
+            fs.writeFileSync(filePath, "INVALID_FILE");
+            sow_template_1.TemplateCore.run(ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (params) => {
+                return forward();
+            });
+        });
+        tasks.push(() => {
+            fs.writeFileSync(filePath, "<placeholder id><placeholder/>");
+            sow_template_1.TemplateCore.run(ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (params) => {
+                return forward();
+            });
+        });
+        tasks.push(() => {
+            fs.writeFileSync(filePath, '<placeholder id=""><placeholder/>');
+            sow_template_1.TemplateCore.run(ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, (params) => {
+                return forward();
+            });
+        });
+        tasks.push(() => {
+            fs.writeFileSync(filePath, '<placeholder id="test">\r\n</placeholder>{% ERROR %} {= NOPX =}\r\n\r\n\r\n');
+            sow_template_1.TemplateCore.run(ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id="test">\r\nNO\r\n</impl-placeholder>`, (params) => {
+                return forward();
+            });
+        });
+        return forward();
     });
 });
 describe("cwserver-bundler", () => {
@@ -717,7 +754,7 @@ describe("cwserver-bundler", () => {
     it('js file bundler with gizp response (server file cache)', (done) => {
         const temp = appUtility.server.mapPath(`/web/temp/`);
         if (fs.existsSync(temp)) {
-            sow_util_1.Util.rmdirSync(temp);
+            fsw.rmdirSync(temp);
         }
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
@@ -1148,7 +1185,7 @@ describe("cwserver-post", () => {
         getAgent()
             .post(`http://localhost:${appUtility.port}/post-async/10`)
             .type('form')
-            .send({ name: 'rajibs', occupation: 'kutukutu' })
+            .send({ name: 'rajibs', occupation: 'kutukutu', kv: '' })
             .end((err, res) => {
             expect_1.default(err).not.toBeInstanceOf(Error);
             expect_1.default(res.status).toBe(200);
@@ -1202,8 +1239,8 @@ describe("cwserver-multipart-paylod-parser", () => {
             expect_1.default(res.status).toBe(200);
             expect_1.default(res.header["content-type"]).toBe("application/json");
             expect_1.default(res.body).toBeInstanceOf(Object);
-            expect_1.default(res.body.content_type).toBe(contentType);
-            expect_1.default(res.body.file_name).toBe(fileName);
+            expect_1.default(res.body.contentType).toBe(contentType);
+            expect_1.default(res.body.fileName).toBe(fileName);
             expect_1.default(res.body.name).toBe("post-file");
             done();
         });
@@ -1217,7 +1254,28 @@ describe("cwserver-multipart-paylod-parser", () => {
     it('test multipart post file and clear', (done) => {
         processReq(done, "C");
     });
-    it('test multipart post file test', function (done) {
+    it('test multipart post file process non-bolock', (done) => {
+        processReq(done, undefined, "/upload-non-bolock");
+    });
+    it('invalid multipart posted file', function (done) {
+        this.timeout(5000 * 10);
+        const tempz = appUtility.server.mapPath("/web/.tempz");
+        fs.writeFile(tempz, Buffer.from("This is normal line\n".repeat(5)), (err) => {
+            const readStream = fs.createReadStream(tempz);
+            const req = getAgent()
+                .post(`http://localhost:${appUtility.port}/upload-invalid-file`)
+                .attach('post-file', readStream, {
+                contentType: " ",
+                filename: "temp"
+            });
+            req.end((rerr, res) => {
+                readStream.close();
+                expect_1.default(rerr).toBeInstanceOf(Error);
+                done();
+            });
+        });
+    });
+    it('test multipart post file', function (done) {
         this.timeout(5000 * 10);
         const leargeFile = appUtility.server.mapPath("/web/learge.txt");
         const writer = fs.createWriteStream(leargeFile);
@@ -1262,7 +1320,7 @@ describe("cwserver-multipart-paylod-parser", () => {
         const leargeFile = appUtility.server.mapPath("/web/learge.txt");
         const readStream = fs.createReadStream(leargeFile);
         const req = getAgent()
-            .post(`http://localhost:${appUtility.port}/upload-error`)
+            .post(`http://localhost:${appUtility.port}/abort-error`)
             .field('post-file', readStream);
         req.on("progress", (event) => {
             if (event.total) {
@@ -1274,7 +1332,7 @@ describe("cwserver-multipart-paylod-parser", () => {
             }
         });
         req.end((err, res) => {
-            done(new Error("Should not here...."));
+            expect_1.default(err).not.toBeInstanceOf(Error);
         });
     });
     it('test malformed data', function (done) {
@@ -1438,24 +1496,6 @@ describe("cwserver-mime-type", () => {
             expect_1.default(res.header["content-type"]).toBe("image/x-icon");
             done();
         });
-    });
-    it('catch-HttpMimeHandler-error', (done) => {
-        const parent = path.resolve(__dirname, '..');
-        const absPath = path.resolve(`${parent}/dist/mime-type.json`);
-        expect_1.default(fs.existsSync(absPath)).toBe(true);
-        const distPath = path.resolve(`${parent}/mime-types.json`);
-        fs.renameSync(absPath, distPath);
-        expect_1.default(test_view_1.shouldBeError(() => {
-            const mime = new cwserver.HttpMimeHandler();
-        })).toBeInstanceOf(Error);
-        fs.writeFileSync(absPath, "INVALID_JSON");
-        expect_1.default(fs.existsSync(absPath)).toEqual(true);
-        expect_1.default(test_view_1.shouldBeError(() => {
-            const mime = new cwserver.HttpMimeHandler();
-        })).toBeInstanceOf(Error);
-        fs.unlinkSync(absPath);
-        fs.renameSync(distPath, absPath);
-        done();
     });
 });
 describe("cwserver-virtual-dir", () => {
@@ -1649,6 +1689,16 @@ describe("cwserver-controller-reset", () => {
             done();
         });
     });
+    it('test-raw-error', (done) => {
+        app.clearHandler();
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/response`)
+            .end((err, res) => {
+            expect_1.default(err).toBeInstanceOf(Error);
+            expect_1.default(res.status).toBe(404);
+            done();
+        });
+    });
 });
 describe("cwserver-utility", () => {
     const getConfig = (() => {
@@ -1657,7 +1707,7 @@ describe("cwserver-utility", () => {
         return () => {
             if (config)
                 return sow_util_1.Util.clone(config);
-            const cjson = sow_util_1.Util.readJsonAsync(configFile);
+            const cjson = fsw.readJsonAsync(configFile);
             if (cjson) {
                 config = cjson;
             }
@@ -1668,6 +1718,12 @@ describe("cwserver-utility", () => {
     })();
     it("test-app-utility", function (done) {
         this.timeout(5000);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_util_1.assert(false, "test");
+        })).toBeInstanceOf(Error);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_util_1.assert("", "string");
+        })).toBeInstanceOf(Error);
         (() => {
             process.env.SCRIPT = "JS";
             expect_1.default(test_view_1.shouldBeError(() => {
@@ -1737,21 +1793,24 @@ describe("cwserver-utility", () => {
             });
         })).toBeInstanceOf(Error);
         expect_1.default(test_view_1.shouldBeError(() => {
-            sow_util_1.Util.mkdirSync(logDir, "./");
+            fsw.mkdirSync(logDir, "./");
         })).toBeInstanceOf(Error);
-        expect_1.default(sow_util_1.Util.mkdirSync("")).toBeFalsy();
+        expect_1.default(fsw.mkdirSync("")).toBeFalsy();
         expect_1.default(test_view_1.shouldBeError(() => {
-            sow_util_1.Util.copyFileSync(`${logDir}/temp/`, "./");
-        })).toBeInstanceOf(Error);
-        expect_1.default(test_view_1.shouldBeError(() => {
-            sow_util_1.Util.copyFileSync(`${logDir}/temp/nofile.lg`, "./");
+            fsw.copyFileSync(`${logDir}/temp/`, "./");
         })).toBeInstanceOf(Error);
         expect_1.default(test_view_1.shouldBeError(() => {
-            sow_util_1.Util.copyFileSync(`${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx`);
+            fsw.copyFileSync(`${logDir}/temp/nofile.lg`, "./");
         })).toBeInstanceOf(Error);
-        expect_1.default(sow_util_1.Util.rmdirSync(`${logDir}/temp/`)).not.toBeInstanceOf(Error);
-        expect_1.default(sow_util_1.Util.copySync(`${logDir}/temp/`, `${logDir}/tempx/`)).not.toBeInstanceOf(Error);
-        expect_1.default(sow_util_1.Util.mkdirSync(logDir)).toEqual(true);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            fsw.copyFileSync(`${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx`);
+        })).toBeInstanceOf(Error);
+        expect_1.default(fsw.rmdirSync(`${logDir}/temp/`)).not.toBeInstanceOf(Error);
+        expect_1.default(fsw.copySync(`${logDir}/temp/`, `${logDir}/tempx/`)).not.toBeInstanceOf(Error);
+        expect_1.default(fsw.mkdirSync(logDir)).toEqual(true);
+        expect_1.default(test_view_1.shouldBeError(() => {
+            sow_util_1.Util.throwIfError(new Error("Error test..."));
+        })).toBeInstanceOf(Error);
         expect_1.default(sow_util_1.Util.extend({}, sow_static_1.Session.prototype)).toBeInstanceOf(Object);
         expect_1.default(sow_util_1.Util.extend({}, () => {
             return new sow_static_1.Session();
@@ -2012,6 +2071,18 @@ describe("cwserver-utility", () => {
                     throw e;
                 }
             })).toBeInstanceOf(Error);
+            (() => {
+                expect_1.default(test_view_1.shouldBeError(() => {
+                    appUtility.server.getErrorPath(100);
+                })).toBeInstanceOf(Error);
+                const oldError = sow_util_1.Util.clone(appUtility.server.config.errorPage);
+                appUtility.server.config.errorPage = {};
+                expect_1.default(appUtility.server.getErrorPath(500)).toBeDefined();
+                expect_1.default(test_view_1.shouldBeError(() => {
+                    appUtility.server.getErrorPath(402);
+                })).toBeInstanceOf(Error);
+                sow_util_1.Util.extend(appUtility.server.config.errorPage, oldError);
+            })();
             expect_1.default(test_view_1.shouldBeError(() => {
                 appUtility.server.parseMaxAge("10N");
             })).toBeInstanceOf(Error);
@@ -2129,7 +2200,7 @@ describe("cwserver-schema-validator", () => {
                 "nsession": []
             }, true);
         })();
-        const config = sow_util_1.Util.readJsonAsync(appUtility.server.mapPath("/config/app.config.json"));
+        const config = fsw.readJsonAsync(appUtility.server.mapPath("/config/app.config.json"));
         expect_1.default(config).toBeInstanceOf(Object);
         if (!config)
             throw new Error("unreachable...");
@@ -2320,6 +2391,62 @@ describe("cwserver-schema-validator", () => {
         fs.unlinkSync(absPath);
         fs.renameSync(distPath, absPath);
         done();
+    });
+});
+describe("cwserver-fsw", () => {
+    it("test-fsw", function (done) {
+        this.timeout(5000);
+        const root = path.resolve(`${appRoot}/ewww`);
+        const filePath = path.resolve(root + "/config/app.config.json");
+        fs.writeFile(filePath, JSON.stringify({ name: "Safe Online World Ltd." }), (err) => {
+            sow_util_1.assert(err === null, "test-fsw->fs.writeFile");
+            fsw.readJson(filePath, (jerr, json) => {
+                sow_util_1.assert(jerr === null, "test-fsw->fsw.readJson");
+                expect_1.default(json).toBeInstanceOf(Object);
+                fs.writeFileSync(filePath, "INVALID_JSON");
+                fsw.readJson(filePath, (jnerr, njson) => {
+                    sow_util_1.assert(jnerr !== null, "test-fsw->fsw.readJson-jnerr");
+                    expect_1.default(njson).toBeUndefined();
+                    fsw.mkdir("", "", (derr) => {
+                        expect_1.default(derr).toBeInstanceOf(Error);
+                    }, handleError);
+                    fsw.mkdir(root, ".", (derr) => {
+                        expect_1.default(derr).toBeInstanceOf(Error);
+                    }, handleError);
+                    fsw.mkdir(filePath, "", (mderr) => {
+                        expect_1.default(mderr).toBeInstanceOf(Error);
+                        fsw.copyDir(path.join(root, "/noton/"), path.resolve(`${appRoot}/cwww`), (crderr) => {
+                            expect_1.default(crderr).toBeInstanceOf(Error);
+                        }, handleError);
+                        fsw.copyDir(root, path.resolve(`${appRoot}/cwww`), (ncrderr) => {
+                            expect_1.default(ncrderr).not.toBeInstanceOf(Error);
+                            fsw.mkdir(root, "/my.json", (rderr) => {
+                                expect_1.default(rderr).toBeInstanceOf(Error);
+                                fsw.copyFile(filePath, root, (crderr) => {
+                                    expect_1.default(crderr).toBeInstanceOf(Error);
+                                });
+                                fsw.copyFile(root, root, (dncrderr) => {
+                                    expect_1.default(dncrderr).toBeInstanceOf(Error);
+                                });
+                                fsw.copyFile(`${filePath}.not`, filePath, (fcrderr) => {
+                                    expect_1.default(fcrderr).toBeInstanceOf(Error);
+                                    fsw.copyFile(filePath, `${filePath}.not`, (cfcrderr) => {
+                                        expect_1.default(cfcrderr).not.toBeInstanceOf(Error);
+                                        fsw.unlink(`${filePath}.not`, (uerr) => {
+                                            expect_1.default(uerr).not.toBeInstanceOf(Error);
+                                            fsw.rmdir(root, (rerr) => {
+                                                expect_1.default(rerr).toBe(null);
+                                                done();
+                                            }, handleError);
+                                        });
+                                    });
+                                });
+                            }, handleError);
+                        }, handleError);
+                    }, handleError);
+                }, handleError);
+            }, handleError);
+        });
     });
 });
 describe("finalization", () => {

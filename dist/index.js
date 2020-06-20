@@ -1,4 +1,23 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
@@ -18,6 +37,7 @@ var sow_payload_parser_1 = require("./lib/sow-payload-parser");
 Object.defineProperty(exports, "PayloadParser", { enumerable: true, get: function () { return sow_payload_parser_1.PayloadParser; } });
 var sow_util_1 = require("./lib/sow-util");
 Object.defineProperty(exports, "Util", { enumerable: true, get: function () { return sow_util_1.Util; } });
+exports.fsw = __importStar(require("./lib/sow-fsw"));
 var sow_web_streamer_1 = require("./lib/sow-web-streamer");
 Object.defineProperty(exports, "Streamer", { enumerable: true, get: function () { return sow_web_streamer_1.Streamer; } });
 var sow_ws_1 = require("./lib/sow-ws");

@@ -36,11 +36,13 @@ exports.shouldBeError = void 0;
 const expect_1 = __importDefault(require("expect"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
+const fsw = __importStar(require("../lib/sow-fsw"));
 const sow_server_core_1 = require("../lib/sow-server-core");
 const sow_server_1 = require("../lib/sow-server");
 const sow_http_cache_1 = require("../lib/sow-http-cache");
 const socket_client_1 = require("./socket-client");
 const index_1 = require("../index");
+const sow_util_1 = require("../lib/sow-util");
 const mimeHandler = new index_1.HttpMimeHandler();
 function shouldBeError(next, printerr) {
     try {
@@ -58,7 +60,12 @@ global.sow.server.on("register-view", (app, controller, server) => {
     expect_1.default(sow_server_core_1.parseCookie(["test"])).toBeInstanceOf(Object);
     expect_1.default(sow_server_core_1.parseCookie({})).toBeInstanceOf(Object);
     app.use("/app-error", (req, res, next) => {
+        expect_1.default(req.session).toBeInstanceOf(Object);
+        expect_1.default(sow_server_core_1.getClientIpFromHeader(req.headers)).toBeUndefined();
         throw new Error("Application should be fire Error event");
+    }).prerequisites((req, res, next) => {
+        expect_1.default(req.session).toBeInstanceOf(Object);
+        return next();
     });
     expect_1.default(shouldBeError(() => { index_1.socketInitilizer(server, socket_client_1.SocketErr1()); })).toBeInstanceOf(Error);
     expect_1.default(shouldBeError(() => { index_1.socketInitilizer(server, socket_client_1.SocketErr2()); })).toBeInstanceOf(Error);
@@ -73,6 +80,9 @@ global.sow.server.on("register-view", (app, controller, server) => {
         ctx.res.json(ws.wsEvent || {});
         ctx.next(200);
         return void 0;
+    });
+    controller.any("/test-head", (ctx, requestParam) => {
+        return ctx.res.status(200).send();
     });
 });
 global.sow.server.on("register-view", (app, controller, server) => {
@@ -100,7 +110,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
     server.addVirtualDir("/web-stream", streamDir, (ctx, requestParam) => {
         if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
             const absPath = path.resolve(`${streamDir}/${ctx.path}`);
-            if (!index_1.Util.isExists(absPath, ctx.next))
+            if (!sow_util_1.Util.isExists(absPath, ctx.next))
                 return;
             const mimeType = mimeHandler.getMimeType(ctx.extension);
             return index_1.Streamer.stream(ctx, absPath, mimeType, fs.statSync(absPath));
@@ -120,9 +130,10 @@ global.sow.server.on("register-view", (app, controller, server) => {
 global.sow.server.on("register-view", (app, controller, server) => {
     const downloadDir = server.mapPath("/upload/data/");
     if (!fs.existsSync(downloadDir)) {
-        index_1.Util.mkdirSync(server.mapPath("/"), "/upload/data/");
+        fsw.mkdirSync(server.mapPath("/"), "/upload/data/");
     }
     const tempDir = server.mapPath("/upload/temp/");
+    fsw.mkdirSync(tempDir);
     controller.post('/post', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
         const task = typeof (ctx.req.query.task) === "string" ? ctx.req.query.task.toString() : void 0;
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
@@ -143,16 +154,19 @@ global.sow.server.on("register-view", (app, controller, server) => {
                 result.isJson = true;
             }
             expect_1.default(shouldBeError(() => {
-                parser.saveAs(downloadDir);
+                parser.saveAsSync(downloadDir);
             })).toBeInstanceOf(Error);
             expect_1.default(shouldBeError(() => {
                 parser.getFiles((pf) => { return; });
             })).toBeInstanceOf(Error);
+            expect_1.default(shouldBeError(() => {
+                parser.getUploadFileInfo();
+            })).toBeInstanceOf(Error);
             if (err && err instanceof Error) {
-                ctx.res.json(index_1.Util.extend(result, { error: true, msg: err.message }));
+                ctx.res.json(sow_util_1.Util.extend(result, { error: true, msg: err.message }));
             }
             else {
-                ctx.res.json(index_1.Util.extend(result, parser.getJson()));
+                ctx.res.json(sow_util_1.Util.extend(result, parser.getJson()));
             }
             return ctx.next(200);
         });
@@ -163,9 +177,10 @@ global.sow.server.on("register-view", (app, controller, server) => {
             ctx.res.writeHead(200, { 'Content-Type': 'application/json' });
             return ctx.res.end(JSON.stringify(parser.getJson())), ctx.next(200);
         }
-        parser.saveAs(downloadDir);
+        parser.saveAsSync(downloadDir);
+        parser.clear();
         return ctx.res.asHTML(200).end("<h1>success</h1>");
-    })).post('/upload-error', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
+    })).post('/upload-invalid-file', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
         let err;
         try {
@@ -174,10 +189,26 @@ global.sow.server.on("register-view", (app, controller, server) => {
         catch (e) {
             err = e;
         }
-        expect_1.default(err).toBeInstanceOf(Error);
+        parser.clear();
+        if (err) {
+            if (err.message.indexOf("Invalid file header") > -1)
+                return ctx.next(500);
+        }
+        console.log(err);
+        throw new Error("Should not here...");
+    })).post('/abort-error', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
+        const parser = new index_1.PayloadParser(ctx.req, tempDir);
+        let err;
+        try {
+            yield parser.readDataAsync();
+        }
+        catch (e) {
+            err = e;
+        }
+        parser.clear();
         if (err) {
             if (err.message.indexOf("CLIENET_DISCONNECTED") > -1)
-                return ctx.next(-404, false);
+                return ctx.next(-500);
         }
         throw new Error("Should not here...");
     })).post('/upload-malformed-data', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
@@ -193,7 +224,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
         parser.clear();
         if (err) {
             server.addError(ctx, err);
-            return server.transferRequest(ctx, server.config.errorPage["500"]);
+            return server.transferRequest(ctx, 500);
         }
         throw new Error("Should not here...");
     })).post('/upload-test', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
@@ -201,25 +232,18 @@ global.sow.server.on("register-view", (app, controller, server) => {
             const parser = new index_1.PayloadParser(ctx.req, tempDir);
             expect_1.default(shouldBeError(() => {
                 parser.getFiles((pf) => {
-                    console.log(pf.getName());
+                    console.log(pf);
                 });
+            })).toBeInstanceOf(Error);
+            expect_1.default(shouldBeError(() => {
+                parser.getUploadFileInfo();
             })).toBeInstanceOf(Error);
             expect_1.default(shouldBeError(() => {
                 parser.getData();
             })).toBeInstanceOf(Error);
             yield parser.readDataAsync();
-            const data = [];
-            parser.getFiles((file) => {
-                data.push({
-                    content_type: file.getContentType(),
-                    name: file.getName(),
-                    file_name: file.getFileName(),
-                    content_disposition: file.getContentDisposition(),
-                    file_size: file.getFileSize(),
-                    temp_path: file.getTempPath()
-                });
-            });
-            parser.saveAs(downloadDir);
+            const data = parser.getUploadFileInfo();
+            parser.saveAsSync(downloadDir);
             parser.clear();
             ctx.res.json(data.shift() || {});
             ctx.next(200);
@@ -227,56 +251,66 @@ global.sow.server.on("register-view", (app, controller, server) => {
         catch (e) {
             throw e;
         }
-    })).post('/upload', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
+    })).post('/upload-non-bolock', (ctx, requestParam) => {
+        if (ctx.res.isAlive) {
+            expect_1.default(ctx.req.get("content-type")).toBeDefined();
+            const parser = new index_1.PayloadParser(ctx.req, tempDir);
+            return parser.readData((err) => {
+                sow_util_1.assert(err === undefined, "parser.readData");
+                const data = parser.getUploadFileInfo();
+                return parser.getFiles((file, done) => {
+                    if (!file || !done)
+                        return ctx.res.status(200).send(data.shift() || {});
+                    return file.read((rerr, buff) => {
+                        sow_util_1.assert(rerr === null, "file.read");
+                        expect_1.default(buff).toBeInstanceOf(Buffer);
+                        return parser.saveAs(downloadDir, (serr) => {
+                            sow_util_1.assert(serr === null, "file.saveAs");
+                            expect_1.default(shouldBeError(() => {
+                                ctx.res.status(0).send("Nothing....");
+                            })).toBeInstanceOf(Error);
+                            ctx.res.status(200).send(data.shift() || {});
+                            expect_1.default(shouldBeError(() => {
+                                ctx.res.send("Nothing....");
+                            })).toBeInstanceOf(Error);
+                        }, ctx.handleError.bind(ctx));
+                    });
+                });
+            });
+        }
+    }).post('/upload', (ctx, requestParam) => __awaiter(void 0, void 0, void 0, function* () {
         const saveTo = typeof (ctx.req.query.saveto) === "string" ? ctx.req.query.saveto.toString() : void 0;
-        expect_1.default(shouldBeError(() => {
-            const p = new index_1.PayloadParser(ctx.req, server.mapPath("/upload/data/schema.json"));
-        })).toBeInstanceOf(Error);
         const parser = new index_1.PayloadParser(ctx.req, tempDir);
         expect_1.default(shouldBeError(() => {
-            parser.saveAs(downloadDir);
+            parser.saveAsSync(downloadDir);
         })).toBeInstanceOf(Error);
         parser.readData((err) => {
-            if (err) {
-                if (typeof (err) === "string" && err === "CLIENET_DISCONNECTED")
-                    return ctx.next(-500);
-                parser.clear();
-                server.addError(ctx, err instanceof Error ? err.message : err);
-                return ctx.next(500);
-            }
+            sow_util_1.assert(err === undefined, "parser.readData");
             if (!parser.isMultipart()) {
                 ctx.next(404);
             }
             else {
-                const data = [];
-                parser.getFiles((file) => {
-                    data.push({
-                        content_type: file.getContentType(),
-                        name: file.getName(),
-                        file_name: file.getFileName(),
-                        content_disposition: file.getContentDisposition(),
-                        file_size: file.getFileSize(),
-                        temp_path: file.getTempPath()
-                    });
-                    expect_1.default(file.read()).toBeInstanceOf(Buffer);
+                const data = parser.getUploadFileInfo();
+                parser.getFilesSync((file) => {
+                    expect_1.default(file.readSync()).toBeInstanceOf(Buffer);
                     if (saveTo) {
                         if (saveTo === "C")
                             file.clear();
                         return;
                     }
-                    file.saveAs(`${downloadDir}/${index_1.Util.guid()}_${file.getFileName()}`);
+                    file.saveAsSync(`${downloadDir}/${sow_util_1.Util.guid()}_${file.getFileName()}`);
                     expect_1.default(shouldBeError(() => {
-                        file.read();
+                        file.readSync();
                     })).toBeInstanceOf(Error);
                     expect_1.default(shouldBeError(() => {
-                        file.saveAs(`${downloadDir}/${index_1.Util.guid()}_${file.getFileName()}`);
+                        file.saveAsSync(`${downloadDir}/${sow_util_1.Util.guid()}_${file.getFileName()}`);
                     })).toBeInstanceOf(Error);
                 });
                 if (saveTo && saveTo !== "C") {
                     expect_1.default(shouldBeError(() => {
-                        parser.saveAs(server.mapPath("/upload/data/schema.json"));
+                        parser.saveAsSync(server.mapPath("/upload/data/schema.json"));
                     })).toBeInstanceOf(Error);
-                    parser.saveAs(downloadDir);
+                    parser.saveAsSync(downloadDir);
                 }
                 expect_1.default(shouldBeError(() => {
                     parser.getData();
@@ -292,53 +326,82 @@ global.sow.server.on("register-view", (app, controller, server) => {
 global.sow.server.on("register-view", (app, controller, server) => {
     controller
         .get("/test-context", (ctx, requestParam) => {
-        const nctx = server.createContext(ctx.req, ctx.res, ctx.next);
-        nctx.path = "/not-found/404/";
-        nctx.req.path = "/not-found/404/";
-        nctx.next = (code, transfer) => {
-            // Nothing to do....!
-            expect_1.default(code).toEqual(404);
-        };
-        const oldDoc = server.config.defaultDoc;
-        server.config.defaultDoc = [];
-        controller.processAny(nctx);
-        server.config.defaultDoc = oldDoc;
-        nctx.path = "";
-        nctx.req.path = "";
-        controller.processAny(nctx);
-        const oldext = server.config.defaultExt;
-        server.config.defaultExt = "";
-        server.config.defaultDoc = [];
-        controller.processAny(nctx);
-        nctx.path = "/not-found/";
-        nctx.req.path = "/not-found/";
-        controller.processAny(nctx);
-        server.config.defaultExt = oldext;
-        server.config.defaultDoc = oldDoc;
-        nctx.path = "/not-found/index";
-        nctx.req.path = "/not-found/index";
-        controller.processAny(nctx);
-        const oldEncoding = ctx.req.headers['accept-encoding'];
-        ctx.req.headers['accept-encoding'] = void 0;
-        expect_1.default(sow_http_cache_1.SowHttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
-        ctx.req.headers['accept-encoding'] = oldEncoding;
-        const treq = ctx.transferRequest;
-        ctx.transferRequest = (toPath) => {
-            expect_1.default(toPath.indexOf("404")).toBeGreaterThan(-1);
-        };
-        mimeHandler.render(ctx);
-        expect_1.default(mimeHandler.isValidExtension(ctx.extension)).toBeFalsy();
-        ctx.transferRequest = treq;
-        (() => {
-            const parser = new index_1.PayloadParser(ctx.req, server.mapPath("/upload/temp/"));
-            expect_1.default(shouldBeError(() => {
-                parser.getData();
-            })).toBeInstanceOf(Error);
-            parser.clear();
-        })();
-        ctx.res.json({
-            done: true
-        });
+        try {
+            const nctx = server.createContext(ctx.req, ctx.res, ctx.next);
+            nctx.path = "/not-found/404/";
+            nctx.req.path = "/not-found/404/";
+            nctx.next = (code, transfer) => {
+                // Nothing to do....!
+                expect_1.default(code).toEqual(404);
+            };
+            const oldDoc = server.config.defaultDoc;
+            server.config.defaultDoc = [];
+            controller.processAny(nctx);
+            server.config.defaultDoc = oldDoc;
+            nctx.path = "";
+            nctx.req.path = "";
+            controller.processAny(nctx);
+            const oldext = server.config.defaultExt;
+            server.config.defaultExt = "";
+            server.config.defaultDoc = [];
+            controller.processAny(nctx);
+            nctx.path = "/not-found/";
+            nctx.req.path = "/not-found/";
+            controller.processAny(nctx);
+            server.config.defaultExt = oldext;
+            server.config.defaultDoc = oldDoc;
+            nctx.path = "/not-found/index";
+            nctx.req.path = "/not-found/index";
+            controller.processAny(nctx);
+            const oldEncoding = ctx.req.headers['accept-encoding'];
+            ctx.req.headers['accept-encoding'] = void 0;
+            expect_1.default(sow_http_cache_1.SowHttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
+            ctx.req.headers['accept-encoding'] = oldEncoding;
+            const treq = ctx.transferRequest;
+            ctx.transferRequest = (toPath) => {
+                if (typeof (toPath) === "string")
+                    expect_1.default(toPath.indexOf("404")).toBeGreaterThan(-1);
+                else
+                    expect_1.default(toPath).toEqual(404);
+            };
+            mimeHandler.render(ctx);
+            expect_1.default(mimeHandler.isValidExtension(ctx.extension)).toBeFalsy();
+            ctx.transferRequest = treq;
+            (() => {
+                const oldEnd = ctx.res.end;
+                ctx.res.end = (...arg) => {
+                    expect_1.default(arg.length).toBeGreaterThanOrEqual(0);
+                };
+                ctx.res.status(204).send();
+                expect_1.default(shouldBeError(() => {
+                    ctx.res.status(200).send();
+                })).toBeInstanceOf(Error);
+                ctx.res.status(200).send("Nothing to do...");
+                ctx.res.setHeader('Content-Type', "");
+                ctx.res.send(true);
+                ctx.res.setHeader('Content-Type', "");
+                ctx.res.send(1000);
+                ctx.res.setHeader('Content-Type', "");
+                ctx.res.send(Buffer.from("Nothing to do...."));
+                ctx.res.end = oldEnd;
+            })();
+            (() => {
+                const parser = new index_1.PayloadParser(ctx.req, server.mapPath("/upload/temp/"));
+                expect_1.default(shouldBeError(() => {
+                    parser.getData();
+                })).toBeInstanceOf(Error);
+                parser.clear();
+            })();
+            ctx.res.json({
+                done: true
+            });
+        }
+        catch (e) {
+            console.log(e);
+            ctx.res.json({
+                done: true
+            });
+        }
     })
         .get('/controller-error', (ctx, requestParam) => {
         throw new Error("runtime-error");
@@ -366,13 +429,13 @@ global.sow.server.on("register-view", (app, controller, server) => {
         return ctx.res.json({ reqPath: ctx.path, servedFrom: "/user/:id/settings", q: requestParam });
     })
         .get('/404', (ctx, requestParam) => {
-        return index_1.Util.sendResponse(ctx, "/invalid/not-found/no.html");
+        return sow_util_1.Util.sendResponse(ctx, "/invalid/not-found/no.html");
     });
 });
 global.sow.server.on("register-view", (app, controller, server) => {
     controller
         .get('/get-file', (ctx, requestParam) => {
-        return index_1.Util.sendResponse(ctx, server.mapPath("index.html"), "text/plain");
+        return sow_util_1.Util.sendResponse(ctx, server.mapPath("index.html"), "text/plain");
     })
         .any('/cookie', (ctx, requestParam) => {
         ctx.res.cookie("test-1", "test", {
@@ -390,6 +453,17 @@ global.sow.server.on("register-view", (app, controller, server) => {
             expires: new Date(), secure: true,
             sameSite: 'none'
         });
+        expect_1.default(ctx.req.cookies).toBeInstanceOf(Object);
+        expect_1.default(ctx.req.ip).toBeDefined();
+        expect_1.default(ctx.req.ip).toBeDefined();
+        expect_1.default(ctx.res.get('Set-Cookie')).toBeDefined();
+        expect_1.default(ctx.req.get('cookie')).toBeDefined();
+        expect_1.default(ctx.res.get('server')).toEqual("SOW Frontend");
+        expect_1.default(ctx.res.isAlive).toBeTruthy();
+        server.setDefaultProtectionHeader(ctx.res);
+        expect_1.default(shouldBeError(() => {
+            server.transferRequest(ctx, 200);
+        })).toBeInstanceOf(Error);
         ctx.res.json({ task: "done" });
         return void 0;
     })
@@ -453,7 +527,7 @@ global.sow.server.on("register-view", (app, controller, server) => {
         else {
             // server.db.query()
             // perform pgsql here with this incomming token
-            result.data.token = index_1.Util.guid();
+            result.data.token = sow_util_1.Util.guid();
             result.data.hash = index_1.Encryption.toMd5(loginID);
             result.data.userInfo.loginId = loginID;
             result.data.error = false;

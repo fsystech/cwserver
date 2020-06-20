@@ -1,8 +1,3 @@
-/*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
-* Copyrights licensed under the New BSD License.
-* See the accompanying LICENSE file for terms.
-*/
 export interface ISession {
     isAuthenticated: boolean;
     loginId: string;
@@ -14,7 +9,7 @@ export interface IResInfo {
     isValid: boolean;
     isErrorCode: boolean;
     isInternalErrorCode: boolean;
-    tryServer: boolean;
+    description: string;
 }
 export declare class Session implements ISession {
     isAuthenticated: boolean;
@@ -28,8 +23,8 @@ export declare class ResInfo implements IResInfo {
     isValid: boolean;
     isErrorCode: boolean;
     isInternalErrorCode: boolean;
-    tryServer: boolean;
+    description: string;
     constructor();
 }
-export declare function ToNumber( obj: any ): number;
-export declare function ToResponseTime( timestamp?: number ): string;
+export declare function ToNumber(obj: any): number;
+export declare function ToResponseTime(timestamp?: number): string;

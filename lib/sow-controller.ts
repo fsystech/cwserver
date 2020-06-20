@@ -7,10 +7,13 @@
 import { HttpMimeHandler } from './sow-http-mime';
 import { IHttpMimeHandler } from './sow-http-mime';
 import { IContext, AppHandler } from './sow-server';
-import { getRouteMatcher, getRouteInfo, ILayerInfo, IRouteInfo } from './sow-router';
-import { Util } from './sow-util';
+import * as fsw from './sow-fsw';
+import {
+    getRouteMatcher, getRouteInfo,
+    ILayerInfo, IRouteInfo
+} from './sow-router';
 export interface IController {
-    httpMimeHandler: IHttpMimeHandler;
+    readonly httpMimeHandler: IHttpMimeHandler;
     any( route: string, next: AppHandler ): IController;
     get( route: string, next: AppHandler ): IController;
     post( route: string, next: AppHandler ): IController;
@@ -40,14 +43,17 @@ const fireHandler = ( ctx: IContext ): boolean => {
     return routeInfo.layer.handler( ctx, routeInfo.requestParam ), true;
 };
 const getFileName = ( path: string ): string | void => {
-    const index = path.lastIndexOf( "/" );
+    const index: number = path.lastIndexOf( "/" );
     if ( index < 0 ) return void 0;
     return path.substring( index + 1 );
 };
 export class Controller implements IController {
-    public httpMimeHandler: IHttpMimeHandler;
+    private _httpMimeHandler: IHttpMimeHandler;
+    public get httpMimeHandler() {
+        return this._httpMimeHandler;
+    }
     constructor( ) {
-        this.httpMimeHandler = new HttpMimeHandler();
+        this._httpMimeHandler = new HttpMimeHandler();
     }
     reset(): void {
         delete routeTable.get;
@@ -109,6 +115,39 @@ export class Controller implements IController {
         }
         return routeTable.any[route] = next, this;
     }
+    private passDefaultDoc( ctx: IContext ): void {
+        let index: number = -1;
+        const forword = (): void => {
+            index++;
+            const name: string | undefined = ctx.server.config.defaultDoc[index];
+            if ( !name ) return ctx.next( 404 );
+            const path: string = ctx.server.mapPath( `/${ctx.req.path}${name}${ctx.server.config.defaultExt}` );
+            return fsw.isExists( path, ( exists: boolean, url: string ): void => {
+                if ( exists ) return ctx.res.render( ctx, url );
+                return forword();
+            } );
+        }
+        return forword();
+    }
+    private sendDefaultDoc( ctx: IContext ): void {
+        if ( ctx.server.config.defaultExt && ctx.server.config.defaultExt.length > 0 ) {
+            if ( ctx.req.path.charAt( ctx.req.path.length - 1 ) === "/" ) {
+                return this.passDefaultDoc(ctx);
+            }
+            const fileName: string | void = getFileName( ctx.req.path );
+            if ( !fileName ) return ctx.next( 404 );
+            if ( ctx.server.config.defaultDoc.indexOf( fileName ) > -1 ) return ctx.next( 404 );
+            const path: string = ctx.server.mapPath( `/${ctx.req.path}${ctx.server.config.defaultExt}` );
+            return fsw.isExists( path, ( exists: boolean, url: string ): void => {
+                if ( exists ) return ctx.res.render( ctx, url );
+                return ctx.next( 404 );
+            } );
+        }
+        if ( ctx.req.path.charAt( ctx.req.path.length - 1 ) === "/" ) {
+            return this.passDefaultDoc( ctx );
+        }
+        return ctx.next( 404 );
+    }
     private processGet( ctx: IContext ): void {
         if ( routeTable.get[ctx.req.path] ) {
             return routeTable.get[ctx.req.path]( ctx );
@@ -125,36 +164,8 @@ export class Controller implements IController {
                 return this.httpMimeHandler.render( ctx, void 0, true );
             }
             return ctx.next( 404, true );
-        } else {
-            if ( ctx.server.config.defaultExt && ctx.server.config.defaultExt.length > 0 ) {
-                let path: string = "";
-                if ( ctx.req.path.charAt( ctx.req.path.length - 1 ) === "/" ) {
-                    for ( const name of ctx.server.config.defaultDoc ) {
-                        path = ctx.server.mapPath( `/${ctx.req.path}${name}${ctx.server.config.defaultExt}` );
-                        if ( Util.isExists( path ) ) break;
-                    }
-                    if ( !path || path.length === 0 ) return ctx.next( 404 );
-                } else {
-                    const fileName = getFileName( ctx.req.path );
-                    if ( !fileName ) return ctx.next( 404 );
-                    if ( ctx.server.config.defaultDoc.indexOf( fileName ) > -1 ) return ctx.next( 404 );
-                    path = ctx.server.mapPath( `/${ctx.req.path}${ctx.server.config.defaultExt}` );
-                    if ( !Util.isExists( path, ctx.next ) ) return;
-                }
-                return ctx.res.render( ctx, path );
-            } else {
-                if ( ctx.req.path.charAt( ctx.req.path.length - 1 ) === "/" ) {
-                    let path: string = "";
-                    for ( const name of ctx.server.config.defaultDoc ) {
-                        path = ctx.server.mapPath( `/${ctx.req.path}${name}` );
-                        if ( Util.isExists( path ) ) break;
-                    }
-                    if ( !path || path.length === 0 ) return ctx.next( 404 );
-                    return ctx.res.render( ctx, path );
-                }
-            }
         }
-        return ctx.next( 404 );
+        return this.sendDefaultDoc( ctx );
     }
     private processPost( ctx: IContext ): void {
         if ( routeTable.post[ctx.req.path] ) {
@@ -170,7 +181,7 @@ export class Controller implements IController {
             return this.processPost( ctx );
         if ( ctx.req.method === "GET" )
             return this.processGet( ctx );
-        return fireHandler( ctx ) ? void 0 : ctx.next( 404 );
+        return ctx.next( 404 );
     }
     public remove( path: string ): boolean {
         let found: boolean = false;
@@ -182,15 +193,15 @@ export class Controller implements IController {
             delete routeTable.get[path]; found = true;
         }
         if ( !found ) return false;
-        const index = routeTable.router.findIndex( r => r.route === path );
+        const index: number = routeTable.router.findIndex( r => r.route === path );
         if ( index > -1 ) {
             routeTable.router.splice( index, 1 );
         }
         return true;
     }
     public sort(): void {
-        routeTable.router = routeTable.router.sort( ( a, b ) => {
+        return routeTable.router = routeTable.router.sort( ( a, b ) => {
             return a.route.length - b.route.length;
-        } );
+        } ), void 0;
     }
 }

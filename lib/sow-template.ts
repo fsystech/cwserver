@@ -7,10 +7,10 @@ import * as _fs from 'fs';
 import * as _vm from 'vm';
 import * as _zlib from 'zlib';
 import * as _path from 'path';
-import { Util } from './sow-util';
 import { HttpStatus } from './sow-http-status';
 import { IResInfo } from './sow-static';
 import { IContext } from './sow-server';
+import * as fsw from './sow-fsw';
 type SendBoxNext = ( ctx: IContext, body: string, isCompressed?: boolean ) => void;
 export type SendBox = ( ctx: IContext, next: SendBoxNext, isCompressed?: boolean ) => void;
 interface IScriptTag {
@@ -36,6 +36,20 @@ interface IScriptParser {
     tag: ITag;
     startTage( parserInfo: IParserInfo ): void;
     endTage( parserInfo: IParserInfo ): void;
+}
+export type CompilerResult = {
+    str: string; isScript?: boolean; isTemplate?: boolean;
+    sendBox?: SendBox,
+    err?: NodeJS.ErrnoException | Error | null
+};
+type TemplateNextFunc = ( params: CompilerResult ) => void;
+export function templateNext(
+    ctx: IContext, next: SendBoxNext, isCompressed?: boolean
+): void {
+    throw new Error( "Method not implemented." );
+}
+const _tw: { [x: string]: any } = {
+    cache: {}
 }
 class ParserInfo implements IParserInfo {
     public line: string;
@@ -130,18 +144,38 @@ class ScriptParser implements IScriptParser {
     }
 }
 class TemplateParser {
-    private static implimentAttachment( appRoot: string, str: string ): string {
-        if ( /#attach/gi.test( str ) === false ) return str;
-        return str.replace( /#attach([\s\S]+?)\r\n/gi, ( match ) => {
-            const path = match.replace( /#attach/gi, "" ).replace( /\r\n/gi, "" ).trim();
-            const abspath = _path.resolve( `${appRoot}${path}` );
-            if ( !_fs.existsSync( abspath ) ) {
-                throw new Error( `Attachement ${path} not found...` )
+    private static implimentAttachment(
+        ctx: IContext, appRoot: string, str: string,
+        next: ( str: string ) => void
+    ): void {
+        if ( /#attach/gi.test( str ) === false ) return next( str );
+        const match: RegExpMatchArray | null = str.match( /#attach([\s\S]+?)\r\n/gi );
+        if ( match ) {
+            const forword = (): void => {
+                const orgMatch: string | undefined = match.shift();
+                if ( !orgMatch ) return next( str );
+                const path = orgMatch.replace( /#attach/gi, "" ).replace( /\r\n/gi, "" ).trim();
+                const abspath = _path.resolve( `${appRoot}${path}` );
+                return fsw.isExists( abspath, ( exists: boolean, url: string ): void => {
+                    if ( !exists ) {
+                        return ctx.transferError( new Error( `Attachement ${path} not found...` ) );
+                    }
+                    return _fs.readFile( url, "utf8", ( err: NodeJS.ErrnoException | null, data: string ): void => {
+                        return ctx.handleError( err, () => {
+                            str = str.replace( orgMatch, data );
+                            return forword();
+                        } );
+                    } );
+                } );
             }
-            return _fs.readFileSync( abspath, "utf8" ).replace( /^\uFEFF/, '' );
-        } );
+            return forword();
+        }
     }
-    private static margeTemplate( match: string[], template: string, body: string ): string {
+    private static margeTemplate(
+        match: string[],
+        template: string,
+        body: string
+    ): string {
         for ( const key of match ) {
             const tmplArr = /<placeholder id=\"(.*)\">/gi.exec( key.trim() );
             if ( !tmplArr ) {
@@ -162,78 +196,106 @@ class TemplateParser {
         }
         return body;
     }
-    private static implimentTemplateExtend( appRoot: string, str: string ): string {
-        if ( /#extends/gi.test( str ) === false ) return str;
+    private static prepareTemplate(
+        ctx: IContext,
+        appRoot: string, str: string,
+        next: ( templats: string[] ) => void
+    ): void {
         const templats: string[] = [];
-        do {
+        const forword = (): void => {
             const match: RegExpExecArray | null = /#extends([\s\S]+?)\r\n/gi.exec( str );
             if ( !match ) {
-                // no more master template extends
-                templats.push( str ); break;
+                templats.push( str );
+                return next( templats );
             }
             const found: string | undefined = match[1];
             if ( !found || ( found && found.trim().length === 0 ) ) {
-                throw new Error( "Invalid template format..." );
+                return ctx.transferError( new Error( "Invalid template format..." ) );
             }
             const path = found.replace( /#extends/gi, "" ).replace( /\r\n/gi, "" ).trim();
             const abspath = _path.resolve( `${appRoot}${path}` );
-            if ( !_fs.existsSync( abspath ) ) {
-                throw new Error( `Template ${path} not found...` );
-            }
-            templats.push( str.replace( match[0], "" ) );
-            str = _fs.readFileSync( abspath, "utf8" ).replace( /^\uFEFF/, '' );
-        } while ( true );
-        let count: number = 0;
-        let body: string = "";
-        let parentTemplate: string = "";
-        const startTag: RegExp = /<placeholder[^>]*>/gi;
-        const rnRegx: RegExp = /\r\n/gi;
-        let len: number = templats.length;
-        do {
-            len--;
-            if ( count === 0 ) {
-                parentTemplate = templats[len].replace( rnRegx, "8_r_n_gx_8" );
-                body += parentTemplate; count++; continue;
-            }
-            const match: RegExpMatchArray | null = parentTemplate.match( startTag );
-            if ( match === null || ( match && match.length === 0 ) ) {
-                throw new Error( "Invalid master template... No placeholder tag found...." );
-            }
-            parentTemplate = templats[len].replace( rnRegx, "8_r_n_gx_8" );
-            body = this.margeTemplate( match, parentTemplate, body );
-        } while ( len > 0 );
-        return body.replace( /8_r_n_gx_8/gi, "\r\n" );
+            return _fs.exists( abspath, ( exists: boolean ): void => {
+                if ( !exists ) {
+                    return ctx.transferError( new Error( `Template ${path} not found...` ) );
+                }
+                templats.push( str.replace( match[0], "" ) );
+                return _fs.readFile( abspath, "utf8", ( err: NodeJS.ErrnoException | null, data: string ): void => {
+                    return ctx.handleError( err, () => {
+                        str = data.replace( /^\uFEFF/, '' );
+                        return forword();
+                    } );
+                } );
+            } );
+        }
+        return forword();
     }
-    public static parse( appRoot: string, str: string ): string {
-        return this.implimentAttachment(
-            appRoot,
-            this.implimentTemplateExtend( appRoot, str )
-        ).replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
+    private static implimentTemplateExtend(
+        ctx: IContext,
+        appRoot: string, str: string,
+        next: ( str: string ) => void
+    ): void {
+        if ( /#extends/gi.test( str ) === false ) return next( str );
+        return this.prepareTemplate( ctx, appRoot, str, ( templats: string[] ): void => {
+            let count: number = 0;
+            let body: string = "";
+            let parentTemplate: string = "";
+            const startTag: RegExp = /<placeholder[^>]*>/gi;
+            const rnRegx: RegExp = /\r\n/gi;
+            let len: number = templats.length;
+            try {
+                do {
+                    len--;
+                    if ( count === 0 ) {
+                        parentTemplate = templats[len].replace( rnRegx, "8_r_n_gx_8" );
+                        body += parentTemplate; count++; continue;
+                    }
+                    const match: RegExpMatchArray | null = parentTemplate.match( startTag );
+                    if ( match === null || ( match && match.length === 0 ) ) {
+                        throw new Error( "Invalid master template... No placeholder tag found...." );
+                    }
+                    parentTemplate = templats[len].replace( rnRegx, "8_r_n_gx_8" );
+                    body = this.margeTemplate( match, parentTemplate, body );
+                } while ( len > 0 );
+                return next( body.replace( /8_r_n_gx_8/gi, "\r\n" ) );
+            } catch ( e ) {
+                return ctx.transferError( e );
+            }
+        } );
     }
-}
-const _tw: { [x: string]: any } = {
-    cache: {}
-}
-export function templateNext(
-    ctx: IContext, next: SendBoxNext, isCompressed?: boolean
-): void {
-    throw new Error( "Method not implemented." );
+    public static parse(
+        ctx: IContext,
+        appRoot: string, str: string,
+        next: ( str: string ) => void
+    ): void {
+        return this.implimentTemplateExtend( ctx, appRoot, str, ( istr: string ): void => {
+            return this.implimentAttachment( ctx, appRoot, istr, ( astr: string ) => {
+                return next( astr.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" ) );
+            } );
+        } );
+    }
 }
 export class TemplateCore {
     public static compile(
-        str?: string, next?: ( str: string, isScript?: boolean ) => void
-    ): SendBox {
-        if ( !str ) {
-            throw new Error("No script found to compile....");
+        str: string | undefined, next: TemplateNextFunc
+    ): void {
+        try {
+            if ( !str ) {
+                throw new Error( "No script found to compile...." );
+            }
+            const context: { [x: string]: SendBox; } = {
+                thisNext: templateNext
+            };
+            const script = new _vm.Script( `thisNext = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};` );
+            _vm.createContext( context );
+            script.runInContext( context );
+            return next( {
+                str,
+                isScript: true,
+                sendBox: context.thisNext
+            } );
+        } catch ( e ) {
+            return next( { str: "", err: e } );
         }
-        const context: { [x: string]: SendBox; } = {
-            thisNext: templateNext
-        };
-        const script = new _vm.Script( `thisNext = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};` );
-        _vm.createContext( context );
-        script.runInContext( context );
-        if( next ) next(str, true);
-        return context.thisNext;
     }
     private static parseScript( str: string ): string | undefined {
         str = str.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
@@ -290,19 +352,57 @@ export class TemplateCore {
         if ( index < 0 ) return false;
         return str.substring( 0, index ).indexOf( "__sow_template_script__" ) > -1;
     }
-    public static run( appRoot: string, str: string, next?: ( str: string, isScript?: boolean ) => void ): string | SendBox {
+    private static _run(
+        ctx: IContext,
+        appRoot: string,
+        str: string,
+        fnext: ( str: string, isTemplate: boolean ) => void
+    ): void {
         const isTemplate = this.isTemplate( str );
         if ( isTemplate ) {
-            str = TemplateParser.parse( appRoot, str );
+            return TemplateParser.parse( ctx, appRoot, str, ( tstr: string ): void => {
+                return fnext( tstr, true );
+            } );
         }
-        if ( this.isScript( str ) ) {
-            return this.compile( this.parseScript( str ), next );
-        }
-        if ( isTemplate ) {
-            if ( next ) next( str, false );
-        }
-        return str;
+        return fnext( str, false );
     }
+    public static run(
+        ctx: IContext,
+        appRoot: string,
+        str: string,
+        next: TemplateNextFunc
+    ): void {
+        return this._run( ctx, appRoot, str, ( fstr: string, isTemplate: boolean ): void => {
+            if ( this.isScript( fstr ) ) {
+                return this.compile( this.parseScript( fstr ), next );
+            }
+            return next( {
+                str: fstr,
+                isScript: false,
+                isTemplate
+            } );
+        } );
+    }
+}
+function canReadFileCache( ctx: IContext, filePath: string, cachePath: string, next: ( readCache: boolean ) => void ): void {
+    if ( ctx.server.config.template.cache ) {
+        return fsw.isExists( cachePath, ( exists: boolean ): void => {
+            if ( !exists ) return next( false );
+            return fsw.compairFile( filePath, cachePath, ( err: NodeJS.ErrnoException | null, changed: boolean ) => {
+                return ctx.handleError( err, () => {
+                    if ( changed ) {
+                        return _fs.unlink( cachePath, ( uerr: NodeJS.ErrnoException | null ): void => {
+                            return ctx.handleError( uerr, () => {
+                                return next( false );
+                            } );
+                        } );
+                    }
+                    return next( true );
+                } );
+            }, ctx.handleError.bind( ctx ) );
+        } );
+    }
+    return next( false );
 }
 class TemplateLink {
     private static processResponse( status: IResInfo ): SendBoxNext {
@@ -310,115 +410,147 @@ class TemplateLink {
             ctx.res.set( 'Cache-Control', 'no-store' );
             if ( isCompressed && isCompressed === true ) {
                 return _zlib.gzip( Buffer.from( body ), ( error: Error | null, buff: Buffer ) => {
-                    if ( error ) {
-                        ctx.server.addError( ctx, error );
-                        return ctx.next( 500, true );
-                    }
-                    ctx.res.writeHead( status.code, {
-                        'Content-Type': 'text/html',
-                        'Content-Encoding': 'gzip',
-                        'Content-Length': buff.length
+                    return ctx.handleError( error, () => {
+                        ctx.res.writeHead( status.code, {
+                            'Content-Type': 'text/html',
+                            'Content-Encoding': 'gzip',
+                            'Content-Length': buff.length
+                        } );
+                        ctx.res.end( buff );
+                        ctx.next( status.code, status.isErrorCode === false );
                     } );
-                    ctx.res.end( buff );
-                    ctx.next( status.code, status.isErrorCode === false );
-                } ), void 0;
+                } );
             }
-            ctx.res.writeHead( status.code, {
-                'Content-Type': 'text/html',
-                'Content-Length': Buffer.byteLength( body )
+            return ctx.handleError( null, () => {
+                ctx.res.writeHead( status.code, {
+                    'Content-Type': 'text/html',
+                    'Content-Length': Buffer.byteLength( body )
+                } );
+                return ctx.res.end( body ), ctx.next( status.code, status.isErrorCode === false );
             } );
-            return ctx.res.end( body ), ctx.next( status.code, status.isErrorCode === false );
         }
     }
     public static tryLive( ctx: IContext, path: string, status: IResInfo ): void {
-        const url = Util.isExists( path, ctx.next );
-        if ( !url ) return;
-        const result = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
-        if ( typeof ( result ) === "function" ) {
-            return result( ctx, this.processResponse( status ), false );
-        }
-        ctx.res.set( 'Cache-Control', 'no-store' );
-        // ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
-        return ctx.res.asHTML( 200 ).end( result ), ctx.next( status.code, status.isErrorCode === false );
+        return fsw.isExists( path, ( exists: boolean, url: string ): void => {
+            if ( !exists ) return ctx.next( 404 );
+            return _fs.readFile( url, "utf8", ( err: NodeJS.ErrnoException | null, data: string ) => {
+                return ctx.handleError( err, (): void => {
+                    return TemplateCore.run( ctx, ctx.server.getPublic(), data.replace( /^\uFEFF/, '' ), ( result: CompilerResult ): void => {
+                        return ctx.handleError( result.err, () => {
+                            if ( result.sendBox ) {
+                                try {
+                                    return result.sendBox( ctx, this.processResponse( status ), false );
+                                } catch ( e ) {
+                                    return ctx.transferError( e );
+                                }
+                            }
+                            ctx.res.set( 'Cache-Control', 'no-store' );
+                            return ctx.res.asHTML( 200 ).end( result.str ), ctx.next( status.code, status.isErrorCode === false );
+                        } );
+                    } );
+                } );
+            } );
+        } );
+    }
+    private static _tryMemCache(
+        ctx: IContext,
+        path: string,
+        status: IResInfo,
+        next: ( func: SendBox | string ) => void
+    ): void {
+        const key = path.replace( /\//gi, "_" ).replace( /\./gi, "_" );
+        const cache = _tw.cache[key];
+        if ( cache ) return next( cache );
+        return fsw.isExists( path, ( exists: boolean, url: string ): void => {
+            if ( !exists ) return ctx.next( 404 );
+            return _fs.readFile( url, "utf8", ( err: NodeJS.ErrnoException | null, data: string ) => {
+                return ctx.handleError( err, (): void => {
+                    return TemplateCore.run( ctx, ctx.server.getPublic(), data.replace( /^\uFEFF/, '' ), ( result: CompilerResult ): void => {
+                        return ctx.handleError( result.err, () => {
+                            _tw.cache[key] = result.sendBox || result.str;
+                            return next( result.sendBox || result.str );
+                        } );
+                    } );
+                } )
+            } );
+        } );
     }
     public static tryMemCache( ctx: IContext, path: string, status: IResInfo ): void {
-        const key = path.replace( /\//gi, "_" ).replace( /\./gi, "_" );
-        let cache = _tw.cache[key];
-        if ( !cache ) {
-            const url = Util.isExists( path, ctx.next );
-            if ( !url ) return;
-            cache = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( String( url ), "utf8" ).replace( /^\uFEFF/, '' ) );
-            _tw.cache[key] = cache;
-        }
-        if ( typeof ( cache ) === "function" ) {
-            return cache( ctx, this.processResponse( status ) );
-        }
-        ctx.res.set( 'Cache-Control', 'no-store' );
-        ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
-        return ctx.res.end( cache ), ctx.next( status.code, status.isErrorCode === false );
+        return this._tryMemCache( ctx, path, status, ( func: SendBox | string ): void => {
+            if ( typeof ( func ) === "function" ) {
+                return func( ctx, this.processResponse( status ) );
+            }
+            ctx.res.set( 'Cache-Control', 'no-store' );
+            ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
+            return ctx.res.end( func ), ctx.next( status.code, status.isErrorCode === false );
+        } );
     }
-    public static tryFileCacheOrLive( ctx: IContext, path: string, status: IResInfo ): void {
-        const fsp = Util.isExists( path, ctx.next );
-        if ( !fsp ) {
-            return void 0;
-        };
-        const filePath = String( fsp );
+    private static _tryFileCacheOrLive(
+        ctx: IContext,
+        filePath: string,
+        next: ( func: SendBox | string ) => void
+    ): void {
         const cachePath = `${filePath}.cach`;
-        if ( !filePath ) return;
-        let readCache = false;
-        if ( ctx.server.config.template.cache && Util.isExists( cachePath ) ) {
-            readCache = Util.compairFile( filePath, cachePath ) === false;
-            if ( readCache === false ) {
-                _fs.unlinkSync( cachePath );
+        return canReadFileCache( ctx, filePath, cachePath, ( readCache: boolean ): void => {
+            if ( !readCache ) {
+                return _fs.readFile( filePath, "utf8", ( err: NodeJS.ErrnoException | null, data: string ) => {
+                    return ctx.handleError( err, (): void => {
+                        return TemplateCore.run( ctx, ctx.server.getPublic(), data.replace( /^\uFEFF/, '' ), ( result: CompilerResult ): void => {
+                            return ctx.handleError( result.err, () => {
+                                return _fs.writeFile( cachePath, result.str, ( werr: NodeJS.ErrnoException | null ) => {
+                                    return ctx.handleError( werr, () => {
+                                        return next( result.sendBox || result.str );
+                                    } );
+                                } );
+                            } );
+                        } );
+                    } );
+                } );
             }
-        }
-        let cache;
-        if ( !readCache ) {
-            cache = TemplateCore.run( ctx.server.getPublic(), _fs.readFileSync( filePath, "utf8" ).replace( /^\uFEFF/, '' ), !ctx.server.config.template.cache ? void 0 : ( str ) => {
-                _fs.writeFileSync( cachePath, str );
+            return _fs.readFile( cachePath, "utf8", ( err: NodeJS.ErrnoException | null, data: string ) => {
+                return ctx.handleError( err, (): void => {
+                    if ( TemplateCore.isScriptTemplate( data ) ) {
+                        return TemplateCore.compile( data, ( result: CompilerResult ): void => {
+                            return ctx.handleError( result.err, () => {
+                                return next( result.sendBox || result.str );
+                            } );
+                        } );
+                    }
+                    return next( data );
+                } );
             } );
-        } else {
-            cache = _fs.readFileSync( cachePath, "utf8" ).replace( /^\uFEFF/, '' );
-            if ( TemplateCore.isScriptTemplate( cache ) ) {
-                cache = TemplateCore.compile( cache );
-            }
-        }
-        if ( typeof ( cache ) === "function" ) {
-            return cache( ctx, this.processResponse( status ) );
-        }
-        ctx.res.set( 'Cache-Control', 'no-store' );// res.setHeader( 'Cache-Control', 'public, max-age=0' )
-        ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
-        return ctx.res.end( cache ), ctx.next( status.code, status.isErrorCode === false );
+        } );
+    }
+    public static tryFileCacheOrLive(
+        ctx: IContext, path: string, status: IResInfo
+    ): void {
+        return fsw.isExists( path, ( exists: boolean, filePath: string ) => {
+            if ( !exists ) return ctx.next( 404 );
+            return this._tryFileCacheOrLive( ctx, filePath, ( func: string | SendBox ) => {
+                if ( typeof ( func ) === "function" ) {
+                    try {
+                        return func( ctx, this.processResponse( status ) );
+                    } catch ( e ) {
+                        return ctx.transferError( e );
+                    }
+                }
+                ctx.res.set( 'Cache-Control', 'no-store' );// res.setHeader( 'Cache-Control', 'public, max-age=0' )
+                ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
+                return ctx.res.end( func ), ctx.next( status.code, status.isErrorCode === false );
+            } );
+        } );
     }
 }
-export namespace Template {
-    export function parse( ctx: IContext, path: string, status?: IResInfo ): void {
+export class Template {
+    public static parse( ctx: IContext, path: string, status?: IResInfo ): void {
         if ( !status ) status = HttpStatus.getResInfo( path, 200 );
-        try {
-            ctx.servedFrom = ctx.server.pathToUrl( path );
-            if ( !ctx.server.config.template.cache ) {
-                return TemplateLink.tryLive( ctx, path, status );
-            }
-            if ( ctx.server.config.template.cache && ctx.server.config.template.cacheType === "MEM" ) {
-                return TemplateLink.tryMemCache( ctx, path, status );
-            }
-            return TemplateLink.tryFileCacheOrLive( ctx, path, status );
-        } catch ( ex ) {
-            ctx.path = path;
-            if ( status.code === 500 ) {
-                if ( status.tryServer === true ) {
-                    ctx.server.addError( ctx, ex );
-                    return ctx.server.passError( ctx ), void 0;
-                }
-                status.tryServer = true;
-            }
-            ctx.server.log.error( `Send 500 ${ctx.server.pathToUrl( ctx.path )}` ).reset();
-            status.code = 500; status.isErrorCode = true;
-            return parse(
-                ctx.server.addError( ctx, ex ),
-                status.tryServer ? `${ctx.server.errorPage["500"]}` : `${ctx.server.config.errorPage["500"]}`,
-                status
-            );
+        ctx.servedFrom = ctx.server.pathToUrl( path );
+        if ( !ctx.server.config.template.cache ) {
+            return TemplateLink.tryLive( ctx, path, status );
         }
+        if ( ctx.server.config.template.cache && ctx.server.config.template.cacheType === "MEM" ) {
+            return TemplateLink.tryMemCache( ctx, path, status );
+        }
+        return TemplateLink.tryFileCacheOrLive( ctx, path, status );
     }
 }

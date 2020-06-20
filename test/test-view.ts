@@ -2,12 +2,13 @@
 import expect from 'expect';
 import * as path from "path";
 import * as fs from "fs";
+import * as fsw from '../lib/sow-fsw';
 import {
 	IRequestParam
 } from '../lib/sow-router';
 import {
-	IApps, IRequest, IResponse, NextFunction,
-	parseCookie
+	IApplication, IRequest, IResponse, NextFunction,
+	parseCookie, getClientIpFromHeader
 } from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
 import {
@@ -16,7 +17,12 @@ import {
 } from '../lib/sow-server';
 import { SowHttpCache } from '../lib/sow-http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
-import { PayloadParser, socketInitilizer, HttpMimeHandler, Streamer, Util, Encryption } from '../index';
+import {
+	socketInitilizer, PayloadParser,
+	HttpMimeHandler, Streamer, Encryption
+} from '../index';
+import { IPostedFileInfo, UploadFileInfo } from '../lib/sow-payload-parser';
+import { assert, Util } from '../lib/sow-util';
 const mimeHandler = new HttpMimeHandler();
 export function shouldBeError( next: () => void, printerr?: boolean ): Error | void {
 	try {
@@ -26,11 +32,16 @@ export function shouldBeError( next: () => void, printerr?: boolean ): Error | v
 		return e;
 	}
 };
-global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
+global.sow.server.on( "register-view", ( app: IApplication, controller: IController, server: ISowServer ) => {
 	expect( parseCookie( ["test"] ) ).toBeInstanceOf( Object );
 	expect( parseCookie( {} ) ).toBeInstanceOf( Object );
 	app.use( "/app-error", ( req: IRequest, res: IResponse, next: NextFunction ) => {
+		expect( req.session ).toBeInstanceOf( Object );
+		expect( getClientIpFromHeader( req.headers ) ).toBeUndefined();
 		throw new Error( "Application should be fire Error event" );
+	} ).prerequisites( ( req: IRequest, res: IResponse, next: NextFunction ): void => {
+		expect( req.session ).toBeInstanceOf( Object );
+		return next();
 	} );
 	expect( shouldBeError( () => { socketInitilizer( server, SocketErr1() ) } ) ).toBeInstanceOf( Error );
 	expect( shouldBeError( () => { socketInitilizer( server, SocketErr2() ) } ) ).toBeInstanceOf( Error );
@@ -45,8 +56,11 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		ctx.res.json( ws.wsEvent || {} ); ctx.next( 200 );
 		return void 0;
 	} );
+	controller.any( "/test-head", ( ctx: IContext, requestParam?: IRequestParam ): void => {
+		return ctx.res.status( 200 ).send();
+	} );
 } );
-global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
+global.sow.server.on( "register-view", ( app: IApplication, controller: IController, server: ISowServer ) => {
 	expect( shouldBeError( () => { mimeHandler.getMimeType( "NO_EXT" ); } ) ).toBeInstanceOf( Error );
 	const vDir: string = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
 	server.addVirtualDir( "/vtest", vDir, ( ctx: IContext ): void => {
@@ -65,7 +79,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		} );
 	} ) ).toBeInstanceOf( Error );
 } );
-global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
+global.sow.server.on( "register-view", ( app: IApplication, controller: IController, server: ISowServer ) => {
 	const streamDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
 	server.addVirtualDir( "/web-stream", streamDir, ( ctx: IContext, requestParam?: IRequestParam  ): void => {
 		if ( ctx.server.config.liveStream.indexOf( ctx.extension ) > -1 ) {
@@ -86,13 +100,14 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		server.addVirtualDir( "/:static-file", streamDir );
 	} ) ).toBeInstanceOf( Error );
 } );
-global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
+global.sow.server.on( "register-view", ( app: IApplication, controller: IController, server: ISowServer ) => {
 	const downloadDir = server.mapPath( "/upload/data/" );
 	if ( !fs.existsSync( downloadDir ) ) {
-		Util.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
+		fsw.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
 	}
 	const tempDir: string = server.mapPath( "/upload/temp/" );
-	controller.post( '/post', async ( ctx: IContext, requestParam?: IRequestParam  ) => {
+	fsw.mkdirSync( tempDir );
+	controller.post( '/post', async ( ctx: IContext, requestParam?: IRequestParam ) => {
 		const task: string | void = typeof ( ctx.req.query.task ) === "string" ? ctx.req.query.task.toString() : void 0;
 		const parser = new PayloadParser( ctx.req, tempDir );
 		if ( parser.isMultipart() ) {
@@ -111,10 +126,13 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 				result.isJson = true;
 			}
 			expect( shouldBeError( () => {
-				parser.saveAs( downloadDir );
+				parser.saveAsSync( downloadDir );
 			} ) ).toBeInstanceOf( Error );
 			expect( shouldBeError( () => {
 				parser.getFiles( ( pf ) => { return; } );
+			} ) ).toBeInstanceOf( Error );
+			expect( shouldBeError( () => {
+				parser.getUploadFileInfo( );
 			} ) ).toBeInstanceOf( Error );
 			if ( err && err instanceof Error ) {
 				ctx.res.json( Util.extend( result, { error: true, msg: err.message } ) );
@@ -130,9 +148,10 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
 			return ctx.res.end( JSON.stringify( parser.getJson() ) ), ctx.next( 200 );
 		}
-		parser.saveAs( downloadDir );
+		parser.saveAsSync( downloadDir );
+		parser.clear();
 		return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
-	} ).post( '/upload-error', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
+	} ).post( '/upload-invalid-file', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		const parser = new PayloadParser( ctx.req, tempDir );
 		let err: Error | undefined;
 		try {
@@ -140,9 +159,23 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		} catch ( e ) {
 			err = e;
 		}
-		expect( err ).toBeInstanceOf( Error );
+		parser.clear();
 		if ( err ) {
-			if ( err.message.indexOf( "CLIENET_DISCONNECTED" ) > -1 ) return ctx.next( -404, false );
+			if ( err.message.indexOf( "Invalid file header" ) > -1 ) return ctx.next( 500 );
+		}
+		console.log( err );
+		throw new Error( "Should not here..." );
+	} ).post( '/abort-error', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
+		const parser = new PayloadParser( ctx.req, tempDir );
+		let err: Error | undefined;
+		try {
+			await parser.readDataAsync();
+		} catch ( e ) {
+			err = e;
+		}
+		parser.clear();
+		if ( err ) {
+			if ( err.message.indexOf( "CLIENET_DISCONNECTED" ) > -1 ) return ctx.next( -500 );
 		}
 		throw new Error( "Should not here..." );
 	} ).post( '/upload-malformed-data', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
@@ -157,7 +190,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		parser.clear();
 		if ( err ) {
 			server.addError( ctx, err );
-			return server.transferRequest( ctx, server.config.errorPage["500"] );
+			return server.transferRequest( ctx, 500 );
 		}
 		throw new Error( "Should not here..." );
 	} ).post( '/upload-test', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
@@ -165,94 +198,82 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 			const parser = new PayloadParser( ctx.req, tempDir );
 			expect( shouldBeError( () => {
 				parser.getFiles( ( pf ) => {
-					console.log( pf.getName() );
+					console.log( pf );
 				} );
+			} ) ).toBeInstanceOf( Error );
+			expect( shouldBeError( () => {
+				parser.getUploadFileInfo();
 			} ) ).toBeInstanceOf( Error );
 			expect( shouldBeError( () => {
 				parser.getData();
 			} ) ).toBeInstanceOf( Error );
 			await parser.readDataAsync();
-			const data: {
-				[key: string]: any;
-				content_type: string;
-				name: string;
-				file_name: string;
-				content_disposition: string;
-				file_size: number;
-			}[] = [];
-			parser.getFiles( ( file ) => {
-				data.push( {
-					content_type: file.getContentType(),
-					name: file.getName(),
-					file_name: file.getFileName(),
-					content_disposition: file.getContentDisposition(),
-					file_size: file.getFileSize(),
-					temp_path: file.getTempPath()
-				} );
-			} );
-			parser.saveAs( downloadDir );
+			const data: UploadFileInfo[] = parser.getUploadFileInfo();
+			parser.saveAsSync( downloadDir );
 			parser.clear();
 			ctx.res.json( data.shift() || {} );
 			ctx.next( 200 );
 		} catch ( e ) {
 			throw e;
 		}
-
+	} ).post( '/upload-non-bolock', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+		if ( ctx.res.isAlive ) {
+			expect( ctx.req.get( "content-type" ) ).toBeDefined();
+			const parser = new PayloadParser( ctx.req, tempDir );
+			return parser.readData( ( err ) => {
+				assert( err === undefined, "parser.readData" );
+				const data: UploadFileInfo[] = parser.getUploadFileInfo();
+				return parser.getFiles( ( file?: IPostedFileInfo, done?: () => void ): void => {
+					if ( !file || !done ) return ctx.res.status( 200 ).send( data.shift() || {} );
+					return file.read( ( rerr: Error | NodeJS.ErrnoException | null, buff: Buffer ): void => {
+						assert( rerr === null, "file.read" );
+						expect( buff ).toBeInstanceOf( Buffer );
+						return parser.saveAs( downloadDir, ( serr: Error | NodeJS.ErrnoException | null ): void => {
+							assert( serr === null, "file.saveAs" );
+							expect( shouldBeError( () => {
+								ctx.res.status( 0 ).send( "Nothing...." );
+							} ) ).toBeInstanceOf( Error );
+							ctx.res.status( 200 ).send( data.shift() || {} );
+							expect( shouldBeError( () => {
+								ctx.res.send( "Nothing...." );
+							} ) ).toBeInstanceOf( Error );
+						}, ctx.handleError.bind( ctx ) );
+					} );
+				} );
+			} );
+		}
 	} ).post( '/upload', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		const saveTo = typeof ( ctx.req.query.saveto ) === "string" ? ctx.req.query.saveto.toString() : void 0;
-		expect( shouldBeError( () => {
-			const p = new PayloadParser( ctx.req, server.mapPath( "/upload/data/schema.json" ) );
-		} ) ).toBeInstanceOf( Error );
 		const parser = new PayloadParser( ctx.req, tempDir );
 		expect( shouldBeError( () => {
-			parser.saveAs( downloadDir );
+			parser.saveAsSync( downloadDir );
 		} ) ).toBeInstanceOf( Error );
 		parser.readData( ( err ) => {
-			if ( err ) {
-				if ( typeof ( err ) === "string" && err === "CLIENET_DISCONNECTED" ) return ctx.next( -500 );
-				parser.clear();
-				server.addError( ctx, err instanceof Error ? err.message : err );
-				return ctx.next( 500 );
-			}
+			assert( err === undefined, "parser.readData" );
 			if ( !parser.isMultipart() ) {
 				ctx.next( 404 );
 			} else {
-				const data: {
-					[key: string]: any;
-					content_type: string;
-					name: string;
-					file_name: string;
-					content_disposition: string;
-					file_size: number;
-				}[] = [];
-				parser.getFiles( ( file ) => {
-					data.push( {
-						content_type: file.getContentType(),
-						name: file.getName(),
-						file_name: file.getFileName(),
-						content_disposition: file.getContentDisposition(),
-						file_size: file.getFileSize(),
-						temp_path: file.getTempPath()
-					} );
-					expect( file.read() ).toBeInstanceOf( Buffer );
+				const data: UploadFileInfo[] = parser.getUploadFileInfo();
+				parser.getFilesSync( ( file: IPostedFileInfo ): void => {
+					expect( file.readSync() ).toBeInstanceOf( Buffer );
 					if ( saveTo ) {
 						if ( saveTo === "C" )
 							file.clear();
 						return;
 					}
-					file.saveAs( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
+					file.saveAsSync( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
 					expect( shouldBeError( () => {
-						file.read();
+						file.readSync();
 					} ) ).toBeInstanceOf( Error );
 					expect( shouldBeError( () => {
-						file.saveAs( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
+						file.saveAsSync( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
 					} ) ).toBeInstanceOf( Error );
 				} );
 				if ( saveTo && saveTo !== "C" ) {
 					expect( shouldBeError( () => {
-						parser.saveAs( server.mapPath( "/upload/data/schema.json" ) );
+						parser.saveAsSync( server.mapPath( "/upload/data/schema.json" ) );
 					} ) ).toBeInstanceOf( Error );
-					parser.saveAs( downloadDir );
+					parser.saveAsSync( downloadDir );
 				}
 				expect( shouldBeError( () => {
 					parser.getData();
@@ -265,56 +286,84 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		} );
 	} );
 } );
-global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
+global.sow.server.on( "register-view", ( app: IApplication, controller: IController, server: ISowServer ) => {
 	controller
 		.get( "/test-context", ( ctx: IContext, requestParam?: IRequestParam ): void => {
-			const nctx: IContext = server.createContext( ctx.req, ctx.res, ctx.next );
-			nctx.path = "/not-found/404/";
-			nctx.req.path = "/not-found/404/";
-			nctx.next = ( code, transfer ) => {
-				// Nothing to do....!
-				expect( code ).toEqual( 404 );
+			try {
+				const nctx: IContext = server.createContext( ctx.req, ctx.res, ctx.next );
+				nctx.path = "/not-found/404/";
+				nctx.req.path = "/not-found/404/";
+				nctx.next = ( code, transfer ) => {
+					// Nothing to do....!
+					expect( code ).toEqual( 404 );
+				}
+				const oldDoc: string[] = server.config.defaultDoc;
+				server.config.defaultDoc = [];
+				controller.processAny( nctx );
+				server.config.defaultDoc = oldDoc;
+				nctx.path = "";
+				nctx.req.path = "";
+				controller.processAny( nctx );
+				const oldext: string = server.config.defaultExt;
+				server.config.defaultExt = "";
+				server.config.defaultDoc = [];
+				controller.processAny( nctx );
+				nctx.path = "/not-found/";
+				nctx.req.path = "/not-found/";
+				controller.processAny( nctx );
+				server.config.defaultExt = oldext;
+				server.config.defaultDoc = oldDoc;
+				nctx.path = "/not-found/index";
+				nctx.req.path = "/not-found/index";
+				controller.processAny( nctx );
+				const oldEncoding = ctx.req.headers['accept-encoding'];
+				ctx.req.headers['accept-encoding'] = void 0;
+				expect( SowHttpCache.isAcceptedEncoding( ctx.req.headers, "NOTHING" ) ).toBeFalsy();
+				ctx.req.headers['accept-encoding'] = oldEncoding;
+				const treq = ctx.transferRequest;
+				ctx.transferRequest = ( toPath: string | number ): void => {
+					if ( typeof ( toPath ) === "string" )
+						expect( toPath.indexOf( "404" ) ).toBeGreaterThan( -1 );
+					else
+						expect( toPath ).toEqual( 404 );
+				}
+				mimeHandler.render( ctx );
+				expect( mimeHandler.isValidExtension( ctx.extension ) ).toBeFalsy();
+				ctx.transferRequest = treq;
+				( () => {
+					const oldEnd = ctx.res.end;
+					ctx.res.end = ( ...arg: any[] ): void => {
+						expect( arg.length ).toBeGreaterThanOrEqual( 0 );
+					}
+					ctx.res.status( 204 ).send( );
+					expect( shouldBeError( () => {
+						ctx.res.status( 200 ).send();
+					} ) ).toBeInstanceOf( Error );
+					ctx.res.status( 200 ).send( "Nothing to do..." );
+					ctx.res.setHeader( 'Content-Type', "" );
+					ctx.res.send( true );
+					ctx.res.setHeader( 'Content-Type', "" );
+					ctx.res.send( 1000 );
+					ctx.res.setHeader( 'Content-Type', "" );
+					ctx.res.send( Buffer.from( "Nothing to do...." ) );
+					ctx.res.end = oldEnd;
+				} )();
+				( () => {
+					const parser = new PayloadParser( ctx.req, server.mapPath( "/upload/temp/" ) );
+					expect( shouldBeError( () => {
+						parser.getData();
+					} ) ).toBeInstanceOf( Error );
+					parser.clear();
+				} )();
+				ctx.res.json( {
+					done: true
+				} );
+			} catch ( e ) {
+				console.log( e );
+				ctx.res.json( {
+					done: true
+				} );
 			}
-			const oldDoc: string[] = server.config.defaultDoc;
-			server.config.defaultDoc = [];
-			controller.processAny( nctx );
-			server.config.defaultDoc = oldDoc;
-			nctx.path = "";
-			nctx.req.path = "";
-			controller.processAny( nctx );
-			const oldext: string = server.config.defaultExt;
-			server.config.defaultExt = "";
-			server.config.defaultDoc = [];
-			controller.processAny( nctx );
-			nctx.path = "/not-found/";
-			nctx.req.path = "/not-found/";
-			controller.processAny( nctx );
-			server.config.defaultExt = oldext;
-			server.config.defaultDoc = oldDoc;
-			nctx.path = "/not-found/index";
-			nctx.req.path = "/not-found/index";
-			controller.processAny( nctx );
-			const oldEncoding = ctx.req.headers['accept-encoding'];
-			ctx.req.headers['accept-encoding'] = void 0;
-			expect( SowHttpCache.isAcceptedEncoding( ctx.req.headers, "NOTHING" ) ).toBeFalsy();
-			ctx.req.headers['accept-encoding'] = oldEncoding;
-			const treq = ctx.transferRequest;
-			ctx.transferRequest = ( toPath: string ): void => {
-				expect( toPath.indexOf( "404" ) ).toBeGreaterThan( -1 );
-			}
-			mimeHandler.render( ctx );
-			expect( mimeHandler.isValidExtension( ctx.extension ) ).toBeFalsy();
-			ctx.transferRequest = treq;
-			( () => {
-				const parser = new PayloadParser( ctx.req, server.mapPath( "/upload/temp/" ) );
-				expect( shouldBeError( () => {
-					parser.getData();
-				} ) ).toBeInstanceOf( Error );
-				parser.clear();
-			} )();
-			ctx.res.json( {
-				done: true
-			} );
 		} )
 		.get( '/controller-error', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			throw new Error( "runtime-error" );
@@ -346,7 +395,7 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 		} );
 
 } );
-global.sow.server.on( "register-view", ( app: IApps, controller: IController, server: ISowServer ) => {
+global.sow.server.on( "register-view", ( app: IApplication, controller: IController, server: ISowServer ) => {
 	controller
 		.get( '/get-file', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			return Util.sendResponse( ctx, server.mapPath( "index.html" ), "text/plain" );
@@ -367,6 +416,17 @@ global.sow.server.on( "register-view", ( app: IApps, controller: IController, se
 				expires: new Date(), secure: true,
 				sameSite: 'none'
 			} );
+			expect( ctx.req.cookies ).toBeInstanceOf( Object );
+			expect( ctx.req.ip ).toBeDefined();
+			expect( ctx.req.ip ).toBeDefined();
+			expect( ctx.res.get( 'Set-Cookie' ) ).toBeDefined();
+			expect( ctx.req.get( 'cookie' ) ).toBeDefined();
+			expect( ctx.res.get( 'server' ) ).toEqual( "SOW Frontend" );
+			expect( ctx.res.isAlive ).toBeTruthy();
+			server.setDefaultProtectionHeader( ctx.res );
+			expect( shouldBeError( () => {
+				server.transferRequest( ctx, 200 );
+			} ) ).toBeInstanceOf( Error );
 			ctx.res.json( { task: "done" } );
 			return void 0;
 		} )

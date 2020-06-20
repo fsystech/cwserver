@@ -6,7 +6,7 @@
 // 11:26 PM 9/28/2019
 import * as _fs from 'fs';
 import * as _path from 'path';
-import { Util } from './sow-util';
+import * as fsw from './sow-fsw';
 export interface ILogger {
     newLine(): any;
     write( msg: string, color?: string ): ILogger;
@@ -99,7 +99,7 @@ export class Logger implements ILogger {
         if ( !tz ) tz = '+6';
         this._tz = tz;
         if ( !_fs.existsSync( dir ) ) {
-            Util.mkdirSync( dir );
+            fsw.mkdirSync( dir );
         }
         if ( typeof ( maxBlockSize ) === "number" ) {
             this._maxBlockSize = maxBlockSize;

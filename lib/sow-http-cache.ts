@@ -11,9 +11,9 @@ export type IChangeHeader = {
     sinceModify?: number | void;
     etag?: string;
 };
-export namespace SowHttpCache {
+export class SowHttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
-    export function getIfModifiedSinceUTCTime( headers: IncomingHttpHeaders ): number | void {
+    public static getIfModifiedSinceUTCTime( headers: IncomingHttpHeaders ): number | void {
         const ifModifiedSinceHeaderText = headers["If-Modified-Since"] || headers["if-modified-since"];
         if ( ifModifiedSinceHeaderText ) {
             const date = new Date( ifModifiedSinceHeaderText.toString() );
@@ -23,10 +23,10 @@ export namespace SowHttpCache {
         return void 0;
     }
     /** Gets the {sinceModify, etag} from given header {If-None-Match, If-Modified-Since}. */
-    export function getChangedHeader( headers: IncomingHttpHeaders ): IChangeHeader {
+    public static getChangedHeader( headers: IncomingHttpHeaders ): IChangeHeader {
         const tag: string | string[] | undefined = headers["If-None-Match"] || headers["if-none-match"] || headers.ETag || headers.etag;
         return {
-            sinceModify: getIfModifiedSinceUTCTime( headers ),
+            sinceModify: this.getIfModifiedSinceUTCTime( headers ),
             etag: tag ? tag.toString() : void 0
         };
     }
@@ -34,7 +34,7 @@ export namespace SowHttpCache {
      * Write cache header
      * e.g. {last-modified, expires, ETag, cache-control, x-server-revalidate}.
      */
-    export function writeCacheHeader(
+    public static writeCacheHeader(
         res: IResponse,
         obj: { lastChangeTime?: number | void, etag?: string },
         cacheHeader: {
@@ -57,10 +57,10 @@ export namespace SowHttpCache {
         }
     }
     /** Create and Gets {etag} (timestamp ^ fsize). */
-    export function getEtag( timestamp: number, fsize: number ): string {
+    public static getEtag( timestamp: number, fsize: number ): string {
         return `W/${( timestamp ^ fsize )}`;
     }
-    export function isAcceptedEncoding( headers: IncomingHttpHeaders, name: string ): boolean {
+    public static isAcceptedEncoding( headers: IncomingHttpHeaders, name: string ): boolean {
         const acceptEncoding = headers['accept-encoding'];
         if( !acceptEncoding ) return false;
         return acceptEncoding.indexOf( name ) > -1;

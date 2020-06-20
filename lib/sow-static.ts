@@ -15,7 +15,7 @@ export interface IResInfo {
     isValid: boolean;
     isErrorCode: boolean;
     isInternalErrorCode: boolean;
-    tryServer: boolean;
+    description: string;
 }
 export class Session implements ISession {
     isAuthenticated: boolean;
@@ -34,12 +34,12 @@ export class ResInfo implements IResInfo {
     isValid: boolean;
     isErrorCode: boolean;
     isInternalErrorCode: boolean;
-    tryServer: boolean;
+    description: string;
     constructor() {
         this.code = 0; this.isValid = false;
         this.isErrorCode = false;
         this.isInternalErrorCode = false;
-        this.tryServer = false;
+        this.description = "Ok";
     };
 }
 export function ToNumber( obj: any ): number {

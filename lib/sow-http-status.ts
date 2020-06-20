@@ -107,21 +107,24 @@ export class HttpStatus {
         }
         return false;
     }
-    static getResInfo( path: string, code: any ): IResInfo {
+    static getResInfo( path: string | number, code: any ): IResInfo {
         code = ToNumber( code );
-        const out = new ResInfo();
-        out.code = this.fromPath( path, code );
+        const out: IResInfo = new ResInfo();
+        out.code = typeof ( path ) === "number" ? path : this.fromPath( path, code );
         out.isValid = false;
         out.isErrorCode = false;
         out.isInternalErrorCode = false;
-        out.tryServer = false;
         if ( out.code > 0 ) {
             out.isValid = this.isValidCode( out.code );
         } else {
             out.isValid = false;
         }
         if ( out.isValid ) out.isErrorCode = this.isErrorCode( out.code );
-        if ( out.isErrorCode ) out.isInternalErrorCode = out.code === 500;
+        if ( out.isErrorCode ) {
+            out.description = this.getDescription( out.code );
+            out.isInternalErrorCode = out.code === 500;
+        }
+        // console.log( out );
         return out;
     }
     static isErrorCode( code: any ): boolean {

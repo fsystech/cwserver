@@ -24,30 +24,30 @@ export class CryptoInfo implements ICryptoInfo {
         this.key = void 0; this.iv = void 0;
     }
 }
-export namespace Encryption {
-    export function utf8ToHex( str: string) {
+export class Encryption {
+    public static utf8ToHex( str: string ) {
         return Buffer.from( str, 'utf8' ).toString( 'hex' );
     }
-    export function hexToUtf8( str: string ) {
+    public static hexToUtf8( str: string ) {
         return Buffer.from( str, 'hex' ).toString( 'utf8' );
     }
-    export function toMd5( str: string ): string {
+    public static toMd5( str: string ): string {
         return md5( str );
     }
-    export function updateCryptoKeyIV( key: string ): ICryptoInfo {
+    public static updateCryptoKeyIV( key: string ): ICryptoInfo {
         const res = new CryptoInfo();
         res.oldKey = key;
         res.md5 = void 0;
-        res.md5 = toMd5( res.oldKey );
+        res.md5 = this.toMd5( res.oldKey );
         res.key = CryptoJS.lib.WordArray.create( res.md5 );
         res.iv = CryptoJS.lib.WordArray.create( res.oldKey );
         return res;
     };
-    export function encrypt( plainText: string, inf: ICryptoInfo ): string {
+    public static encrypt( plainText: string, inf: ICryptoInfo ): string {
         if ( !inf.key ) throw new Error( "Invalid iv and key...." );
         return CryptoJS.AES.encrypt( plainText, inf.key, { iv: inf.iv } ).toString();
     }
-    export function decrypt( encryptedText: string, inf: ICryptoInfo ): string {
+    public static decrypt( encryptedText: string, inf: ICryptoInfo ): string {
         if ( !inf.key ) throw new Error( "Invalid iv and key...." );
         const dec = CryptoJS.AES.decrypt( {
             iv: inf.iv,
@@ -58,20 +58,20 @@ export namespace Encryption {
         } );
         return CryptoJS.enc.Utf8.stringify( dec );
     }
-    export function encryptToHex( plainText: string, inf: ICryptoInfo ): string {
-        const encryptedText = encrypt( plainText, inf );
-        return utf8ToHex( encryptedText );
+    public static encryptToHex( plainText: string, inf: ICryptoInfo ): string {
+        const encryptedText = this.encrypt( plainText, inf );
+        return this.utf8ToHex( encryptedText );
     }
-    export function decryptFromHex( encryptedText: string, inf: ICryptoInfo ): string {
-        encryptedText = hexToUtf8( encryptedText );
-        return decrypt( encryptedText, inf );
+    public static decryptFromHex( encryptedText: string, inf: ICryptoInfo ): string {
+        encryptedText = this.hexToUtf8( encryptedText );
+        return this.decrypt( encryptedText, inf );
     }
-    export function encryptUri( plainText: string, inf: ICryptoInfo ): string {
-        const encryptedText = encrypt( plainText, inf );
+    public static encryptUri( plainText: string, inf: ICryptoInfo ): string {
+        const encryptedText = this.encrypt( plainText, inf );
         return encodeURIComponent( encryptedText );
     }
-    export function decryptUri( encryptedText: string, inf: ICryptoInfo ): string {
+    public static decryptUri( encryptedText: string, inf: ICryptoInfo ): string {
         encryptedText = decodeURIComponent( encryptedText );
-        return decrypt( encryptedText, inf );
+        return this.decrypt( encryptedText, inf );
     }
 }

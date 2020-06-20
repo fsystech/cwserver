@@ -6,7 +6,7 @@
 // 1:20 AM 5/13/2020
 import * as _fs from 'fs';
 import * as _path from 'path';
-import { Util } from './sow-util';
+import { Util, getLibRoot, assert } from './sow-util';
 export interface IPropertiesDescription {
 	type?: string;
 	minLength: number;
@@ -141,21 +141,17 @@ export function schemaValidate(
 		}
 	}
 }
-export namespace Schema {
-	export function Validate( config: { [id: string]: any } | any ): void {
-		const parent = process.env.SCRIPT === "TS" ? _path.resolve( __dirname, '..' ): _path.resolve( __dirname, '../..' );
-		const absPath = _path.resolve( `${parent}/schema.json` );
+export class Schema {
+	public static Validate( config: { [id: string]: any } | any ): void {
+		const parent: string = getLibRoot();
+		const absPath: string = _path.resolve( `${parent}/schema.json` );
 		const schema: ISchema = readSchemaAsync( absPath );
-		const schemaRoot = _supportSchema[schema.$schema];
-		if ( !schemaRoot ) {
-			throw new Error( `Invalid schema file defined.\nPlease re-install cwserver.` );
-		}
+		const schemaRoot: string | undefined = _supportSchema[schema.$schema];
+		assert( schemaRoot, 'Invalid schema file defined.\nPlease re-install cwserver.' );
 		if ( !Util.isPlainObject( config ) ) {
 			throw new Error( `Invalid config file defined.\nConfig file should be ${schema.type}.` );
 		}
-		if ( !config.$schema ) {
-			throw new Error( `No schema defined in config file.\nConfig file should be use $schema:${schema.$schema}` );
-		}
+		assert( config.$schema, `No schema defined in config file.\nConfig file should be use $schema:${schema.$schema}` );
 		delete config.$schema;
 		if ( config.$comment ) {
 			delete config.$comment;

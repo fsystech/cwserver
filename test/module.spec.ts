@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as request from 'superagent';
 import * as io from 'socket.io-client';
+import * as fsw from '../lib/sow-fsw';
 import { HttpStatus } from "../lib/sow-http-status";
 import * as cwserver from '../index';
 import { Session, ToNumber, ToResponseTime } from '../lib/sow-static';
@@ -20,13 +21,13 @@ import {
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
 } from '../lib/sow-router';
-import { IApps } from '../lib/sow-server-core';
-import { Util } from '../lib/sow-util';
+import { IApplication } from '../lib/sow-server-core';
+import { assert, Util } from '../lib/sow-util';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
-import { TemplateCore, templateNext } from '../lib/sow-template';
+import { TemplateCore, templateNext, CompilerResult } from '../lib/sow-template';
 import { shouldBeError } from "./test-view";
 import { Logger, LogTime } from '../lib/sow-logger';
-let app: IApps;
+let app: IApplication;
 const appRoot = process.env.SCRIPT === "TS" ? path.join( path.resolve( __dirname, '..' ), "/dist/test/" ) : __dirname;
 const projectRoot = 'test_web';
 const logDir = path.resolve( './log/' );
@@ -62,13 +63,6 @@ const shutdownApp = ( done?: Mocha.Done ): void => {
         return done( e );
     }
 };
-const its = ( name: string, func: ( done: Mocha.Done ) => void ): void => {
-    it( name, ( done ) => {
-        setTimeout( () => {
-            func( done );
-        }, 100 );
-    } );
-};
 describe( "cwserver-default-project-template", () => {
     it( "create project template", function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
@@ -82,37 +76,49 @@ describe( "cwserver-default-project-template", () => {
         done();
     } );
 } );
+function handleError(
+    err: NodeJS.ErrnoException | Error | null | undefined,
+    next: () => void
+): void {
+    Util.throwIfError( err );
+    return next();
+}
 describe( "cwserver-core", () => {
     it( "initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", ( done: Mocha.Done ): void => {
         const root: string = path.resolve( `${appRoot}/ewww` ); // path.resolve( appRoot, "/ewww" );
-        Util.mkdirSync( appRoot, "/ewww/config" );
-        expect( fs.existsSync( root ) ).toEqual( true );
-        const filePath: string = path.resolve( root + "/config/app.config.json" );
-        const fromFile: string = path.resolve( `${appRoot}/${projectRoot}/config/app.config.json` );
-        expect( fs.existsSync( fromFile ) ).toEqual( true );
-        fs.copyFileSync( fromFile, filePath );
-        expect( shouldBeError( () => {
-            cwserver.initilizeServer( appRoot, `ewww` );
-        } ) ).toBeInstanceOf( Error );
-        Util.rmdirSync( root );
-        done();
+        fsw.mkdir( appRoot, "/ewww/config", ( err: NodeJS.ErrnoException | null ): void => {
+            expect( err ).not.toBeInstanceOf( Error );
+            expect( fs.existsSync( root ) ).toEqual( true );
+            const filePath: string = path.resolve( root + "/config/app.config.json" );
+            const fromFile: string = path.resolve( `${appRoot}/${projectRoot}/config/app.config.json` );
+            expect( fs.existsSync( fromFile ) ).toEqual( true );
+            fs.copyFileSync( fromFile, filePath );
+            expect( shouldBeError( () => {
+                cwserver.initilizeServer( appRoot, `ewww` );
+            } ) ).toBeInstanceOf( Error );
+            done();
+        }, handleError );
     } );
     it( "initilize server throw error (invalid app.config.json)", function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
         const root: string = path.resolve( `${appRoot}/ewww` );
-        Util.mkdirSync( appRoot, "/ewww/config" );
-        expect( fs.existsSync( root ) ).toEqual( true );
+        // Util.mkdirSync( appRoot, "/ewww/config" );
+        // expect( fs.existsSync( root ) ).toEqual( true );
         const filePath: string = path.resolve( root + "/config/app.config.json" );
-        fs.writeFileSync( filePath, "INVALID_FILE" );
-        const orginalCfg: string = path.resolve( `${appRoot}/${projectRoot}/config/app.config.json` );
-        setTimeout( () => {
-            expect( Util.compairFile( filePath, orginalCfg ) ).toEqual( true );
-            expect( shouldBeError( () => {
-                cwserver.initilizeServer( appRoot, `ewww` );
-            } ) ).toBeInstanceOf( Error );
-            Util.rmdirSync( root );
-            done();
-        }, 100 );
+        fs.writeFile( filePath, "INVALID_FILE", ( err: NodeJS.ErrnoException | null ) => {
+            const orginalCfg: string = path.resolve( `${appRoot}/${projectRoot}/config/app.config.json` );
+            setTimeout( () => {
+                fsw.compairFileSync( filePath, orginalCfg );
+                fsw.compairFileSync( filePath, filePath );
+                expect( shouldBeError( () => {
+                    cwserver.initilizeServer( appRoot, `ewww` );
+                } ) ).toBeInstanceOf( Error );
+                fsw.rmdir( path.join( root, "nobody" ), ( nerr: NodeJS.ErrnoException | null ) => {
+                    expect( nerr ).toBeNull();
+                    done();
+                }, handleError );
+            }, 300 );
+        } );
     } );
     it( "initilize server throw error (projectRoot not provided)", ( done: Mocha.Done ): void => {
         expect( shouldBeError( () => {
@@ -147,7 +153,7 @@ describe( "cwserver-core", () => {
     } );
     it( "initilize server", ( done: Mocha.Done ): void => {
         if ( fs.existsSync( logDir ) ) {
-            Util.rmdirSync( logDir );
+            fsw.rmdirSync( logDir );
         }
         appUtility = cwserver.initilizeServer( appRoot, projectRoot );
         expect( appUtility.public ).toEqual( projectRoot );
@@ -235,6 +241,15 @@ describe( "cwserver-router", () => {
         expect( pathToArray( "/vertual/test/body", [] ) ).not.toBeInstanceOf( Error );
         expect( pathToArray( "dfa/", [] ) ).not.toBeInstanceOf( Error );
         done();
+    } );
+    it( "test head", ( done: Mocha.Done ): void => {
+        getAgent()
+            .head( `http://localhost:${appUtility.port}/test-head` )
+            .end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                done();
+            } );
     } );
 } );
 describe( "cwserver-view", () => {
@@ -631,55 +646,80 @@ describe( "cwserver-template-engine", () => {
         expect( shouldBeError( () => {
             templateNext( Object.create( null ), Object.create( null ) );
         } ) ).toBeInstanceOf( Error );
-        expect( shouldBeError( () => {
-            const sendBox = TemplateCore.compile();
-        } ) ).toBeInstanceOf( Error );
-        expect( shouldBeError( () => {
-            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/readme.htmls\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
-                console.log( str );
-            } );
-        } ) ).toBeInstanceOf( Error );
-        TemplateCore.run( appUtility.server.getPublic(), `#attach /template/readme.html`, ( str, isScript ) => {
-            expect( str ).toBeDefined();
+        TemplateCore.compile( void 0, ( params: CompilerResult ): void => {
+            expect( params.err ).toBeInstanceOf( Error );
         } );
-        expect( shouldBeError( () => {
-            TemplateCore.run( appUtility.server.getPublic(), `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
-                console.log( str );
-            } );
-        } ) ).toBeInstanceOf( Error );
-        expect( shouldBeError( () => {
-            TemplateCore.run( appUtility.server.getPublic(), `#attach /template/readme.htmls \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
-                console.log( str );
-            } );
-        } ) ).toBeInstanceOf( Error );
         const filePath: string = path.resolve( `${appRoot}/${projectRoot}/template/invalid.html` );
-        fs.writeFileSync( filePath, "INVALID_FILE" );
-        expect( shouldBeError( () => {
-            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
-                console.log( str );
+        const tasks: ( () => void )[] = [];
+        const forward = (): void => {
+            const nextFunc: ( () => void ) | undefined = tasks.shift();
+            if ( !nextFunc ) {
+                if ( fs.existsSync( filePath ) )
+                    fs.unlinkSync( filePath );
+                return done();
+            }
+            return nextFunc();
+        };
+        const ctx: IContext = appUtility.server.createContext( Object.create( { id: Util.guid() } ), Object.create( null ), ( err?: any ): void => {
+            expect( err ).not.toBeInstanceOf( Error );
+         } );
+        ctx.handleError = ( err: NodeJS.ErrnoException | Error | null | undefined, next: () => void ): void => {
+            if ( Util.isError( err ) ) {
+                return forward();
+            }
+            return next();
+        }
+        ctx.transferError = ( err: NodeJS.ErrnoException | Error ): void => {
+            return forward();
+        }
+        const spublic: string = appUtility.server.getPublic();
+        tasks.push( () => {
+            TemplateCore.run( ctx, spublic, `#extends /template/readme.htmls\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ): void => {
+                return forward();
             } );
-        } ) ).toBeInstanceOf( Error );
-        fs.writeFileSync( filePath, "<placeholder id><placeholder/>" );
-        expect( shouldBeError( () => {
-            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
-                console.log( str );
+        } );
+        tasks.push( () => {
+            TemplateCore.run( ctx, spublic, `#attach /template/readme.html\r\n`, ( params: CompilerResult ): void => {
+                expect( params.str ).toBeDefined();
+                return forward();
             } );
-        } ) ).toBeInstanceOf( Error );
-        fs.writeFileSync( filePath, '<placeholder id=""><placeholder/>' );
-        expect( shouldBeError( () => {
-            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
-                console.log( str );
+        } );
+        tasks.push( () => {
+            TemplateCore.run( ctx, spublic, `#extends \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ) => {
+                return forward();
             } );
-        } ) ).toBeInstanceOf( Error );
-        fs.writeFileSync( filePath, '<placeholder id="test">\r\n</placeholder>{% ERROR %} {= NOPX =}\r\n\r\n\r\n' );
-        expect( shouldBeError( () => {
-            TemplateCore.run( appUtility.server.getPublic(), `#extends /template/invalid.html\r\n<impl-placeholder id="test">\r\nNO\r\n</impl-placeholder>`, ( str, isScript ) => {
-                console.log( str );
+        } );
+        tasks.push( () => {
+            TemplateCore.run( ctx, spublic, `#attach /template/readme.htmls \r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ) => {
+                return forward();
             } );
-        } ) ).toBeInstanceOf( Error );
-        fs.unlinkSync( filePath );
-        done();
-    } )
+        } );
+        tasks.push( () => {
+            fs.writeFileSync( filePath, "INVALID_FILE" );
+            TemplateCore.run( ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ) => {
+                return forward();
+            } );
+        } );
+        tasks.push( () => {
+            fs.writeFileSync( filePath, "<placeholder id><placeholder/>" );
+            TemplateCore.run( ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ) => {
+                return forward();
+            } );
+        } );
+        tasks.push( () => {
+            fs.writeFileSync( filePath, '<placeholder id=""><placeholder/>' );
+            TemplateCore.run( ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ) => {
+                return forward();
+            } );
+        } );
+        tasks.push( () => {
+            fs.writeFileSync( filePath, '<placeholder id="test">\r\n</placeholder>{% ERROR %} {= NOPX =}\r\n\r\n\r\n' );
+            TemplateCore.run( ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id="test">\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ) => {
+                return forward();
+            } );
+        } );
+        return forward();
+    } );
 } );
 describe( "cwserver-bundler", () => {
     let eTag: string = "";
@@ -687,7 +727,7 @@ describe( "cwserver-bundler", () => {
     it( 'js file bundler with gizp response (server file cache)', ( done: Mocha.Done ): void => {
         const temp = appUtility.server.mapPath( `/web/temp/` );
         if ( fs.existsSync( temp ) ) {
-            Util.rmdirSync( temp );
+            fsw.rmdirSync( temp );
         }
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
@@ -1132,7 +1172,7 @@ describe( "cwserver-post", () => {
         getAgent()
             .post( `http://localhost:${appUtility.port}/post-async/10` )
             .type( 'form' )
-            .send( { name: 'rajibs', occupation: 'kutukutu' } )
+            .send( { name: 'rajibs', occupation: 'kutukutu', kv: '' } )
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
@@ -1184,8 +1224,8 @@ describe( "cwserver-multipart-paylod-parser", () => {
             expect( res.status ).toBe( 200 );
             expect( res.header["content-type"] ).toBe( "application/json" );
             expect( res.body ).toBeInstanceOf( Object );
-            expect( res.body.content_type ).toBe( contentType );
-            expect( res.body.file_name ).toBe( fileName );
+            expect( res.body.contentType ).toBe( contentType );
+            expect( res.body.fileName ).toBe( fileName );
             expect( res.body.name ).toBe( "post-file" );
             done();
         } );
@@ -1199,7 +1239,28 @@ describe( "cwserver-multipart-paylod-parser", () => {
     it( 'test multipart post file and clear', ( done: Mocha.Done ): void => {
         processReq( done, "C" );
     } );
-    it( 'test multipart post file test', function ( done: Mocha.Done ): void {
+    it( 'test multipart post file process non-bolock', ( done: Mocha.Done ): void => {
+        processReq( done, undefined, "/upload-non-bolock" );
+    } );
+    it( 'invalid multipart posted file', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 * 10 );
+        const tempz: string = appUtility.server.mapPath( "/web/.tempz" );
+        fs.writeFile( tempz, Buffer.from( "This is normal line\n".repeat( 5 ) ), ( err: NodeJS.ErrnoException | null ): void => {
+            const readStream = fs.createReadStream( tempz );
+            const req: request.SuperAgentRequest = getAgent()
+                .post( `http://localhost:${appUtility.port}/upload-invalid-file` )
+                .attach( 'post-file', readStream, {
+                    contentType: " ",
+                    filename: "temp"
+                } );
+            req.end( ( rerr, res ) => {
+                readStream.close();
+                expect( rerr ).toBeInstanceOf( Error );
+                done();
+            } );
+        } );
+    } );
+    it( 'test multipart post file', function ( done: Mocha.Done ): void {
         this.timeout( 5000 * 10 );
         const leargeFile: string = appUtility.server.mapPath( "/web/learge.txt" );
         const writer: fs.WriteStream = fs.createWriteStream( leargeFile );
@@ -1244,7 +1305,7 @@ describe( "cwserver-multipart-paylod-parser", () => {
         const leargeFile: string = appUtility.server.mapPath( "/web/learge.txt" );
         const readStream = fs.createReadStream( leargeFile );
         const req: request.SuperAgentRequest = getAgent()
-            .post( `http://localhost:${appUtility.port}/upload-error` )
+            .post( `http://localhost:${appUtility.port}/abort-error` )
             .field( 'post-file', readStream );
         req.on( "progress", ( event ) => {
             if ( event.total ) {
@@ -1255,7 +1316,7 @@ describe( "cwserver-multipart-paylod-parser", () => {
             }
         } );
         req.end( ( err, res ) => {
-            done( new Error( "Should not here...." ) );
+            expect( err ).not.toBeInstanceOf( Error );
         } );
     } );
     it( 'test malformed data', function ( done: Mocha.Done ): void {
@@ -1419,24 +1480,6 @@ describe( "cwserver-mime-type", () => {
                 expect( res.header["content-type"] ).toBe( "image/x-icon" );
                 done();
             } );
-    } );
-    it( 'catch-HttpMimeHandler-error', ( done: Mocha.Done ): void => {
-        const parent: string = path.resolve( __dirname, '..' );
-        const absPath = path.resolve( `${parent}/dist/mime-type.json` );
-        expect( fs.existsSync( absPath ) ).toBe( true );
-        const distPath = path.resolve( `${parent}/mime-types.json` );
-        fs.renameSync( absPath, distPath );
-        expect( shouldBeError( () => {
-            const mime = new cwserver.HttpMimeHandler();
-        } ) ).toBeInstanceOf( Error );
-        fs.writeFileSync( absPath, "INVALID_JSON" );
-        expect( fs.existsSync( absPath ) ).toEqual( true );
-        expect( shouldBeError( () => {
-            const mime = new cwserver.HttpMimeHandler();
-        } ) ).toBeInstanceOf( Error );
-        fs.unlinkSync( absPath );
-        fs.renameSync( distPath, absPath );
-        done();
     } );
 } );
 describe( "cwserver-virtual-dir", () => {
@@ -1630,6 +1673,16 @@ describe( "cwserver-controller-reset", () => {
                 done();
             } );
     } );
+    it( 'test-raw-error', ( done: Mocha.Done ): void => {
+        app.clearHandler();
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/response` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 404 );
+                done();
+            } );
+    } );
 } );
 describe( "cwserver-utility", () => {
     const getConfig = ( () => {
@@ -1637,7 +1690,7 @@ describe( "cwserver-utility", () => {
         let config: { [x: string]: any; } | void;
         return (): { [x: string]: any; } => {
             if ( config ) return Util.clone( config );
-            const cjson = Util.readJsonAsync( configFile );
+            const cjson = fsw.readJsonAsync( configFile );
             if ( cjson ) {
                 config = cjson;
             }
@@ -1647,6 +1700,12 @@ describe( "cwserver-utility", () => {
     } )();
     it( "test-app-utility", function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
+        expect( shouldBeError( () => {
+            assert( false, "test" );
+        } ) ).toBeInstanceOf( Error );
+        expect( shouldBeError( () => {
+            assert( "", "string" );
+        } ) ).toBeInstanceOf( Error );
         ( () => {
             process.env.SCRIPT = "JS";
             expect( shouldBeError( () => {
@@ -1716,21 +1775,24 @@ describe( "cwserver-utility", () => {
             } );
         } ) ).toBeInstanceOf( Error );
         expect( shouldBeError( () => {
-            Util.mkdirSync( logDir, "./" );
+            fsw.mkdirSync( logDir, "./" );
         } ) ).toBeInstanceOf( Error );
-        expect( Util.mkdirSync( "" ) ).toBeFalsy();
+        expect( fsw.mkdirSync( "" ) ).toBeFalsy();
         expect( shouldBeError( () => {
-            Util.copyFileSync( `${logDir}/temp/`, "./" );
-        } ) ).toBeInstanceOf( Error );
-        expect( shouldBeError( () => {
-            Util.copyFileSync( `${logDir}/temp/nofile.lg`, "./" );
+            fsw.copyFileSync( `${logDir}/temp/`, "./" );
         } ) ).toBeInstanceOf( Error );
         expect( shouldBeError( () => {
-            Util.copyFileSync( `${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx` );
+            fsw.copyFileSync( `${logDir}/temp/nofile.lg`, "./" );
         } ) ).toBeInstanceOf( Error );
-        expect( Util.rmdirSync( `${logDir}/temp/` ) ).not.toBeInstanceOf( Error );
-        expect( Util.copySync( `${logDir}/temp/`, `${logDir}/tempx/` ) ).not.toBeInstanceOf( Error );
-        expect( Util.mkdirSync( logDir ) ).toEqual( true );
+        expect( shouldBeError( () => {
+            fsw.copyFileSync( `${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx` );
+        } ) ).toBeInstanceOf( Error );
+        expect( fsw.rmdirSync( `${logDir}/temp/` ) ).not.toBeInstanceOf( Error );
+        expect( fsw.copySync( `${logDir}/temp/`, `${logDir}/tempx/` ) ).not.toBeInstanceOf( Error );
+        expect( fsw.mkdirSync( logDir ) ).toEqual( true );
+        expect( shouldBeError( () => {
+            Util.throwIfError( new Error( "Error test..." ) );
+        } ) ).toBeInstanceOf( Error );
         expect( Util.extend( {}, Session.prototype ) ).toBeInstanceOf( Object );
         expect( Util.extend( {}, () => {
             return new Session();
@@ -1978,6 +2040,18 @@ describe( "cwserver-utility", () => {
                     throw e;
                 }
             } ) ).toBeInstanceOf( Error );
+            ( () => {
+                expect( shouldBeError( () => {
+                    appUtility.server.getErrorPath( 100 );
+                } ) ).toBeInstanceOf( Error );
+                const oldError = Util.clone( appUtility.server.config.errorPage );
+                appUtility.server.config.errorPage = {};
+                expect( appUtility.server.getErrorPath( 500 ) ).toBeDefined();
+                expect( shouldBeError( () => {
+                    appUtility.server.getErrorPath( 402 );
+                } ) ).toBeInstanceOf( Error );
+                Util.extend( appUtility.server.config.errorPage, oldError );
+            } )();
             expect( shouldBeError( () => {
                 appUtility.server.parseMaxAge( "10N" );
             } ) ).toBeInstanceOf( Error );
@@ -2094,7 +2168,7 @@ describe( "cwserver-schema-validator", () => {
                 "nsession": []
             }, true );
         } )();
-        const config = Util.readJsonAsync( appUtility.server.mapPath( "/config/app.config.json" ) );
+        const config = fsw.readJsonAsync( appUtility.server.mapPath( "/config/app.config.json" ) );
         expect( config ).toBeInstanceOf( Object );
         if ( !config ) throw new Error( "unreachable..." );
         const $schema = config.$schema;
@@ -2271,6 +2345,62 @@ describe( "cwserver-schema-validator", () => {
         fs.unlinkSync( absPath );
         fs.renameSync( distPath, absPath );
         done();
+    } );
+} );
+describe( "cwserver-fsw", () => {
+    it( "test-fsw", function ( done: Mocha.Done ): void {
+        this.timeout(5000);
+        const root: string = path.resolve( `${appRoot}/ewww` );
+        const filePath: string = path.resolve( root + "/config/app.config.json" );
+        fs.writeFile( filePath, JSON.stringify( { name: "Safe Online World Ltd." } ), ( err: NodeJS.ErrnoException | null ): void => {
+            assert( err === null, "test-fsw->fs.writeFile" );
+            fsw.readJson( filePath, ( jerr: NodeJS.ErrnoException | null, json: { [id: string]: any } | void ) => {
+                assert( jerr === null, "test-fsw->fsw.readJson" );
+                expect( json ).toBeInstanceOf( Object );
+                fs.writeFileSync( filePath, "INVALID_JSON" );
+                fsw.readJson( filePath, ( jnerr: NodeJS.ErrnoException | null, njson: { [id: string]: any } | void ) => {
+                    assert( jnerr !== null, "test-fsw->fsw.readJson-jnerr" );
+                    expect( njson ).toBeUndefined();
+                    fsw.mkdir( "", "", ( derr: NodeJS.ErrnoException | null ) => {
+                        expect( derr ).toBeInstanceOf( Error );
+                    }, handleError );
+                    fsw.mkdir( root, ".", ( derr: NodeJS.ErrnoException | null ) => {
+                        expect( derr ).toBeInstanceOf( Error );
+                    }, handleError );
+                    fsw.mkdir( filePath, "", ( mderr: NodeJS.ErrnoException | null ) => {
+                        expect( mderr ).toBeInstanceOf( Error );
+                        fsw.copyDir( path.join( root, "/noton/" ), path.resolve( `${appRoot}/cwww` ), ( crderr: NodeJS.ErrnoException | null) => {
+                            expect( crderr ).toBeInstanceOf( Error );
+                        }, handleError );
+                        fsw.copyDir( root, path.resolve( `${appRoot}/cwww` ), ( ncrderr: NodeJS.ErrnoException | null ) => {
+                            expect( ncrderr ).not.toBeInstanceOf( Error );
+                            fsw.mkdir( root, "/my.json", ( rderr: NodeJS.ErrnoException | null ) => {
+                                expect( rderr ).toBeInstanceOf( Error );
+                                fsw.copyFile( filePath, root, ( crderr: NodeJS.ErrnoException | null ) => {
+                                    expect( crderr ).toBeInstanceOf( Error );
+                                } );
+                                fsw.copyFile( root, root, ( dncrderr: NodeJS.ErrnoException | null ) => {
+                                    expect( dncrderr ).toBeInstanceOf( Error );
+                                } );
+                                fsw.copyFile( `${filePath}.not`, filePath, ( fcrderr: NodeJS.ErrnoException | null ) => {
+                                    expect( fcrderr ).toBeInstanceOf( Error );
+                                    fsw.copyFile( filePath, `${filePath}.not`, ( cfcrderr: NodeJS.ErrnoException | null ) => {
+                                        expect( cfcrderr ).not.toBeInstanceOf( Error );
+                                        fsw.unlink( `${filePath}.not`, ( uerr: NodeJS.ErrnoException | null ) => {
+                                            expect( uerr ).not.toBeInstanceOf( Error );
+                                            fsw.rmdir( root, ( rerr: NodeJS.ErrnoException | null ) => {
+                                                expect( rerr ).toBe( null );
+                                                done();
+                                            }, handleError );
+                                        } );
+                                    } );
+                                } );
+                            }, handleError );
+                        }, handleError );
+                    }, handleError );
+                }, handleError );
+            }, handleError );
+        } );
     } );
 } );
 describe( "finalization", () => {

@@ -1,29 +1,24 @@
-/*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
-* Copyrights licensed under the New BSD License.
-* See the accompanying LICENSE file for terms.
-*/
 export interface ILogger {
     newLine(): any;
-    write( msg: string, color?: string ): ILogger;
-    log( msg: string, color?: string ): ILogger;
-    info( msg: string ): ILogger;
-    success( msg: string ): ILogger;
-    error( msg: string ): ILogger;
+    write(msg: string, color?: string): ILogger;
+    log(msg: string, color?: string): ILogger;
+    info(msg: string): ILogger;
+    success(msg: string): ILogger;
+    error(msg: string): ILogger;
     reset(): ILogger;
     dispose(): any;
-    writeToStream( str: string ): void;
+    writeToStream(str: string): void;
     flush(): boolean;
 }
 export declare class LogTime {
-    static dfo( t: number ): string;
-    static dfm( t: number ): string;
-    static getLocalDateTime( offset: any ): Date;
-    static getTime( tz: string ): string;
+    static dfo(t: number): string;
+    static dfm(t: number): string;
+    static getLocalDateTime(offset: any): Date;
+    static getTime(tz: string): string;
 }
 export declare class ConsoleColor {
-    static Cyan( str: string ): string;
-    static Yellow( str: string ): string;
+    static Cyan(str: string): string;
+    static Yellow(str: string): string;
     static Reset: string;
     static Bright: string;
     static Dim: string;
@@ -57,17 +52,17 @@ export declare class Logger implements ILogger {
     private _blockSize;
     private _maxBlockSize;
     private _fd;
-    constructor( dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean, maxBlockSize?: number );
+    constructor(dir?: string, name?: string, tz?: string, userInteractive?: boolean, isDebug?: boolean, maxBlockSize?: number);
     flush(): boolean;
-    writeToStream( str: string ): void;
+    writeToStream(str: string): void;
     newLine(): void;
     private _write;
     private _log;
-    write( msg: any, color?: string ): ILogger;
-    log( msg: any, color?: string ): ILogger;
-    info( msg: any ): ILogger;
-    success( msg: any ): ILogger;
-    error( msg: any ): ILogger;
+    write(msg: any, color?: string): ILogger;
+    log(msg: any, color?: string): ILogger;
+    info(msg: any): ILogger;
+    success(msg: any): ILogger;
+    error(msg: any): ILogger;
     reset(): ILogger;
     dispose(): void;
 }

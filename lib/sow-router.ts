@@ -92,16 +92,16 @@ export function getRouteInfo<T>(
         };
     }
     const pathArray: string[] = reqPath.split( "/" );
-    for ( const info of handlerInfos ) {
-        if ( !info.routeMatcher ) continue;
-        if ( info.method !== "ANY" ) {
-            if ( info.method !== method ) continue;
+    for ( const layer of handlerInfos ) {
+        if ( !layer.routeMatcher ) continue;
+        if ( layer.method !== "ANY" ) {
+            if ( layer.method !== method ) continue;
         }
-        if ( info.pathArray.length > 0 ) {
-            if ( info.pathArray[1] !== "*" && info.pathArray[1].indexOf( ":" ) < 0 && pathArray[1] !== info.pathArray[1] ) continue;
+        if ( layer.pathArray.length > 0 ) {
+            if ( layer.pathArray[1] !== "*" && layer.pathArray[1].indexOf( ":" ) < 0 && pathArray[1] !== layer.pathArray[1] ) continue;
         }
-        if ( !info.routeMatcher.regExp.test( reqPath ) ) continue;
-        const rmatch: RegExpMatchArray | null = info.routeMatcher.regExp.exec( reqPath );
+        if ( !layer.routeMatcher.regExp.test( reqPath ) ) continue;
+        const rmatch: RegExpMatchArray | null = layer.routeMatcher.regExp.exec( reqPath );
         if ( rmatch ) {
             const requestParam: IRequestParam = {
                 query: {},
@@ -116,16 +116,16 @@ export function getRouteInfo<T>(
                     continue;
                 }
                 const curIndex: number = nextIndex;
-                nextIndex = info.pathArray.findIndex( ( str, index ) => index >= curIndex && str.indexOf( ":" ) > -1 );
+                nextIndex = layer.pathArray.findIndex( ( str, index ) => index >= curIndex && str.indexOf( ":" ) > -1 );
                 if ( nextIndex < 0 ) {
                     requestParam.match.push( mstr );
                     continue;
                 }
-                const part = info.pathArray[nextIndex];
+                const part: string = layer.pathArray[nextIndex];
                 requestParam.query[part.replace( /:/gi, "" )] = pathArray[nextIndex];
             }
             return {
-                layer: info,
+                layer,
                 requestParam
             };
         }

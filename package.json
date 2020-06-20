@@ -1,6 +1,6 @@
 {
   "name": "cwserver",
-  "version": "1.0.17",
+  "version": "2.0.0",
   "description": "SOW Web Server (All in one) for NodeJS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,8 +18,9 @@
   "scripts": {
     "build": "node clean.js && tsc",
     "lint": "tslint --config tslint.json --project tsconfig.json",
+    "test:standard": "standard --env mocha lib/*.ts",
     "test:cov": "nyc node_modules/mocha/bin/_mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts",
-    "test:mocha": "node_modules/mocha/bin/_mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts"
+    "test:mocha": "mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts"
   },
   "keywords": [
     "web",
@@ -51,7 +52,8 @@
   "contributors": [
     {
       "name": "Rajib Chy",
-      "email": "mysuccessstairs@hotmail.com"
+      "email": "mysuccessstairs@hotmail.com",
+      "url": "https://github.com/rajibchy"
     }
   ]
 }

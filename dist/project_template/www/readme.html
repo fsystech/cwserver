@@ -165,11 +165,11 @@ global.sow.server.on( "register-view", ( app, controller, server ) =&gt; {
             ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
             return ctx.res.end( JSON.stringify( parser.getJson() ) ), ctx.next( 200 ), void 0;
         }
-        parser.saveAs( downloadDir );
+        parser.saveAsSync( downloadDir );
         return ctx.res.asHTML( 200 ).end( "&lt;h1&gt;success&lt;/h1&gt;" );
         // or
         /*const data = [];
-        parser.getFiles( ( file ) =&gt; {
+        parser.getFilesSync( ( file ) =&gt; {
             data.push( {
                 content_type: file.getContentType(),
                 name: file.getName(),
@@ -178,7 +178,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) =&gt; {
                 file_size: file.getFileSize(),
                 temp_path: file.getTempPath()
             } );
-            file.saveAs( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
+            file.saveAsSync( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
         } );
         return ctx.res.json( data );*/
     } )

@@ -1,20 +1,26 @@
-/*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
-* Copyrights licensed under the New BSD License.
-* See the accompanying LICENSE file for terms.
-*/
 /// <reference types="node" />
 import { IRequest } from './sow-server-core';
+import { ErrorHandler } from './sow-fsw';
+export declare type UploadFileInfo = {
+    contentType: string;
+    name: string;
+    fileName: string;
+    contentDisposition: string;
+    fileSize: number;
+    tempPath: string | undefined;
+};
 export interface IPostedFileInfo {
     getContentDisposition(): string;
     getFileSize(): number;
     getName(): string;
     getFileName(): string;
     getContentType(): string;
-    saveAs( absPath: string ): void;
-    read(): Buffer;
+    saveAsSync(absPath: string): void;
+    saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void;
+    readSync(): Buffer;
+    read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
     getTempPath(): string | undefined;
-    setInfo( tempFile?: string, fileSize?: number ): void;
+    setInfo(tempFile?: string, fileSize?: number): void;
     isEmptyHeader(): boolean;
     clear(): void;
 }
@@ -23,9 +29,13 @@ export interface IPayloadParser {
     isAppJson(): boolean;
     isMultipart(): boolean;
     isValidRequest(): boolean;
-    getFiles( next: ( file: IPostedFileInfo ) => void ): void;
+    saveAsSync(absPath: string): void;
+    saveAs(outdir: string, next: (err: Error | NodeJS.ErrnoException | null) => void, errorHandler: ErrorHandler): void;
+    getUploadFileInfo(): UploadFileInfo[];
+    getFilesSync(next: (file: IPostedFileInfo) => void): void;
+    getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
     getData(): string;
-    readData( onReadEnd: ( err?: Error | string ) => void ): void;
+    readData(onReadEnd: (err?: Error | string) => void): void;
     readDataAsync(): Promise<void>;
 }
 export declare enum ContentType {
@@ -35,16 +45,16 @@ export declare enum ContentType {
     UNKNOWN = -1
 }
 export declare class PostedFileInfo implements IPostedFileInfo {
-    _fcontentDisposition: string;
-    _fname: string;
-    _fileName: string;
-    _fcontentType: string;
-    _fileSize: number;
-    _isMoved: boolean;
-    _tempFile?: string;
-    _isDisposed: boolean;
-    constructor( disposition: string, fname: string, fileName: string, fcontentType: string );
-    setInfo( tempFile?: string, fileSize?: number ): void;
+    private _fcontentDisposition;
+    private _fname;
+    private _fileName;
+    private _fcontentType;
+    private _fileSize;
+    private _isMoved;
+    private _tempFile?;
+    private _isDisposed;
+    constructor(disposition: string, fname: string, fileName: string, fcontentType: string);
+    setInfo(tempFile?: string, fileSize?: number): void;
     isEmptyHeader(): boolean;
     getTempPath(): string | undefined;
     getContentDisposition(): string;
@@ -52,8 +62,11 @@ export declare class PostedFileInfo implements IPostedFileInfo {
     getName(): string;
     getFileName(): string;
     getContentType(): string;
-    read(): Buffer;
-    saveAs( absPath: string ): void;
+    private validate;
+    readSync(): Buffer;
+    read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
+    saveAsSync(absPath: string): void;
+    saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void;
     clear(): void;
 }
 export declare class PayloadParser implements IPayloadParser {
@@ -64,18 +77,23 @@ export declare class PayloadParser implements IPayloadParser {
     private _req;
     private _isReadEnd;
     private _isDisposed;
-    constructor( req: IRequest, tempDir: string );
+    private _isConnectionActive;
+    constructor(req: IRequest, tempDir: string);
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
     isValidRequest(): boolean;
-    saveAs( outdir: string ): void;
-    getFiles( next: ( file: IPostedFileInfo ) => void ): void;
+    private validate;
+    saveAsSync(outdir: string): void;
+    saveAs(outdir: string, next: (err: Error | NodeJS.ErrnoException | null) => void, errorHandler: ErrorHandler): void;
+    getUploadFileInfo(): UploadFileInfo[];
+    getFilesSync(next: (file: IPostedFileInfo) => void): void;
+    getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
     getJson(): {
         [key: string]: any;
     };
     getData(): string;
     readDataAsync(): Promise<void>;
-    readData( onReadEnd: ( err?: Error | string ) => void ): void;
+    readData(onReadEnd: (err?: Error | string) => void): void;
     clear(): void;
 }
