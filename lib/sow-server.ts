@@ -809,17 +809,17 @@ class SowGlobalServer implements ISowGlobalServer {
 }
 interface ISowGlobal {
     isInitilized: boolean;
-    HttpMimeType: { [x: string]: string; };
+    HttpMime: { readonly type: ( extension: string ) => string | undefined };
     server: ISowGlobalServer;
 }
 class SowGlobal implements ISowGlobal {
     public isInitilized: boolean;
     server: ISowGlobalServer;
-    HttpMimeType: { [x: string]: string; };
+    HttpMime: { readonly type: ( extension: string ) => string | undefined };
     constructor() {
         this.server = new SowGlobalServer();
         this.isInitilized = false;
-        this.HttpMimeType = loadMimeType();
+        this.HttpMime = loadMimeType();
     }
 }
 declare global {

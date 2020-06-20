@@ -33,20 +33,24 @@ function loadMimeType() {
     const libRoot = sow_util_1.getLibRoot();
     const absPath = _path.resolve(`${libRoot}/mime-types.json`);
     sow_util_1.assert(_fs.existsSync(absPath), `No mime-type found in ${libRoot}\nPlease re-install cwserver`);
-    const data = _fs.readFileSync(absPath, "utf-8");
-    return JSON.parse(data);
+    const data = JSON.parse(_fs.readFileSync(absPath, "utf-8"));
+    return {
+        type: (extension) => {
+            return data[extension];
+        }
+    };
 }
 exports.loadMimeType = loadMimeType;
 function getMimeType(extension) {
     extension = extension.replace(/^.*[\.\/\\]/gi, '').toLowerCase();
-    const mimeType = global.sow.HttpMimeType[extension];
+    const mimeType = global.sow.HttpMime.type(extension);
     if (!mimeType)
         throw new Error(`Unsupported extension =>${extension}`);
     return mimeType;
 }
 exports.getMimeType = getMimeType;
 function isValidExtension(extension) {
-    return global.sow.HttpMimeType[extension] ? true : false;
+    return global.sow.HttpMime.type(extension) ? true : false;
 }
 exports.isValidExtension = isValidExtension;
 //# sourceMappingURL=sow-http-mime-types.js.map

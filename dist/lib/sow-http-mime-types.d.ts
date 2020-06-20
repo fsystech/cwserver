@@ -1,5 +1,5 @@
 export declare function loadMimeType(): {
-    [id: string]: string;
+    readonly type: (extension: string) => string | undefined;
 };
 export declare function getMimeType(extension: string): string;
 export declare function isValidExtension(extension: string): boolean;

@@ -308,8 +308,8 @@ interface ISowGlobalServer {
 }
 interface ISowGlobal {
     isInitilized: boolean;
-    HttpMimeType: {
-        [x: string]: string;
+    HttpMime: {
+        readonly type: (extension: string) => string | undefined;
     };
     server: ISowGlobalServer;
 }

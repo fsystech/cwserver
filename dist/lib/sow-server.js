@@ -634,7 +634,7 @@ class SowGlobal {
     constructor() {
         this.server = new SowGlobalServer();
         this.isInitilized = false;
-        this.HttpMimeType = sow_http_mime_types_1.loadMimeType();
+        this.HttpMime = sow_http_mime_types_1.loadMimeType();
     }
 }
 if (!global.sow || (global.sow && !global.sow.server)) {
