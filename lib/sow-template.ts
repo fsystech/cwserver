@@ -411,7 +411,7 @@ class TemplateLink {
             if ( isCompressed && isCompressed === true ) {
                 return _zlib.gzip( Buffer.from( body ), ( error: Error | null, buff: Buffer ) => {
                     return ctx.handleError( error, () => {
-                        ctx.res.writeHead( status.code, {
+                        ctx.res.setHeaders( status.code, {
                             'Content-Type': 'text/html',
                             'Content-Encoding': 'gzip',
                             'Content-Length': buff.length
@@ -422,7 +422,7 @@ class TemplateLink {
                 } );
             }
             return ctx.handleError( null, () => {
-                ctx.res.writeHead( status.code, {
+                ctx.res.setHeaders( status.code, {
                     'Content-Type': 'text/html',
                     'Content-Length': Buffer.byteLength( body )
                 } );
@@ -480,8 +480,10 @@ class TemplateLink {
             if ( typeof ( func ) === "function" ) {
                 return func( ctx, this.processResponse( status ) );
             }
-            ctx.res.set( 'Cache-Control', 'no-store' );
-            ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
+            ctx.res.setHeaders( status.code, {
+                'Content-Type': 'text/html',
+                'Cache-Control': 'no-store'
+            } );
             return ctx.res.end( func ), ctx.next( status.code, status.isErrorCode === false );
         } );
     }
@@ -534,8 +536,10 @@ class TemplateLink {
                         return ctx.transferError( e );
                     }
                 }
-                ctx.res.set( 'Cache-Control', 'no-store' );// res.setHeader( 'Cache-Control', 'public, max-age=0' )
-                ctx.res.writeHead( status.code, { 'Content-Type': 'text/html' } );
+                ctx.res.setHeaders( status.code, {
+                    'Content-Type': 'text/html',
+                    'Cache-Control': 'no-store'
+                } );
                 return ctx.res.end( func ), ctx.next( status.code, status.isErrorCode === false );
             } );
         } );

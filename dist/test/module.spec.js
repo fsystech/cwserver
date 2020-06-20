@@ -667,6 +667,26 @@ describe("cwserver-template-engine", () => {
             done();
         });
     });
+    it('should be template engine define file has been change', function (done) {
+        this.timeout(5000);
+        appUtility.server.config.template.cache = true;
+        appUtility.server.config.template.cacheType = "FILE";
+        const indexPath = appUtility.server.mapPath("/index.html");
+        return fs.readFile(indexPath, "utf8", (rerr, data) => {
+            setTimeout(() => {
+                return fs.writeFile(indexPath, `\r\n${data}\r\n`, (werr) => {
+                    getAgent()
+                        .get(`http://localhost:${appUtility.port}/`)
+                        .end((err, res) => {
+                        expect_1.default(err).not.toBeInstanceOf(Error);
+                        expect_1.default(res.status).toBe(200);
+                        expect_1.default(res.header["content-type"]).toBe("text/html");
+                        done();
+                    });
+                });
+            }, 200);
+        });
+    });
     it('test template utility', function (done) {
         this.timeout(5000);
         expect_1.default(sow_template_1.TemplateCore.isScriptTemplate("")).toBe(false);

@@ -640,6 +640,26 @@ describe( "cwserver-template-engine", () => {
                 done();
             } );
     } );
+    it( 'should be template engine define file has been change', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
+        appUtility.server.config.template.cache = true;
+        appUtility.server.config.template.cacheType = "FILE";
+        const indexPath: string = appUtility.server.mapPath( "/index.html" );
+        return fs.readFile( indexPath, "utf8", ( rerr: NodeJS.ErrnoException | null, data: string ): void => {
+            setTimeout( () => {
+                return fs.writeFile( indexPath, `\r\n${data}\r\n`, ( werr: NodeJS.ErrnoException | null ) => {
+                    getAgent()
+                        .get( `http://localhost:${appUtility.port}/` )
+                        .end( ( err, res ) => {
+                            expect( err ).not.toBeInstanceOf( Error );
+                            expect( res.status ).toBe( 200 );
+                            expect( res.header["content-type"] ).toBe( "text/html" );
+                            done();
+                        } );
+                } );
+            }, 200 );
+        } );
+    } );
     it( 'test template utility', function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
         expect( TemplateCore.isScriptTemplate( "" ) ).toBe( false );
