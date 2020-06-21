@@ -210,7 +210,7 @@ This 'Combiner' contains the following files:\n`;
                     lastChangeTime: Date.now()
                 }, server.config.cacheHeader);
                 if (!hasChanged) {
-                    ctx.res.writeHead(304, { 'Content-Type': this.getResContentType(cte) });
+                    ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) });
                     return ctx.res.end(), ctx.next(304);
                 }
                 return this.readBuffer(ctx, files, server.copyright(), (buffer) => {
@@ -300,7 +300,7 @@ This 'Combiner' contains the following files:\n`;
                                                     lastChangeTime,
                                                     etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cstat.size)
                                                 }, server.config.cacheHeader);
-                                                ctx.res.writeHead(200, {
+                                                ctx.res.status(200, {
                                                     'Content-Type': this.getResContentType(cte),
                                                     'Content-Length': buffer.length
                                                 });
@@ -322,7 +322,7 @@ This 'Combiner' contains the following files:\n`;
                                                         lastChangeTime,
                                                         etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cstat.size)
                                                     }, server.config.cacheHeader);
-                                                    ctx.res.writeHead(200, {
+                                                    ctx.res.status(200, {
                                                         'Content-Type': this.getResContentType(cte),
                                                         'Content-Encoding': 'gzip',
                                                         'Content-Length': buff.length

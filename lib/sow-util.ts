@@ -88,10 +88,11 @@ export class Util {
         if ( this.isError( obj ) ) throw obj;
     }
     public static pipeOutputStream( absPath: string, ctx: IContext ): void {
+        const statusCode: number = ctx.res.statusCode;
         const openenedFile: _fs.ReadStream = _fs.createReadStream( absPath );
         return pipeline( openenedFile, ctx.res, ( err: NodeJS.ErrnoException | null ) => {
             destroy( openenedFile );
-            ctx.next( ctx.res.statusCode );
+            ctx.next( statusCode );
         } ), void 0;
     }
     public static isExists( path: string, next?: ( code?: number | undefined, transfer?: boolean ) => void ): string | boolean {

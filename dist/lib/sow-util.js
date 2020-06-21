@@ -114,10 +114,11 @@ class Util {
             throw obj;
     }
     static pipeOutputStream(absPath, ctx) {
+        const statusCode = ctx.res.statusCode;
         const openenedFile = _fs.createReadStream(absPath);
         return stream_1.pipeline(openenedFile, ctx.res, (err) => {
             destroy(openenedFile);
-            ctx.next(ctx.res.statusCode);
+            ctx.next(statusCode);
         }), void 0;
     }
     static isExists(path, next) {

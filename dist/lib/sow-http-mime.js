@@ -77,14 +77,14 @@ class MimeHandler {
                         if (reqCacheHeader.etag === etag) {
                             sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                             ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                            return ctx.next(ctx.res.statusCode);
+                            return ctx.next(304);
                         }
                         exit = true;
                     }
                     if (reqCacheHeader.sinceModify && !exit) {
                         sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                         ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                        return ctx.next(ctx.res.statusCode);
+                        return ctx.next(304);
                     }
                 }
                 if (!hasChanged && existsCachFile) {
@@ -149,7 +149,7 @@ class MimeHandler {
             ctx.req.get("");
             sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
             ctx.res.status(304, { 'Content-Type': mimeType }).send();
-            return ctx.next(ctx.res.statusCode);
+            return ctx.next(304);
         }
         sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime,
