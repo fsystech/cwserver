@@ -173,12 +173,13 @@ class Context {
         }
     }
     handleError(err, next) {
-        if (!this.isDisposed) {
+        if (!this.isDisposed && !this.res.headersSent) {
             if (sow_util_1.Util.isError(err)) {
                 return this.transferError(err);
             }
             return next();
         }
+        // Nothing to do, context destroyed or response header already been sent
     }
     redirect(url) {
         if (!this.isDisposed) {
@@ -302,11 +303,11 @@ ${appRoot}\\www_public
         if (this.public !== config.hostInfo.root) {
             throw new Error(`Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
         }
-        const libRoot = _path.resolve(_path.join(sow_util_1.getLibRoot(), process.env.SCRIPT === "TS" ? "/dist/" : ""));
+        const libRoot = sow_util_1.getLibRoot();
         this.errorPage = {
-            "404": _path.resolve(`${libRoot}/error_page/404.html`),
-            "401": _path.resolve(`${libRoot}/error_page/401.html`),
-            "500": _path.resolve(`${libRoot}/error_page/500.html`)
+            "404": _path.resolve(`${libRoot}/dist/error_page/404.html`),
+            "401": _path.resolve(`${libRoot}/dist/error_page/401.html`),
+            "500": _path.resolve(`${libRoot}/dist/error_page/500.html`)
         };
         sow_util_1.Util.extend(this.config, config, true);
         this.implimentConfig(config);
@@ -317,6 +318,7 @@ ${appRoot}\\www_public
         this.initilize();
         this.log = new sow_logger_1.Logger(`./log/`, this.public, void 0, this.userInteractive, this.config.isDebug);
         this.encryption = new ServerEncryption(this.config.encryptionKey);
+        fsw.mkdirSync(this.getPublic(), "/web/temp/cache/");
         return;
     }
     get version() {

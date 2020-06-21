@@ -40,7 +40,7 @@ var ContentType;
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
 })(ContentType || (ContentType = {}));
 const responseWriteGzip = (ctx, buff, cte) => {
-    ctx.res.writeHead(200, {
+    ctx.res.status(200, {
         'Content-Type': Bundlew.getResContentType(cte),
         'Content-Encoding': 'gzip'
     });
@@ -76,20 +76,16 @@ This 'Combiner' contains the following files:\n`;
         }
         return ContentType.UNKNOWN;
     }
-    static getCachePath(ctx, str, ctEnum, cacheKey, next) {
+    static getCachePath(ctx, str, ctEnum, cacheKey) {
         const dir = ctx.server.mapPath(`/web/temp/`);
-        return fsw.mkdir(dir, "", (err) => {
-            return ctx.handleError(err, () => {
-                let path = `${dir}\\${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${sow_encryption_1.Encryption.toMd5(str)}`;
-                if (ctEnum === ContentType.JS) {
-                    path = `${path}.js.cache`;
-                }
-                else {
-                    path = `${path}.css.cache`;
-                }
-                return next(_path.resolve(path));
-            });
-        }, ctx.handleError.bind(ctx));
+        let path = `${dir}\\${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${sow_encryption_1.Encryption.toMd5(str)}`;
+        if (ctEnum === ContentType.JS) {
+            path = `${path}.js.cache`;
+        }
+        else {
+            path = `${path}.css.cache`;
+        }
+        return path;
     }
     static getBundleInfo(server, str, lastChangeTime, next) {
         const result = [];
@@ -164,7 +160,7 @@ This 'Combiner' contains the following files:\n`;
             }
             out.push(Buffer.from(`\r\n/*${inf.name}*/\r\n`));
             if (inf.isOwn === true) {
-                out.push(Buffer.from(copyBuff));
+                out.push(copyBuff);
                 if (inf.name.indexOf(".min.") < 0) {
                     return _fs.readFile(inf.absolute, "utf8", (err, data) => {
                         return ctx.handleError(err, () => {
@@ -220,7 +216,7 @@ This 'Combiner' contains the following files:\n`;
                 return this.readBuffer(ctx, files, server.copyright(), (buffer) => {
                     ctx.req.socket.setNoDelay(true);
                     if (isGzip === false || !server.config.bundler.compress) {
-                        ctx.res.writeHead(200, {
+                        ctx.res.status(200, {
                             'Content-Type': this.getResContentType(cte),
                             'Content-Length': buffer.length
                         });
@@ -244,65 +240,81 @@ This 'Combiner' contains the following files:\n`;
         const desc = this.decryptFilePath(server, ctx, str.toString());
         if (!desc)
             return;
-        return this.getCachePath(ctx, desc.toString(), cte, cacheKey.toString(), (cachpath) => {
-            const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
-            return fsw.stat(cachpath, (serr, stat) => {
-                const existsCachFile = stat ? true : false;
-                return ctx.handleError(serr, () => {
-                    let lastChangeTime = 0;
-                    let cfileSize = 0;
-                    if (existsCachFile && stat) {
-                        cfileSize = stat.size;
-                        lastChangeTime = stat.mtime.getTime();
-                    }
-                    return this.getBundleInfo(server, desc.toString(), lastChangeTime, (files, ierr) => {
-                        return ctx.handleError(ierr, () => {
-                            let hasChanged = true;
-                            if (existsCachFile) {
-                                hasChanged = files.some(a => a.isChange === true);
-                            }
-                            const etag = cfileSize !== 0 ? sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
-                            if (!hasChanged && existsCachFile && (cngHander.etag || cngHander.sinceModify)) {
-                                let exit = false;
-                                if (etag && cngHander.etag) {
-                                    if (cngHander.etag === etag) {
-                                        sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
-                                        ctx.res.writeHead(304, { 'Content-Type': this.getResContentType(cte) });
-                                        return ctx.res.end(), ctx.next(304);
-                                    }
-                                    exit = true;
-                                }
-                                if (cngHander.sinceModify && !exit) {
+        const cachpath = this.getCachePath(ctx, desc.toString(), cte, cacheKey.toString());
+        const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
+        return fsw.stat(cachpath, (serr, stat) => {
+            const existsCachFile = stat ? true : false;
+            return ctx.handleError(serr, () => {
+                let lastChangeTime = 0;
+                let cfileSize = 0;
+                if (existsCachFile && stat) {
+                    cfileSize = stat.size;
+                    lastChangeTime = stat.mtime.getTime();
+                }
+                return this.getBundleInfo(server, desc.toString(), lastChangeTime, (files, ierr) => {
+                    return ctx.handleError(ierr, () => {
+                        let hasChanged = true;
+                        if (existsCachFile) {
+                            hasChanged = files.some(a => a.isChange === true);
+                        }
+                        const etag = cfileSize !== 0 ? sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
+                        if (!hasChanged && existsCachFile && (cngHander.etag || cngHander.sinceModify)) {
+                            let exit = false;
+                            if (etag && cngHander.etag) {
+                                if (cngHander.etag === etag) {
                                     sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
-                                    ctx.res.writeHead(304, { 'Content-Type': this.getResContentType(cte) });
-                                    return ctx.res.end(), ctx.next(304);
+                                    ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
+                                    return ctx.next(304);
                                 }
+                                exit = true;
                             }
-                            if (!hasChanged && existsCachFile) {
-                                sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
-                                    lastChangeTime,
-                                    etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize)
-                                }, server.config.cacheHeader);
-                                ctx.res.setHeader('x-served-from', 'cach-file');
-                                if (!server.config.bundler.compress) {
-                                    ctx.res.writeHead(200, {
-                                        'Content-Type': this.getResContentType(cte),
-                                        'Content-Length': cfileSize
-                                    });
-                                }
-                                else {
-                                    ctx.res.writeHead(200, {
-                                        'Content-Type': this.getResContentType(cte),
-                                        'Content-Encoding': 'gzip',
-                                        'Content-Length': cfileSize
-                                    });
-                                }
-                                return sow_util_1.Util.pipeOutputStream(cachpath, ctx);
+                            if (cngHander.sinceModify && !exit) {
+                                sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
+                                ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
+                                return ctx.next(304);
                             }
-                            return this.readBuffer(ctx, files, server.copyright(), (buffer) => {
-                                if (!server.config.bundler.compress) {
-                                    return _fs.writeFile(cachpath, buffer, (werr) => {
-                                        return ctx.handleError(werr, () => {
+                        }
+                        if (!hasChanged && existsCachFile) {
+                            sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
+                                lastChangeTime,
+                                etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize)
+                            }, server.config.cacheHeader);
+                            ctx.res.status(200, {
+                                'Content-Type': this.getResContentType(cte),
+                                'Content-Length': cfileSize,
+                                'x-served-from': 'cach-file'
+                            });
+                            if (server.config.bundler.compress) {
+                                ctx.res.setHeader('Content-Encoding', 'gzip');
+                            }
+                            return sow_util_1.Util.pipeOutputStream(cachpath, ctx);
+                        }
+                        return this.readBuffer(ctx, files, server.copyright(), (buffer) => {
+                            if (!server.config.bundler.compress) {
+                                return _fs.writeFile(cachpath, buffer, (werr) => {
+                                    return ctx.handleError(werr, () => {
+                                        return _fs.stat(cachpath, (cserr, cstat) => {
+                                            return ctx.handleError(cserr, () => {
+                                                lastChangeTime = cstat.mtime.getTime();
+                                                sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
+                                                    lastChangeTime,
+                                                    etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cstat.size)
+                                                }, server.config.cacheHeader);
+                                                ctx.res.writeHead(200, {
+                                                    'Content-Type': this.getResContentType(cte),
+                                                    'Content-Length': buffer.length
+                                                });
+                                                ctx.res.end(buffer);
+                                                return ctx.next(200);
+                                            });
+                                        });
+                                    });
+                                });
+                            }
+                            return _zlib.gzip(buffer, (error, buff) => {
+                                return ctx.handleError(error, () => {
+                                    return _fs.writeFile(cachpath, buff, (err) => {
+                                        return ctx.handleError(err, () => {
                                             return _fs.stat(cachpath, (cserr, cstat) => {
                                                 return ctx.handleError(cserr, () => {
                                                     lastChangeTime = cstat.mtime.getTime();
@@ -312,34 +324,11 @@ This 'Combiner' contains the following files:\n`;
                                                     }, server.config.cacheHeader);
                                                     ctx.res.writeHead(200, {
                                                         'Content-Type': this.getResContentType(cte),
-                                                        'Content-Length': buffer.length
+                                                        'Content-Encoding': 'gzip',
+                                                        'Content-Length': buff.length
                                                     });
-                                                    ctx.res.end(buffer);
-                                                    return ctx.next(200);
-                                                });
-                                            });
-                                        });
-                                    });
-                                }
-                                return _zlib.gzip(buffer, (error, buff) => {
-                                    return ctx.handleError(error, () => {
-                                        return _fs.writeFile(cachpath, buff, (err) => {
-                                            return ctx.handleError(err, () => {
-                                                return _fs.stat(cachpath, (cserr, cstat) => {
-                                                    return ctx.handleError(cserr, () => {
-                                                        lastChangeTime = cstat.mtime.getTime();
-                                                        sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
-                                                            lastChangeTime,
-                                                            etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cstat.size)
-                                                        }, server.config.cacheHeader);
-                                                        ctx.res.writeHead(200, {
-                                                            'Content-Type': this.getResContentType(cte),
-                                                            'Content-Encoding': 'gzip',
-                                                            'Content-Length': buff.length
-                                                        });
-                                                        ctx.res.end(buff);
-                                                        ctx.next(200);
-                                                    });
+                                                    ctx.res.end(buff);
+                                                    ctx.next(200);
                                                 });
                                             });
                                         });
@@ -349,8 +338,8 @@ This 'Combiner' contains the following files:\n`;
                         });
                     });
                 });
-            }, ctx.handleError.bind(ctx));
-        });
+            });
+        }, ctx.handleError.bind(ctx));
     }
 }
 // tslint:disable-next-line: variable-name

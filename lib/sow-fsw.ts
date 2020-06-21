@@ -49,9 +49,9 @@ export function isExists(
         return next( exists, url );
     } );
 }
-export function readJson(
+export function readJson<T>(
     absPath: string,
-    next: ( err: NodeJS.ErrnoException | null, json: { [id: string]: any } | void ) => void,
+    next: ( err: NodeJS.ErrnoException | null, json: NodeJS.Dict<T> | void ) => void,
     errHandler: ErrorHandler
 ): void {
     return _fs.readFile( absPath, ( err: NodeJS.ErrnoException | null, data: Buffer ) => {
@@ -61,6 +61,21 @@ export function readJson(
             } catch ( e ) {
                 return next( e );
             }
+        } );
+    } );
+}
+function mkdirCheckAndCreate(
+    errHandler: ErrorHandler,
+    fnext: ( done: boolean ) => void,
+    path?: string
+) {
+    if ( !path ) return fnext( true );
+    return _fs.exists( path, ( iexists: boolean ): void => {
+        if ( iexists ) return fnext( false );
+        return _fs.mkdir( path, ( err: NodeJS.ErrnoException | null ): void => {
+            return errHandler( err, () => {
+                fnext( false );
+            } );
         } );
     } );
 }
@@ -94,30 +109,16 @@ export function mkdir(
         }
         if ( _path.parse( fullPath ).ext ) return next( new Error( "Directory should be end without extension...." ) );
         const tobeCreate: string[] = [];
-        targetDir.split( sep ).reduce( ( parentDir, childDir ) => {
-            if ( !childDir ) return parentDir;
-            const curDir = _path.resolve( parentDir, childDir );
+        targetDir.split( sep ).reduce( ( parentDir: string, childDir: string ): string => {
+            const curDir: string = _path.resolve( parentDir, childDir );
             tobeCreate.push( curDir );
             return curDir;
         }, rootDir );
-        function checkAndCreate( fnext: ( done: boolean ) => void, path?: string ) {
-            if ( !path ) return fnext( true );
-            return _fs.exists( path, ( iexists: boolean ): void => {
-                if ( iexists ) return fnext( false );
-                return _fs.mkdir( path, ( err: NodeJS.ErrnoException | null ): void => {
-                    return errHandler( err, () => {
-                        fnext( false );
-                    } );
-                } );
-            } );
-        }
         function doNext( done: boolean ): void {
             if ( done ) {
-                return _fs.exists( fullPath, ( iexists: boolean ): void => {
-                    return next( iexists ? null : new Error( `Unable to create directory ${fullPath}` ) );
-                } );
+                return next( null );
             }
-            return checkAndCreate( doNext, tobeCreate.shift() );
+            return mkdirCheckAndCreate( errHandler, doNext, tobeCreate.shift() );
         }
         return doNext( false );
     } );
@@ -158,7 +159,10 @@ export function rmdir(
         } );
     } );
 }
-export function unlink( path: string, next: ( err: NodeJS.ErrnoException | null ) => void ): void {
+export function unlink(
+    path: string,
+    next: ( err: NodeJS.ErrnoException | null ) => void
+): void {
     return _fs.exists( path, ( exists: boolean ): void => {
         if ( !exists ) return next( null );
         return _fs.unlink( path, ( err: NodeJS.ErrnoException | null ): void => {
@@ -166,7 +170,11 @@ export function unlink( path: string, next: ( err: NodeJS.ErrnoException | null 
         } );
     } );
 }
-export function copyFile( src: string, dest: string, next: ( err: NodeJS.ErrnoException | null ) => void ): void {
+export function copyFile(
+    src: string, dest: string,
+    next: ( err: NodeJS.ErrnoException | null ) => void,
+    errHandler: ErrorHandler
+): void {
     if ( !_path.parse( src ).ext )
         return next( new Error( "Source file path required...." ) );
     if ( !_path.parse( dest ).ext )
@@ -175,9 +183,10 @@ export function copyFile( src: string, dest: string, next: ( err: NodeJS.ErrnoEx
         if ( !exists )
             return next( new Error( `Source directory not found ${src}` ) );
         return unlink( dest, ( err: NodeJS.ErrnoException | null ): void => {
-            if ( err ) return next( err );
-            return _fs.copyFile( src, dest, ( cerr: NodeJS.ErrnoException | null ): void => {
-                return next( cerr );
+            return errHandler( err, () => {
+                return _fs.copyFile( src, dest, ( cerr: NodeJS.ErrnoException | null ): void => {
+                    return next( cerr );
+                } );
             } );
         } );
     } );
@@ -227,7 +236,7 @@ export function compairFileSync( a: string, b: string ): boolean {
     if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
     return false;
 }
-export function readJsonAsync( absPath: string ): { [id: string]: any } | void {
+export function readJsonAsync<T>( absPath: string ): NodeJS.Dict<T> | void {
     const jsonstr = _fs.readFileSync( absPath, "utf8" ).replace( /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "" ).replace( /^\s*$(?:\r\n?|\n)/gm, "" );
     try {
         return JSON.parse( jsonstr );

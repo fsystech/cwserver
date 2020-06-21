@@ -23,7 +23,7 @@ class Streamer {
             openenedFile = fs_1.createReadStream(absPath, {
                 start, end
             });
-            ctx.res.writeHead(206, {
+            ctx.res.status(206, {
                 'Content-Range': `bytes ${start}-${end}/${total}`,
                 'Accept-Ranges': 'bytes',
                 'Content-Length': chunksize,
@@ -33,7 +33,7 @@ class Streamer {
         }
         else {
             openenedFile = fs_1.createReadStream(absPath);
-            ctx.res.writeHead(200, {
+            ctx.res.status(200, {
                 'Content-Length': total,
                 'Content-Type': mimeType
             });

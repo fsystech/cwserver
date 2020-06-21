@@ -7,6 +7,7 @@ import { ISowDatabaseType } from './sow-db-type';
 import { IController } from './sow-controller';
 import { ICryptoInfo } from "./sow-encryption";
 import { ILogger } from "./sow-logger";
+import { IMimeType } from './sow-http-mime-types';
 export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 export declare type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 export interface IContext {
@@ -308,9 +309,7 @@ interface ISowGlobalServer {
 }
 interface ISowGlobal {
     isInitilized: boolean;
-    HttpMime: {
-        readonly type: (extension: string) => string | undefined;
-    };
+    HttpMime: IMimeType<string>;
     server: ISowGlobalServer;
 }
 declare global {

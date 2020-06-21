@@ -22,6 +22,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Util = exports.getLibRoot = exports.assert = void 0;
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
+const stream_1 = require("stream");
+const destroy = require("destroy");
 const _isPlainObject = (obj) => {
     if (obj === null || obj === undefined)
         return false;
@@ -112,15 +114,10 @@ class Util {
             throw obj;
     }
     static pipeOutputStream(absPath, ctx) {
-        let openenedFile = _fs.createReadStream(absPath);
-        openenedFile.pipe(ctx.res);
-        return ctx.res.on('close', () => {
-            if (openenedFile) {
-                openenedFile.unpipe(ctx.res);
-                openenedFile.close();
-                openenedFile = Object.create(null);
-            }
-            ctx.next(200);
+        const openenedFile = _fs.createReadStream(absPath);
+        return stream_1.pipeline(openenedFile, ctx.res, (err) => {
+            destroy(openenedFile);
+            ctx.next(ctx.res.statusCode);
         }), void 0;
     }
     static isExists(path, next) {
@@ -134,7 +131,7 @@ class Util {
         const url = this.isExists(reqPath, ctx.next);
         if (!url)
             return;
-        ctx.res.writeHead(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
+        ctx.res.status(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
         return this.pipeOutputStream(String(url), ctx);
     }
     static getExtension(reqPath) {

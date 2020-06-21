@@ -24,7 +24,7 @@ const responseWriteGzip = (
     ctx: IContext, buff: Buffer,
     cte: ContentType
 ): void => {
-    ctx.res.writeHead( 200, {
+    ctx.res.status( 200, {
         'Content-Type': Bundlew.getResContentType( cte ),
         'Content-Encoding': 'gzip'
     } );
@@ -64,21 +64,16 @@ This 'Combiner' contains the following files:\n`;
         ctx: IContext,
         str: string,
         ctEnum: ContentType,
-        cacheKey: string,
-        next: ( cachpath: string ) => void
-    ): void {
+        cacheKey: string
+    ): string {
         const dir = ctx.server.mapPath( `/web/temp/` );
-        return fsw.mkdir( dir, "", ( err: NodeJS.ErrnoException | null ): void => {
-            return ctx.handleError( err, () => {
-                let path = `${dir}\\${cacheKey.replace( /[/\\?%*:|"<>]/g, "" )}_${Encryption.toMd5( str )}`;
-                if ( ctEnum === ContentType.JS ) {
-                    path = `${path}.js.cache`
-                } else {
-                    path = `${path}.css.cache`
-                }
-                return next( _path.resolve( path ) );
-            } );
-        }, ctx.handleError.bind( ctx ) );
+        let path = `${dir}\\${cacheKey.replace( /[/\\?%*:|"<>]/g, "" )}_${Encryption.toMd5( str )}`;
+        if ( ctEnum === ContentType.JS ) {
+            path = `${path}.js.cache`
+        } else {
+            path = `${path}.css.cache`
+        }
+        return path;
     }
     static getBundleInfo(
         server: ISowServer, str: string,
@@ -155,7 +150,7 @@ This 'Combiner' contains the following files:\n`;
             }
             out.push( Buffer.from( `\r\n/*${inf.name}*/\r\n` ) );
             if ( inf.isOwn === true ) {
-                out.push( Buffer.from( copyBuff ) )
+                out.push( copyBuff )
                 if ( inf.name.indexOf( ".min." ) < 0 ) {
                     return _fs.readFile( inf.absolute, "utf8", ( err: NodeJS.ErrnoException | null, data: string ) => {
                         return ctx.handleError( err, (): void => {
@@ -209,7 +204,7 @@ This 'Combiner' contains the following files:\n`;
                 return this.readBuffer( ctx, files, server.copyright(), ( buffer: Buffer ): void => {
                     ctx.req.socket.setNoDelay( true );
                     if ( isGzip === false || !server.config.bundler.compress ) {
-                        ctx.res.writeHead( 200, {
+                        ctx.res.status( 200, {
                             'Content-Type': this.getResContentType( cte ),
                             'Content-Length': buffer.length
                         } );
@@ -231,64 +226,81 @@ This 'Combiner' contains the following files:\n`;
         if ( cte === ContentType.UNKNOWN ) return ctx.next( 404 );
         const desc: string | void = this.decryptFilePath( server, ctx, str.toString() );
         if ( !desc ) return;
-        return this.getCachePath( ctx, desc.toString(), cte, cacheKey.toString(), ( cachpath: string ): void => {
-            const cngHander: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
-            return fsw.stat( cachpath, ( serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats ): void => {
-                const existsCachFile: boolean = stat ? true : false;
-                return ctx.handleError( serr, () => {
-                    let lastChangeTime: number = 0;
-                    let cfileSize: number = 0;
-                    if ( existsCachFile && stat ) {
-                        cfileSize = stat.size;
-                        lastChangeTime = stat.mtime.getTime();
-                    }
-                    return this.getBundleInfo( server, desc.toString(), lastChangeTime, ( files: BundlerFileInfo[], ierr: Error | null ): void => {
-                        return ctx.handleError( ierr, () => {
-                            let hasChanged: boolean = true;
-                            if ( existsCachFile ) {
-                                hasChanged = files.some( a => a.isChange === true );
-                            }
-                            const etag: string | undefined = cfileSize !== 0 ? SowHttpCache.getEtag( lastChangeTime, cfileSize ) : void 0;
-                            if ( !hasChanged && existsCachFile && ( cngHander.etag || cngHander.sinceModify ) ) {
-                                let exit: boolean = false;
-                                if ( etag && cngHander.etag ) {
-                                    if ( cngHander.etag === etag ) {
-                                        SowHttpCache.writeCacheHeader( ctx.res, {}, server.config.cacheHeader );
-                                        ctx.res.writeHead( 304, { 'Content-Type': this.getResContentType( cte ) } );
-                                        return ctx.res.end(), ctx.next( 304 );
-                                    }
-                                    exit = true;
-                                }
-                                if ( cngHander.sinceModify && !exit ) {
+        const cachpath: string = this.getCachePath( ctx, desc.toString(), cte, cacheKey.toString() );
+        const cngHander: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
+        return fsw.stat( cachpath, ( serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats ): void => {
+            const existsCachFile: boolean = stat ? true : false;
+            return ctx.handleError( serr, () => {
+                let lastChangeTime: number = 0;
+                let cfileSize: number = 0;
+                if ( existsCachFile && stat ) {
+                    cfileSize = stat.size;
+                    lastChangeTime = stat.mtime.getTime();
+                }
+                return this.getBundleInfo( server, desc.toString(), lastChangeTime, ( files: BundlerFileInfo[], ierr: Error | null ): void => {
+                    return ctx.handleError( ierr, () => {
+                        let hasChanged: boolean = true;
+                        if ( existsCachFile ) {
+                            hasChanged = files.some( a => a.isChange === true );
+                        }
+                        const etag: string | undefined = cfileSize !== 0 ? SowHttpCache.getEtag( lastChangeTime, cfileSize ) : void 0;
+                        if ( !hasChanged && existsCachFile && ( cngHander.etag || cngHander.sinceModify ) ) {
+                            let exit: boolean = false;
+                            if ( etag && cngHander.etag ) {
+                                if ( cngHander.etag === etag ) {
                                     SowHttpCache.writeCacheHeader( ctx.res, {}, server.config.cacheHeader );
-                                    ctx.res.writeHead( 304, { 'Content-Type': this.getResContentType( cte ) } );
-                                    return ctx.res.end(), ctx.next( 304 );
+                                    ctx.res.status( 304, { 'Content-Type': this.getResContentType( cte ) } ).send();
+                                    return ctx.next( 304 );
                                 }
+                                exit = true;
                             }
-                            if ( !hasChanged && existsCachFile ) {
-                                SowHttpCache.writeCacheHeader( ctx.res, {
-                                    lastChangeTime,
-                                    etag: SowHttpCache.getEtag( lastChangeTime, cfileSize )
-                                }, server.config.cacheHeader );
-                                ctx.res.setHeader( 'x-served-from', 'cach-file' );
-                                if ( !server.config.bundler.compress ) {
-                                    ctx.res.writeHead( 200, {
-                                        'Content-Type': this.getResContentType( cte ),
-                                        'Content-Length': cfileSize
-                                    } );
-                                } else {
-                                    ctx.res.writeHead( 200, {
-                                        'Content-Type': this.getResContentType( cte ),
-                                        'Content-Encoding': 'gzip',
-                                        'Content-Length': cfileSize
-                                    } );
-                                }
-                                return Util.pipeOutputStream( cachpath, ctx );
+                            if ( cngHander.sinceModify && !exit ) {
+                                SowHttpCache.writeCacheHeader( ctx.res, {}, server.config.cacheHeader );
+                                ctx.res.status( 304, { 'Content-Type': this.getResContentType( cte ) } ).send();
+                                return ctx.next( 304 );
                             }
-                            return this.readBuffer( ctx, files, server.copyright(), ( buffer: Buffer ): void => {
-                                if ( !server.config.bundler.compress ) {
-                                    return _fs.writeFile( cachpath, buffer, ( werr: NodeJS.ErrnoException | null ): void => {
-                                        return ctx.handleError( werr, () => {
+                        }
+                        if ( !hasChanged && existsCachFile ) {
+                            SowHttpCache.writeCacheHeader( ctx.res, {
+                                lastChangeTime,
+                                etag: SowHttpCache.getEtag( lastChangeTime, cfileSize )
+                            }, server.config.cacheHeader );
+                            ctx.res.status( 200, {
+                                'Content-Type': this.getResContentType( cte ),
+                                'Content-Length': cfileSize,
+                                'x-served-from': 'cach-file'
+                            } );
+                            if ( server.config.bundler.compress ) {
+                                ctx.res.setHeader( 'Content-Encoding', 'gzip' );
+                            }
+                            return Util.pipeOutputStream( cachpath, ctx );
+                        }
+                        return this.readBuffer( ctx, files, server.copyright(), ( buffer: Buffer ): void => {
+                            if ( !server.config.bundler.compress ) {
+                                return _fs.writeFile( cachpath, buffer, ( werr: NodeJS.ErrnoException | null ): void => {
+                                    return ctx.handleError( werr, () => {
+                                        return _fs.stat( cachpath, ( cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats ) => {
+                                            return ctx.handleError( cserr, () => {
+                                                lastChangeTime = cstat.mtime.getTime();
+                                                SowHttpCache.writeCacheHeader( ctx.res, {
+                                                    lastChangeTime,
+                                                    etag: SowHttpCache.getEtag( lastChangeTime, cstat.size )
+                                                }, server.config.cacheHeader );
+                                                ctx.res.writeHead( 200, {
+                                                    'Content-Type': this.getResContentType( cte ),
+                                                    'Content-Length': buffer.length
+                                                } );
+                                                ctx.res.end( buffer );
+                                                return ctx.next( 200 );
+                                            } );
+                                        } );
+                                    } );
+                                } );
+                            }
+                            return _zlib.gzip( buffer, ( error: Error | null, buff: Buffer ): void => {
+                                return ctx.handleError( error, () => {
+                                    return _fs.writeFile( cachpath, buff, ( err: NodeJS.ErrnoException | null ): void => {
+                                        return ctx.handleError( err, () => {
                                             return _fs.stat( cachpath, ( cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats ) => {
                                                 return ctx.handleError( cserr, () => {
                                                     lastChangeTime = cstat.mtime.getTime();
@@ -298,34 +310,11 @@ This 'Combiner' contains the following files:\n`;
                                                     }, server.config.cacheHeader );
                                                     ctx.res.writeHead( 200, {
                                                         'Content-Type': this.getResContentType( cte ),
-                                                        'Content-Length': buffer.length
+                                                        'Content-Encoding': 'gzip',
+                                                        'Content-Length': buff.length
                                                     } );
-                                                    ctx.res.end( buffer );
-                                                    return ctx.next( 200 );
-                                                } );
-                                            } );
-                                        } );
-                                    } );
-                                }
-                                return _zlib.gzip( buffer, ( error: Error | null, buff: Buffer ): void => {
-                                    return ctx.handleError( error, () => {
-                                        return _fs.writeFile( cachpath, buff, ( err: NodeJS.ErrnoException | null ): void => {
-                                            return ctx.handleError( err, () => {
-                                                return _fs.stat( cachpath, ( cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats ) => {
-                                                    return ctx.handleError( cserr, () => {
-                                                        lastChangeTime = cstat.mtime.getTime();
-                                                        SowHttpCache.writeCacheHeader( ctx.res, {
-                                                            lastChangeTime,
-                                                            etag: SowHttpCache.getEtag( lastChangeTime, cstat.size )
-                                                        }, server.config.cacheHeader );
-                                                        ctx.res.writeHead( 200, {
-                                                            'Content-Type': this.getResContentType( cte ),
-                                                            'Content-Encoding': 'gzip',
-                                                            'Content-Length': buff.length
-                                                        } );
-                                                        ctx.res.end( buff );
-                                                        ctx.next( 200 );
-                                                    } );
+                                                    ctx.res.end( buff );
+                                                    ctx.next( 200 );
                                                 } );
                                             } );
                                         } );
@@ -335,8 +324,8 @@ This 'Combiner' contains the following files:\n`;
                         } );
                     } );
                 } );
-            }, ctx.handleError.bind( ctx ) );
-        } );
+            } );
+        }, ctx.handleError.bind( ctx ) );
     }
 }
 // tslint:disable-next-line: variable-name

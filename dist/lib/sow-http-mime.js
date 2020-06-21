@@ -29,6 +29,8 @@ exports.HttpMimeHandler = void 0;
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const _zlib = __importStar(require("zlib"));
+const stream_1 = require("stream");
+const destroy = require("destroy");
 const fsw = __importStar(require("./sow-fsw"));
 const _mimeType = __importStar(require("./sow-http-mime-types"));
 const sow_http_cache_1 = require("./sow-http-cache");
@@ -48,84 +50,75 @@ const TaskDeff = [
     { cache: false, ext: "mp3", gzip: false }
 ];
 class MimeHandler {
-    static getCachePath(ctx, next) {
+    static getCachePath(ctx) {
         const dir = ctx.server.mapPath(`/web/temp/cache/`);
-        return fsw.mkdir(dir, "", (err) => {
-            return ctx.handleError(err, () => {
-                const path = `${dir}\\${sow_encryption_1.Encryption.toMd5(ctx.path)}`;
-                return next(_path.resolve(`${path}.${ctx.extension}.cache`));
-            });
-        }, ctx.handleError.bind(ctx));
+        const path = `${dir}\\${sow_encryption_1.Encryption.toMd5(ctx.path)}`;
+        return _path.resolve(`${path}.${ctx.extension}.cache`);
     }
     static servedFromServerFileCache(ctx, absPath, mimeType, fstat) {
         const reqCacheHeader = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
-        return this.getCachePath(ctx, (cachePath) => {
-            return fsw.stat(cachePath, (serr, stat) => {
-                const existsCachFile = stat ? true : false;
-                return ctx.handleError(serr, () => {
-                    let lastChangeTime = 0, cfileSize = 0;
-                    if (existsCachFile && stat) {
-                        cfileSize = stat.size;
-                        lastChangeTime = stat.mtime.getTime();
-                    }
-                    let hasChanged = true;
-                    if (existsCachFile) {
-                        hasChanged = fstat.mtime.getTime() > lastChangeTime;
-                    }
-                    const etag = cfileSize !== 0 ? sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
-                    if (!hasChanged && existsCachFile && (reqCacheHeader.etag || reqCacheHeader.sinceModify)) {
-                        let exit = false;
-                        if (etag && reqCacheHeader.etag) {
-                            if (reqCacheHeader.etag === etag) {
-                                sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
-                                ctx.res.writeHead(304, { 'Content-Type': mimeType });
-                                return ctx.res.end(), ctx.next(304);
-                            }
-                            exit = true;
-                        }
-                        if (reqCacheHeader.sinceModify && !exit) {
+        const cachePath = this.getCachePath(ctx);
+        return fsw.stat(cachePath, (serr, stat) => {
+            const existsCachFile = stat ? true : false;
+            return ctx.handleError(serr, () => {
+                let lastChangeTime = 0, cfileSize = 0;
+                if (existsCachFile && stat) {
+                    cfileSize = stat.size;
+                    lastChangeTime = stat.mtime.getTime();
+                }
+                let hasChanged = true;
+                if (existsCachFile) {
+                    hasChanged = fstat.mtime.getTime() > lastChangeTime;
+                }
+                const etag = cfileSize !== 0 ? sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
+                if (!hasChanged && existsCachFile && (reqCacheHeader.etag || reqCacheHeader.sinceModify)) {
+                    let exit = false;
+                    if (etag && reqCacheHeader.etag) {
+                        if (reqCacheHeader.etag === etag) {
                             sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
-                            ctx.res.writeHead(304, { 'Content-Type': mimeType });
-                            return ctx.res.end(), ctx.next(304);
+                            ctx.res.status(304, { 'Content-Type': mimeType }).send();
+                            return ctx.next(ctx.res.statusCode);
                         }
+                        exit = true;
                     }
-                    if (!hasChanged && existsCachFile) {
-                        sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
-                            lastChangeTime,
-                            etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize)
-                        }, ctx.server.config.cacheHeader);
-                        ctx.res.setHeader('x-served-from', 'cach-file');
-                        ctx.res.writeHead(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
-                        return sow_util_1.Util.pipeOutputStream(cachePath, ctx);
+                    if (reqCacheHeader.sinceModify && !exit) {
+                        sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                        ctx.res.status(304, { 'Content-Type': mimeType }).send();
+                        return ctx.next(ctx.res.statusCode);
                     }
-                    return _fs.readFile(absPath, (rerr, buffer) => {
-                        return ctx.handleError(rerr, () => {
-                            return _zlib.gzip(buffer, (zError, buff) => {
-                                return ctx.handleError(zError, () => {
-                                    return _fs.writeFile(cachePath, buff, (werr) => {
-                                        return ctx.handleError(werr, () => {
-                                            return _fs.stat(cachePath, (cserr, cstat) => {
-                                                return ctx.handleError(cserr, () => {
-                                                    lastChangeTime = cstat.mtime.getTime();
-                                                    sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
-                                                        lastChangeTime,
-                                                        etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cstat.size)
-                                                    }, ctx.server.config.cacheHeader);
-                                                    ctx.res.writeHead(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
-                                                    ctx.res.end(buff);
-                                                    ctx.next(200);
-                                                    return void 0;
-                                                });
-                                            });
-                                        });
-                                    });
-                                });
+                }
+                if (!hasChanged && existsCachFile) {
+                    sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
+                        lastChangeTime,
+                        etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cfileSize)
+                    }, ctx.server.config.cacheHeader);
+                    ctx.res.status(200, {
+                        'Content-Type': mimeType, 'Content-Encoding': 'gzip',
+                        'x-served-from': 'cach-file'
+                    });
+                    return sow_util_1.Util.pipeOutputStream(cachePath, ctx);
+                }
+                const rstream = _fs.createReadStream(absPath);
+                const wstream = _fs.createWriteStream(cachePath);
+                return stream_1.pipeline(rstream, _zlib.createGzip(), wstream, (gzipErr) => {
+                    destroy(rstream);
+                    destroy(wstream);
+                    return ctx.handleError(gzipErr, () => {
+                        return _fs.stat(cachePath, (cserr, cstat) => {
+                            return ctx.handleError(cserr, () => {
+                                lastChangeTime = cstat.mtime.getTime();
+                                sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
+                                    lastChangeTime,
+                                    etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cstat.size)
+                                }, ctx.server.config.cacheHeader);
+                                ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
+                                return sow_util_1.Util.pipeOutputStream(cachePath, ctx);
                             });
                         });
                     });
                 });
-            }, ctx.handleError.bind(ctx));
-        });
+            });
+        }, ctx.handleError.bind(ctx));
     }
     static servedNoChache(ctx, absPath, mimeType, isGzip, size) {
         sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
@@ -133,23 +126,16 @@ class MimeHandler {
             etag: void 0
         }, { maxAge: 0, serverRevalidate: true });
         if (ctx.server.config.staticFile.compression && isGzip) {
-            return _fs.readFile(absPath, (err, buffer) => {
-                return ctx.handleError(err, () => {
-                    return _zlib.gzip(buffer, (zError, buff) => {
-                        return ctx.handleError(zError, () => {
-                            ctx.res.writeHead(200, {
-                                'Content-Type': mimeType,
-                                'Content-Encoding': 'gzip',
-                                'Content-Length': buff.length
-                            });
-                            ctx.res.end(buff);
-                            return ctx.next(200);
-                        });
-                    });
-                });
+            ctx.res.status(200, {
+                'Content-Type': mimeType,
+                'Content-Encoding': 'gzip'
             });
+            const rstream = _fs.createReadStream(absPath);
+            return stream_1.pipeline(rstream, _zlib.createGzip(), ctx.res, (gzipErr) => {
+                destroy(rstream);
+            }), void 0;
         }
-        ctx.res.writeHead(200, {
+        ctx.res.status(200, {
             'Content-Type': mimeType, 'Content-Length': size
         });
         return sow_util_1.Util.pipeOutputStream(absPath, ctx);
@@ -160,28 +146,23 @@ class MimeHandler {
         const curEtag = sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, fstat.size);
         if ((reqCachHeader.etag && reqCachHeader.etag === curEtag) ||
             (reqCachHeader.sinceModify && reqCachHeader.sinceModify === lastChangeTime)) {
+            ctx.req.get("");
             sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
-            ctx.res.writeHead(304, { 'Content-Type': mimeType });
-            return ctx.res.end(), ctx.next(304);
+            ctx.res.status(304, { 'Content-Type': mimeType }).send();
+            return ctx.next(ctx.res.statusCode);
         }
         sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime,
             etag: curEtag
         }, ctx.server.config.cacheHeader);
         if (ctx.server.config.staticFile.compression && isGzip) {
-            return _fs.readFile(absPath, (err, buffer) => {
-                return ctx.handleError(err, () => {
-                    return _zlib.gzip(buffer, (zError, buff) => {
-                        return ctx.handleError(zError, () => {
-                            ctx.res.writeHead(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
-                            ctx.res.end(buff);
-                            ctx.next(200);
-                        });
-                    });
-                });
-            });
+            ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
+            const rstream = _fs.createReadStream(absPath);
+            return stream_1.pipeline(rstream, _zlib.createGzip(), ctx.res, (gzipErr) => {
+                destroy(rstream);
+            }), void 0;
         }
-        ctx.res.writeHead(200, { 'Content-Type': mimeType });
+        ctx.res.status(200, { 'Content-Type': mimeType });
         return sow_util_1.Util.pipeOutputStream(absPath, ctx);
     }
     static _render(ctx, mimeType, absPath) {
@@ -193,7 +174,7 @@ class MimeHandler {
                 maxAge: ctx.server.config.cacheHeader.maxAge,
                 serverRevalidate: false
             });
-            ctx.res.writeHead(200, { 'Content-Type': mimeType });
+            ctx.res.status(200, { 'Content-Type': mimeType });
             return sow_util_1.Util.pipeOutputStream(absPath, ctx);
         }
         return _fs.stat(absPath, (serr, stat) => {

@@ -121,6 +121,14 @@ function getClientIp(req) {
 }
 exports.getClientIp = getClientIp;
 class Request extends http_1.IncomingMessage {
+    get cleanSocket() {
+        if (this._cleanSocket === undefined)
+            return false;
+        return this._cleanSocket;
+    }
+    set cleanSocket(val) {
+        this._cleanSocket = val;
+    }
     get q() {
         if (this._q !== undefined)
             return this._q;
@@ -175,11 +183,21 @@ class Request extends http_1.IncomingMessage {
         delete this._path;
         delete this._ip;
         delete this._cookies;
-        // this.removeAllListeners();
-        // this.destroy();
+        if (process.env.TASK_TYPE === 'TEST' || this.cleanSocket) {
+            this.removeAllListeners();
+            this.destroy();
+        }
     }
 }
 class Response extends http_1.ServerResponse {
+    get cleanSocket() {
+        if (this._cleanSocket === undefined)
+            return false;
+        return this._cleanSocket;
+    }
+    set cleanSocket(val) {
+        this._cleanSocket = val;
+    }
     get isAlive() {
         if (this._isAlive !== undefined)
             return this._isAlive;
@@ -190,16 +208,21 @@ class Response extends http_1.ServerResponse {
         this._isAlive = val;
     }
     get method() {
-        if (this._method !== undefined)
-            return this._method;
-        this._method = "GET";
-        return this._method;
+        return this._method || "";
     }
     set method(val) {
         this._method = val;
     }
-    status(code) {
+    status(code, headers) {
         this.statusCode = code;
+        if (headers) {
+            for (const name in headers) {
+                const val = headers[name];
+                if (!val)
+                    continue;
+                this.setHeader(name, val);
+            }
+        }
         return this;
     }
     get(name) {
@@ -213,16 +236,6 @@ class Response extends http_1.ServerResponse {
     }
     set(field, value) {
         return this.setHeader(field, value), this;
-    }
-    setHeaders(statusCode, headers) {
-        this.statusCode = statusCode;
-        for (const name in headers) {
-            const val = headers[name];
-            if (!val)
-                continue;
-            this.setHeader(name, val);
-        }
-        return this;
     }
     type(extension) {
         return this.setHeader('Content-Type', _mimeType.getMimeType(extension)), this;
@@ -282,16 +295,16 @@ class Response extends http_1.ServerResponse {
         return this.end(chunk);
     }
     asHTML(code, contentLength, isGzip) {
-        return this.setHeaders(code, getCommonHeader('text/html; charset=UTF-8', contentLength, isGzip)), this;
+        return this.status(code, getCommonHeader('text/html; charset=UTF-8', contentLength, isGzip)), this;
     }
     asJSON(code, contentLength, isGzip) {
-        return this.setHeaders(code, getCommonHeader(_mimeType.getMimeType('json'), contentLength, isGzip)), this;
+        return this.status(code, getCommonHeader(_mimeType.getMimeType('json'), contentLength, isGzip)), this;
     }
     render(ctx, path, status) {
         return sow_template_1.Template.parse(ctx, path, status);
     }
     redirect(url) {
-        return this.setHeaders(this.statusCode, {
+        return this.status(this.statusCode, {
             'Location': url
         }).end();
     }
@@ -314,7 +327,7 @@ class Response extends http_1.ServerResponse {
                     if (error) {
                         if (next)
                             return next(error);
-                        return this.setHeaders(500, {
+                        return this.status(500, {
                             'Content-Type': _mimeType.getMimeType('text')
                         }).end(`Runtime Error: ${error.message}`);
                     }
@@ -327,8 +340,10 @@ class Response extends http_1.ServerResponse {
     dispose() {
         delete this._method;
         delete this._isAlive;
-        // this.removeAllListeners();
-        // return this.destroy();
+        if (process.env.TASK_TYPE === 'TEST' || this.cleanSocket) {
+            this.removeAllListeners();
+            this.destroy();
+        }
     }
 }
 class Application extends events_1.EventEmitter {
@@ -472,7 +487,8 @@ function App() {
     const app = new Application(http_1.createServer((request, response) => {
         const req = Object.setPrototypeOf(request, Request.prototype);
         const res = Object.setPrototypeOf(response, Response.prototype);
-        res.method = req.method || "GET";
+        if (req.method)
+            res.method = req.method;
         res.on('close', (...args) => {
             res.isAlive = false;
             app.emit('response-end', req, res);

@@ -4,16 +4,20 @@
 * See the accompanying LICENSE file for terms.
 */
 // 12:04 AM 6/19/2020
+/// <reference types="node" />
 import * as _fs from 'fs';
 import * as _path from 'path';
 import { assert, getLibRoot } from './sow-util';
-export function loadMimeType(): { readonly type: ( extension: string ) => string | undefined } {
+export interface IMimeType<T> {
+    readonly type: ( extension: string ) => T | undefined;
+}
+export function loadMimeType<T>(): IMimeType<T> {
     const libRoot: string = getLibRoot();
     const absPath: string = _path.resolve( `${libRoot}/mime-types.json` );
     assert( _fs.existsSync( absPath ), `No mime-type found in ${libRoot}\nPlease re-install cwserver` );
-    const data: { [id: string]: string } = JSON.parse( _fs.readFileSync( absPath, "utf-8" ) );
+    const data: NodeJS.Dict<T> = JSON.parse( _fs.readFileSync( absPath, "utf-8" ) );
     return {
-        type: ( extension: string ): string | undefined => {
+        type: ( extension: string ): T | undefined => {
             return data[extension];
         }
     }

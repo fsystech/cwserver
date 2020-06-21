@@ -439,6 +439,7 @@ describe( "cwserver-get", () => {
                 expect( res.header["content-type"] ).toBe( "application/json" );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.done ).toBeTruthy();
+                process.env.TASK_TYPE = 'TEST';
                 done();
             } );
     } );
@@ -745,10 +746,6 @@ describe( "cwserver-bundler", () => {
     let eTag: string = "";
     let lastModified: string = "";
     it( 'js file bundler with gizp response (server file cache)', ( done: Mocha.Done ): void => {
-        const temp = appUtility.server.mapPath( `/web/temp/` );
-        if ( fs.existsSync( temp ) ) {
-            fsw.rmdirSync( temp );
-        }
         getAgent()
             .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
             .query( {
@@ -2188,7 +2185,7 @@ describe( "cwserver-schema-validator", () => {
                 "nsession": []
             }, true );
         } )();
-        const config = fsw.readJsonAsync( appUtility.server.mapPath( "/config/app.config.json" ) );
+        const config: NodeJS.Dict<any> | void = fsw.readJsonAsync<any>( appUtility.server.mapPath( "/config/app.config.json" ) );
         expect( config ).toBeInstanceOf( Object );
         if ( !config ) throw new Error( "unreachable..." );
         const $schema = config.$schema;
@@ -2398,10 +2395,10 @@ describe( "cwserver-fsw", () => {
                                 expect( rderr ).toBeInstanceOf( Error );
                                 fsw.copyFile( filePath, root, ( crderr: NodeJS.ErrnoException | null ) => {
                                     expect( crderr ).toBeInstanceOf( Error );
-                                } );
+                                }, handleError );
                                 fsw.copyFile( root, root, ( dncrderr: NodeJS.ErrnoException | null ) => {
                                     expect( dncrderr ).toBeInstanceOf( Error );
-                                } );
+                                }, handleError);
                                 fsw.copyFile( `${filePath}.not`, filePath, ( fcrderr: NodeJS.ErrnoException | null ) => {
                                     expect( fcrderr ).toBeInstanceOf( Error );
                                     fsw.copyFile( filePath, `${filePath}.not`, ( cfcrderr: NodeJS.ErrnoException | null ) => {
@@ -2413,8 +2410,8 @@ describe( "cwserver-fsw", () => {
                                                 done();
                                             }, handleError );
                                         } );
-                                    } );
-                                } );
+                                    }, handleError );
+                                }, handleError );
                             }, handleError );
                         }, handleError );
                     }, handleError );

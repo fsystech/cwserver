@@ -4,7 +4,10 @@
 * See the accompanying LICENSE file for terms.
 */
 // 9:19 PM 5/8/2020
-import { Stats, ReadStream, createReadStream as fsCreateReadStream } from 'fs';
+import {
+    Stats, ReadStream, createReadStream as fsCreateReadStream
+} from 'fs';
+import destroy = require( 'destroy' );
 import { IContext } from './sow-server';
 export class Streamer {
     public static stream(
@@ -24,7 +27,7 @@ export class Streamer {
             openenedFile = fsCreateReadStream( absPath, {
                 start, end
             } );
-            ctx.res.writeHead( 206, {
+            ctx.res.status( 206, {
                 'Content-Range': `bytes ${start}-${end}/${total}`,
                 'Accept-Ranges': 'bytes',
                 'Content-Length': chunksize,
@@ -33,7 +36,7 @@ export class Streamer {
             openenedFile.pipe( ctx.res );
         } else {
             openenedFile = fsCreateReadStream( absPath );
-            ctx.res.writeHead( 200, {
+            ctx.res.status( 200, {
                 'Content-Length': total,
                 'Content-Type': mimeType
             } );

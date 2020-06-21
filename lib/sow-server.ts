@@ -25,7 +25,7 @@ import { Controller, IController } from './sow-controller';
 import { Encryption, ICryptoInfo } from "./sow-encryption";
 import { HttpStatus } from "./sow-http-status";
 import { Logger, ILogger } from "./sow-logger";
-import { loadMimeType } from './sow-http-mime-types';
+import { loadMimeType, IMimeType } from './sow-http-mime-types';
 export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => void;
 export type AppHandler = ( ctx: IContext, requestParam?: IRequestParam ) => void;
 // -------------------------------------------------------
@@ -307,12 +307,13 @@ export class Context implements IContext {
         }
     }
     handleError( err: NodeJS.ErrnoException | Error | null | undefined, next: () => void ): void {
-        if ( !this.isDisposed ) {
+        if ( !this.isDisposed && !this.res.headersSent ) {
             if ( Util.isError( err ) ) {
                 return this.transferError( err );
             }
             return next();
         }
+        // Nothing to do, context destroyed or response header already been sent
     }
     redirect( url: string ): void {
         if ( !this.isDisposed ) {
@@ -483,7 +484,7 @@ ${appRoot}\\www_public
         if ( !_fs.existsSync( absPath ) ) {
             throw new Error( `No config file found in ${absPath}` );
         }
-        const config = fsw.readJsonAsync( absPath );
+        const config: NodeJS.Dict<any> | void = fsw.readJsonAsync<IServerConfig>( absPath );
         if ( !config ) {
             throw new Error( `Invalid config file defined.\r\nConfig: ${absPath}` );
         }
@@ -492,11 +493,11 @@ ${appRoot}\\www_public
         if ( this.public !== config.hostInfo.root ) {
             throw new Error( `Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...` );
         }
-        const libRoot: string = _path.resolve( _path.join( getLibRoot(), process.env.SCRIPT === "TS" ? "/dist/" : "" ) );
+        const libRoot: string = getLibRoot();
         this.errorPage = {
-            "404": _path.resolve( `${libRoot}/error_page/404.html` ),
-            "401": _path.resolve( `${libRoot}/error_page/401.html` ),
-            "500": _path.resolve( `${libRoot}/error_page/500.html` )
+            "404": _path.resolve( `${libRoot}/dist/error_page/404.html` ),
+            "401": _path.resolve( `${libRoot}/dist/error_page/401.html` ),
+            "500": _path.resolve( `${libRoot}/dist/error_page/500.html` )
         };
         Util.extend( this.config, config, true );
         this.implimentConfig( config );
@@ -507,6 +508,7 @@ ${appRoot}\\www_public
         this.initilize();
         this.log = new Logger( `./log/`, this.public, void 0, this.userInteractive, this.config.isDebug );
         this.encryption = new ServerEncryption( this.config.encryptionKey );
+        fsw.mkdirSync( this.getPublic(), "/web/temp/cache/" );
         return;
     }
     on( ev: "shutdown", handler: () => void ): void {
@@ -809,17 +811,17 @@ class SowGlobalServer implements ISowGlobalServer {
 }
 interface ISowGlobal {
     isInitilized: boolean;
-    HttpMime: { readonly type: ( extension: string ) => string | undefined };
+    HttpMime: IMimeType<string>;
     server: ISowGlobalServer;
 }
 class SowGlobal implements ISowGlobal {
     public isInitilized: boolean;
     server: ISowGlobalServer;
-    HttpMime: { readonly type: ( extension: string ) => string | undefined };
+    HttpMime: IMimeType<string>;
     constructor() {
         this.server = new SowGlobalServer();
         this.isInitilized = false;
-        this.HttpMime = loadMimeType();
+        this.HttpMime = loadMimeType<string>();
     }
 }
 declare global {

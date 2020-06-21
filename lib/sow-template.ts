@@ -411,7 +411,7 @@ class TemplateLink {
             if ( isCompressed && isCompressed === true ) {
                 return _zlib.gzip( Buffer.from( body ), ( error: Error | null, buff: Buffer ) => {
                     return ctx.handleError( error, () => {
-                        ctx.res.setHeaders( status.code, {
+                        ctx.res.status( status.code, {
                             'Content-Type': 'text/html',
                             'Content-Encoding': 'gzip',
                             'Content-Length': buff.length
@@ -422,7 +422,7 @@ class TemplateLink {
                 } );
             }
             return ctx.handleError( null, () => {
-                ctx.res.setHeaders( status.code, {
+                ctx.res.status( status.code, {
                     'Content-Type': 'text/html',
                     'Content-Length': Buffer.byteLength( body )
                 } );
@@ -480,7 +480,7 @@ class TemplateLink {
             if ( typeof ( func ) === "function" ) {
                 return func( ctx, this.processResponse( status ) );
             }
-            ctx.res.setHeaders( status.code, {
+            ctx.res.status( status.code, {
                 'Content-Type': 'text/html',
                 'Cache-Control': 'no-store'
             } );
@@ -536,7 +536,7 @@ class TemplateLink {
                         return ctx.transferError( e );
                     }
                 }
-                ctx.res.setHeaders( status.code, {
+                ctx.res.status( status.code, {
                     'Content-Type': 'text/html',
                     'Cache-Control': 'no-store'
                 } );

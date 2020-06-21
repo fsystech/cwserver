@@ -466,6 +466,7 @@ describe("cwserver-get", () => {
             expect_1.default(res.header["content-type"]).toBe("application/json");
             expect_1.default(res.body).toBeInstanceOf(Object);
             expect_1.default(res.body.done).toBeTruthy();
+            process.env.TASK_TYPE = 'TEST';
             done();
         });
     });
@@ -772,10 +773,6 @@ describe("cwserver-bundler", () => {
     let eTag = "";
     let lastModified = "";
     it('js file bundler with gizp response (server file cache)', (done) => {
-        const temp = appUtility.server.mapPath(`/web/temp/`);
-        if (fs.existsSync(temp)) {
-            fsw.rmdirSync(temp);
-        }
         getAgent()
             .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
             .query({
@@ -2444,10 +2441,10 @@ describe("cwserver-fsw", () => {
                                 expect_1.default(rderr).toBeInstanceOf(Error);
                                 fsw.copyFile(filePath, root, (crderr) => {
                                     expect_1.default(crderr).toBeInstanceOf(Error);
-                                });
+                                }, handleError);
                                 fsw.copyFile(root, root, (dncrderr) => {
                                     expect_1.default(dncrderr).toBeInstanceOf(Error);
-                                });
+                                }, handleError);
                                 fsw.copyFile(`${filePath}.not`, filePath, (fcrderr) => {
                                     expect_1.default(fcrderr).toBeInstanceOf(Error);
                                     fsw.copyFile(filePath, `${filePath}.not`, (cfcrderr) => {
@@ -2459,8 +2456,8 @@ describe("cwserver-fsw", () => {
                                                 done();
                                             }, handleError);
                                         });
-                                    });
-                                });
+                                    }, handleError);
+                                }, handleError);
                             }, handleError);
                         }, handleError);
                     }, handleError);

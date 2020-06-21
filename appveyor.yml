@@ -1,3 +1,5 @@
+platform:
+  - x64
 environment:
   matrix:
     - nodejs_version: "12"
@@ -20,11 +22,11 @@ install:
   # Setup Node.js version-specific dependencies
   - ps: |
       # mocha for testing
-      npm install --silent --save-dev superagent
-      npm install --silent --save-dev expect
-      npm install --silent --save-dev socket.io-client
-      npm install --silent --save-dev socket.io
-      npm install --silent --save-dev mocha
+      npm install superagent --save-dev
+      npm install expect --save-dev
+      npm install socket.io-client --save-dev
+      npm install socket.io --save-dev
+      npm install mocha --save-dev
   # Update Node.js modules
   - ps: |
       # Prune & rebuild node_modules

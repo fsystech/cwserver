@@ -72,6 +72,19 @@ function readJson(absPath, next, errHandler) {
     });
 }
 exports.readJson = readJson;
+function mkdirCheckAndCreate(errHandler, fnext, path) {
+    if (!path)
+        return fnext(true);
+    return _fs.exists(path, (iexists) => {
+        if (iexists)
+            return fnext(false);
+        return _fs.mkdir(path, (err) => {
+            return errHandler(err, () => {
+                fnext(false);
+            });
+        });
+    });
+}
 function mkdir(rootDir, targetDir, next, errHandler) {
     if (rootDir.length === 0)
         return next(new Error("Argument missing..."));
@@ -102,32 +115,15 @@ function mkdir(rootDir, targetDir, next, errHandler) {
             return next(new Error("Directory should be end without extension...."));
         const tobeCreate = [];
         targetDir.split(sep).reduce((parentDir, childDir) => {
-            if (!childDir)
-                return parentDir;
             const curDir = _path.resolve(parentDir, childDir);
             tobeCreate.push(curDir);
             return curDir;
         }, rootDir);
-        function checkAndCreate(fnext, path) {
-            if (!path)
-                return fnext(true);
-            return _fs.exists(path, (iexists) => {
-                if (iexists)
-                    return fnext(false);
-                return _fs.mkdir(path, (err) => {
-                    return errHandler(err, () => {
-                        fnext(false);
-                    });
-                });
-            });
-        }
         function doNext(done) {
             if (done) {
-                return _fs.exists(fullPath, (iexists) => {
-                    return next(iexists ? null : new Error(`Unable to create directory ${fullPath}`));
-                });
+                return next(null);
             }
-            return checkAndCreate(doNext, tobeCreate.shift());
+            return mkdirCheckAndCreate(errHandler, doNext, tobeCreate.shift());
         }
         return doNext(false);
     });
@@ -177,7 +173,7 @@ function unlink(path, next) {
     });
 }
 exports.unlink = unlink;
-function copyFile(src, dest, next) {
+function copyFile(src, dest, next, errHandler) {
     if (!_path.parse(src).ext)
         return next(new Error("Source file path required...."));
     if (!_path.parse(dest).ext)
@@ -186,10 +182,10 @@ function copyFile(src, dest, next) {
         if (!exists)
             return next(new Error(`Source directory not found ${src}`));
         return unlink(dest, (err) => {
-            if (err)
-                return next(err);
-            return _fs.copyFile(src, dest, (cerr) => {
-                return next(cerr);
+            return errHandler(err, () => {
+                return _fs.copyFile(src, dest, (cerr) => {
+                    return next(cerr);
+                });
             });
         });
     });

@@ -26,6 +26,7 @@ exports.isValidExtension = exports.getMimeType = exports.loadMimeType = void 0;
 * See the accompanying LICENSE file for terms.
 */
 // 12:04 AM 6/19/2020
+/// <reference types="node" />
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_util_1 = require("./sow-util");

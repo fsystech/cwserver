@@ -5,7 +5,9 @@
 */
 import { IContext } from './sow-server';
 import * as _fs from 'fs';
-import * as _path from  'path';
+import * as _path from 'path';
+import { pipeline } from 'stream';
+import destroy = require( 'destroy' );
 const _isPlainObject = ( obj: any ): obj is { [x: string]: any; } => {
     if ( obj === null || obj === undefined ) return false;
     return typeof ( obj ) === 'object' && Object.prototype.toString.call( obj ) === "[object Object]";
@@ -86,15 +88,10 @@ export class Util {
         if ( this.isError( obj ) ) throw obj;
     }
     public static pipeOutputStream( absPath: string, ctx: IContext ): void {
-        let openenedFile: _fs.ReadStream = _fs.createReadStream( absPath );
-        openenedFile.pipe( ctx.res );
-        return ctx.res.on( 'close', () => {
-            if ( openenedFile ) {
-                openenedFile.unpipe( ctx.res );
-                openenedFile.close();
-                openenedFile = Object.create( null );
-            }
-            ctx.next( 200 );
+        const openenedFile: _fs.ReadStream = _fs.createReadStream( absPath );
+        return pipeline( openenedFile, ctx.res, ( err: NodeJS.ErrnoException | null ) => {
+            destroy( openenedFile );
+            ctx.next( ctx.res.statusCode );
         } ), void 0;
     }
     public static isExists( path: string, next?: ( code?: number | undefined, transfer?: boolean ) => void ): string | boolean {
@@ -109,7 +106,7 @@ export class Util {
     ): void {
         const url = this.isExists( reqPath, ctx.next );
         if ( !url ) return;
-        ctx.res.writeHead( 200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' } );
+        ctx.res.status( 200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' } );
         return this.pipeOutputStream( String( url ), ctx );
     }
     public static getExtension( reqPath: string ): string | void {

@@ -7,6 +7,8 @@
 import * as _fs from 'fs';
 import * as _path from 'path';
 import * as _zlib from 'zlib';
+import { pipeline } from 'stream';
+import destroy = require( 'destroy' );
 import * as fsw from './sow-fsw';
 import * as _mimeType from './sow-http-mime-types';
 import { IContext } from './sow-server';
@@ -35,86 +37,77 @@ const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "mp3", gzip: false }
 ];
 class MimeHandler {
-    static getCachePath( ctx: IContext, next: ( cachpath: string ) => void ): void {
+    static getCachePath( ctx: IContext ): string {
         const dir: string = ctx.server.mapPath( `/web/temp/cache/` );
-        return fsw.mkdir( dir, "", ( err: NodeJS.ErrnoException | null ): void => {
-            return ctx.handleError( err, () => {
-                const path: string = `${dir}\\${Encryption.toMd5( ctx.path )}`;
-                return next( _path.resolve( `${path}.${ctx.extension}.cache` ) );
-            } );
-        }, ctx.handleError.bind( ctx ) );
+        const path: string = `${dir}\\${Encryption.toMd5( ctx.path )}`;
+        return _path.resolve( `${path}.${ctx.extension}.cache` );
     }
     static servedFromServerFileCache(
         ctx: IContext, absPath: string, mimeType: string,
         fstat: _fs.Stats
     ): void {
         const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
-        return this.getCachePath( ctx, ( cachePath: string ): void => {
-            return fsw.stat( cachePath, ( serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats ): void => {
-                const existsCachFile: boolean = stat ? true : false;
-                return ctx.handleError( serr, () => {
-                    let lastChangeTime: number = 0, cfileSize: number = 0;
-                    if ( existsCachFile && stat ) {
-                        cfileSize = stat.size;
-                        lastChangeTime = stat.mtime.getTime();
-                    }
-                    let hasChanged: boolean = true;
-                    if ( existsCachFile ) {
-                        hasChanged = fstat.mtime.getTime() > lastChangeTime;
-                    }
-                    const etag: string | undefined = cfileSize !== 0 ? SowHttpCache.getEtag( lastChangeTime, cfileSize ) : void 0;
-                    if ( !hasChanged && existsCachFile && ( reqCacheHeader.etag || reqCacheHeader.sinceModify ) ) {
-                        let exit: boolean = false;
-                        if ( etag && reqCacheHeader.etag ) {
-                            if ( reqCacheHeader.etag === etag ) {
-                                SowHttpCache.writeCacheHeader( ctx.res, {}, ctx.server.config.cacheHeader );
-                                ctx.res.writeHead( 304, { 'Content-Type': mimeType } );
-                                return ctx.res.end(), ctx.next( 304 );
-                            }
-                            exit = true;
-                        }
-                        if ( reqCacheHeader.sinceModify && !exit ) {
+        const cachePath: string = this.getCachePath( ctx );
+        return fsw.stat( cachePath, ( serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats ): void => {
+            const existsCachFile: boolean = stat ? true : false;
+            return ctx.handleError( serr, () => {
+                let lastChangeTime: number = 0, cfileSize: number = 0;
+                if ( existsCachFile && stat ) {
+                    cfileSize = stat.size;
+                    lastChangeTime = stat.mtime.getTime();
+                }
+                let hasChanged: boolean = true;
+                if ( existsCachFile ) {
+                    hasChanged = fstat.mtime.getTime() > lastChangeTime;
+                }
+                const etag: string | undefined = cfileSize !== 0 ? SowHttpCache.getEtag( lastChangeTime, cfileSize ) : void 0;
+                if ( !hasChanged && existsCachFile && ( reqCacheHeader.etag || reqCacheHeader.sinceModify ) ) {
+                    let exit: boolean = false;
+                    if ( etag && reqCacheHeader.etag ) {
+                        if ( reqCacheHeader.etag === etag ) {
                             SowHttpCache.writeCacheHeader( ctx.res, {}, ctx.server.config.cacheHeader );
-                            ctx.res.writeHead( 304, { 'Content-Type': mimeType } );
-                            return ctx.res.end(), ctx.next( 304 );
+                            ctx.res.status( 304, { 'Content-Type': mimeType } ).send();
+                            return ctx.next( ctx.res.statusCode );
                         }
+                        exit = true;
                     }
-                    if ( !hasChanged && existsCachFile ) {
-                        SowHttpCache.writeCacheHeader( ctx.res, {
-                            lastChangeTime,
-                            etag: SowHttpCache.getEtag( lastChangeTime, cfileSize )
-                        }, ctx.server.config.cacheHeader );
-                        ctx.res.setHeader( 'x-served-from', 'cach-file' );
-                        ctx.res.writeHead( 200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' } );
-                        return Util.pipeOutputStream( cachePath, ctx );
+                    if ( reqCacheHeader.sinceModify && !exit ) {
+                        SowHttpCache.writeCacheHeader( ctx.res, {}, ctx.server.config.cacheHeader );
+                        ctx.res.status( 304, { 'Content-Type': mimeType } ).send();
+                        return ctx.next( ctx.res.statusCode );
                     }
-                    return _fs.readFile( absPath, ( rerr: NodeJS.ErrnoException | null, buffer: Buffer ): void => {
-                        return ctx.handleError( rerr, (): void => {
-                            return _zlib.gzip( buffer, ( zError: Error | null, buff: Buffer ): void => {
-                                return ctx.handleError( zError, (): void => {
-                                    return _fs.writeFile( cachePath, buff, ( werr: NodeJS.ErrnoException | null ): void => {
-                                        return ctx.handleError( werr, (): void => {
-                                            return _fs.stat( cachePath, ( cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats ) => {
-                                                return ctx.handleError( cserr, (): void => {
-                                                    lastChangeTime = cstat.mtime.getTime();
-                                                    SowHttpCache.writeCacheHeader( ctx.res, {
-                                                        lastChangeTime,
-                                                        etag: SowHttpCache.getEtag( lastChangeTime, cstat.size )
-                                                    }, ctx.server.config.cacheHeader );
-                                                    ctx.res.writeHead( 200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' } );
-                                                    ctx.res.end( buff ); ctx.next( 200 );
-                                                    return void 0;
-                                                } );
-                                            } );
-                                        } );
-                                    } );
-                                } );
+                }
+                if ( !hasChanged && existsCachFile ) {
+                    SowHttpCache.writeCacheHeader( ctx.res, {
+                        lastChangeTime,
+                        etag: SowHttpCache.getEtag( lastChangeTime, cfileSize )
+                    }, ctx.server.config.cacheHeader );
+                    ctx.res.status( 200, {
+                        'Content-Type': mimeType, 'Content-Encoding': 'gzip',
+                        'x-served-from': 'cach-file'
+                    } );
+                    return Util.pipeOutputStream( cachePath, ctx );
+                }
+                const rstream: _fs.ReadStream = _fs.createReadStream( absPath );
+                const wstream: _fs.WriteStream = _fs.createWriteStream( cachePath );
+                return pipeline( rstream, _zlib.createGzip(), wstream, ( gzipErr: NodeJS.ErrnoException | null ) => {
+                    destroy( rstream ); destroy( wstream );
+                    return ctx.handleError( gzipErr, (): void => {
+                        return _fs.stat( cachePath, ( cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats ) => {
+                            return ctx.handleError( cserr, (): void => {
+                                lastChangeTime = cstat.mtime.getTime();
+                                SowHttpCache.writeCacheHeader( ctx.res, {
+                                    lastChangeTime,
+                                    etag: SowHttpCache.getEtag( lastChangeTime, cstat.size )
+                                }, ctx.server.config.cacheHeader );
+                                ctx.res.status( 200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' } );
+                                return Util.pipeOutputStream( cachePath, ctx );
                             } );
                         } );
                     } );
                 } );
-            }, ctx.handleError.bind( ctx ) );
-        } );
+            } );
+        }, ctx.handleError.bind( ctx ) );
     }
     static servedNoChache(
         ctx: IContext, absPath: string,
@@ -126,23 +119,16 @@ class MimeHandler {
             etag: void 0
         }, { maxAge: 0, serverRevalidate: true } );
         if ( ctx.server.config.staticFile.compression && isGzip ) {
-            return _fs.readFile( absPath, ( err: NodeJS.ErrnoException | null, buffer: Buffer ): void => {
-                return ctx.handleError( err, (): void => {
-                    return _zlib.gzip( buffer, ( zError: Error | null, buff: Buffer ): void => {
-                        return ctx.handleError( zError, () => {
-                            ctx.res.writeHead( 200, {
-                                'Content-Type': mimeType,
-                                'Content-Encoding': 'gzip',
-                                'Content-Length': buff.length
-                            } );
-                            ctx.res.end( buff );
-                            return ctx.next( 200 );
-                        } );
-                    } );
-                } );
+            ctx.res.status( 200, {
+                'Content-Type': mimeType,
+                'Content-Encoding': 'gzip'
             } );
+            const rstream: _fs.ReadStream = _fs.createReadStream( absPath );
+            return pipeline( rstream, _zlib.createGzip(), ctx.res, ( gzipErr: NodeJS.ErrnoException | null ) => {
+                destroy( rstream );
+            } ), void 0;
         }
-        ctx.res.writeHead( 200, {
+        ctx.res.status( 200, {
             'Content-Type': mimeType, 'Content-Length': size
         } );
         return Util.pipeOutputStream( absPath, ctx );
@@ -159,27 +145,23 @@ class MimeHandler {
             ( reqCachHeader.etag && reqCachHeader.etag === curEtag ) ||
             ( reqCachHeader.sinceModify && reqCachHeader.sinceModify === lastChangeTime )
         ) {
+            ctx.req.get("")
             SowHttpCache.writeCacheHeader( ctx.res, {}, ctx.server.config.cacheHeader );
-            ctx.res.writeHead( 304, { 'Content-Type': mimeType } );
-            return ctx.res.end(), ctx.next( 304 );
+            ctx.res.status( 304, { 'Content-Type': mimeType } ).send();
+            return ctx.next( ctx.res.statusCode );
         }
         SowHttpCache.writeCacheHeader( ctx.res, {
             lastChangeTime,
             etag: curEtag
         }, ctx.server.config.cacheHeader );
         if ( ctx.server.config.staticFile.compression && isGzip ) {
-            return _fs.readFile( absPath, ( err: NodeJS.ErrnoException | null, buffer: Buffer ): void => {
-                return ctx.handleError( err, (): void => {
-                    return _zlib.gzip( buffer, ( zError: Error | null, buff: Buffer ): void => {
-                        return ctx.handleError( zError, () => {
-                            ctx.res.writeHead( 200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' } );
-                            ctx.res.end( buff ); ctx.next( 200 );
-                        } );
-                    } );
-                } );
-            } );
+            ctx.res.status( 200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' } );
+            const rstream: _fs.ReadStream = _fs.createReadStream( absPath );
+            return pipeline( rstream, _zlib.createGzip(), ctx.res, ( gzipErr: NodeJS.ErrnoException | null ) => {
+                destroy( rstream );
+            } ), void 0;
         }
-        ctx.res.writeHead( 200, { 'Content-Type': mimeType } );
+        ctx.res.status( 200, { 'Content-Type': mimeType } );
         return Util.pipeOutputStream( absPath, ctx );
     }
     static _render(
@@ -195,7 +177,7 @@ class MimeHandler {
                 maxAge: ctx.server.config.cacheHeader.maxAge,
                 serverRevalidate: false
             } );
-            ctx.res.writeHead( 200, { 'Content-Type': mimeType } );
+            ctx.res.status( 200, { 'Content-Type': mimeType } );
             return Util.pipeOutputStream( absPath, ctx );
         }
         return _fs.stat( absPath, ( serr: NodeJS.ErrnoException | null, stat: _fs.Stats ) => {

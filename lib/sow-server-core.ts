@@ -38,6 +38,7 @@ export interface IRequest extends IncomingMessage {
     readonly cookies: { [key: string]: string; };
     readonly query: ParsedUrlQuery;
     readonly ip: string;
+    cleanSocket: boolean;
     path: string;
     session: ISession;
     get( name: string ): string | void;
@@ -45,8 +46,9 @@ export interface IRequest extends IncomingMessage {
 }
 export interface IResponse extends ServerResponse {
     readonly isAlive: boolean;
+    cleanSocket: boolean;
     json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void;
-    status( code: number ): IResponse;
+    status( code: number, headers?: OutgoingHttpHeaders ): IResponse;
     asHTML( code: number, contentLength?: number, isGzip?: boolean ): IResponse;
     asJSON( code: number, contentLength?: number, isGzip?: boolean ): IResponse;
     cookie( name: string, val: string, options: CookieOptions ): IResponse;
@@ -55,7 +57,6 @@ export interface IResponse extends ServerResponse {
     redirect( url: string ): void;
     render( ctx: IContext, path: string, status?: IResInfo ): void;
     type( extension: string ): IResponse;
-    setHeaders( statusCode: number, headers: OutgoingHttpHeaders ): IResponse;
     send( chunk?: Buffer | string | number | boolean | { [key: string]: any } ): void;
     dispose(): void;
 }
@@ -147,6 +148,14 @@ class Request extends IncomingMessage implements IRequest {
     private _session: ISession | undefined;
     private _ip: string | undefined;
     private _id: string | undefined;
+    private _cleanSocket: boolean | undefined;
+    public get cleanSocket() {
+        if ( this._cleanSocket === undefined ) return false;
+        return this._cleanSocket;
+    }
+    public set cleanSocket( val: boolean ) {
+        this._cleanSocket = val;
+    }
     public get q(): UrlWithParsedQuery {
         if ( this._q !== undefined ) return this._q;
         this._q = urlHelpers.parse( this.url || '', true );
@@ -196,13 +205,23 @@ class Request extends IncomingMessage implements IRequest {
         delete this._path;
         delete this._ip;
         delete this._cookies;
-        // this.removeAllListeners();
-        // this.destroy();
+        if ( process.env.TASK_TYPE === 'TEST' || this.cleanSocket ) {
+            this.removeAllListeners();
+            this.destroy();
+        }
     }
 }
 class Response extends ServerResponse implements IResponse {
     private _isAlive: boolean | undefined;
     private _method: string | undefined;
+    private _cleanSocket: boolean | undefined;
+    public get cleanSocket() {
+        if ( this._cleanSocket === undefined ) return false;
+        return this._cleanSocket;
+    }
+    public set cleanSocket( val: boolean ) {
+        this._cleanSocket = val;
+    }
     public get isAlive() {
         if ( this._isAlive !== undefined ) return this._isAlive;
         this._isAlive = true;
@@ -212,15 +231,20 @@ class Response extends ServerResponse implements IResponse {
         this._isAlive = val;
     }
     public get method() {
-        if ( this._method !== undefined ) return this._method;
-        this._method = "GET";
-        return this._method;
+        return this._method || "";
     }
     public set method( val: string ) {
         this._method = val;
     }
-    public status( code: number ): IResponse {
+    public status( code: number, headers?: OutgoingHttpHeaders ): IResponse {
         this.statusCode = code;
+        if ( headers ) {
+            for ( const name in headers ) {
+                const val: number | string | string[] | undefined = headers[name];
+                if ( !val ) continue;
+                this.setHeader( name, val );
+            }
+        }
         return this;
     }
     public get( name: string ): string | void {
@@ -234,15 +258,6 @@ class Response extends ServerResponse implements IResponse {
     }
     public set( field: string, value: number | string | string[] ): IResponse {
         return this.setHeader( field, value ), this;
-    }
-    public setHeaders( statusCode: number, headers: OutgoingHttpHeaders ): IResponse {
-        this.statusCode = statusCode;
-        for ( const name in headers ) {
-            const val: number | string | string[] | undefined = headers[name];
-            if ( !val ) continue;
-            this.setHeader( name, val );
-        }
-        return this;
     }
     public type( extension: string ): IResponse {
         return this.setHeader( 'Content-Type', _mimeType.getMimeType( extension ) ), this;
@@ -300,16 +315,16 @@ class Response extends ServerResponse implements IResponse {
         return this.end( chunk );
     }
     public asHTML( code: number, contentLength?: number, isGzip?: boolean ): IResponse {
-        return this.setHeaders( code, getCommonHeader( 'text/html; charset=UTF-8', contentLength, isGzip ) ), this;
+        return this.status( code, getCommonHeader( 'text/html; charset=UTF-8', contentLength, isGzip ) ), this;
     }
     public asJSON( code: number, contentLength?: number, isGzip?: boolean ): IResponse {
-        return this.setHeaders( code, getCommonHeader( _mimeType.getMimeType( 'json' ), contentLength, isGzip ) ), this;
+        return this.status( code, getCommonHeader( _mimeType.getMimeType( 'json' ), contentLength, isGzip ) ), this;
     }
     public render( ctx: IContext, path: string, status?: IResInfo ): void {
         return Template.parse( ctx, path, status );
     }
     public redirect( url: string ): void {
-        return this.setHeaders( this.statusCode, {
+        return this.status( this.statusCode, {
             'Location': url
         } ).end();
     }
@@ -330,7 +345,7 @@ class Response extends ServerResponse implements IResponse {
                 if ( this.isAlive ) {
                     if ( error ) {
                         if ( next ) return next( error );
-                        return this.setHeaders( 500, {
+                        return this.status( 500, {
                             'Content-Type': _mimeType.getMimeType('text')
                         } ).end( `Runtime Error: ${error.message}` );
                     }
@@ -343,8 +358,10 @@ class Response extends ServerResponse implements IResponse {
     public dispose(): void {
         delete this._method;
         delete this._isAlive;
-        // this.removeAllListeners();
-        // return this.destroy();
+        if ( process.env.TASK_TYPE === 'TEST' || this.cleanSocket ) {
+            this.removeAllListeners();
+            this.destroy();
+        }
     }
 }
 class Application extends EventEmitter implements IApplication {
@@ -491,7 +508,8 @@ export function App(): IApplication {
     const app: Application = new Application( createServer( ( request: IncomingMessage, response: ServerResponse ) => {
         const req: IRequest = Object.setPrototypeOf( request, Request.prototype );
         const res: Response = Object.setPrototypeOf( response, Response.prototype );
-        res.method = req.method || "GET";
+        if ( req.method )
+            res.method = req.method;
         res.on( 'close', ( ...args: any[] ): void => {
             res.isAlive = false;
             app.emit( 'response-end', req, res );

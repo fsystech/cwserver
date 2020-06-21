@@ -14,9 +14,9 @@ export type IChangeHeader = {
 export class SowHttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
     public static getIfModifiedSinceUTCTime( headers: IncomingHttpHeaders ): number | void {
-        const ifModifiedSinceHeaderText = headers["If-Modified-Since"] || headers["if-modified-since"];
+        const ifModifiedSinceHeaderText: string | string[] | undefined = headers["If-Modified-Since"] || headers["if-modified-since"];
         if ( ifModifiedSinceHeaderText ) {
-            const date = new Date( ifModifiedSinceHeaderText.toString() );
+            const date: Date = new Date( ifModifiedSinceHeaderText.toString() );
             if ( date.toString().indexOf( "Invalid" ) > -1 ) return void 0;
             return date.getTime();
         }

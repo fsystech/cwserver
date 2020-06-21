@@ -29,6 +29,7 @@ export interface IRequest extends IncomingMessage {
     };
     readonly query: ParsedUrlQuery;
     readonly ip: string;
+    cleanSocket: boolean;
     path: string;
     session: ISession;
     get(name: string): string | void;
@@ -36,10 +37,11 @@ export interface IRequest extends IncomingMessage {
 }
 export interface IResponse extends ServerResponse {
     readonly isAlive: boolean;
+    cleanSocket: boolean;
     json(body: {
         [key: string]: any;
     }, compress?: boolean, next?: (error: Error | null) => void): void;
-    status(code: number): IResponse;
+    status(code: number, headers?: OutgoingHttpHeaders): IResponse;
     asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse;
     asJSON(code: number, contentLength?: number, isGzip?: boolean): IResponse;
     cookie(name: string, val: string, options: CookieOptions): IResponse;
@@ -48,7 +50,6 @@ export interface IResponse extends ServerResponse {
     redirect(url: string): void;
     render(ctx: IContext, path: string, status?: IResInfo): void;
     type(extension: string): IResponse;
-    setHeaders(statusCode: number, headers: OutgoingHttpHeaders): IResponse;
     send(chunk?: Buffer | string | number | boolean | {
         [key: string]: any;
     }): void;

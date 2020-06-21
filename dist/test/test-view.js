@@ -392,6 +392,9 @@ global.sow.server.on("register-view", (app, controller, server) => {
                 })).toBeInstanceOf(Error);
                 parser.clear();
             })();
+            process.env.TASK_TYPE = 'TESTX';
+            ctx.req.cleanSocket = true;
+            ctx.res.cleanSocket = true;
             ctx.res.json({
                 done: true
             });
