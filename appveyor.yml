@@ -19,6 +19,8 @@ install:
       npm rm --silent --save-dev connect-redis --no-optional
   # Setup Node.js version-specific dependencies
   - ps: |
+      npm --version
+      npm i fsevents@latest -f --save-optional
       # mocha for testing
       npm install expect --save-dev --no-optional
       npm install superagent --save-dev --no-optional
