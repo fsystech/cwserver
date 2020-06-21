@@ -2,10 +2,12 @@ environment:
   matrix:
     - nodejs_version: "12"
     - nodejs_version: "14"
+cache:
+  - node_modules
 install:
   # Install Node.js
   - ps: >-
-      try { Install-Product node $env:nodejs_version $env:platform -ErrorAction Stop }
+      try { Install-Product node $env:nodejs_version -ErrorAction Stop }
       catch { Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version) }
   # Configure npm
   - ps: |
@@ -17,16 +19,18 @@ install:
       npm rm --silent --save-dev connect-redis
   # Setup Node.js version-specific dependencies
   - ps: |
+      # mocha for testing
+      npm install expect --save-dev
+      npm install superagent --save-dev
+      npm install socket.io-client --save-dev
+      npm install socket.io --save-dev
+  # Update Node.js modules
+  - ps: |
       # Prune & rebuild node_modules
       if (Test-Path -Path node_modules) {
         npm prune
         npm rebuild
       }
-      # mocha for testing
-      npm install superagent
-      npm install expect
-      npm install socket.io-client
-      npm install socket.io
   # Install Node.js modules
   - npm install
 build: off
