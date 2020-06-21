@@ -16,14 +16,14 @@ install:
   # Remove all non-test dependencies
   - ps: |
       # Remove example dependencies
-      npm rm --silent --save-dev connect-redis
+      npm rm --silent --save-dev connect-redis --no-optional
   # Setup Node.js version-specific dependencies
   - ps: |
       # mocha for testing
-      npm install expect --save-dev
-      npm install superagent --save-dev
-      npm install socket.io-client --save-dev
-      npm install socket.io --save-dev
+      npm install expect --save-dev --no-optional
+      npm install superagent --save-dev --no-optional
+      npm install socket.io-client --save-dev --no-optional
+      npm install socket.io --save-dev --no-optional
   # Update Node.js modules
   - ps: |
       # Prune & rebuild node_modules
@@ -32,7 +32,7 @@ install:
         npm rebuild
       }
   # Install Node.js modules
-  - npm install
+  - npm install --no-optional
 build: off
 test_script:
   # Output version data
