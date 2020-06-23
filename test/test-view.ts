@@ -179,10 +179,10 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			err = e;
 		}
 		parser.clear();
-		console.log( err );
 		if ( err ) {
 			if ( err.message.indexOf( "CLIENET_DISCONNECTED" ) > -1 ) return ctx.next( -500 );
 		}
+		console.log( err );
 		throw new Error( "Should not here..." );
 	} ).post( '/upload-malformed-data', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		ctx.req.push( "This is normal line\n".repeat( 5 ) );

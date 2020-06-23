@@ -242,6 +242,93 @@ describe( "cwserver-router", () => {
         expect( pathToArray( "dfa/", [] ) ).not.toBeInstanceOf( Error );
         done();
     } );
+    it( 'test route target /task/:id/*', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/task/1/test_request/next` )
+            .end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                toBeApplicationJson( res.header["content-type"] );
+                expect( res.body ).toBeInstanceOf( Object );
+                expect( res.body.servedFrom ).toEqual( '/task/:id/*' );
+                expect( res.body.q.query ).toBeInstanceOf( Object );
+                expect( res.body.q.query.id ).toEqual( "1" );
+                expect( res.body.q.match ).toBeInstanceOf( Array );
+                expect( res.body.q.match.indexOf( "test_request" ) ).toBeGreaterThan( -1 );
+                done();
+            } );
+    } );
+    it( 'test route target /dist/*', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/dist/` )
+            .end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                toBeApplicationJson( res.header["content-type"] );
+                expect( res.body ).toBeInstanceOf( Object );
+                expect( res.body.servedFrom ).toEqual( '/dist/*' );
+                done();
+            } );
+    } );
+    it( 'test route target /user/:id/settings', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/user/10/settings/100` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 404 );
+                done();
+            } );
+    } );
+    it( 'should be 404 route target /test-c/:id', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/test-c/10/df/a` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 404 );
+                done();
+            } );
+    } );
+    it( 'should be 404 target route /test-c/:id not match', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/test-c/` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 404 );
+                done();
+            } );
+    } );
+    it( 'target route /*', ( done: Mocha.Done ): void => {
+        const route: string = "/*";
+        appUtility.controller.any( route, ( ctx: IContext, routeParam?: IRequestParam ) => {
+            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/*", q: routeParam } );
+        } );
+        appUtility.controller.sort();
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/test-c/zxy` )
+            .end( ( err, res ) => {
+                expect( appUtility.controller.remove( route ) ).toEqual( true );
+                expect( appUtility.controller.remove( "/_NOP_/" ) ).toEqual( false );
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                expect( res.body.servedFrom ).toEqual( '/*' );
+                done();
+            } );
+    } );
+    it( 'test route target /test-any/*', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/test-any/param/go` )
+            .end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                toBeApplicationJson( res.header["content-type"] );
+                expect( res.body ).toBeInstanceOf( Object );
+                expect( res.body.servedFrom ).toEqual( '/test-any/*' );
+                expect( res.body.q.query ).toBeInstanceOf( Object );
+                expect( res.body.q.match ).toBeInstanceOf( Array );
+                expect( res.body.q.match.indexOf( "param" ) ).toBeGreaterThan( -1 );
+                done();
+            } );
+    } );
     it( "test head", ( done: Mocha.Done ): void => {
         getAgent()
             .head( `http://localhost:${appUtility.port}/test-head` )
@@ -414,21 +501,6 @@ describe( "cwserver-get", () => {
                 done();
             } );
     } );
-    it( 'test route target /test-any/*', ( done: Mocha.Done ): void => {
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/test-any/param/go` )
-            .end( ( err, res ) => {
-                expect( err ).not.toBeInstanceOf( Error );
-                expect( res.status ).toBe( 200 );
-                toBeApplicationJson( res.header["content-type"] );
-                expect( res.body ).toBeInstanceOf( Object );
-                expect( res.body.servedFrom ).toEqual( '/test-any/*' );
-                expect( res.body.q.query ).toBeInstanceOf( Object );
-                expect( res.body.q.match ).toBeInstanceOf( Array );
-                expect( res.body.q.match.indexOf( "param" ) ).toBeGreaterThan( -1 );
-                done();
-            } );
-    } );
     it( 'test context', function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
         getAgent()
@@ -440,78 +512,6 @@ describe( "cwserver-get", () => {
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.done ).toBeTruthy();
                 process.env.TASK_TYPE = 'TEST';
-                done();
-            } );
-    } );
-    it( 'test route target /task/:id/*', ( done: Mocha.Done ): void => {
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/task/1/test_request/next` )
-            .end( ( err, res ) => {
-                expect( err ).not.toBeInstanceOf( Error );
-                expect( res.status ).toBe( 200 );
-                toBeApplicationJson( res.header["content-type"] );
-                expect( res.body ).toBeInstanceOf( Object );
-                expect( res.body.servedFrom ).toEqual( '/task/:id/*' );
-                expect( res.body.q.query ).toBeInstanceOf( Object );
-                expect( res.body.q.query.id ).toEqual( "1" );
-                expect( res.body.q.match ).toBeInstanceOf( Array );
-                expect( res.body.q.match.indexOf( "test_request" ) ).toBeGreaterThan( -1 );
-                done();
-            } );
-    } );
-    it( 'test route target /dist/*', ( done: Mocha.Done ): void => {
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/dist/` )
-            .end( ( err, res ) => {
-                expect( err ).not.toBeInstanceOf( Error );
-                expect( res.status ).toBe( 200 );
-                toBeApplicationJson( res.header["content-type"] );
-                expect( res.body ).toBeInstanceOf( Object );
-                expect( res.body.servedFrom ).toEqual( '/dist/*' );
-                done();
-            } );
-    } );
-    it( 'test route target /user/:id/settings', ( done: Mocha.Done ): void => {
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/user/10/settings/100` )
-            .end( ( err, res ) => {
-                expect( err ).toBeInstanceOf( Error );
-                expect( res.status ).toBe( 404 );
-                done();
-            } );
-    } );
-    it( 'should be 404 route target /test-c/:id', ( done: Mocha.Done ): void => {
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/test-c/10/df/a` )
-            .end( ( err, res ) => {
-                expect( err ).toBeInstanceOf( Error );
-                expect( res.status ).toBe( 404 );
-                done();
-            } );
-    } );
-    it( 'should be 404 target route /test-c/:id not match', ( done: Mocha.Done ): void => {
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/test-c/` )
-            .end( ( err, res ) => {
-                expect( err ).toBeInstanceOf( Error );
-                expect( res.status ).toBe( 404 );
-                done();
-            } );
-    } );
-    it( 'target route /*', ( done: Mocha.Done ): void => {
-        const route: string = "/*";
-        appUtility.controller.any( route, ( ctx: IContext, routeParam?: IRequestParam ) => {
-            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/*", q: routeParam } );
-        } );
-        appUtility.controller.sort();
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/test-c/zxy` )
-            .end( ( err, res ) => {
-                expect( appUtility.controller.remove( route ) ).toEqual( true );
-                expect( appUtility.controller.remove( "/_NOP_/" ) ).toEqual( false );
-                expect( err ).not.toBeInstanceOf( Error );
-                expect( res.status ).toBe( 200 );
-                expect( res.body.servedFrom ).toEqual( '/*' );
                 done();
             } );
     } );
@@ -977,24 +977,6 @@ describe( "cwserver-bundler-error", () => {
                     $virtual_vtest/xsocket-client.js,
                     $root/$public/static/script/test-1.js,
                     $root/$public/static/script/test-2.js|__owner__`
-                ),
-                ck: "bundle_test_jsx", ct: "text/javascript", rc: "Y"
-            } )
-            .end( ( err, res ) => {
-                expect( err ).toBeInstanceOf( Error );
-                expect( res.status ).toBe( 500 );
-                done();
-            } );
-    } );
-    it( 'bundler should be virtual file error (no server cache)', ( done: Mocha.Done ): void => {
-        appUtility.server.config.bundler.fileCache = false;
-        getAgent()
-            .get( `http://localhost:${appUtility.port}/app/api/bundle/` )
-            .query( {
-                g: appUtility.server.createBundle( `
-                        $virtual_vtest/xsocket-client.js,
-                        $root/$public/static/script/test-1.js,
-                        $root/$public/static/script/test-2.js|__owner__`
                 ),
                 ck: "bundle_test_jsx", ct: "text/javascript", rc: "Y"
             } )
