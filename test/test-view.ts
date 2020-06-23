@@ -179,6 +179,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			err = e;
 		}
 		parser.clear();
+		console.log( err );
 		if ( err ) {
 			if ( err.message.indexOf( "CLIENET_DISCONNECTED" ) > -1 ) return ctx.next( -500 );
 		}

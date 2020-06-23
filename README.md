@@ -103,7 +103,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 global.sow.server.on( "register-view", ( app, controller, server ) => {
     const downloadDir = server.mapPath( "/upload/data/" );
     if ( !fs.existsSync( downloadDir ) ) {
-        Util.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
+        fsw.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
     }
     const tempDir = server.mapPath( "/upload/temp/" );
     controller.post( '/post-async', async ( ctx ) => {

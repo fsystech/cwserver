@@ -1334,9 +1334,12 @@ describe( "cwserver-multipart-paylod-parser", () => {
             .field( 'post-file', readStream );
         req.on( "progress", ( event ) => {
             if ( event.total ) {
-                if ( ( event.total - event.loaded ) <= 1000 ) {
-                    req.abort();
-                    readStream.close(); done();
+                if ( ( event.total - event.loaded ) <= 0 ) {
+                    readStream.close();
+                    setTimeout( () => {
+                        req.abort();
+                        done();
+                    }, 0 );
                 }
             }
         } );
@@ -2437,8 +2440,14 @@ describe( "finalization", () => {
     } );
     it( "remove-garbage", function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
-        fsw.rmdir( appRoot, () => {
-            done();
-        }, handleError );
+        setTimeout( () => {
+            expect( fsw.mkdirSync( logDir, "/test" ) ).not.toBeInstanceOf( Error );
+            if ( fs.existsSync( logDir ) ) {
+                fsw.rmdirSync( logDir );
+            }
+            fsw.rmdir( appRoot, () => {
+                done();
+            }, handleError );
+        }, 300 );
     } );
 } );

@@ -6,10 +6,8 @@
 // 9:10 PM 5/2/2020
 import { IResInfo } from './sow-static';
 import { ResInfo, ToNumber } from './sow-static';
-interface IReverseHttpStatusCode<V> {
-    [x: number]: V;
-}
-export const HttpStatusCode: NodeJS.Dict<number> = {
+export type Dict<T> = { [K in string | number]: T | undefined };
+const HttpStatusCode: Dict<number> = {
     continue: 100,
     switchingprotocols: 101,
     ok: 200,
@@ -58,20 +56,15 @@ export const HttpStatusCode: NodeJS.Dict<number> = {
     gatewaytimeout: 504,
     httpversionnotsupported: 505
 }
-const ReverseHttpStatusCode: IReverseHttpStatusCode<string> = ( () => {
-    const rhsc: IReverseHttpStatusCode<string> = {};
-    for ( const prop in HttpStatusCode ) {
-        const val: number | undefined = HttpStatusCode[prop];
-        if ( val ) {
-            rhsc[val] = prop;
-        }
+const ReverseHttpStatusCode: Dict<string> = ( () => {
+    const rhsc: Dict<string> = {};
+    for ( const [key, value] of Object.entries( HttpStatusCode ) ) {
+        if ( value ) rhsc[value] = key;
     }
     return rhsc;
 } )();
 type GroupType = { type: string, error: boolean };
-const _group: {
-    [x: string]: GroupType;
-} = {
+const _group: Dict<GroupType> = {
     "1": {
         type: "Informational",
         error: false
@@ -94,7 +87,7 @@ const _group: {
     }
 };
 export class HttpStatus {
-    static get statusCode(): NodeJS.Dict<number> { return HttpStatusCode; }
+    static get statusCode(): Dict<number> { return HttpStatusCode; }
     static getDescription( statusCode: number ): string {
         const desc: string | undefined = ReverseHttpStatusCode[statusCode];
         if ( desc ) return desc;

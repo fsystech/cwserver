@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HttpStatus = exports.HttpStatusCode = void 0;
+exports.HttpStatus = void 0;
 const sow_static_1 = require("./sow-static");
-exports.HttpStatusCode = {
+const HttpStatusCode = {
     continue: 100,
     switchingprotocols: 101,
     ok: 200,
@@ -53,11 +53,9 @@ exports.HttpStatusCode = {
 };
 const ReverseHttpStatusCode = (() => {
     const rhsc = {};
-    for (const prop in exports.HttpStatusCode) {
-        const val = exports.HttpStatusCode[prop];
-        if (val) {
-            rhsc[val] = prop;
-        }
+    for (const [key, value] of Object.entries(HttpStatusCode)) {
+        if (value)
+            rhsc[value] = key;
     }
     return rhsc;
 })();
@@ -84,7 +82,7 @@ const _group = {
     }
 };
 class HttpStatus {
-    static get statusCode() { return exports.HttpStatusCode; }
+    static get statusCode() { return HttpStatusCode; }
     static getDescription(statusCode) {
         const desc = ReverseHttpStatusCode[statusCode];
         if (desc)

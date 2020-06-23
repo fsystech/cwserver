@@ -1,8 +1,9 @@
-/// <reference types="node" />
 import { IResInfo } from './sow-static';
-export declare const HttpStatusCode: NodeJS.Dict<number>;
+export declare type Dict<T> = {
+    [K in string | number]: T | undefined;
+};
 export declare class HttpStatus {
-    static get statusCode(): NodeJS.Dict<number>;
+    static get statusCode(): Dict<number>;
     static getDescription(statusCode: number): string;
     static fromPath(path: string | any, statusCode: any): number;
     static isValidCode(statusCode: number): boolean;

@@ -50,20 +50,16 @@ const getLine = (req, data) => {
                 outstr += str;
                 data.push(c);
                 c = req.read(1);
-                if (!c)
-                    return outstr;
-                outstr += c.toString(); // assume \n
-                data.push(c);
+                if (c) {
+                    outstr += c.toString(); // assume \n
+                    data.push(c);
+                }
                 return outstr;
             default:
                 outstr += str;
                 data.push(c);
         }
     }
-};
-const getHeader = (headers, key) => {
-    const result = headers[key];
-    return typeof (result) === "string" ? result.toString() : "";
 };
 const incomingContentType = {
     URL_ENCODE: "application/x-www-form-urlencoded",
@@ -175,7 +171,8 @@ class PostedFileInfo {
             return;
         this._isDisposed = true;
         if (!this._isMoved && this._tempFile) {
-            _fs.unlinkSync(this._tempFile);
+            if (_fs.existsSync(this._tempFile))
+                _fs.unlinkSync(this._tempFile);
         }
         delete this._fcontentDisposition;
         delete this._fname;
@@ -290,7 +287,7 @@ class PayloadDataParser {
         }
     }
     endCurrentStream(exit) {
-        if (this._writeStream && this._isStart === true) {
+        if (this._isStart === true && this._writeStream) {
             this._writeStream.end();
             if (this._postedFile) {
                 if (exit === false) {
@@ -325,8 +322,8 @@ class PayloadParser {
     constructor(req, tempDir) {
         this._isDisposed = false;
         this._isConnectionActive = true;
-        this._contentType = getHeader(req.headers, "content-type");
-        this._contentLength = sow_static_1.ToNumber(getHeader(req.headers, "content-length"));
+        this._contentType = req.get("content-type") || "";
+        this._contentLength = sow_static_1.ToNumber(req.get("content-length") || 0);
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
         }
