@@ -7,7 +7,8 @@
   "isDebug": true,
   "template": {
     "cache": false,
-    "cacheType": "MEM"
+    "cacheType": "MEM",
+    "ext": [ "html", "jsx" ]
   },
   "encryptionKey": "aaa$a",
   "socketPath": "",

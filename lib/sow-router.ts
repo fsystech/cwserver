@@ -5,8 +5,9 @@
 */
 // 3:15 AM 6/7/2020
 export type IRouteMatcher = {
-    readonly regExp: RegExp;
-    readonly repRegExp?: RegExp
+    readonly test: ( val: string ) => boolean;
+    readonly replace: ( val: string ) => string;
+    readonly exec: ( val: string ) => RegExpMatchArray | null;
 };
 export type IRequestParam = {
     query: { [x: string]: string };
@@ -47,19 +48,23 @@ export function getRouteMatcher( route: string, rRepRegx?: boolean ): IRouteMatc
             }
             return "(?:([^\/]+?))";
         } );
-    let repStr: string | void;
+    let repRegxStr: string | void;
     if ( rRepRegx === true && route.indexOf( ":" ) < 0 ) {
         const nRoute: string = route.substring( 0, route.lastIndexOf( "/" ) ).replace( pathRegx, "\\/" );
-        repStr = `^${nRoute}\/?(?=\/|$)`;
+        repRegxStr = `^${nRoute}\/?(?=\/|$)`;
     }
     const regx: string = `^${croute}\\/?$`;
+    // const tregx: RegExp = new RegExp( `^${croute}\\/?$`, "gi" );
     return {
-        get regExp() {
-            return new RegExp( regx, "gi" );
+        test ( val: string ): boolean {
+            return new RegExp( regx, "gi" ).test( val );
         },
-        get repRegExp() {
-            if ( !repStr ) return void 0;
-            return new RegExp( repStr, "gi" );
+        exec ( val: string ): RegExpMatchArray | null {
+            return new RegExp( regx, "gi" ).exec( val );
+        },
+        replace ( val: string ): string {
+            if ( !repRegxStr ) return val;
+            return val.replace( new RegExp( repRegxStr, "gi" ), "" );
         }
     };
 }
@@ -83,7 +88,7 @@ export function getRouteInfo<T>(
     if ( method === "ANY" ) {
         const layer = handlerInfos.find( a => {
             if ( a.routeMatcher )
-                return a.routeMatcher.regExp.test( reqPath );
+                return a.routeMatcher.test( reqPath );
             return false;
         } );
         if ( !layer ) return void 0;
@@ -100,8 +105,8 @@ export function getRouteInfo<T>(
         if ( layer.pathArray.length > 0 ) {
             if ( layer.pathArray[1] !== "*" && layer.pathArray[1].indexOf( ":" ) < 0 && pathArray[1] !== layer.pathArray[1] ) continue;
         }
-        if ( !layer.routeMatcher.regExp.test( reqPath ) ) continue;
-        const rmatch: RegExpMatchArray | null = layer.routeMatcher.regExp.exec( reqPath );
+        if ( !layer.routeMatcher.test( reqPath ) ) continue;
+        const rmatch: RegExpMatchArray | null = layer.routeMatcher.exec( reqPath );
         if ( rmatch ) {
             const requestParam: IRequestParam = {
                 query: {},

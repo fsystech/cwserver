@@ -33,6 +33,7 @@ const http_1 = require("http");
 const events_1 = require("events");
 const sow_router_1 = require("./sow-router");
 const sow_static_1 = require("./sow-static");
+const sow_http_status_1 = require("./sow-http-status");
 const sow_template_1 = require("./sow-template");
 const sow_util_1 = require("./sow-util");
 const url_1 = __importDefault(require("url"));
@@ -183,13 +184,21 @@ class Request extends http_1.IncomingMessage {
         delete this._path;
         delete this._ip;
         delete this._cookies;
-        if (process.env.TASK_TYPE === 'TEST' || this.cleanSocket) {
+        if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
             this.removeAllListeners();
             this.destroy();
         }
     }
 }
 class Response extends http_1.ServerResponse {
+    get statusCode() {
+        return this._statusCode === undefined ? 0 : this._statusCode;
+    }
+    set statusCode(code) {
+        if (!sow_http_status_1.HttpStatus.isValidCode(code))
+            throw new Error(`Invalid status code ${code}`);
+        this._statusCode = code;
+    }
     get cleanSocket() {
         if (this._cleanSocket === undefined)
             return false;
@@ -244,9 +253,6 @@ class Response extends http_1.ServerResponse {
         if (this.headersSent) {
             throw new Error("If you use res.writeHead(), invoke res.end() instead of res.send()");
         }
-        if (this.statusCode === 0) {
-            throw new Error("Use res.status().send()");
-        }
         if (204 === this.statusCode || 304 === this.statusCode) {
             this.removeHeader('Content-Type');
             this.removeHeader('Content-Length');
@@ -295,7 +301,7 @@ class Response extends http_1.ServerResponse {
         return this.end(chunk);
     }
     asHTML(code, contentLength, isGzip) {
-        return this.status(code, getCommonHeader('text/html; charset=UTF-8', contentLength, isGzip)), this;
+        return this.status(code, getCommonHeader(_mimeType.getMimeType("html"), contentLength, isGzip)), this;
     }
     asJSON(code, contentLength, isGzip) {
         return this.status(code, getCommonHeader(_mimeType.getMimeType('json'), contentLength, isGzip)), this;
@@ -340,7 +346,7 @@ class Response extends http_1.ServerResponse {
     dispose() {
         delete this._method;
         delete this._isAlive;
-        if (process.env.TASK_TYPE === 'TEST' || this.cleanSocket) {
+        if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
             this.removeAllListeners();
             this.destroy();
         }
@@ -409,9 +415,7 @@ class Application extends events_1.EventEmitter {
             isRouted = true;
             if (routeInfo) {
                 if (routeInfo.layer.routeMatcher) {
-                    const repRegx = routeInfo.layer.routeMatcher.repRegExp;
-                    if (repRegx)
-                        req.path = req.path.replace(repRegx, '');
+                    req.path = routeInfo.layer.routeMatcher.replace(req.path);
                 }
                 try {
                     return routeInfo.layer.handler.call(this, req, res, _next);

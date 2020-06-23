@@ -43,7 +43,8 @@
       "minLength": 1,
       "default": {
         "cache": true,
-        "cacheType": "FILE"
+        "cacheType": "FILE",
+        "ext": [ ]
       },
       "properties": {
         "cache": {
@@ -59,6 +60,12 @@
           "default": "FILE",
           "enum": [ "FILE", "MEM" ],
           "description": "You can set template cache mood FILE | MEM. It will be effect while template.cache is true"
+        },
+        "ext": {
+          "type": "array",
+          "minLength": 0,
+          "default": [],
+          "description": "Will be transfile give extension. e.g. ['html', 'wjsx']"
         }
       }
     },

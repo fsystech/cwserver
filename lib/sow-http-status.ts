@@ -6,7 +6,10 @@
 // 9:10 PM 5/2/2020
 import { IResInfo } from './sow-static';
 import { ResInfo, ToNumber } from './sow-static';
-export const HttpStatusCode: { [x: string]: number; } = {
+interface IReverseHttpStatusCode<V> {
+    [x: number]: V;
+}
+export const HttpStatusCode: NodeJS.Dict<number> = {
     continue: 100,
     switchingprotocols: 101,
     ok: 200,
@@ -55,7 +58,20 @@ export const HttpStatusCode: { [x: string]: number; } = {
     gatewaytimeout: 504,
     httpversionnotsupported: 505
 }
-const _group: { [x: string]: { type: string, error: boolean }; } = {
+const ReverseHttpStatusCode: IReverseHttpStatusCode<string> = ( () => {
+    const rhsc: IReverseHttpStatusCode<string> = {};
+    for ( const prop in HttpStatusCode ) {
+        const val: number | undefined = HttpStatusCode[prop];
+        if ( val ) {
+            rhsc[val] = prop;
+        }
+    }
+    return rhsc;
+} )();
+type GroupType = { type: string, error: boolean };
+const _group: {
+    [x: string]: GroupType;
+} = {
     "1": {
         type: "Informational",
         error: false
@@ -77,13 +93,11 @@ const _group: { [x: string]: { type: string, error: boolean }; } = {
         error: true
     }
 };
-
 export class HttpStatus {
-    static get statusCode(): { [x: string]: number; } { return HttpStatusCode; }
+    static get statusCode(): NodeJS.Dict<number> { return HttpStatusCode; }
     static getDescription( statusCode: number ): string {
-        for ( const description in HttpStatusCode ) {
-            if ( HttpStatusCode[description] === statusCode ) return description;
-        }
+        const desc: string | undefined = ReverseHttpStatusCode[statusCode];
+        if ( desc ) return desc;
         throw new Error( `Invalid ==> ${statusCode}...` );
     }
     static fromPath( path: string | any, statusCode: any ): number {
@@ -102,10 +116,7 @@ export class HttpStatus {
         return statusCode;
     }
     static isValidCode( statusCode: number ): boolean {
-        for ( const name in HttpStatusCode ) {
-            if ( HttpStatusCode[name] === statusCode ) return true;
-        }
-        return false;
+        return ReverseHttpStatusCode[statusCode] ? true : false;
     }
     static getResInfo( path: string | number, code: any ): IResInfo {
         code = ToNumber( code );
@@ -128,7 +139,7 @@ export class HttpStatus {
         return out;
     }
     static isErrorCode( code: any ): boolean {
-        const inf = _group[String( code ).charAt( 0 )];
+        const inf: GroupType | undefined = _group[String( code ).charAt( 0 )];
         if ( !inf )
             throw new Error( `Invalid http status code ${code}...` );
         return inf.error;

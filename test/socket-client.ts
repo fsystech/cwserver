@@ -1,5 +1,5 @@
 import expect from 'expect';
-import { wsClient, Util } from '../index';
+import { wsClient } from '../index';
 const clientInfo = wsClient();
 clientInfo.on( "beforeInitiateConnection", ( session, socket ) => {
     /*if ( !session.isAuthenticated ) {

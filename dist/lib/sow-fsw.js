@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mkdirSync = exports.copySync = exports.rmdirSync = exports.copyFileSync = exports.readJsonAsync = exports.compairFileSync = exports.copyDir = exports.copyFile = exports.unlink = exports.rmdir = exports.mkdir = exports.readJson = exports.isExists = exports.compairFile = exports.stat = void 0;
+exports.copyDirSync = exports.copyDir = exports.copyFileSync = exports.copyFile = exports.unlink = exports.rmdirSync = exports.rmdir = exports.mkdirSync = exports.mkdir = exports.readJsonSync = exports.readJson = exports.isExists = exports.compairFileSync = exports.compairFile = exports.stat = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -40,6 +40,7 @@ function stat(path, next, errHandler) {
     });
 }
 exports.stat = stat;
+/** compairFile a stat.mtime > b stat.mtime */
 function compairFile(a, b, next, errHandler) {
     return _fs.stat(a, (err, astat) => {
         return errHandler(err, () => {
@@ -52,6 +53,15 @@ function compairFile(a, b, next, errHandler) {
     });
 }
 exports.compairFile = compairFile;
+/** compairFileSync a stat.mtime > b stat.mtime */
+function compairFileSync(a, b) {
+    const astat = _fs.statSync(a);
+    const bstat = _fs.statSync(b);
+    if (astat.mtime.getTime() > bstat.mtime.getTime())
+        return true;
+    return false;
+}
+exports.compairFileSync = compairFileSync;
 function isExists(path, next) {
     const url = _path.resolve(path);
     return _fs.exists(url, (exists) => {
@@ -72,6 +82,16 @@ function readJson(absPath, next, errHandler) {
     });
 }
 exports.readJson = readJson;
+function readJsonSync(absPath) {
+    const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
+    try {
+        return JSON.parse(jsonstr);
+    }
+    catch (e) {
+        return void 0;
+    }
+}
+exports.readJsonSync = readJsonSync;
 function mkdirCheckAndCreate(errHandler, fnext, path) {
     if (!path)
         return fnext(true);
@@ -129,168 +149,6 @@ function mkdir(rootDir, targetDir, next, errHandler) {
     });
 }
 exports.mkdir = mkdir;
-function rmdir(path, next, errHandler) {
-    return _fs.exists(path, (exists) => {
-        if (!exists)
-            return next(null);
-        return _fs.stat(path, (err, stats) => {
-            return errHandler(err, () => {
-                if (stats.isDirectory()) {
-                    return _fs.readdir(path, (rerr, files) => {
-                        return errHandler(err, () => {
-                            const forward = () => {
-                                const npath = files.shift();
-                                if (!npath) {
-                                    return _fs.rmdir(path, (rmerr) => {
-                                        return next(rmerr);
-                                    });
-                                }
-                                rmdir(_path.join(path, npath), (ferr) => {
-                                    return errHandler(ferr, () => {
-                                        return forward();
-                                    });
-                                }, errHandler);
-                            };
-                            return forward();
-                        });
-                    });
-                }
-                return _fs.unlink(path, (uerr) => {
-                    return next(uerr);
-                });
-            });
-        });
-    });
-}
-exports.rmdir = rmdir;
-function unlink(path, next) {
-    return _fs.exists(path, (exists) => {
-        if (!exists)
-            return next(null);
-        return _fs.unlink(path, (err) => {
-            return next(err);
-        });
-    });
-}
-exports.unlink = unlink;
-function copyFile(src, dest, next, errHandler) {
-    if (!_path.parse(src).ext)
-        return next(new Error("Source file path required...."));
-    if (!_path.parse(dest).ext)
-        return next(new Error("Dest file path required...."));
-    return _fs.exists(src, (exists) => {
-        if (!exists)
-            return next(new Error(`Source directory not found ${src}`));
-        return unlink(dest, (err) => {
-            return errHandler(err, () => {
-                return _fs.copyFile(src, dest, (cerr) => {
-                    return next(cerr);
-                });
-            });
-        });
-    });
-}
-exports.copyFile = copyFile;
-function copyDir(src, dest, next, errHandler) {
-    return _fs.exists(src, (exists) => {
-        if (!exists)
-            return next(new Error("Source directory | file not found."));
-        return _fs.stat(src, (err, stats) => {
-            return errHandler(err, () => {
-                if (stats.isDirectory()) {
-                    return mkdir(dest, "", (merr) => {
-                        return errHandler(merr, () => {
-                            return _fs.readdir(src, (rerr, files) => {
-                                return errHandler(rerr, () => {
-                                    const forward = () => {
-                                        const npath = files.shift();
-                                        if (!npath)
-                                            return next(null);
-                                        return copyDir(_path.join(src, npath), _path.join(dest, npath), (copyErr) => {
-                                            return errHandler(copyErr, () => {
-                                                return forward();
-                                            });
-                                        }, errHandler);
-                                    };
-                                    return forward();
-                                });
-                            });
-                        });
-                    }, errHandler);
-                }
-                return _fs.copyFile(src, dest, (cerr) => {
-                    return next(cerr);
-                });
-            });
-        });
-    });
-}
-exports.copyDir = copyDir;
-/*[Sync]*/
-/** compair a stat.mtime > b stat.mtime */
-function compairFileSync(a, b) {
-    const astat = _fs.statSync(a);
-    const bstat = _fs.statSync(b);
-    if (astat.mtime.getTime() > bstat.mtime.getTime())
-        return true;
-    return false;
-}
-exports.compairFileSync = compairFileSync;
-function readJsonAsync(absPath) {
-    const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
-    try {
-        return JSON.parse(jsonstr);
-    }
-    catch (e) {
-        return void 0;
-    }
-}
-exports.readJsonAsync = readJsonAsync;
-function copyFileSync(src, dest) {
-    let parse = _path.parse(src);
-    if (!parse.ext)
-        throw new Error("Source file path required....");
-    parse = _path.parse(dest);
-    if (!parse.ext)
-        throw new Error("Dest file path required....");
-    if (!_fs.existsSync(src))
-        throw new Error(`Source directory not found ${src}`);
-    if (_fs.existsSync(dest))
-        _fs.unlinkSync(dest);
-    _fs.copyFileSync(src, dest);
-}
-exports.copyFileSync = copyFileSync;
-function rmdirSync(path) {
-    if (!_fs.existsSync(path))
-        return;
-    const stats = _fs.statSync(path);
-    if (stats.isDirectory()) {
-        _fs.readdirSync(path).forEach((nextItem) => {
-            rmdirSync(_path.join(path, nextItem));
-        });
-        _fs.rmdirSync(path);
-    }
-    else {
-        _fs.unlinkSync(path);
-    }
-}
-exports.rmdirSync = rmdirSync;
-function copySync(src, dest) {
-    if (!_fs.existsSync(src))
-        return;
-    const stats = _fs.statSync(src);
-    if (stats.isDirectory()) {
-        if (!_fs.existsSync(dest))
-            _fs.mkdirSync(dest);
-        _fs.readdirSync(src).forEach((nextItem) => {
-            copySync(_path.join(src, nextItem), _path.join(dest, nextItem));
-        });
-    }
-    else {
-        _fs.copyFileSync(src, dest);
-    }
-}
-exports.copySync = copySync;
 function mkdirSync(rootDir, targetDir) {
     if (rootDir.length === 0)
         return false;
@@ -326,5 +184,146 @@ function mkdirSync(rootDir, targetDir) {
     return _fs.existsSync(fullPath);
 }
 exports.mkdirSync = mkdirSync;
-/*[/Sync]*/
+function rmdir(path, next, errHandler) {
+    return _fs.exists(path, (exists) => {
+        if (!exists)
+            return next(null);
+        return _fs.stat(path, (err, stats) => {
+            return errHandler(err, () => {
+                if (stats.isDirectory()) {
+                    return _fs.readdir(path, (rerr, files) => {
+                        return errHandler(err, () => {
+                            const forward = () => {
+                                const npath = files.shift();
+                                if (!npath) {
+                                    return _fs.rmdir(path, (rmerr) => {
+                                        return next(rmerr);
+                                    });
+                                }
+                                rmdir(_path.join(path, npath), (ferr) => {
+                                    return errHandler(ferr, () => {
+                                        return forward();
+                                    });
+                                }, errHandler);
+                            };
+                            return forward();
+                        });
+                    });
+                }
+                return _fs.unlink(path, (uerr) => {
+                    return next(uerr);
+                });
+            });
+        });
+    });
+}
+exports.rmdir = rmdir;
+function rmdirSync(path) {
+    if (!_fs.existsSync(path))
+        return;
+    const stats = _fs.statSync(path);
+    if (stats.isDirectory()) {
+        _fs.readdirSync(path).forEach((nextItem) => {
+            rmdirSync(_path.join(path, nextItem));
+        });
+        _fs.rmdirSync(path);
+    }
+    else {
+        _fs.unlinkSync(path);
+    }
+}
+exports.rmdirSync = rmdirSync;
+function unlink(path, next) {
+    return _fs.exists(path, (exists) => {
+        if (!exists)
+            return next(null);
+        return _fs.unlink(path, (err) => {
+            return next(err);
+        });
+    });
+}
+exports.unlink = unlink;
+function copyFile(src, dest, next, errHandler) {
+    if (!_path.parse(src).ext)
+        return next(new Error("Source file path required...."));
+    if (!_path.parse(dest).ext)
+        return next(new Error("Dest file path required...."));
+    return _fs.exists(src, (exists) => {
+        if (!exists)
+            return next(new Error(`Source directory not found ${src}`));
+        return unlink(dest, (err) => {
+            return errHandler(err, () => {
+                return _fs.copyFile(src, dest, (cerr) => {
+                    return next(cerr);
+                });
+            });
+        });
+    });
+}
+exports.copyFile = copyFile;
+function copyFileSync(src, dest) {
+    let parse = _path.parse(src);
+    if (!parse.ext)
+        throw new Error("Source file path required....");
+    parse = _path.parse(dest);
+    if (!parse.ext)
+        throw new Error("Dest file path required....");
+    if (!_fs.existsSync(src))
+        throw new Error(`Source directory not found ${src}`);
+    if (_fs.existsSync(dest))
+        _fs.unlinkSync(dest);
+    _fs.copyFileSync(src, dest);
+}
+exports.copyFileSync = copyFileSync;
+function copyDir(src, dest, next, errHandler) {
+    return _fs.exists(src, (exists) => {
+        if (!exists)
+            return next(new Error("Source directory | file not found."));
+        return _fs.stat(src, (err, stats) => {
+            return errHandler(err, () => {
+                if (stats.isDirectory()) {
+                    return mkdir(dest, "", (merr) => {
+                        return errHandler(merr, () => {
+                            return _fs.readdir(src, (rerr, files) => {
+                                return errHandler(rerr, () => {
+                                    const forward = () => {
+                                        const npath = files.shift();
+                                        if (!npath)
+                                            return next(null);
+                                        return copyDir(_path.join(src, npath), _path.join(dest, npath), (copyErr) => {
+                                            return errHandler(copyErr, () => {
+                                                return forward();
+                                            });
+                                        }, errHandler);
+                                    };
+                                    return forward();
+                                });
+                            });
+                        });
+                    }, errHandler);
+                }
+                return _fs.copyFile(src, dest, (cerr) => {
+                    return next(cerr);
+                });
+            });
+        });
+    });
+}
+exports.copyDir = copyDir;
+function copyDirSync(src, dest) {
+    if (!_fs.existsSync(src))
+        return;
+    const stats = _fs.statSync(src);
+    if (stats.isDirectory()) {
+        if (!_fs.existsSync(dest))
+            _fs.mkdirSync(dest);
+        _fs.readdirSync(src).forEach((nextItem) => {
+            copyDirSync(_path.join(src, nextItem), _path.join(dest, nextItem));
+        });
+    }
+    else {
+        _fs.copyFileSync(src, dest);
+    }
+}
+exports.copyDirSync = copyDirSync;
 //# sourceMappingURL=sow-fsw.js.map

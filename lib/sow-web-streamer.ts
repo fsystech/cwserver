@@ -7,6 +7,7 @@
 import {
     Stats, ReadStream, createReadStream as fsCreateReadStream
 } from 'fs';
+import { pipeline } from 'stream';
 import destroy = require( 'destroy' );
 import { IContext } from './sow-server';
 export class Streamer {
@@ -15,6 +16,7 @@ export class Streamer {
         mimeType: string, fstat: Stats
     ): void {
         const total: number = fstat.size;
+        let statusCode: number = 200;
         let openenedFile: ReadStream = Object.create( null );
         if ( ctx.req.headers.range ) {
             const range: string = ctx.req.headers.range;
@@ -27,27 +29,23 @@ export class Streamer {
             openenedFile = fsCreateReadStream( absPath, {
                 start, end
             } );
-            ctx.res.status( 206, {
+            statusCode = 206;
+            ctx.res.status( statusCode, {
                 'Content-Range': `bytes ${start}-${end}/${total}`,
                 'Accept-Ranges': 'bytes',
                 'Content-Length': chunksize,
                 'Content-Type': mimeType
             } );
-            openenedFile.pipe( ctx.res );
         } else {
             openenedFile = fsCreateReadStream( absPath );
-            ctx.res.status( 200, {
+            ctx.res.status( statusCode, {
                 'Content-Length': total,
                 'Content-Type': mimeType
             } );
-            openenedFile.pipe( ctx.res );
         }
-        return ctx.res.on( 'close', () => {
-            if ( openenedFile ) {
-                openenedFile.unpipe( ctx.res );
-                openenedFile.close();
-            }
-            ctx.next( 200 );
+        return pipeline( openenedFile, ctx.res, ( err: NodeJS.ErrnoException | null ) => {
+            destroy( openenedFile );
+            ctx.next( statusCode, false );
         } ), void 0;
     }
 }

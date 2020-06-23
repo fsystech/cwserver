@@ -8,9 +8,12 @@ exports.Streamer = void 0;
 */
 // 9:19 PM 5/8/2020
 const fs_1 = require("fs");
+const stream_1 = require("stream");
+const destroy = require("destroy");
 class Streamer {
     static stream(ctx, absPath, mimeType, fstat) {
         const total = fstat.size;
+        let statusCode = 200;
         let openenedFile = Object.create(null);
         if (ctx.req.headers.range) {
             const range = ctx.req.headers.range;
@@ -23,28 +26,24 @@ class Streamer {
             openenedFile = fs_1.createReadStream(absPath, {
                 start, end
             });
-            ctx.res.status(206, {
+            statusCode = 206;
+            ctx.res.status(statusCode, {
                 'Content-Range': `bytes ${start}-${end}/${total}`,
                 'Accept-Ranges': 'bytes',
                 'Content-Length': chunksize,
                 'Content-Type': mimeType
             });
-            openenedFile.pipe(ctx.res);
         }
         else {
             openenedFile = fs_1.createReadStream(absPath);
-            ctx.res.status(200, {
+            ctx.res.status(statusCode, {
                 'Content-Length': total,
                 'Content-Type': mimeType
             });
-            openenedFile.pipe(ctx.res);
         }
-        return ctx.res.on('close', () => {
-            if (openenedFile) {
-                openenedFile.unpipe(ctx.res);
-                openenedFile.close();
-            }
-            ctx.next(200);
+        return stream_1.pipeline(openenedFile, ctx.res, (err) => {
+            destroy(openenedFile);
+            ctx.next(statusCode, false);
         }), void 0;
     }
 }

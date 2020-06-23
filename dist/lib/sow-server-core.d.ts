@@ -24,9 +24,7 @@ export interface CookieOptions {
 export interface IRequest extends IncomingMessage {
     readonly q: UrlWithParsedQuery;
     readonly id: string;
-    readonly cookies: {
-        [key: string]: string;
-    };
+    readonly cookies: NodeJS.Dict<string>;
     readonly query: ParsedUrlQuery;
     readonly ip: string;
     cleanSocket: boolean;
@@ -37,10 +35,9 @@ export interface IRequest extends IncomingMessage {
 }
 export interface IResponse extends ServerResponse {
     readonly isAlive: boolean;
+    readonly statusCode: number;
     cleanSocket: boolean;
-    json(body: {
-        [key: string]: any;
-    }, compress?: boolean, next?: (error: Error | null) => void): void;
+    json(body: NodeJS.Dict<any>, compress?: boolean, next?: (error: Error | null) => void): void;
     status(code: number, headers?: OutgoingHttpHeaders): IResponse;
     asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse;
     asJSON(code: number, contentLength?: number, isGzip?: boolean): IResponse;
@@ -70,10 +67,8 @@ export interface IApplication {
     listen(handle: any, listeningListener?: () => void): IApplication;
 }
 export declare function parseCookie(cook: undefined | string[] | string | {
-    [x: string]: string;
-}): {
-    [x: string]: string;
-};
+    [x: string]: any;
+}): NodeJS.Dict<string>;
 export declare function getClientIpFromHeader(headers: IncomingHttpHeaders): string | void;
 export declare function getClientIp(req: IRequest): string | void;
 export declare function App(): IApplication;

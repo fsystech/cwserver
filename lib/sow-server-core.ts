@@ -11,6 +11,7 @@ import {
 import { EventEmitter } from 'events';
 import { IRequestParam, ILayerInfo, IRouteInfo, getRouteInfo, getRouteMatcher } from './sow-router';
 import { ToResponseTime, ISession, IResInfo } from './sow-static';
+import { HttpStatus } from './sow-http-status';
 import { IContext } from './sow-server';
 import { Template } from './sow-template';
 import { Util } from './sow-util';
@@ -35,7 +36,7 @@ export interface CookieOptions {
 export interface IRequest extends IncomingMessage {
     readonly q: UrlWithParsedQuery;
     readonly id: string;
-    readonly cookies: { [key: string]: string; };
+    readonly cookies: NodeJS.Dict<string>;
     readonly query: ParsedUrlQuery;
     readonly ip: string;
     cleanSocket: boolean;
@@ -46,8 +47,9 @@ export interface IRequest extends IncomingMessage {
 }
 export interface IResponse extends ServerResponse {
     readonly isAlive: boolean;
+    readonly statusCode: number;
     cleanSocket: boolean;
-    json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void;
+    json( body: NodeJS.Dict<any>, compress?: boolean, next?: ( error: Error | null ) => void ): void;
     status( code: number, headers?: OutgoingHttpHeaders ): IResponse;
     asHTML( code: number, contentLength?: number, isGzip?: boolean ): IResponse;
     asJSON( code: number, contentLength?: number, isGzip?: boolean ): IResponse;
@@ -74,7 +76,7 @@ export interface IApplication {
     on( ev: 'shutdown', handler: () => void ): IApplication;
     listen( handle: any, listeningListener?: () => void ): IApplication;
 }
-const getCook = ( cooks: string[] ): { [x: string]: string; } => {
+const getCook = ( cooks: string[] ): NodeJS.Dict<string> => {
     const cookies: { [x: string]: any; } = {};
     cooks.forEach( ( value ) => {
         const index = value.indexOf( '=' );
@@ -84,8 +86,8 @@ const getCook = ( cooks: string[] ): { [x: string]: string; } => {
     return cookies;
 }
 export function parseCookie(
-    cook: undefined | string[] | string | { [x: string]: string; }
-): { [x: string]: string; } {
+    cook: undefined | string[] | string | { [x: string]: any; }
+): NodeJS.Dict<string> {
     if ( !cook ) return {};
     if ( cook instanceof Array ) return getCook( cook );
     if ( cook instanceof Object ) return cook;
@@ -143,7 +145,7 @@ export function getClientIp( req: IRequest ): string | void {
 }
 class Request extends IncomingMessage implements IRequest {
     private _q: UrlWithParsedQuery | undefined;
-    private _cookies: { [key: string]: string; } | undefined;
+    private _cookies: NodeJS.Dict<string> | undefined;
     private _path: string | undefined;
     private _session: ISession | undefined;
     private _ip: string | undefined;
@@ -161,7 +163,7 @@ class Request extends IncomingMessage implements IRequest {
         this._q = urlHelpers.parse( this.url || '', true );
         return this._q;
     }
-    public get cookies(): { [key: string]: string; } {
+    public get cookies(): NodeJS.Dict<string> {
         if ( this._cookies !== undefined ) return this._cookies;
         this._cookies = parseCookie( this.headers.cookie );
         return this._cookies;
@@ -205,7 +207,7 @@ class Request extends IncomingMessage implements IRequest {
         delete this._path;
         delete this._ip;
         delete this._cookies;
-        if ( process.env.TASK_TYPE === 'TEST' || this.cleanSocket ) {
+        if ( this.cleanSocket || process.env.TASK_TYPE === 'TEST' ) {
             this.removeAllListeners();
             this.destroy();
         }
@@ -215,6 +217,15 @@ class Response extends ServerResponse implements IResponse {
     private _isAlive: boolean | undefined;
     private _method: string | undefined;
     private _cleanSocket: boolean | undefined;
+    private _statusCode: number | undefined;
+    public get statusCode() {
+        return this._statusCode === undefined ? 0 : this._statusCode;
+    }
+    public set statusCode( code: number ) {
+        if ( !HttpStatus.isValidCode( code ) )
+            throw new Error( `Invalid status code ${code}` );
+        this._statusCode = code;
+    }
     public get cleanSocket() {
         if ( this._cleanSocket === undefined ) return false;
         return this._cleanSocket;
@@ -266,9 +277,6 @@ class Response extends ServerResponse implements IResponse {
         if ( this.headersSent ) {
             throw new Error( "If you use res.writeHead(), invoke res.end() instead of res.send()" );
         }
-        if ( this.statusCode === 0 ) {
-            throw new Error( "Use res.status().send()" );
-        }
         if ( 204 === this.statusCode || 304 === this.statusCode ) {
             this.removeHeader( 'Content-Type' );
             this.removeHeader( 'Content-Length' );
@@ -305,17 +313,17 @@ class Response extends ServerResponse implements IResponse {
         let len: number = 0;
         if ( Buffer.isBuffer( chunk ) ) {
             // get length of Buffer
-            len = chunk.length
+            len = chunk.length;
         } else {
             // convert chunk to Buffer and calculate
             chunk = Buffer.from( chunk, "utf-8" );
-            len = chunk.length
+            len = chunk.length;
         }
         this.set( 'Content-Length', len );
         return this.end( chunk );
     }
     public asHTML( code: number, contentLength?: number, isGzip?: boolean ): IResponse {
-        return this.status( code, getCommonHeader( 'text/html; charset=UTF-8', contentLength, isGzip ) ), this;
+        return this.status( code, getCommonHeader( _mimeType.getMimeType( "html" ), contentLength, isGzip ) ), this;
     }
     public asJSON( code: number, contentLength?: number, isGzip?: boolean ): IResponse {
         return this.status( code, getCommonHeader( _mimeType.getMimeType( 'json' ), contentLength, isGzip ) ), this;
@@ -338,7 +346,7 @@ class Response extends ServerResponse implements IResponse {
         sCookie.push( createCookie( name, val, options ) );
         return this.setHeader( 'Set-Cookie', sCookie ), this;
     }
-    public json( body: { [key: string]: any }, compress?: boolean, next?: ( error: Error | null ) => void ): void {
+    public json( body: NodeJS.Dict<any>, compress?: boolean, next?: ( error: Error | null ) => void ): void {
         const buffer: Buffer = Buffer.from( JSON.stringify( body ), "utf-8" );
         if ( typeof ( compress ) === 'boolean' && compress === true ) {
             return _zlib.gzip( buffer, ( error: Error | null, buff: Buffer ) => {
@@ -346,7 +354,7 @@ class Response extends ServerResponse implements IResponse {
                     if ( error ) {
                         if ( next ) return next( error );
                         return this.status( 500, {
-                            'Content-Type': _mimeType.getMimeType('text')
+                            'Content-Type': _mimeType.getMimeType( 'text' )
                         } ).end( `Runtime Error: ${error.message}` );
                     }
                     return this.asJSON( 200, buff.length, true ).end( buff );
@@ -358,7 +366,7 @@ class Response extends ServerResponse implements IResponse {
     public dispose(): void {
         delete this._method;
         delete this._isAlive;
-        if ( process.env.TASK_TYPE === 'TEST' || this.cleanSocket ) {
+        if ( this.cleanSocket || process.env.TASK_TYPE === 'TEST' ) {
             this.removeAllListeners();
             this.destroy();
         }
@@ -391,7 +399,7 @@ class Application extends EventEmitter implements IApplication {
         }
     }
     private _shutdown(): Promise<void> {
-        let resolveTerminating: (value?: void | PromiseLike<void> | undefined)=> void;
+        let resolveTerminating: ( value?: void | PromiseLike<void> | undefined ) => void;
         let rejectTerminating: ( reason?: any ) => void;
         const promise = new Promise<void>( ( resolve, reject ) => {
             resolveTerminating = resolve;
@@ -399,7 +407,7 @@ class Application extends EventEmitter implements IApplication {
         } );
         if ( !this._isRunning ) {
             setImmediate( () => {
-                rejectTerminating( new Error('Server not running....') );
+                rejectTerminating( new Error( 'Server not running....' ) );
             }, 0 );
         } else {
             this._isRunning = false;
@@ -431,9 +439,7 @@ class Application extends EventEmitter implements IApplication {
             isRouted = true;
             if ( routeInfo ) {
                 if ( routeInfo.layer.routeMatcher ) {
-                    const repRegx: RegExp | undefined = routeInfo.layer.routeMatcher.repRegExp;
-                    if ( repRegx)
-                        req.path = req.path.replace( repRegx, '' );
+                    req.path = routeInfo.layer.routeMatcher.replace( req.path );
                 }
                 try {
                     return routeInfo.layer.handler.call( this, req, res, _next );

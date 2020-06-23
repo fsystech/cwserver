@@ -145,7 +145,6 @@ class MimeHandler {
             ( reqCachHeader.etag && reqCachHeader.etag === curEtag ) ||
             ( reqCachHeader.sinceModify && reqCachHeader.sinceModify === lastChangeTime )
         ) {
-            ctx.req.get("")
             SowHttpCache.writeCacheHeader( ctx.res, {}, ctx.server.config.cacheHeader );
             ctx.res.status( 304, { 'Content-Type': mimeType } ).send();
             return ctx.next( 304 );

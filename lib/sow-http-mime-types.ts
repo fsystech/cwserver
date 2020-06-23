@@ -22,12 +22,19 @@ export function loadMimeType<T>(): IMimeType<T> {
         }
     }
 }
+function setCharset( mimeType: string ): string {
+    const text: string = mimeType.split( ";" )[0];
+    if ( ( /^text\/|^application\/(javascript|json)/ ).test( text.toLowerCase() ) ) {
+        return `${mimeType}; charset=UTF-8`;
+    }
+    return mimeType;
+}
 export function getMimeType( extension: string ): string {
     extension = extension.replace( /^.*[\.\/\\]/gi, '' ).toLowerCase();
     const mimeType: string | undefined = global.sow.HttpMime.type( extension );
     if ( !mimeType )
         throw new Error( `Unsupported extension =>${extension}` );
-    return mimeType;
+    return setCharset( mimeType );
 }
 export function isValidExtension( extension: string ): boolean {
     return global.sow.HttpMime.type( extension ) ? true : false;

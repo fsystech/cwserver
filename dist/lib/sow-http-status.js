@@ -51,6 +51,16 @@ exports.HttpStatusCode = {
     gatewaytimeout: 504,
     httpversionnotsupported: 505
 };
+const ReverseHttpStatusCode = (() => {
+    const rhsc = {};
+    for (const prop in exports.HttpStatusCode) {
+        const val = exports.HttpStatusCode[prop];
+        if (val) {
+            rhsc[val] = prop;
+        }
+    }
+    return rhsc;
+})();
 const _group = {
     "1": {
         type: "Informational",
@@ -76,10 +86,9 @@ const _group = {
 class HttpStatus {
     static get statusCode() { return exports.HttpStatusCode; }
     static getDescription(statusCode) {
-        for (const description in exports.HttpStatusCode) {
-            if (exports.HttpStatusCode[description] === statusCode)
-                return description;
-        }
+        const desc = ReverseHttpStatusCode[statusCode];
+        if (desc)
+            return desc;
         throw new Error(`Invalid ==> ${statusCode}...`);
     }
     static fromPath(path, statusCode) {
@@ -102,11 +111,7 @@ class HttpStatus {
         return statusCode;
     }
     static isValidCode(statusCode) {
-        for (const name in exports.HttpStatusCode) {
-            if (exports.HttpStatusCode[name] === statusCode)
-                return true;
-        }
-        return false;
+        return ReverseHttpStatusCode[statusCode] ? true : false;
     }
     static getResInfo(path, code) {
         code = sow_static_1.ToNumber(code);

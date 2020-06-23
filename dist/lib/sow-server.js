@@ -76,6 +76,8 @@ _a = (() => {
             return void 0;
         },
         getContext: (server, req, res) => {
+            if (_curContext[req.id])
+                return _curContext[req.id];
             const context = new Context(server, req, res, req.session);
             _curContext[req.id] = context;
             return context;
@@ -238,7 +240,8 @@ class ServerConfig {
         this.hiddenDirectory = [];
         this.template = {
             cache: true,
-            cacheType: "FILE"
+            cacheType: "FILE",
+            ext: []
         };
         this.hostInfo = {
             "origin": [],
@@ -294,7 +297,7 @@ ${appRoot}\\www_public
         if (!_fs.existsSync(absPath)) {
             throw new Error(`No config file found in ${absPath}`);
         }
-        const config = fsw.readJsonAsync(absPath);
+        const config = fsw.readJsonSync(absPath);
         if (!config) {
             throw new Error(`Invalid config file defined.\r\nConfig: ${absPath}`);
         }
@@ -402,12 +405,14 @@ ${appRoot}\\www_public
             for (const property in this.config.errorPage) {
                 if (Object.hasOwnProperty.call(this.config.errorPage, property)) {
                     const path = this.config.errorPage[property];
-                    const code = parseInt(property);
-                    const statusCode = sow_http_status_1.HttpStatus.fromPath(path, code);
-                    if (!statusCode || statusCode !== code || !sow_http_status_1.HttpStatus.isErrorCode(statusCode)) {
-                        throw new Error(`Invalid Server/Client error page... ${path} and code ${code}}`);
+                    if (path) {
+                        const code = parseInt(property);
+                        const statusCode = sow_http_status_1.HttpStatus.fromPath(path, code);
+                        if (!statusCode || statusCode !== code || !sow_http_status_1.HttpStatus.isErrorCode(statusCode)) {
+                            throw new Error(`Invalid Server/Client error page... ${path} and code ${code}}`);
+                        }
+                        this.config.errorPage[property] = this.formatPath(path);
                     }
-                    this.config.errorPage[property] = this.formatPath(path);
                 }
             }
             for (const property in this.errorPage) {
@@ -450,23 +455,11 @@ ${appRoot}\\www_public
         res.setHeader('x-app-version', this.version);
         res.setHeader('x-powered-by', 'safeonline.world');
     }
-    parseCookie(cook) {
-        if (typeof (cook) !== "string")
-            return cook;
-        const cookies = {};
-        cook.split(";").forEach((value) => {
-            const index = value.indexOf("=");
-            if (index < 0)
-                return;
-            cookies[value.substring(0, index).trim()] = value.substring(index + 1).trim();
-        });
-        return cookies;
-    }
-    parseSession(cookies) {
+    parseSession(cook) {
         if (!this.config.session.cookie || this.config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new sow_static_1.Session();
-        cookies = this.parseCookie(cookies);
+        const cookies = sow_server_core_1.parseCookie(cook);
         const value = cookies[this.config.session.cookie];
         if (!value)
             return session;
@@ -492,7 +485,7 @@ ${appRoot}\\www_public
             return false;
         }
         const msg = `<pre>${this.escape(ctx.error.replace(/<pre[^>]*>/gi, "").replace(/\\/gi, '/').replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
-        return ctx.res.asHTML(500).end(msg), true;
+        return ctx.res.status(500).send(msg), true;
     }
     getErrorPath(statusCode, tryServer) {
         if (!sow_http_status_1.HttpStatus.isErrorCode(statusCode)) {
@@ -516,41 +509,43 @@ ${appRoot}\\www_public
     transferRequest(ctx, path, status) {
         if (!ctx)
             throw new Error("Invalid argument defined...");
-        if (!status)
-            status = sow_http_status_1.HttpStatus.getResInfo(path, 200);
-        if (!status.isErrorCode && typeof (path) !== "string") {
-            throw new Error("Path should be string...");
-        }
-        let nextPath;
-        let tryServer = false;
-        if (status.isErrorCode) {
-            if (status.isInternalErrorCode && ctx.errorPage.indexOf("\\dist\\error_page\\500") > -1) {
+        if (!ctx.isDisposed) {
+            if (!status)
+                status = sow_http_status_1.HttpStatus.getResInfo(path, 200);
+            if (!status.isErrorCode && typeof (path) !== "string") {
+                throw new Error("Path should be string...");
+            }
+            let nextPath;
+            let tryServer = false;
+            if (status.isErrorCode) {
+                if (status.isInternalErrorCode && ctx.errorPage.indexOf("\\dist\\error_page\\500") > -1) {
+                    return this.passError(ctx), void 0;
+                }
+                if (status.code === ctx.errorCode) {
+                    tryServer = true;
+                }
+                else {
+                    ctx.errorCode = status.code;
+                }
+            }
+            nextPath = typeof (path) === "string" ? path : this.getErrorPath(path, tryServer);
+            if (!nextPath) {
                 return this.passError(ctx), void 0;
             }
-            if (status.code === ctx.errorCode) {
-                tryServer = true;
+            if (status.isErrorCode && status.isInternalErrorCode === false) {
+                this.addError(ctx, `${status.code} ${status.description}`);
             }
-            else {
-                ctx.errorCode = status.code;
+            if (status.isErrorCode) {
+                ctx.errorPage = _path.resolve(nextPath);
+                if (ctx.errorPage.indexOf("\\dist\\error_page\\") > -1) {
+                    ctx.path = `/cwserver/error_page/${status.code}`;
+                }
+                else {
+                    ctx.path = `/error/${status.code}`;
+                }
             }
+            return ctx.res.render(ctx, nextPath, status);
         }
-        nextPath = typeof (path) === "string" ? path : this.getErrorPath(path, tryServer);
-        if (!nextPath) {
-            return this.passError(ctx), void 0;
-        }
-        if (status.isErrorCode && status.isInternalErrorCode === false) {
-            this.addError(ctx, `${status.code} ${status.description}`);
-        }
-        if (status.isErrorCode) {
-            ctx.errorPage = _path.resolve(nextPath);
-            if (ctx.errorPage.indexOf("\\dist\\error_page\\") > -1) {
-                ctx.path = `/cwserver/error_page/${status.code}`;
-            }
-            else {
-                ctx.path = `/error/${status.code}`;
-            }
-        }
-        return ctx.res.render(ctx, nextPath, status);
     }
     mapPath(path) {
         return _path.resolve(`${this.root}/${this.public}/${path}`);
@@ -634,9 +629,15 @@ class SowGlobalServer {
 }
 class SowGlobal {
     constructor() {
-        this.server = new SowGlobalServer();
+        this._server = new SowGlobalServer();
         this.isInitilized = false;
-        this.HttpMime = sow_http_mime_types_1.loadMimeType();
+        this._HttpMime = sow_http_mime_types_1.loadMimeType();
+    }
+    get server() {
+        return this._server;
+    }
+    get HttpMime() {
+        return this._HttpMime;
     }
 }
 if (!global.sow || (global.sow && !global.sow.server)) {
@@ -728,9 +729,13 @@ function initilizeServer(appRoot, wwwName) {
                         return;
                     return _process.render(code, _ctx, _next, transfer);
                 };
-                if (!sow_util_1.Util.isExists(`${root}/${_ctx.path}`, _ctx.next))
-                    return;
-                return forWord(_ctx);
+                return fsw.isExists(`${root}/${_ctx.path}`, (exists, url) => {
+                    if (!exists)
+                        return _ctx.next(404);
+                    return forWord(_ctx);
+                });
+                // if ( !Util.isExists( `${root}/${_ctx.path}`, _ctx.next ) ) return;
+                // return forWord( _ctx );
             };
             if (!evt || typeof (evt) !== "function") {
                 _app.use(route, (req, res, next) => {

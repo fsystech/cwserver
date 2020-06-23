@@ -11,7 +11,7 @@ import { IRequestParam } from './sow-router';
 import {
     NextFunction, IApplication,
     IRequest, IResponse,
-    App as sowAppCore
+    App as sowAppCore, parseCookie as cookieParser
 } from './sow-server-core';
 import { Server } from 'http';
 import * as _fs from 'fs';
@@ -73,6 +73,7 @@ export interface IServerConfig {
     template: {
         cache: boolean;
         cacheType: string;
+        ext: string[];
     };
     encryptionKey: ICryptoInfo;
     session: {
@@ -85,7 +86,7 @@ export interface IServerConfig {
     defaultDoc: string[];
     defaultExt: string;
     views: string[];
-    errorPage: { [x: string]: string; };
+    errorPage: NodeJS.Dict<string>;
     hiddenDirectory: string[];
     hostInfo: {
         origin: string[];
@@ -93,7 +94,7 @@ export interface IServerConfig {
         hostName: string;
         frameAncestors?: string;
         tls: boolean;
-        cert: { [x: string]: string; };
+        cert: NodeJS.Dict<string>;
         port: string | number
     };
     database?: IDatabaseConfig[];
@@ -118,17 +119,16 @@ export interface IServerConfig {
 }
 export interface ISowServer {
     version: string;
-    errorPage: { [x: string]: any; };
+    errorPage: { [x: string]: string; };
     copyright(): string;
     log: ILogger;
     createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext;
     config: IServerConfig;
     initilize(): void;
-    implimentConfig( config: { [x: string]: any; } ): void;
+    implimentConfig( config: NodeJS.Dict<any> ): void;
     setDefaultProtectionHeader( res: IResponse ): void;
     setHeader( res: IResponse ): void;
-    parseCookie( cook: { [x: string]: string; } | string ): { [x: string]: string; };
-    parseSession( cookies: { [x: string]: string; } | string ): ISession;
+    parseSession( cook: undefined | string[] | string | { [x: string]: any; } ): ISession;
     setSession( ctx: IContext, loginId: string, roleId: string, userData: any ): boolean;
     passError( ctx: IContext ): boolean;
     getErrorPath( statusCode: number, tryServer?: boolean ): string | void;
@@ -201,6 +201,7 @@ export const {
             return void 0;
         },
         getContext: ( server: ISowServer, req: IRequest, res: IResponse ): IContext => {
+            if ( _curContext[req.id] ) return _curContext[req.id];
             const context: IContext = new Context( server, req, res, req.session );
             _curContext[req.id] = context;
             return context;
@@ -359,7 +360,7 @@ export class ServerConfig implements IServerConfig {
     defaultDoc: string[];
     defaultExt: string;
     views: string[];
-    errorPage: { [x: string]: any; };
+    errorPage: NodeJS.Dict<string>;
     hiddenDirectory: string[];
     hostInfo: {
         origin: string[];
@@ -367,7 +368,7 @@ export class ServerConfig implements IServerConfig {
         hostName: string;
         frameAncestors?: string;
         tls: boolean;
-        cert: { [x: string]: string; };
+        cert: NodeJS.Dict<string>;
         port: string | number;
     };
     database?: IDatabaseConfig[];
@@ -392,6 +393,7 @@ export class ServerConfig implements IServerConfig {
     template: {
         cache: boolean;
         cacheType: string;
+        ext: string[];
     };
     constructor() {
         this.Author = "Safe Online World Ltd.";
@@ -414,7 +416,8 @@ export class ServerConfig implements IServerConfig {
         this.hiddenDirectory = [];
         this.template = {
             cache: true,
-            cacheType: "FILE"
+            cacheType: "FILE",
+            ext: []
         };
         this.hostInfo = {
             "origin": [],
@@ -484,7 +487,7 @@ ${appRoot}\\www_public
         if ( !_fs.existsSync( absPath ) ) {
             throw new Error( `No config file found in ${absPath}` );
         }
-        const config: NodeJS.Dict<any> | void = fsw.readJsonAsync<IServerConfig>( absPath );
+        const config: NodeJS.Dict<any> | void = fsw.readJsonSync<IServerConfig>( absPath );
         if ( !config ) {
             throw new Error( `Invalid config file defined.\r\nConfig: ${absPath}` );
         }
@@ -529,7 +532,7 @@ ${appRoot}\\www_public
     getPublicDirName(): string {
         return this.public;
     }
-    implimentConfig( config: { [x: string]: any; } ): void {
+    implimentConfig( config: NodeJS.Dict<any> ): void {
         if ( !config.encryptionKey )
             throw new Error( "Security risk... encryption key required...." );
         if ( !Util.isArrayLike( config.hiddenDirectory ) ) {
@@ -585,13 +588,15 @@ ${appRoot}\\www_public
                 throw new Error( "errorPage property should be Object." );
             for ( const property in this.config.errorPage ) {
                 if ( Object.hasOwnProperty.call( this.config.errorPage, property ) ) {
-                    const path: string = this.config.errorPage[property];
-                    const code: number = parseInt( property );
-                    const statusCode: number = HttpStatus.fromPath( path, code );
-                    if ( !statusCode || statusCode !== code || !HttpStatus.isErrorCode( statusCode ) ) {
-                        throw new Error( `Invalid Server/Client error page... ${path} and code ${code}}` );
+                    const path: string | undefined = this.config.errorPage[property];
+                    if ( path ) {
+                        const code: number = parseInt( property );
+                        const statusCode: number = HttpStatus.fromPath( path, code );
+                        if ( !statusCode || statusCode !== code || !HttpStatus.isErrorCode( statusCode ) ) {
+                            throw new Error( `Invalid Server/Client error page... ${path} and code ${code}}` );
+                        }
+                        this.config.errorPage[property] = this.formatPath( path );
                     }
-                    this.config.errorPage[property] = this.formatPath( path );
                 }
             }
             for ( const property in this.errorPage ) {
@@ -633,24 +638,14 @@ ${appRoot}\\www_public
         res.setHeader( 'x-app-version', this.version );
         res.setHeader( 'x-powered-by', 'safeonline.world' );
     }
-    parseCookie( cook: string | { [x: string]: string; } ): { [x: string]: string; } {
-        if ( typeof ( cook ) !== "string" ) return cook;
-        const cookies: { [x: string]: any; } = {};
-        cook.split( ";" ).forEach( ( value ) => {
-            const index = value.indexOf( "=" );
-            if ( index < 0 ) return;
-            cookies[value.substring( 0, index ).trim()] = value.substring( index + 1 ).trim();
-        } );
-        return cookies;
-    }
-    parseSession( cookies: string | { [x: string]: any; } ): ISession {
+    parseSession( cook: undefined | string[] | string | { [x: string]: any; } ): ISession {
         if ( !this.config.session.cookie || this.config.session.cookie.length === 0 )
             throw Error( "You are unable to add session without session config. see your app_config.json" );
         const session = new Session();
-        cookies = this.parseCookie( cookies );
-        const value = cookies[this.config.session.cookie];
+        const cookies: NodeJS.Dict<string> = cookieParser( cook );
+        const value: string | undefined = cookies[this.config.session.cookie];
         if ( !value ) return session;
-        const str = Encryption.decryptFromHex( value, this.config.session.key );
+        const str: string = Encryption.decryptFromHex( value, this.config.session.key );
         if ( !str ) {
             return session;
         }
@@ -673,8 +668,8 @@ ${appRoot}\\www_public
         if ( !ctx.error ) {
             return false;
         }
-        const msg = `<pre>${this.escape( ctx.error.replace( /<pre[^>]*>/gi, "" ).replace( /\\/gi, '/' ).replace( this.rootregx, "$root" ).replace( this.publicregx, "$public/" ) )}</pre>`;
-        return ctx.res.asHTML( 500 ).end( msg ), true;
+        const msg: string = `<pre>${this.escape( ctx.error.replace( /<pre[^>]*>/gi, "" ).replace( /\\/gi, '/' ).replace( this.rootregx, "$root" ).replace( this.publicregx, "$public/" ) )}</pre>`;
+        return ctx.res.status( 500 ).send( msg ), true;
     }
     getErrorPath( statusCode: number, tryServer?: boolean ): string | void {
         if ( !HttpStatus.isErrorCode( statusCode ) ) {
@@ -697,45 +692,47 @@ ${appRoot}\\www_public
     }
     transferRequest( ctx: IContext, path: string | number, status?: IResInfo ): void {
         if ( !ctx ) throw new Error( "Invalid argument defined..." );
-        if ( !status ) status = HttpStatus.getResInfo( path, 200 );
-        if ( !status.isErrorCode && typeof ( path ) !== "string" ) {
-            throw new Error("Path should be string...");
-        }
-        let nextPath: string | void;
-        let tryServer: boolean = false;
-        if ( status.isErrorCode ) {
-            if ( status.isInternalErrorCode && ctx.errorPage.indexOf( "\\dist\\error_page\\500" ) > -1 ) {
+        if ( !ctx.isDisposed ) {
+            if ( !status ) status = HttpStatus.getResInfo( path, 200 );
+            if ( !status.isErrorCode && typeof ( path ) !== "string" ) {
+                throw new Error( "Path should be string..." );
+            }
+            let nextPath: string | void;
+            let tryServer: boolean = false;
+            if ( status.isErrorCode ) {
+                if ( status.isInternalErrorCode && ctx.errorPage.indexOf( "\\dist\\error_page\\500" ) > -1 ) {
+                    return this.passError( ctx ), void 0;
+                }
+                if ( status.code === ctx.errorCode ) {
+                    tryServer = true;
+                } else {
+                    ctx.errorCode = status.code;
+                }
+            }
+            nextPath = typeof ( path ) === "string" ? path : this.getErrorPath( path, tryServer );
+            if ( !nextPath ) {
                 return this.passError( ctx ), void 0;
             }
-            if ( status.code === ctx.errorCode ) {
-                tryServer = true;
-            } else {
-                ctx.errorCode = status.code;
+            if ( status.isErrorCode && status.isInternalErrorCode === false ) {
+                this.addError( ctx, `${status.code} ${status.description}` );
             }
-        }
-        nextPath = typeof ( path ) === "string" ? path : this.getErrorPath( path, tryServer );
-        if ( !nextPath ) {
-            return this.passError( ctx ), void 0;
-        }
-        if ( status.isErrorCode && status.isInternalErrorCode === false ) {
-            this.addError( ctx, `${status.code} ${status.description}` );
-        }
-        if ( status.isErrorCode ) {
-            ctx.errorPage = _path.resolve( nextPath );
-            if ( ctx.errorPage.indexOf( "\\dist\\error_page\\" ) > -1 ) {
-                ctx.path = `/cwserver/error_page/${status.code}`;
-            } else {
-                ctx.path = `/error/${status.code}`;
+            if ( status.isErrorCode ) {
+                ctx.errorPage = _path.resolve( nextPath );
+                if ( ctx.errorPage.indexOf( "\\dist\\error_page\\" ) > -1 ) {
+                    ctx.path = `/cwserver/error_page/${status.code}`;
+                } else {
+                    ctx.path = `/error/${status.code}`;
+                }
             }
+            return ctx.res.render( ctx, nextPath, status );
         }
-        return ctx.res.render( ctx, nextPath, status );
     }
     mapPath( path: string ): string {
         return _path.resolve( `${this.root}/${this.public}/${path}` );
     }
     pathToUrl( path: string ): string {
         if ( !Util.getExtension( path ) ) return path;
-        let index = path.indexOf( this.public );
+        let index: number = path.indexOf( this.public );
         if ( index === 0 ) return path;
         if ( index > 0 ) {
             path = path.substring( path.indexOf( this.public ) + this.public.length );
@@ -811,17 +808,23 @@ class SowGlobalServer implements ISowGlobalServer {
 }
 interface ISowGlobal {
     isInitilized: boolean;
-    HttpMime: IMimeType<string>;
-    server: ISowGlobalServer;
+    readonly HttpMime: IMimeType<string>;
+    readonly server: ISowGlobalServer;
 }
 class SowGlobal implements ISowGlobal {
     public isInitilized: boolean;
-    server: ISowGlobalServer;
-    HttpMime: IMimeType<string>;
+    _server: ISowGlobalServer;
+    _HttpMime: IMimeType<string>;
+    public get server() {
+        return this._server;
+    }
+    public get HttpMime() {
+        return this._HttpMime;
+    }
     constructor() {
-        this.server = new SowGlobalServer();
+        this._server = new SowGlobalServer();
         this.isInitilized = false;
-        this.HttpMime = loadMimeType<string>();
+        this._HttpMime = loadMimeType<string>();
     }
 }
 declare global {
@@ -832,7 +835,7 @@ declare global {
     }
 }
 export interface IAppUtility {
-    init: () => IApplication;
+    readonly init: () => IApplication;
     readonly public: string;
     readonly port: string | number;
     readonly socketPath: string;
@@ -915,15 +918,19 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
                 throw new Error( `You already add this virtual route ${route}` );
             route += route.charAt( route.length - 1 ) !== "/" ? "/" : "";
             route += "*";
-            const _processHandler = ( req: IRequest, res: IResponse, next: NextFunction, forWord: ( ctx: IContext ) => void ) => {
+            const _processHandler = ( req: IRequest, res: IResponse, next: NextFunction, forWord: ( ctx: IContext ) => void ): void => {
                 const _ctx = _server.createContext( req, res, next );
                 const _next = next;
                 _ctx.next = ( code?: number | undefined, transfer?: boolean ): any => {
                     if ( !code || code === 200 ) return;
                     return _process.render( code, _ctx, _next, transfer );
                 }
-                if ( !Util.isExists( `${root}/${_ctx.path}`, _ctx.next ) ) return;
-                return forWord( _ctx );
+                return fsw.isExists( `${root}/${_ctx.path}`, ( exists: boolean, url: string ): void => {
+                    if ( !exists ) return _ctx.next( 404 );
+                    return forWord( _ctx );
+                } );
+                // if ( !Util.isExists( `${root}/${_ctx.path}`, _ctx.next ) ) return;
+                // return forWord( _ctx );
             };
             if ( !evt || typeof ( evt ) !== "function" ) {
                 _app.use( route, ( req: IRequest, res: IResponse, next: NextFunction ) => {

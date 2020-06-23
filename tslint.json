@@ -10,7 +10,7 @@
     "max-classes-per-file": false,
     "one-variable-per-declaration": false,
     "forin": false,
-    "no-namespace": false,
+    "no-namespace": true,
     "radix": false
   },
   "rulesDirectory": []

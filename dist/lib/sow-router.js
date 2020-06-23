@@ -25,20 +25,24 @@ function getRouteMatcher(route, rRepRegx) {
         }
         return "(?:([^\/]+?))";
     });
-    let repStr;
+    let repRegxStr;
     if (rRepRegx === true && route.indexOf(":") < 0) {
         const nRoute = route.substring(0, route.lastIndexOf("/")).replace(pathRegx, "\\/");
-        repStr = `^${nRoute}\/?(?=\/|$)`;
+        repRegxStr = `^${nRoute}\/?(?=\/|$)`;
     }
     const regx = `^${croute}\\/?$`;
+    // const tregx: RegExp = new RegExp( `^${croute}\\/?$`, "gi" );
     return {
-        get regExp() {
-            return new RegExp(regx, "gi");
+        test(val) {
+            return new RegExp(regx, "gi").test(val);
         },
-        get repRegExp() {
-            if (!repStr)
-                return void 0;
-            return new RegExp(repStr, "gi");
+        exec(val) {
+            return new RegExp(regx, "gi").exec(val);
+        },
+        replace(val) {
+            if (!repRegxStr)
+                return val;
+            return val.replace(new RegExp(repRegxStr, "gi"), "");
         }
     };
 }
@@ -62,7 +66,7 @@ function getRouteInfo(reqPath, handlerInfos, method) {
     if (method === "ANY") {
         const layer = handlerInfos.find(a => {
             if (a.routeMatcher)
-                return a.routeMatcher.regExp.test(reqPath);
+                return a.routeMatcher.test(reqPath);
             return false;
         });
         if (!layer)
@@ -83,9 +87,9 @@ function getRouteInfo(reqPath, handlerInfos, method) {
             if (layer.pathArray[1] !== "*" && layer.pathArray[1].indexOf(":") < 0 && pathArray[1] !== layer.pathArray[1])
                 continue;
         }
-        if (!layer.routeMatcher.regExp.test(reqPath))
+        if (!layer.routeMatcher.test(reqPath))
             continue;
-        const rmatch = layer.routeMatcher.regExp.exec(reqPath);
+        const rmatch = layer.routeMatcher.exec(reqPath);
         if (rmatch) {
             const requestParam = {
                 query: {},

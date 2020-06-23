@@ -83,10 +83,15 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	const streamDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
 	server.addVirtualDir( "/web-stream", streamDir, ( ctx: IContext, requestParam?: IRequestParam  ): void => {
 		if ( ctx.server.config.liveStream.indexOf( ctx.extension ) > -1 ) {
-			const absPath = path.resolve( `${streamDir}/${ctx.path}` );
-			if ( !Util.isExists( absPath, ctx.next ) ) return;
-			const mimeType = mimeHandler.getMimeType( ctx.extension );
-			return Streamer.stream( ctx, absPath, mimeType, fs.statSync( absPath ) );
+			return fsw.isExists( `${streamDir}/${ctx.path}`, ( exists: boolean, url: string ): void => {
+				if ( !exists ) return ctx.next( 404 );
+				const mimeType = mimeHandler.getMimeType( ctx.extension );
+				return fs.stat( url, ( err: NodeJS.ErrnoException | null, stats: fs.Stats ) => {
+					return ctx.handleError( err, () => {
+						return Streamer.stream( ctx, url, mimeType, stats );
+					} );
+				} );
+			} );
 		}
 		return ctx.next( 404 );
 	} );
@@ -231,7 +236,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 						return parser.saveAs( downloadDir, ( serr: Error | NodeJS.ErrnoException | null ): void => {
 							assert( serr === null, "file.saveAs" );
 							expect( shouldBeError( () => {
-								ctx.res.status( 0 ).send( "Nothing...." );
+								ctx.res.status( 0 );
 							} ) ).toBeInstanceOf( Error );
 							ctx.res.status( 200 ).send( data.shift() || {} );
 							expect( shouldBeError( () => {

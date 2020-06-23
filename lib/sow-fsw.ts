@@ -25,6 +25,7 @@ export function stat(
         } );
     } );
 }
+/** compairFile a stat.mtime > b stat.mtime */
 export function compairFile(
     a: string, b: string,
     next: ( err: NodeJS.ErrnoException | null, changed: boolean ) => void,
@@ -39,6 +40,13 @@ export function compairFile(
             } );
         } );
     } );
+}
+/** compairFileSync a stat.mtime > b stat.mtime */
+export function compairFileSync( a: string, b: string ): boolean {
+    const astat = _fs.statSync( a );
+    const bstat = _fs.statSync( b );
+    if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
+    return false;
 }
 export function isExists(
     path: string,
@@ -63,6 +71,14 @@ export function readJson<T>(
             }
         } );
     } );
+}
+export function readJsonSync<T>( absPath: string ): NodeJS.Dict<T> | void {
+    const jsonstr = _fs.readFileSync( absPath, "utf8" ).replace( /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "" ).replace( /^\s*$(?:\r\n?|\n)/gm, "" );
+    try {
+        return JSON.parse( jsonstr );
+    } catch ( e ) {
+        return void 0;
+    }
 }
 function mkdirCheckAndCreate(
     errHandler: ErrorHandler,
@@ -123,6 +139,35 @@ export function mkdir(
         return doNext( false );
     } );
 }
+export function mkdirSync( rootDir: string, targetDir?: string ): boolean {
+    if ( rootDir.length === 0 ) return false;
+    let fullPath: string = "";
+    let sep: string = "";
+    if ( targetDir ) {
+        if ( targetDir.charAt( 0 ) === '.' ) throw new Error( "No need to defined start point...." );
+        fullPath = _path.join( rootDir, targetDir );
+        sep = "/";
+    } else {
+        fullPath = _path.resolve( rootDir );
+        // so we've to start form drive:\
+        targetDir = fullPath;
+        sep = _path.sep;
+        rootDir = _path.isAbsolute( targetDir ) ? sep : '';
+    }
+    if ( _fs.existsSync( fullPath ) ) {
+        return _fs.statSync( fullPath ).isDirectory();
+    }
+    if ( _path.parse( fullPath ).ext ) return false;
+    targetDir.split( sep ).reduce( ( parentDir, childDir ) => {
+        if ( !childDir ) return parentDir;
+        const curDir = _path.resolve( parentDir, childDir );
+        if ( !_fs.existsSync( curDir ) ) {
+            _fs.mkdirSync( curDir );
+        }
+        return curDir;
+    }, rootDir );
+    return _fs.existsSync( fullPath );
+}
 export function rmdir(
     path: string,
     next: ( err: NodeJS.ErrnoException | null ) => void,
@@ -159,6 +204,20 @@ export function rmdir(
         } );
     } );
 }
+export function rmdirSync( path: string ): void {
+    if ( !_fs.existsSync( path ) ) return;
+    const stats: _fs.Stats = _fs.statSync( path );
+    if ( stats.isDirectory() ) {
+        _fs.readdirSync( path ).forEach( ( nextItem: string ) => {
+            rmdirSync(
+                _path.join( path, nextItem )
+            );
+        } );
+        _fs.rmdirSync( path );
+    } else {
+        _fs.unlinkSync( path );
+    }
+}
 export function unlink(
     path: string,
     next: ( err: NodeJS.ErrnoException | null ) => void
@@ -190,6 +249,19 @@ export function copyFile(
             } );
         } );
     } );
+}
+export function copyFileSync( src: string, dest: string ): void {
+    let parse = _path.parse( src );
+    if ( !parse.ext )
+        throw new Error( "Source file path required...." );
+    parse = _path.parse( dest );
+    if ( !parse.ext )
+        throw new Error( "Dest file path required...." );
+    if ( !_fs.existsSync( src ) )
+        throw new Error( `Source directory not found ${src}` );
+    if ( _fs.existsSync( dest ) )
+        _fs.unlinkSync( dest );
+    _fs.copyFileSync( src, dest );
 }
 export function copyDir(
     src: string,
@@ -228,57 +300,14 @@ export function copyDir(
         } );
     } );
 }
-/*[Sync]*/
-/** compair a stat.mtime > b stat.mtime */
-export function compairFileSync( a: string, b: string ): boolean {
-    const astat = _fs.statSync( a );
-    const bstat = _fs.statSync( b );
-    if ( astat.mtime.getTime() > bstat.mtime.getTime() ) return true;
-    return false;
-}
-export function readJsonAsync<T>( absPath: string ): NodeJS.Dict<T> | void {
-    const jsonstr = _fs.readFileSync( absPath, "utf8" ).replace( /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "" ).replace( /^\s*$(?:\r\n?|\n)/gm, "" );
-    try {
-        return JSON.parse( jsonstr );
-    } catch ( e ) {
-        return void 0;
-    }
-}
-export function copyFileSync( src: string, dest: string ): void {
-    let parse = _path.parse( src );
-    if ( !parse.ext )
-        throw new Error( "Source file path required...." );
-    parse = _path.parse( dest );
-    if ( !parse.ext )
-        throw new Error( "Dest file path required...." );
-    if ( !_fs.existsSync( src ) )
-        throw new Error( `Source directory not found ${src}` );
-    if ( _fs.existsSync( dest ) )
-        _fs.unlinkSync( dest );
-    _fs.copyFileSync( src, dest );
-}
-export function rmdirSync( path: string ): void {
-    if ( !_fs.existsSync( path ) ) return;
-    const stats: _fs.Stats = _fs.statSync( path );
-    if ( stats.isDirectory() ) {
-        _fs.readdirSync( path ).forEach( ( nextItem: string ) => {
-            rmdirSync(
-                _path.join( path, nextItem )
-            );
-        } );
-        _fs.rmdirSync( path );
-    } else {
-        _fs.unlinkSync( path );
-    }
-}
-export function copySync( src: string, dest: string ): void {
+export function copyDirSync( src: string, dest: string ): void {
     if ( !_fs.existsSync( src ) ) return;
     const stats: _fs.Stats = _fs.statSync( src );
     if ( stats.isDirectory() ) {
         if ( !_fs.existsSync( dest ) )
             _fs.mkdirSync( dest );
         _fs.readdirSync( src ).forEach( ( nextItem: string ) => {
-            copySync(
+            copyDirSync(
                 _path.join( src, nextItem ),
                 _path.join( dest, nextItem )
             );
@@ -287,33 +316,3 @@ export function copySync( src: string, dest: string ): void {
         _fs.copyFileSync( src, dest );
     }
 }
-export function mkdirSync( rootDir: string, targetDir?: string ): boolean {
-    if ( rootDir.length === 0 ) return false;
-    let fullPath: string = "";
-    let sep: string = "";
-    if ( targetDir ) {
-        if ( targetDir.charAt( 0 ) === '.' ) throw new Error( "No need to defined start point...." );
-        fullPath = _path.join( rootDir, targetDir );
-        sep = "/";
-    } else {
-        fullPath = _path.resolve( rootDir );
-        // so we've to start form drive:\
-        targetDir = fullPath;
-        sep = _path.sep;
-        rootDir = _path.isAbsolute( targetDir ) ? sep : '';
-    }
-    if ( _fs.existsSync( fullPath ) ) {
-        return _fs.statSync( fullPath ).isDirectory();
-    }
-    if ( _path.parse( fullPath ).ext ) return false;
-    targetDir.split( sep ).reduce( ( parentDir, childDir ) => {
-        if ( !childDir ) return parentDir;
-        const curDir = _path.resolve( parentDir, childDir );
-        if ( !_fs.existsSync( curDir ) ) {
-            _fs.mkdirSync( curDir );
-        }
-        return curDir;
-    }, rootDir );
-    return _fs.existsSync( fullPath );
-}
-/*[/Sync]*/

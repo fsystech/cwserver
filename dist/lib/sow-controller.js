@@ -163,10 +163,11 @@ class Controller {
         if (fireHandler(ctx))
             return void 0;
         if (ctx.extension) {
-            if (['htm', 'html'].indexOf(ctx.extension) > -1) {
-                if (ctx.server.config.defaultExt) {
-                    return ctx.next(404);
-                }
+            if (ctx.server.config.defaultExt
+                && ctx.server.config.defaultExt.indexOf(ctx.extension) > -1) {
+                return ctx.next(404);
+            }
+            if (ctx.server.config.template.ext.indexOf(ctx.extension) > -1) {
                 return ctx.res.render(ctx, ctx.server.mapPath(ctx.req.path));
             }
             if (ctx.server.config.mimeType.indexOf(ctx.extension) > -1) {

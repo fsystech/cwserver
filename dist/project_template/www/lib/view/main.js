@@ -23,7 +23,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 	// const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
 	// const ws = socketInitilizer(server, require("../socket-client"));
 	//ws.create(require("socket.io"));
-	
+
 	// Create your virtual dir
 	// server.addVirtualDir( "/sow", _path.resolve( server.getRoot() + "\\sow\\" ) );
 	const tempDir = server.mapPath( "/upload/temp/" );
@@ -50,19 +50,20 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 			return ctx.res.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );
 		} )
 		.get( '/readme', ( ctx ) => {
+			ctx.res.status( 200 );
 			return Util.sendResponse( ctx, server.mapPath( "readme.html" ) );
 		} )
 		.get( '/task/:id', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/task/:id", q: match } );
+			return ctx.res.status( 200 ).json( { reqPath: ctx.path, servedFrom: "/task/:id", q: match } );
 		} )
 		.get( '/dist/*', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/dist/*", q: match } );
+			return ctx.res.status( 200 ).json( { reqPath: ctx.path, servedFrom: "/dist/*", q: match } );
 		} )
 		.get( '/user/:id/settings', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match } );
+			return ctx.res.status( 200 ).json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match } );
 		} )
 		.get( '/user/:id/:name/settings', ( ctx, match ) => {
-			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/:name/settings", q: match } );
+			return ctx.res.status( 200 ).json( { reqPath: ctx.path, servedFrom: "/user/:id/:name/settings", q: match } );
 		} )
 		.get( '/authenticate', ( ctx ) => {
 			let result = {
@@ -100,8 +101,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 					server.setSession( ctx, /*loginId*/"rajib",/*roleId*/"Admin", /*userData*/{ token: ctx.req.query.token } );
 				}
 			}
-			ctx.res.writeHead( result.code, { 'Content-Type': 'application/json' } );
-			ctx.res.end( JSON.stringify( result.data ) );
+			ctx.res.status( 200 ).json( result.data );
 			ctx.next( 200 );
 		} ).any( "/post_data_async", async ( ctx ) => {
 			if ( ctx.req.method !== "POST" ) return ctx.next( 404 );
@@ -109,21 +109,17 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 				let parser = new PayloadParser( ctx.req, tempDir );
 				await parser.readDataAsync();
 				if ( parser.isUrlEncoded() ) {
-					ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
-					ctx.res.end( JSON.stringify( parser.getJson() ) );
+					ctx.res.status( 200 ).json( parser.getJson() );
 				} else {
-					parser.saveAs( downloadDir );
-					ctx.res.asHtml( 200 );
-					ctx.res.end( "File uploaded..." );
+					parser.saveAsSync( downloadDir );
+					ctx.res.type( "html" ).status( 200 ).send( "File uploaded..." );
 				}
 				parser.clear();
 				return ctx.next( 200 );
 			} catch ( err ) {
 				parser.clear();
-				server.addError( ctx, err.message );
-				return ctx.next( 500 );
+				ctx.transferError( err );
 			}
-
 		} ).any( "/post_data", ( ctx ) => {
 			if ( ctx.req.method !== "POST" ) return ctx.next( 404 );
 			let parser = new PayloadParser( ctx.req, tempDir );
@@ -131,16 +127,14 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 				if ( err ) {
 					if ( typeof ( err ) === "string" && err === "CLIENET_DISCONNECTED" ) return ctx.next( -500 );
 					parser.clear();
-					server.addError( ctx, err.message );
-					return ctx.next( 500 );
+					return ctx.transferError( err );
 				}
 				if ( parser.isUrlEncoded() ) {
-					ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
-					ctx.res.end( JSON.stringify( parser.getJson() ) );
+					ctx.res.status( 200 ).json( parser.getJson() );
 				} else {
 					let count = 1;
 					let fileInfo = "<ul>";
-					parser.getFiles( ( file ) => {
+					parser.getFilesSync( ( file ) => {
 						fileInfo += `<li>SL:${count}</li>`;
 						fileInfo += `<li>content_type:${file.getContentType()}</li>`;
 						fileInfo += `<li>name:${file.getName()}</li>`;
@@ -148,13 +142,12 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 						fileInfo += `<li>content_disposition:${file.getContentDisposition()}</li>`;
 						fileInfo += `<li>file Size: ${getSize( file.getFileSize() )}</li>`;
 						fileInfo += `<li>Writing file ${file.getFileName()}</li>`;
-						file.saveAs( `${downloadDir}/${_generateRandomNumber()}_${file.getFileName()}` );
+						file.saveAsSync( `${downloadDir}/${_generateRandomNumber()}_${file.getFileName()}` );
 						count++;
 					} );
 					fileInfo += "</ul>";
-					//parser.saveAs( downloadDir );
-					ctx.res.writeHead( 200, { 'Content-Type': 'text/html' } );
-					ctx.res.end( fileInfo );
+					//parser.saveAsSync( downloadDir );
+					ctx.res.status( 200, { 'Content-Type': 'text/html' } ).send( fileInfo );
 				}
 				parser.clear();
 				ctx.next( 200 );

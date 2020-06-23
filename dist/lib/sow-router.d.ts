@@ -1,6 +1,7 @@
 export declare type IRouteMatcher = {
-    readonly regExp: RegExp;
-    readonly repRegExp?: RegExp;
+    readonly test: (val: string) => boolean;
+    readonly replace: (val: string) => string;
+    readonly exec: (val: string) => RegExpMatchArray | null;
 };
 export declare type IRequestParam = {
     query: {

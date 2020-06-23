@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "allowUnreachableCode": false,
+    "noUnusedLocals": true,
+    "allowJs": false,
+    "allowUnusedLabels": false,
     "declaration": true,
     "module": "commonjs",
     "moduleResolution": "node",
@@ -18,8 +22,9 @@
     "esModuleInterop": true /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */
   },
   "lib": [ "ES6" ],
-  "include": [ "./lib", "./test" ],
+  "include": [ "./lib", "./index.ts" ],
   "exclude": [
+    "test",
     "node_modules",
     "definitions",
     ".vscode"
@@ -33,7 +38,7 @@
     ],
     "watch": [
       "./lib",
-      "./test"
+      "index.ts"
     ],
     "exec": "npm start",
     "ext": "ts"

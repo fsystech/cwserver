@@ -8,6 +8,7 @@ import * as _fs from 'fs';
 import * as _path from 'path';
 import { pipeline } from 'stream';
 import destroy = require( 'destroy' );
+import { isExists } from './sow-fsw';
 const _isPlainObject = ( obj: any ): obj is { [x: string]: any; } => {
     if ( obj === null || obj === undefined ) return false;
     return typeof ( obj ) === 'object' && Object.prototype.toString.call( obj ) === "[object Object]";
@@ -95,20 +96,14 @@ export class Util {
             ctx.next( statusCode );
         } ), void 0;
     }
-    public static isExists( path: string, next?: ( code?: number | undefined, transfer?: boolean ) => void ): string | boolean {
-        const url = _path.resolve( path );
-        if ( !_fs.existsSync( url ) ) {
-            return next ? ( next( 404, true ), false ) : false;
-        }
-        return url;
-    }
     public static sendResponse(
         ctx: IContext, reqPath: string, contentType?: string
     ): void {
-        const url = this.isExists( reqPath, ctx.next );
-        if ( !url ) return;
-        ctx.res.status( 200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' } );
-        return this.pipeOutputStream( String( url ), ctx );
+        return isExists( reqPath, ( exists: boolean, url: string ): void => {
+            if ( !exists ) return ctx.next( 404, true );
+            ctx.res.status( 200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' } );
+            return this.pipeOutputStream( url, ctx );
+        } );
     }
     public static getExtension( reqPath: string ): string | void {
         const index = reqPath.lastIndexOf( "." );

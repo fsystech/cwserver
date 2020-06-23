@@ -207,7 +207,7 @@ describe( "cwserver-router", () => {
         expect( shouldBeError( () => {
             getRouteMatcher( "/*/nobody/*" );
         } ) ).toBeInstanceOf( Error );
-        expect( getRouteMatcher( "/nobody/*" ).repRegExp ).toBeUndefined();
+        expect( getRouteMatcher( "/nobody/*" ).replace( "/nobody/*" ) ).toBeDefined();
         expect( shouldBeError( () => {
             getRouteMatcher( "/nobody/*/:id" );
         } ) ).toBeInstanceOf( Error );
@@ -316,7 +316,7 @@ describe( "cwserver-session", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.header["set-cookie"] ).toBeDefined();
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.userInfo ).toBeInstanceOf( Object );
@@ -334,7 +334,7 @@ describe( "cwserver-session", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.loginId ).toEqual( loginId );
                 expect( res.body.userData ).toBeDefined();
@@ -370,7 +370,7 @@ describe( "cwserver-get", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 const cook: string[] = res.get( "Set-Cookie" );
                 expect( cook.length ).toEqual( 3 );
                 done();
@@ -420,7 +420,7 @@ describe( "cwserver-get", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.servedFrom ).toEqual( '/test-any/*' );
                 expect( res.body.q.query ).toBeInstanceOf( Object );
@@ -436,7 +436,7 @@ describe( "cwserver-get", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.done ).toBeTruthy();
                 process.env.TASK_TYPE = 'TEST';
@@ -449,7 +449,7 @@ describe( "cwserver-get", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.servedFrom ).toEqual( '/task/:id/*' );
                 expect( res.body.q.query ).toBeInstanceOf( Object );
@@ -465,7 +465,7 @@ describe( "cwserver-get", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.servedFrom ).toEqual( '/dist/*' );
                 done();
@@ -1145,6 +1145,14 @@ describe( "cwserver-bundler-error", () => {
             } );
     } );
 } );
+function toBeApplicationJson( val?: string ): void {
+    if ( !val ) throw new Error("content-type required application/json. Found empty.");
+    expect( val.indexOf( "application/json" ) ).toBeGreaterThanOrEqual( 0 );
+}
+function toBeApplicationJavaScript( val?: string ): void {
+    if ( !val ) throw new Error( "content-type required application/json. Found empty." );
+    expect( val.indexOf( "application/javascript" ) ).toBeGreaterThanOrEqual( 0 );
+}
 describe( "cwserver-post", () => {
     it( 'send post request content type application/json', ( done: Mocha.Done ): void => {
         getAgent()
@@ -1154,7 +1162,7 @@ describe( "cwserver-post", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body.name ).toBe( 'rajibs' );
                 done();
             } );
@@ -1167,7 +1175,7 @@ describe( "cwserver-post", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body.error ).toBe( true );
                 done();
             } );
@@ -1180,7 +1188,7 @@ describe( "cwserver-post", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body.name ).toBe( 'rajibs' );
                 done();
             } );
@@ -1193,7 +1201,7 @@ describe( "cwserver-post", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body.name ).toBe( 'rajibs' );
                 done();
             } );
@@ -1239,7 +1247,7 @@ describe( "cwserver-multipart-paylod-parser", () => {
             readStream.close();
             expect( err ).not.toBeInstanceOf( Error );
             expect( res.status ).toBe( 200 );
-            expect( res.header["content-type"] ).toBe( "application/json" );
+            toBeApplicationJson( res.header["content-type"] );
             expect( res.body ).toBeInstanceOf( Object );
             expect( res.body.contentType ).toBe( contentType );
             expect( res.body.fileName ).toBe( fileName );
@@ -1309,7 +1317,7 @@ describe( "cwserver-multipart-paylod-parser", () => {
                         }
                         expect( err ).not.toBeInstanceOf( Error );
                         expect( res.status ).toBe( 200 );
-                        expect( res.header["content-type"] ).toBe( "application/json" );
+                        toBeApplicationJson( res.header["content-type"] );
                         expect( res.body ).toBeInstanceOf( Object );
                         expect( res.body.name ).toBe( "post-file" );
                         done();
@@ -1506,7 +1514,7 @@ describe( "cwserver-virtual-dir", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/javascript" );
+                toBeApplicationJavaScript( res.header["content-type"] );
                 expect( res.header["content-encoding"] ).toBe( "gzip" );
                 done();
             } );
@@ -1526,7 +1534,7 @@ describe( "cwserver-virtual-dir", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/javascript" );
+                toBeApplicationJavaScript( res.header["content-type"] );
                 expect( res.header["content-encoding"] ).toBe( "gzip" );
                 done();
             } );
@@ -1539,7 +1547,7 @@ describe( "cwserver-socket-io-implementation", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body ).toBeInstanceOf( Object );
                 expect( res.body.server ).toBeInstanceOf( Array );
                 expect( res.body.server.indexOf( "test-msg" ) ).toBeGreaterThan( -1 );
@@ -1577,7 +1585,7 @@ describe( "cwserver-echo", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "application/json" );
+                toBeApplicationJson( res.header["content-type"] );
                 expect( res.body.hex ).toBeDefined();
                 expect( res.body.hex ).toEqual( hex );
                 const resMd5 = cwserver.Encryption.hexToUtf8( res.body.hex );
@@ -1707,7 +1715,7 @@ describe( "cwserver-utility", () => {
         let config: { [x: string]: any; } | void;
         return (): { [x: string]: any; } => {
             if ( config ) return Util.clone( config );
-            const cjson = fsw.readJsonAsync( configFile );
+            const cjson = fsw.readJsonSync( configFile );
             if ( cjson ) {
                 config = cjson;
             }
@@ -1805,7 +1813,7 @@ describe( "cwserver-utility", () => {
             fsw.copyFileSync( `${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx` );
         } ) ).toBeInstanceOf( Error );
         expect( fsw.rmdirSync( `${logDir}/temp/` ) ).not.toBeInstanceOf( Error );
-        expect( fsw.copySync( `${logDir}/temp/`, `${logDir}/tempx/` ) ).not.toBeInstanceOf( Error );
+        expect( fsw.copyDirSync( `${logDir}/temp/`, `${logDir}/tempx/` ) ).not.toBeInstanceOf( Error );
         expect( fsw.mkdirSync( logDir ) ).toEqual( true );
         expect( shouldBeError( () => {
             Util.throwIfError( new Error( "Error test..." ) );
@@ -2185,7 +2193,7 @@ describe( "cwserver-schema-validator", () => {
                 "nsession": []
             }, true );
         } )();
-        const config: NodeJS.Dict<any> | void = fsw.readJsonAsync<any>( appUtility.server.mapPath( "/config/app.config.json" ) );
+        const config: NodeJS.Dict<any> | void = fsw.readJsonSync<any>( appUtility.server.mapPath( "/config/app.config.json" ) );
         expect( config ).toBeInstanceOf( Object );
         if ( !config ) throw new Error( "unreachable..." );
         const $schema = config.$schema;
@@ -2426,5 +2434,11 @@ describe( "finalization", () => {
             await app.shutdown();
             done();
         } )();
+    } );
+    it( "remove-garbage", function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
+        fsw.rmdir( appRoot, () => {
+            done();
+        }, handleError );
     } );
 } );

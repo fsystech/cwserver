@@ -24,6 +24,7 @@ const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const stream_1 = require("stream");
 const destroy = require("destroy");
+const sow_fsw_1 = require("./sow-fsw");
 const _isPlainObject = (obj) => {
     if (obj === null || obj === undefined)
         return false;
@@ -121,19 +122,13 @@ class Util {
             ctx.next(statusCode);
         }), void 0;
     }
-    static isExists(path, next) {
-        const url = _path.resolve(path);
-        if (!_fs.existsSync(url)) {
-            return next ? (next(404, true), false) : false;
-        }
-        return url;
-    }
     static sendResponse(ctx, reqPath, contentType) {
-        const url = this.isExists(reqPath, ctx.next);
-        if (!url)
-            return;
-        ctx.res.status(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
-        return this.pipeOutputStream(String(url), ctx);
+        return sow_fsw_1.isExists(reqPath, (exists, url) => {
+            if (!exists)
+                return ctx.next(404, true);
+            ctx.res.status(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
+            return this.pipeOutputStream(url, ctx);
+        });
     }
     static getExtension(reqPath) {
         const index = reqPath.lastIndexOf(".");

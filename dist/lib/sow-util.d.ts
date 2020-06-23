@@ -20,7 +20,6 @@ export declare class Util {
     static isError(obj: any): obj is Error;
     static throwIfError(obj: any): void;
     static pipeOutputStream(absPath: string, ctx: IContext): void;
-    static isExists(path: string, next?: (code?: number | undefined, transfer?: boolean) => void): string | boolean;
     static sendResponse(ctx: IContext, reqPath: string, contentType?: string): void;
     static getExtension(reqPath: string): string | void;
 }

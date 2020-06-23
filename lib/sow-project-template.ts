@@ -38,7 +38,7 @@ export function createProjectTemplate( settings: {
 		fsw.rmdirSync( projectRoot );
 	}
 	fsw.mkdirSync( appRoot, settings.projectRoot );
-	fsw.copySync( _path.resolve( `${templateRoot}/www` ), projectRoot );
+	fsw.copyDirSync( _path.resolve( `${templateRoot}/www` ), projectRoot );
 	const serverJs: string = _path.resolve( `${appRoot}/server.js` );
 	if ( !_fs.existsSync( serverJs ) ) {
 		_fs.copyFileSync( _path.resolve( `${templateRoot}/server.js` ), serverJs );
@@ -60,9 +60,9 @@ export function createProjectTemplate( settings: {
 			console.log( ConsoleColor.FgYellow, `Add all example to your project root ${settings.projectRoot}` );
 			fsw.mkdirSync( projectRoot, "/example/" );
 			console.log( ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/example/` );
-			fsw.copySync( _path.resolve( `${templateRoot}/example/` ), _path.resolve( `${projectRoot}/example/` ) );
+			fsw.copyDirSync( _path.resolve( `${templateRoot}/example/` ), _path.resolve( `${projectRoot}/example/` ) );
 			console.log( ConsoleColor.FgYellow, `Copying to ${settings.projectRoot}/lib/` );
-			fsw.copySync( _path.resolve( `${templateRoot}/lib/` ), _path.resolve( `${projectRoot}/lib/` ) );
+			fsw.copyDirSync( _path.resolve( `${templateRoot}/lib/` ), _path.resolve( `${projectRoot}/lib/` ) );
 		}
 	} else {
 		fsw.copyFileSync( _path.resolve( `${templateRoot}/test/app.config.json` ), _path.resolve( `${projectRoot}/config/app.config.json` ) );
@@ -70,7 +70,7 @@ export function createProjectTemplate( settings: {
 		fsw.copyFileSync( _path.resolve( `${templateRoot}/test/socket-client.js` ), _path.resolve( `${projectRoot}/lib/socket-client.js` ) );
 	}
 	const configPath: string = _path.resolve( `${projectRoot}/config/app.config.json` );
-	const config: { [id: string]: any } | void = fsw.readJsonAsync( configPath );
+	const config: { [id: string]: any } | void = fsw.readJsonSync( configPath );
 	if ( !config ) {
 		throw new Error( configPath );
 	}

@@ -42,12 +42,19 @@ function loadMimeType() {
     };
 }
 exports.loadMimeType = loadMimeType;
+function setCharset(mimeType) {
+    const text = mimeType.split(";")[0];
+    if ((/^text\/|^application\/(javascript|json)/).test(text.toLowerCase())) {
+        return `${mimeType}; charset=UTF-8`;
+    }
+    return mimeType;
+}
 function getMimeType(extension) {
     extension = extension.replace(/^.*[\.\/\\]/gi, '').toLowerCase();
     const mimeType = global.sow.HttpMime.type(extension);
     if (!mimeType)
         throw new Error(`Unsupported extension =>${extension}`);
-    return mimeType;
+    return setCharset(mimeType);
 }
 exports.getMimeType = getMimeType;
 function isValidExtension(extension) {

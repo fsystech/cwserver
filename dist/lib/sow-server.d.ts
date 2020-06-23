@@ -57,6 +57,7 @@ export interface IServerConfig {
     template: {
         cache: boolean;
         cacheType: string;
+        ext: string[];
     };
     encryptionKey: ICryptoInfo;
     session: {
@@ -69,9 +70,7 @@ export interface IServerConfig {
     defaultDoc: string[];
     defaultExt: string;
     views: string[];
-    errorPage: {
-        [x: string]: string;
-    };
+    errorPage: NodeJS.Dict<string>;
     hiddenDirectory: string[];
     hostInfo: {
         origin: string[];
@@ -79,9 +78,7 @@ export interface IServerConfig {
         hostName: string;
         frameAncestors?: string;
         tls: boolean;
-        cert: {
-            [x: string]: string;
-        };
+        cert: NodeJS.Dict<string>;
         port: string | number;
     };
     database?: IDatabaseConfig[];
@@ -107,26 +104,19 @@ export interface IServerConfig {
 export interface ISowServer {
     version: string;
     errorPage: {
-        [x: string]: any;
+        [x: string]: string;
     };
     copyright(): string;
     log: ILogger;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
     config: IServerConfig;
     initilize(): void;
-    implimentConfig(config: {
-        [x: string]: any;
-    }): void;
+    implimentConfig(config: NodeJS.Dict<any>): void;
     setDefaultProtectionHeader(res: IResponse): void;
     setHeader(res: IResponse): void;
-    parseCookie(cook: {
-        [x: string]: string;
-    } | string): {
-        [x: string]: string;
-    };
-    parseSession(cookies: {
-        [x: string]: string;
-    } | string): ISession;
+    parseSession(cook: undefined | string[] | string | {
+        [x: string]: any;
+    }): ISession;
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
     passError(ctx: IContext): boolean;
     getErrorPath(statusCode: number, tryServer?: boolean): string | void;
@@ -205,9 +195,7 @@ export declare class ServerConfig implements IServerConfig {
     defaultDoc: string[];
     defaultExt: string;
     views: string[];
-    errorPage: {
-        [x: string]: any;
-    };
+    errorPage: NodeJS.Dict<string>;
     hiddenDirectory: string[];
     hostInfo: {
         origin: string[];
@@ -215,9 +203,7 @@ export declare class ServerConfig implements IServerConfig {
         hostName: string;
         frameAncestors?: string;
         tls: boolean;
-        cert: {
-            [x: string]: string;
-        };
+        cert: NodeJS.Dict<string>;
         port: string | number;
     };
     database?: IDatabaseConfig[];
@@ -242,6 +228,7 @@ export declare class ServerConfig implements IServerConfig {
     template: {
         cache: boolean;
         cacheType: string;
+        ext: string[];
     };
     constructor();
 }
@@ -270,20 +257,13 @@ export declare class SowServer implements ISowServer {
     parseMaxAge(maxAge: any): number;
     getPublic(): string;
     getPublicDirName(): string;
-    implimentConfig(config: {
-        [x: string]: any;
-    }): void;
+    implimentConfig(config: NodeJS.Dict<any>): void;
     initilize(): void;
     copyright(): string;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
     setDefaultProtectionHeader(res: IResponse): void;
     setHeader(res: IResponse): void;
-    parseCookie(cook: string | {
-        [x: string]: string;
-    }): {
-        [x: string]: string;
-    };
-    parseSession(cookies: string | {
+    parseSession(cook: undefined | string[] | string | {
         [x: string]: any;
     }): ISession;
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
@@ -309,8 +289,8 @@ interface ISowGlobalServer {
 }
 interface ISowGlobal {
     isInitilized: boolean;
-    HttpMime: IMimeType<string>;
-    server: ISowGlobalServer;
+    readonly HttpMime: IMimeType<string>;
+    readonly server: ISowGlobalServer;
 }
 declare global {
     namespace NodeJS {
@@ -320,7 +300,7 @@ declare global {
     }
 }
 export interface IAppUtility {
-    init: () => IApplication;
+    readonly init: () => IApplication;
     readonly public: string;
     readonly port: string | number;
     readonly socketPath: string;
