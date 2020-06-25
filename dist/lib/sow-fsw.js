@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.copyDirSync = exports.copyDir = exports.copyFileSync = exports.copyFile = exports.unlink = exports.rmdirSync = exports.rmdir = exports.mkdirSync = exports.mkdir = exports.readJsonSync = exports.readJson = exports.isExists = exports.compairFileSync = exports.compairFile = exports.stat = void 0;
+exports.copyDirSync = exports.copyDir = exports.copyFileSync = exports.copyFile = exports.unlink = exports.rmdirSync = exports.rmdir = exports.mkdirSync = exports.mkdir = exports.readJsonSync = exports.readJson = exports.isExists = exports.compairFileSync = exports.compairFile = exports.moveFile = exports.stat = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -40,6 +40,26 @@ function stat(path, next, errHandler) {
     });
 }
 exports.stat = stat;
+function isSameDrive(src, dest) {
+    const aroot = _path.parse(src).root;
+    const broot = _path.parse(dest).root;
+    return aroot.substring(0, aroot.indexOf(":")) === broot.substring(0, broot.indexOf(":"));
+}
+function moveFile(src, dest, next, force) {
+    if (force !== true && isSameDrive(src, dest)) {
+        return _fs.rename(src, dest, (err) => {
+            return next(err);
+        });
+    }
+    return _fs.copyFile(src, dest, (err) => {
+        if (err)
+            return next(err);
+        return _fs.unlink(src, (uerr) => {
+            return next(uerr);
+        });
+    });
+}
+exports.moveFile = moveFile;
 /** compairFile a stat.mtime > b stat.mtime */
 function compairFile(a, b, next, errHandler) {
     return _fs.stat(a, (err, astat) => {

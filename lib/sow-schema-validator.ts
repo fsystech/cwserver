@@ -52,7 +52,7 @@ function propertiValidate(
 		}
 		const cvalue: any = configProperties[prop];
 		if ( svalue.type === "array" ) {
-			if ( !Util.isArrayLike( cvalue ) ) {
+			if ( !Util.isArrayLike<any>( cvalue ) ) {
 				throw new Error( `ERROR: Data path "${dataPath}.${prop}" should be value type ${svalue.type}` );
 			}
 			continue;
@@ -92,7 +92,7 @@ export function schemaValidate(
 			continue;
 		}
 		if ( svalue.type === "array" ) {
-			if ( Util.isArrayLike( cvalue ) ) {
+			if ( Util.isArrayLike<any>( cvalue ) ) {
 				if ( cvalue.length < svalue.minLength ) {
 					throw new Error( `ERROR: Data path "${dataPath}.${prop}" minmum length required ${svalue.minLength}` );
 				}

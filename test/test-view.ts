@@ -26,7 +26,7 @@ import { assert, Util } from '../lib/sow-util';
 const mimeHandler = new HttpMimeHandler();
 export function shouldBeError( next: () => void, printerr?: boolean ): Error | void {
 	try {
-		 next();
+		next();
 	} catch ( e ) {
 		if ( printerr === true ) console.log( e );
 		return e;
@@ -50,7 +50,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	ws.create( io );
 	expect( ws.create( io ) ).toEqual( false );
 	expect( ws.isConnectd ).toEqual( true );
-	controller.get( '/ws-server-event', ( ctx: IContext, requestParam?: IRequestParam  ): void => {
+	controller.get( '/ws-server-event', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 		const event = ws.wsEvent;
 		expect( event ).toBeInstanceOf( Object );
 		ctx.res.json( ws.wsEvent || {} ); ctx.next( 200 );
@@ -81,7 +81,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 } );
 global.sow.server.on( "register-view", ( app: IApplication, controller: IController, server: ISowServer ) => {
 	const streamDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
-	server.addVirtualDir( "/web-stream", streamDir, ( ctx: IContext, requestParam?: IRequestParam  ): void => {
+	server.addVirtualDir( "/web-stream", streamDir, ( ctx: IContext, requestParam?: IRequestParam ): void => {
 		if ( ctx.server.config.liveStream.indexOf( ctx.extension ) > -1 ) {
 			return fsw.isExists( `${streamDir}/${ctx.path}`, ( exists: boolean, url: string ): void => {
 				if ( !exists ) return ctx.next( 404 );
@@ -95,7 +95,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		}
 		return ctx.next( 404 );
 	} );
-	server.addVirtualDir( "/static-file", streamDir, ( ctx: IContext, requestParam?: IRequestParam  ): void => {
+	server.addVirtualDir( "/static-file", streamDir, ( ctx: IContext, requestParam?: IRequestParam ): void => {
 		return mimeHandler.render( ctx, streamDir, true );
 	} );
 	expect( shouldBeError( () => {
@@ -137,7 +137,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				parser.getFiles( ( pf ) => { return; } );
 			} ) ).toBeInstanceOf( Error );
 			expect( shouldBeError( () => {
-				parser.getUploadFileInfo( );
+				parser.getUploadFileInfo();
 			} ) ).toBeInstanceOf( Error );
 			if ( err && err instanceof Error ) {
 				ctx.res.json( Util.extend( result, { error: true, msg: err.message } ) );
@@ -157,32 +157,31 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		parser.clear();
 		return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
 	} ).post( '/upload-invalid-file', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
-		const parser = new PayloadParser( ctx.req, tempDir );
-		let err: Error | undefined;
+		const parser = new PayloadParser( ctx.req );
 		try {
 			await parser.readDataAsync();
+			ctx.res.status( 200 ).json( parser.getUploadFileInfo() );
 		} catch ( e ) {
-			err = e;
+			parser.clear();
+			ctx.transferError( e );
 		}
-		parser.clear();
-		if ( err ) {
-			if ( err.message.indexOf( "Invalid file header" ) > -1 ) return ctx.next( 500 );
-		}
-		console.log( err );
-		throw new Error( "Should not here..." );
 	} ).post( '/abort-error', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
+		console.log( '/abort-error' );
 		const parser = new PayloadParser( ctx.req, tempDir );
 		let err: Error | undefined;
 		try {
 			await parser.readDataAsync();
+			console.log( "No Error" );
 		} catch ( e ) {
 			err = e;
 		}
 		parser.clear();
 		if ( err ) {
 			if ( err.message.indexOf( "CLIENET_DISCONNECTED" ) > -1 ) return ctx.next( -500 );
+			console.log( err );
+			ctx.transferError( err );
+			return;
 		}
-		console.log( err );
 		throw new Error( "Should not here..." );
 	} ).post( '/upload-malformed-data', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		ctx.req.push( "This is normal line\n".repeat( 5 ) );
@@ -198,7 +197,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			server.addError( ctx, err );
 			return server.transferRequest( ctx, 500 );
 		}
-		throw new Error( "Should not here..." );
+		// throw new Error( "Should not here..." );
 	} ).post( '/upload-test', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		try {
 			const parser = new PayloadParser( ctx.req, tempDir );
@@ -281,9 +280,6 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 					} ) ).toBeInstanceOf( Error );
 					parser.saveAsSync( downloadDir );
 				}
-				expect( shouldBeError( () => {
-					parser.getData();
-				} ) ).toBeInstanceOf( Error );
 				ctx.res.json( data.shift() || {} );
 				ctx.next( 200 );
 			}
@@ -296,6 +292,15 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	controller
 		.get( "/test-context", ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			try {
+				const mCtx: IContext = server.createContext( Object.create( {
+					id: "1010", dispose: function () { }
+				} ), Object.create( {
+					id: "1010", dispose: function () { }
+				} ), () => { } );
+				removeContext( "10101" );
+				getMyContext( "10101" );
+				removeContext( "1010" );
+				mCtx.dispose();
 				const nctx: IContext = server.createContext( ctx.req, ctx.res, ctx.next );
 				nctx.path = "/not-found/404/";
 				nctx.req.path = "/not-found/404/";
@@ -341,7 +346,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 					ctx.res.end = ( ...arg: any[] ): void => {
 						expect( arg.length ).toBeGreaterThanOrEqual( 0 );
 					}
-					ctx.res.status( 204 ).send( );
+					ctx.res.status( 204 ).send();
 					expect( shouldBeError( () => {
 						ctx.res.status( 200 ).send();
 					} ) ).toBeInstanceOf( Error );
@@ -381,7 +386,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			expect( server.passError( ctx ) ).toBeFalsy();
 			ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
 			server.addError( ctx, new Error( "__INVALID___" ) );
-			expect( server.passError( ctx ) ).toBeFalsy( );
+			expect( server.passError( ctx ) ).toBeFalsy();
 			disposeContext( ctx );
 			disposeContext( ctx );
 			removeContext( "12" );

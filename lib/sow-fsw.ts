@@ -25,6 +25,29 @@ export function stat(
         } );
     } );
 }
+function isSameDrive( src: string, dest: string ): boolean {
+    const aroot: string = _path.parse( src ).root;
+    const broot: string = _path.parse( dest ).root;
+    return aroot.substring( 0, aroot.indexOf( ":" ) ) === broot.substring( 0, broot.indexOf( ":" ) );
+}
+
+export function moveFile(
+    src: string, dest: string,
+    next: ( err: NodeJS.ErrnoException | null ) => void,
+    force?: boolean
+): void {
+    if ( force !== true && isSameDrive( src, dest ) ) {
+        return _fs.rename( src, dest, ( err: NodeJS.ErrnoException | null ): void => {
+            return next( err );
+        } );
+    }
+    return _fs.copyFile( src, dest, ( err: NodeJS.ErrnoException | null ): void => {
+        if ( err ) return next( err );
+        return _fs.unlink( src, ( uerr: NodeJS.ErrnoException | null ): void => {
+            return next( uerr );
+        } );
+    } );
+}
 /** compairFile a stat.mtime > b stat.mtime */
 export function compairFile(
     a: string, b: string,

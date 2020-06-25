@@ -535,7 +535,7 @@ ${appRoot}\\www_public
     implimentConfig( config: NodeJS.Dict<any> ): void {
         if ( !config.encryptionKey )
             throw new Error( "Security risk... encryption key required...." );
-        if ( !Util.isArrayLike( config.hiddenDirectory ) ) {
+        if ( !Util.isArrayLike<string>( config.hiddenDirectory ) ) {
             throw new Error( 'hidden_directory should be Array...' );
         }
         if ( process.env.IISNODE_VERSION && process.env.PORT ) {
@@ -563,7 +563,7 @@ ${appRoot}\\www_public
     }
     initilize(): void {
         if ( isDefined( this.config.database ) ) {
-            if ( !Util.isArrayLike( this.config.database ) )
+            if ( !Util.isArrayLike<IDatabaseConfig>( this.config.database ) )
                 throw new Error( "database cofig should be Array...." );
             this.config.database.forEach( ( conf: IDatabaseConfig ): void => {
                 if ( !conf.module )

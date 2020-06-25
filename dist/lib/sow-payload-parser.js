@@ -18,49 +18,27 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PayloadParser = exports.PostedFileInfo = exports.ContentType = void 0;
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 11:17 PM 5/5/2020
+const events_1 = require("events");
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
+const dicer_1 = __importDefault(require("dicer"));
+const stream_1 = require("stream");
+const os_1 = __importDefault(require("os"));
+const destroy = require("destroy");
 const sow_static_1 = require("./sow-static");
 const sow_util_1 = require("./sow-util");
 const fsw = __importStar(require("./sow-fsw"));
-const getLine = (req, data) => {
-    let outstr = '';
-    for (;;) {
-        let c = req.read(1);
-        if (!c)
-            return outstr;
-        const str = c.toString();
-        switch (str) {
-            case '\n':
-                outstr += str;
-                data.push(c);
-                return outstr;
-            case '\r':
-                outstr += str;
-                data.push(c);
-                c = req.read(1);
-                if (c) {
-                    outstr += c.toString(); // assume \n
-                    data.push(c);
-                }
-                return outstr;
-            default:
-                outstr += str;
-                data.push(c);
-        }
-    }
-};
 const incomingContentType = {
     URL_ENCODE: "application/x-www-form-urlencoded",
     APP_JSON: "application/json",
@@ -86,46 +64,21 @@ const extractBetween = (data, separator1, separator2) => {
     }
     return result;
 };
-const parseHeader = (data) => {
-    const end = "\r\n";
-    let part = data.substring(0, data.indexOf(end));
-    const disposition = extractBetween(part, "Content-Disposition: ", ";");
-    const name = extractBetween(part, "name=\"", ";");
-    let filename = extractBetween(part, "filename=\"", "\"");
-    part = data.substring(part.length + end.length);
-    const cType = extractBetween(part, "Content-Type: ", "\r\n\r\n");
-    // This is hairy: Netscape and IE don't encode the filenames
-    // The RFC says they should be encoded, so I will assume they are.
-    filename = decodeURIComponent(filename);
-    return new PostedFileInfo(disposition, name.replace(/"/gi, ""), filename, cType.trim());
-};
 class PostedFileInfo {
-    constructor(disposition, fname, fileName, fcontentType) {
+    constructor(disposition, fname, fileName, fcontentType, tempFile) {
         this._fcontentDisposition = disposition;
         this._fname = fname;
         this._fileName = fileName;
         this._fcontentType = fcontentType;
-        this._fileSize = 0;
         this._isMoved = false;
         this._isDisposed = false;
-    }
-    setInfo(tempFile, fileSize) {
-        if (tempFile)
-            this._tempFile = tempFile;
-        if (fileSize)
-            this._fileSize = fileSize;
-    }
-    isEmptyHeader() {
-        return this._fcontentType.length === 0;
+        this._tempFile = tempFile;
     }
     getTempPath() {
         return this._tempFile;
     }
     getContentDisposition() {
         return this._fcontentDisposition;
-    }
-    getFileSize() {
-        return this._fileSize;
     }
     getName() {
         return this._fname;
@@ -152,14 +105,15 @@ class PostedFileInfo {
     }
     saveAsSync(absPath) {
         if (this.validate(this._tempFile)) {
-            _fs.renameSync(this._tempFile, absPath);
+            _fs.copyFileSync(this._tempFile, absPath);
+            _fs.unlinkSync(this._tempFile);
             delete this._tempFile;
             this._isMoved = true;
         }
     }
     saveAs(absPath, next) {
         if (this.validate(this._tempFile)) {
-            return _fs.rename(this._tempFile, absPath, (err) => {
+            fsw.moveFile(this._tempFile, absPath, (err) => {
                 delete this._tempFile;
                 this._isMoved = true;
                 return next(err);
@@ -183,136 +137,132 @@ class PostedFileInfo {
     }
 }
 exports.PostedFileInfo = PostedFileInfo;
+const RE_BOUNDARY = /^multipart\/.+?(?:; boundary=(?:(?:"(.+)")|(?:([^\s]+))))$/i;
+class MultipartDataReader extends events_1.EventEmitter {
+    constructor() {
+        super();
+        this._isDisposed = false;
+        this._forceExit = false;
+    }
+    get forceExit() {
+        return this._forceExit;
+    }
+    destroy() {
+        if (this._writeStream && !this._writeStream.destroyed)
+            destroy(this._writeStream);
+    }
+    exit(reason) {
+        this._forceExit = true;
+        this.emit("end", new Error(reason));
+    }
+    read(partStream, tempDir) {
+        let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false, data = "";
+        partStream.on("header", (header) => {
+            for (const [key, value] of Object.entries(header)) {
+                if (sow_util_1.Util.isArrayLike(value)) {
+                    const part = value[0];
+                    if (part) {
+                        if (key === "content-disposition") {
+                            if (part.indexOf("filename") > -1) {
+                                fileName = extractBetween(part, "filename=\"", "\"").trim();
+                                if (fileName.length === 0) {
+                                    return this.exit(`Unable to extract filename form given header: ${part}`);
+                                }
+                                fieldName = extractBetween(part, "name=\"", ";");
+                                isFile = true;
+                                disposition = part;
+                                continue;
+                            }
+                            fieldName = extractBetween(part, "name=\"", "\"");
+                            data += fieldName += "=";
+                            continue;
+                        }
+                        if (key === "content-type") {
+                            contentType = part.trim();
+                        }
+                    }
+                }
+            }
+            if (!isFile) {
+                return partStream.on("data", (chunk) => {
+                    data += chunk.toString();
+                }).on("end", () => {
+                    this.emit("field", data);
+                    this.emit("end");
+                }), void 0;
+            }
+            if (contentType.length > 0) {
+                const tempFile = _path.resolve(`${tempDir}/${sow_util_1.Util.guid()}.temp`);
+                this._writeStream = stream_1.pipeline(partStream, _fs.createWriteStream(tempFile, { 'flags': 'a' }), (err) => {
+                    this.destroy();
+                    this.emit("end", err);
+                });
+                const file = new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), tempFile);
+                this.emit("file", file);
+            }
+            else {
+                return this.exit("Content type not found in requested file....");
+            }
+        });
+    }
+    clear() {
+        if (this._isDisposed)
+            return;
+        this._isDisposed = true;
+        this.removeAllListeners();
+        this.destroy();
+    }
+}
 class PayloadDataParser {
-    constructor(tempDir, contentType, contentTypeEnum) {
-        this._blockSize = 0;
-        this._errors = "";
-        this._contentTypeEnum = contentTypeEnum;
+    constructor(tempDir) {
+        this._errors = [];
         this.files = [];
         this.payloadStr = "";
         this._tempDir = tempDir;
-        if (this._contentTypeEnum === ContentType.MULTIPART) {
-            // multipart/form-data; boundary=----WebKitFormBoundarymAgyXMoeG3VgeNeR
-            const bType = "boundary=";
-            this._separator = `--${contentType.substring(contentType.indexOf(bType) + bType.length)}`.trim();
-            this._sepLen = this._separator.length;
-        }
-        else {
-            this._separator = "";
-            this._sepLen = 0;
-        }
-        this._isStart = false;
-        this._byteCount = 0;
-        this._waitCount = 0;
-        this._headerInfo = "";
-    }
-    get _maxBlockSize() {
-        return 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
+        this._readers = [];
     }
     onRawData(str) {
         this.payloadStr += str;
     }
-    drain(force) {
-        if (force || (this._blockSize > this._maxBlockSize)) {
-            this._blockSize = 0;
-            return new Promise((resolve, reject) => {
-                if (this._writeStream) {
-                    this._writeStream.once("drain", () => {
-                        resolve();
-                    });
-                }
-                else {
-                    reject(new Error("stream not avilable...."));
-                }
-            });
-        }
-    }
-    onData(line, buffer) {
-        if (this._waitCount === 0 && (line.length < this._sepLen || line.indexOf(this._separator) < 0)) {
-            if (!this._isStart) {
-                this._errors += "Malformed trailing data...";
-                return false;
+    onPart(partStream, next) {
+        const reader = new MultipartDataReader();
+        reader.on("file", (file) => {
+            return this.files.push(file), void 0;
+        });
+        reader.on("field", (data) => {
+            if (this.payloadStr.length > 0) {
+                this.payloadStr += "&";
             }
-            if (this._writeStream) {
-                const readLen = buffer.byteLength;
-                this._byteCount += readLen;
-                this._blockSize += readLen;
-                if (this._writeStream.write(buffer))
-                    return this.drain(false);
+            return this.onRawData(data);
+        });
+        reader.on("end", (err) => {
+            if (err) {
+                this._errors.push(err);
             }
-            return this.drain(true);
-        }
-        if (this._isStart && this._writeStream) {
-            this._writeStream.end();
-            this._isStart = false;
-            delete this._writeStream;
-            if (this._postedFile) {
-                this._postedFile.setInfo(void 0, this._byteCount);
-                this.files.push(this._postedFile);
-                this._postedFile = void 0;
-                this._byteCount = 0;
-            }
-        }
-        if (this._waitCount > 2) {
-            this._waitCount = 0;
-            this._headerInfo += line; // skip crlf
-            this._postedFile = parseHeader(this._headerInfo);
-            if (this._postedFile.isEmptyHeader()) {
-                this._postedFile.clear();
-                this._postedFile = void 0;
-                this._errors = `Invalid file header\r\nFound:${this._headerInfo}`;
-                return false;
-            }
-            this._headerInfo = "";
-            const tempFile = _path.resolve(`${this._tempDir}/${sow_util_1.Util.guid()}.temp`);
-            this._writeStream = _fs.createWriteStream(tempFile, { 'flags': 'a' });
-            this._postedFile.setInfo(tempFile);
-            this._isStart = true;
-            return;
-        }
-        if (this._waitCount === 0) {
-            this._headerInfo = ""; // assume boundary
-            this._waitCount++;
-            return;
-        }
-        if (this._waitCount < 3) {
-            this._headerInfo += line;
-            this._waitCount++;
-            return;
-        }
+            next(reader.forceExit);
+            return reader.clear();
+        });
+        reader.read(partStream, this._tempDir);
+        this._readers.push(reader);
+        return void 0;
     }
     getError() {
         if (this._errors.length > 0) {
-            return this._errors;
-        }
-    }
-    endCurrentStream(exit) {
-        if (this._isStart === true && this._writeStream) {
-            this._writeStream.end();
-            if (this._postedFile) {
-                if (exit === false) {
-                    this._postedFile.setInfo(void 0, this._byteCount);
-                    this.files.push(this._postedFile);
-                }
-                else {
-                    this._postedFile.clear();
-                    this._postedFile = Object.create(null);
-                }
-                this._isStart = false;
-                this._byteCount = 0;
-                delete this._postedFile;
+            let str = "";
+            for (const err of this._errors) {
+                str += err.message + "\n";
             }
-            delete this._writeStream;
-        }
-    }
-    onEnd() {
-        if (this._contentTypeEnum === ContentType.MULTIPART) {
-            return this.endCurrentStream(false);
+            return str;
         }
     }
     clear() {
+        while (true) {
+            const reader = this._readers.shift();
+            if (!reader)
+                break;
+            reader.clear();
+        }
         this.files.forEach(pf => pf.clear());
-        this.endCurrentStream(true);
         this.files.length = 0;
         if (this._errors)
             delete this._errors;
@@ -321,7 +271,7 @@ class PayloadDataParser {
 class PayloadParser {
     constructor(req, tempDir) {
         this._isDisposed = false;
-        this._isConnectionActive = true;
+        this._part = [];
         this._contentType = req.get("content-type") || "";
         this._contentLength = sow_static_1.ToNumber(req.get("content-length") || 0);
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
@@ -337,11 +287,11 @@ class PayloadParser {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
         if (this._contentTypeEnum !== ContentType.UNKNOWN) {
-            this._payloadDataParser = new PayloadDataParser(tempDir, this._contentType, this._contentTypeEnum);
+            this._parser = new PayloadDataParser(tempDir || os_1.default.tmpdir());
             this._req = req;
         }
         else {
-            this._payloadDataParser = Object.create(null);
+            this._parser = Object.create(null);
             this._req = Object.create(null);
         }
         this._isReadEnd = false;
@@ -368,15 +318,12 @@ class PayloadParser {
                 throw new Error("Multipart form data required....");
             return;
         }
-        if (!(this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON)) {
-            throw new Error("You can invoke this method only URL_ENCODE | APP_JSON content type...");
-        }
     }
     saveAsSync(outdir) {
         this.validate(true);
         if (!fsw.mkdirSync(outdir))
             throw new Error(`Invalid outdir dir ${outdir}`);
-        return this._payloadDataParser.files.forEach(pf => {
+        return this._parser.files.forEach(pf => {
             return pf.saveAsSync(_path.resolve(`${outdir}/${sow_util_1.Util.guid()}_${pf.getFileName()}`));
         });
     }
@@ -399,13 +346,12 @@ class PayloadParser {
     getUploadFileInfo() {
         this.validate(true);
         const data = [];
-        this._payloadDataParser.files.forEach((file) => {
+        this._parser.files.forEach((file) => {
             data.push({
                 contentType: file.getContentType(),
                 name: file.getName(),
                 fileName: file.getFileName(),
                 contentDisposition: file.getContentDisposition(),
-                fileSize: file.getFileSize(),
                 tempPath: file.getTempPath()
             });
         });
@@ -413,14 +359,14 @@ class PayloadParser {
     }
     getFilesSync(next) {
         this.validate(true);
-        return this._payloadDataParser.files.forEach(pf => next(pf));
+        return this._parser.files.forEach(pf => next(pf));
     }
     getFiles(next) {
         this.validate(true);
         let index = -1;
         const forward = () => {
             index++;
-            const pf = this._payloadDataParser.files[index];
+            const pf = this._parser.files[index];
             if (!pf)
                 return next();
             return next(pf, () => {
@@ -446,87 +392,99 @@ class PayloadParser {
     }
     getData() {
         this.validate(false);
-        return this._payloadDataParser.payloadStr;
+        return this._parser.payloadStr;
     }
     readDataAsync() {
         return new Promise((resolve, reject) => {
             this.readData((err) => {
                 if (err)
-                    return reject(typeof (err) === "string" ? new Error(err) : err);
+                    return reject(err);
                 return resolve();
             });
+        });
+    }
+    tryFinish(onReadEnd) {
+        if (!this._isReadEnd || this._part.length > 0)
+            return void 0;
+        const error = this._parser.getError();
+        if (error)
+            return onReadEnd(new Error(error));
+        return onReadEnd();
+    }
+    skipPart(partStream) {
+        partStream.resume();
+    }
+    onPart(partStream, onReadEnd) {
+        this._part.push(1);
+        this._parser.onPart(partStream, (forceExit) => {
+            if (forceExit) {
+                this._part.length = 0;
+                this.skipPart(partStream);
+                if (this._multipartParser) {
+                    this._multipartParser.removeListener('part', this.onPart);
+                    this._multipartParser.on("part", this.skipPart);
+                }
+            }
+            else {
+                this._part.shift();
+            }
+            return this.tryFinish(onReadEnd);
         });
     }
     readData(onReadEnd) {
         if (!this.isValidRequest())
             return onReadEnd(new Error("Invalid request defiend...."));
         if (this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON) {
-            this._req.on("readable", (...args) => {
-                while (true) {
-                    if (!this._isConnectionActive) {
-                        break;
-                    }
-                    const buffer = [];
-                    const data = getLine(this._req, buffer);
-                    if (data === '') {
-                        break;
-                    }
-                    this._payloadDataParser.onRawData(data);
-                    buffer.length = 0;
+            this._req.on("data", (chunk) => {
+                this._parser.onRawData(chunk.toString());
+            });
+            this._req.on("end", () => {
+                this._isReadEnd = true;
+                return onReadEnd();
+            });
+            return;
+        }
+        const match = RE_BOUNDARY.exec(this._contentType);
+        if (match) {
+            this._multipartParser = new dicer_1.default({ boundary: match[1] || match[2] });
+            this._multipartParser.on("part", (stream) => {
+                this.onPart(stream, onReadEnd);
+            });
+            this._multipartParser.on("finish", () => {
+                this._isReadEnd = true;
+                return this.tryFinish(onReadEnd);
+            });
+            this._multipartParser.on("error", (err) => {
+                this._isReadEnd = true;
+                this._part.length = 0;
+                return onReadEnd(err);
+            });
+            this._req.on("close", () => {
+                if (!this._isReadEnd) {
+                    this._isReadEnd = true;
+                    return onReadEnd(new Error("CLIENET_DISCONNECTED"));
                 }
             });
+            this._req.pipe(this._multipartParser);
         }
-        else {
-            this._req.on("readable", (...args) => __awaiter(this, void 0, void 0, function* () {
-                while (true) {
-                    if (!this._isConnectionActive) {
-                        break;
-                    }
-                    const buffer = [];
-                    const data = getLine(this._req, buffer);
-                    if (data === '') {
-                        break;
-                    }
-                    const promise = this._payloadDataParser.onData(data, Buffer.concat(buffer));
-                    buffer.length = 0;
-                    if (typeof (promise) === "boolean") {
-                        this._req.pause();
-                        this._req.emit("end");
-                        break;
-                    }
-                    else {
-                        yield promise;
-                    }
-                }
-            }));
-        }
-        this._req.on("close", () => {
-            this._isConnectionActive = false;
-            if (!this._isReadEnd) {
-                this._isReadEnd = true;
-                this.clear();
-                return onReadEnd("CLIENET_DISCONNECTED");
-            }
-        });
-        this._req.on("end", () => {
-            this._isConnectionActive = false;
-            this._payloadDataParser.onEnd();
-            this._isReadEnd = true;
-            const error = this._payloadDataParser.getError();
-            if (error)
-                return onReadEnd(new Error(error));
-            return onReadEnd();
-        });
     }
     clear() {
         if (this._isDisposed)
             return;
         this._isDisposed = true;
         if (this._isReadEnd) {
-            this._payloadDataParser.clear();
-            this._payloadDataParser = Object.create(null);
-            this._req = Object.create(null);
+            this._parser.clear();
+            delete this._parser;
         }
+        if (this._multipartParser) {
+            this._req.unpipe(this._multipartParser);
+            destroy(this._multipartParser);
+            delete this._multipartParser;
+        }
+        delete this._req;
+        delete this._part;
+        delete this._contentType;
+        delete this._contentLength;
     }
 }
 exports.PayloadParser = PayloadParser;

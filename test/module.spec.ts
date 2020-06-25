@@ -5,6 +5,7 @@
 */
 // 4:38 AM 5/22/2020
 import 'mocha';
+import * as crypto from 'crypto';
 import expect from 'expect';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -683,7 +684,7 @@ describe( "cwserver-template-engine", () => {
         };
         const ctx: IContext = appUtility.server.createContext( Object.create( { id: Util.guid() } ), Object.create( null ), ( err?: any ): void => {
             expect( err ).not.toBeInstanceOf( Error );
-         } );
+        } );
         ctx.handleError = ( err: NodeJS.ErrnoException | Error | null | undefined, next: () => void ): void => {
             if ( Util.isError( err ) ) {
                 return forward();
@@ -1128,7 +1129,7 @@ describe( "cwserver-bundler-error", () => {
     } );
 } );
 function toBeApplicationJson( val?: string ): void {
-    if ( !val ) throw new Error("content-type required application/json. Found empty.");
+    if ( !val ) throw new Error( "content-type required application/json. Found empty." );
     expect( val.indexOf( "application/json" ) ).toBeGreaterThanOrEqual( 0 );
 }
 function toBeApplicationJavaScript( val?: string ): void {
@@ -1217,6 +1218,8 @@ describe( "cwserver-multipart-paylod-parser", () => {
         const readStream = fs.createReadStream( filePath );
         const req: request.SuperAgentRequest = getAgent()
             .post( `http://localhost:${appUtility.port}${reqPath || "/upload"}` )
+            .field( "name", contentType )
+            .field( "cname", contentType )
             .query( { saveto } );
         if ( !reqPath ) {
             req.field( 'post-file', readStream )
@@ -1233,7 +1236,7 @@ describe( "cwserver-multipart-paylod-parser", () => {
             expect( res.body ).toBeInstanceOf( Object );
             expect( res.body.contentType ).toBe( contentType );
             expect( res.body.fileName ).toBe( fileName );
-            expect( res.body.name ).toBe( "post-file" );
+            expect( String( res.body.name ).indexOf( "post-file" ) ).toBeGreaterThan( -1 );
             done();
         } );
     }
@@ -1267,24 +1270,44 @@ describe( "cwserver-multipart-paylod-parser", () => {
             } );
         } );
     } );
+    it( 'invalid multipart posted file name', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 * 10 );
+        const tempz: string = appUtility.server.mapPath( "/web/.tempz" );
+        fs.writeFile( tempz, Buffer.from( "This is normal line\n".repeat( 5 ) ), ( err: NodeJS.ErrnoException | null ): void => {
+            const readStream = fs.createReadStream( tempz );
+            const req: request.SuperAgentRequest = getAgent()
+                .post( `http://localhost:${appUtility.port}/upload-invalid-file` )
+                .attach( 'post-file', readStream, {
+                    filename: " "
+                } );
+            req.end( ( rerr, res ) => {
+                readStream.close();
+                expect( rerr ).toBeInstanceOf( Error );
+                done();
+            } );
+        } );
+    } );
     it( 'test multipart post file', function ( done: Mocha.Done ): void {
         this.timeout( 5000 * 10 );
         const leargeFile: string = appUtility.server.mapPath( "/web/learge.txt" );
         const writer: fs.WriteStream = fs.createWriteStream( leargeFile );
         let size: number = 0;
         function write( wdone: () => void ) {
-            while ( true ) {
-                const buff: Buffer = Buffer.from( "This is normal line\n".repeat( 5 ) );
-                size += buff.byteLength;
-                if ( !writer.write( buff ) ) {
-                    writer.once( "drain", () => {
-                        write( wdone );
-                    } );
-                }
-                if ( size >= ( 16400 + 200 ) ) {
-                    return wdone();
+            function swrite() {
+                while ( true ) {
+                    const buff: Buffer = Buffer.from( "This is normal line\n".repeat( 5 ) );
+                    size += buff.byteLength;
+                    const ok: boolean = writer.write( buff );
+                    if ( size >= ( 16400 + 200 ) ) {
+                        return wdone();
+                    }
+                    if ( !ok ) {
+                        writer.once( "drain", swrite );
+                        break;
+                    }
                 }
             }
+            return swrite();
         }
         write( () => {
             writer.end( () => {
@@ -1309,37 +1332,50 @@ describe( "cwserver-multipart-paylod-parser", () => {
     } );
     it( 'test multipart post file abort test', function ( done: Mocha.Done ): void {
         this.timeout( 5000 * 10 );
-        const leargeFile: string = appUtility.server.mapPath( "/web/learge.txt" );
-        const readStream = fs.createReadStream( leargeFile );
-        const req: request.SuperAgentRequest = getAgent()
-            .post( `http://localhost:${appUtility.port}/abort-error` )
-            .field( 'post-file', readStream );
-        req.on( "progress", ( event ) => {
-            if ( event.total ) {
-                if ( ( event.total - event.loaded ) <= 0 ) {
-                    readStream.close();
-                    setTimeout( () => {
-                        req.abort();
-                        done();
-                    }, 0 );
+        const leargeFile: string = appUtility.server.mapPath( "/web/large.bin" );
+        let size: number = 0;
+        const writer: fs.WriteStream = fs.createWriteStream( leargeFile );
+        function write( toSize: number, wdone: () => void ) {
+            function swrite() {
+                while ( true ) {
+                    const buff: Buffer = crypto.randomBytes( 1024 * 1024 );
+                    size += buff.byteLength;
+                    const ok: boolean = writer.write( buff );
+                    if ( size >= toSize ) {
+                        writer.end();
+                        return wdone();
+                    }
+                    if ( !ok ) {
+                        writer.once( "drain", swrite );
+                        break;
+                    }
                 }
             }
-        } );
-        req.end( ( err, res ) => {
-            expect( err ).not.toBeInstanceOf( Error );
-        } );
-    } );
-    it( 'test malformed data', function ( done: Mocha.Done ): void {
-        this.timeout( 5000 * 10 );
-        const leargeFile: string = appUtility.server.mapPath( "/web/learge.txt" );
-        const readStream = fs.createReadStream( leargeFile );
-        const req: request.SuperAgentRequest = getAgent()
-            .post( `http://localhost:${appUtility.port}/upload-malformed-data` )
-            .field( 'post-file', readStream );
-        req.end( ( err, res ) => {
-            readStream.close();
-            expect( err ).toBeInstanceOf( Error );
-            done();
+            return swrite();
+        }
+        let isAbort: boolean = false;
+        write( 5 * 1024 * 1024, () => {
+            const readStream = fs.createReadStream( leargeFile );
+            const req: request.SuperAgentRequest = getAgent()
+                .post( `http://localhost:${appUtility.port}/abort-error` )
+                .field( 'post-file', readStream )
+                ;
+            req.on( "progress", ( event ) => {
+                if ( isAbort ) return;
+                if ( event.total ) {
+                    if ( event.loaded >= ( event.total / 3 ) ) {
+                        isAbort = true;
+                        setTimeout( () => {
+                            readStream.close();
+                            req.abort();
+                            done();
+                        }, 0 );
+                    }
+                }
+            } );
+            req.end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+            } );
         } );
     } );
 } );
@@ -1826,7 +1862,15 @@ describe( "cwserver-utility", () => {
         expect( plainText ).toEqual( appUtility.server.encryption.decryptFromHex( enc ) );
         enc = appUtility.server.encryption.encryptUri( plainText );
         expect( plainText ).toEqual( appUtility.server.encryption.decryptUri( enc ) );
-        done();
+        ( () => {
+            fsw.moveFile( `${logDir}/temp/nofile.lg`, "./", ( err: NodeJS.ErrnoException | null ) => {
+                expect( err ).toBeInstanceOf( Error );
+                const leargeFile: string = appUtility.server.mapPath( "/web/large.bin" );
+                fsw.moveFile( leargeFile, `${leargeFile}.not`, ( errz: NodeJS.ErrnoException | null ) => {
+                    done();
+                }, true );
+            } );
+        } )();
     } );
     describe( 'config', () => {
         let untouchedConfig: { [x: string]: any; } = {};
@@ -2124,7 +2168,7 @@ describe( "cwserver-schema-validator", () => {
         expect( fillUpType( "array" ) ).toBeInstanceOf( Array );
         expect( fillUpType( "number" ) ).toEqual( 0 );
         expect( fillUpType( "boolean" ) ).toBeFalsy();
-        expect( fillUpType( "string" ) ).toBeDefined( );
+        expect( fillUpType( "string" ) ).toBeDefined();
         expect( fillUpType( "object" ) ).toBeInstanceOf( Object );
         expect( fillUpType() ).toBeUndefined();
         ( () => {
@@ -2359,7 +2403,7 @@ describe( "cwserver-schema-validator", () => {
 } );
 describe( "cwserver-fsw", () => {
     it( "test-fsw", function ( done: Mocha.Done ): void {
-        this.timeout(5000);
+        this.timeout( 5000 );
         const root: string = path.resolve( `${appRoot}/ewww` );
         const filePath: string = path.resolve( root + "/config/app.config.json" );
         fs.writeFile( filePath, JSON.stringify( { name: "Safe Online World Ltd." } ), ( err: NodeJS.ErrnoException | null ): void => {
@@ -2379,7 +2423,7 @@ describe( "cwserver-fsw", () => {
                     }, handleError );
                     fsw.mkdir( filePath, "", ( mderr: NodeJS.ErrnoException | null ) => {
                         expect( mderr ).toBeInstanceOf( Error );
-                        fsw.copyDir( path.join( root, "/noton/" ), path.resolve( `${appRoot}/cwww` ), ( crderr: NodeJS.ErrnoException | null) => {
+                        fsw.copyDir( path.join( root, "/noton/" ), path.resolve( `${appRoot}/cwww` ), ( crderr: NodeJS.ErrnoException | null ) => {
                             expect( crderr ).toBeInstanceOf( Error );
                         }, handleError );
                         fsw.copyDir( root, path.resolve( `${appRoot}/cwww` ), ( ncrderr: NodeJS.ErrnoException | null ) => {
@@ -2391,7 +2435,7 @@ describe( "cwserver-fsw", () => {
                                 }, handleError );
                                 fsw.copyFile( root, root, ( dncrderr: NodeJS.ErrnoException | null ) => {
                                     expect( dncrderr ).toBeInstanceOf( Error );
-                                }, handleError);
+                                }, handleError );
                                 fsw.copyFile( `${filePath}.not`, filePath, ( fcrderr: NodeJS.ErrnoException | null ) => {
                                     expect( fcrderr ).toBeInstanceOf( Error );
                                     fsw.copyFile( filePath, `${filePath}.not`, ( cfcrderr: NodeJS.ErrnoException | null ) => {

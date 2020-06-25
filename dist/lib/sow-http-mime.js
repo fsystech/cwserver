@@ -52,6 +52,9 @@ const TaskDeff = [
     { cache: false, ext: "htm", gzip: false },
     { cache: false, ext: "wjsx", gzip: false }
 ];
+function createGzip() {
+    return _zlib.createGzip({ level: _zlib.constants.Z_BEST_COMPRESSION });
+}
 class MimeHandler {
     static getCachePath(ctx) {
         const dir = ctx.server.mapPath(`/web/temp/cache/`);
@@ -103,7 +106,7 @@ class MimeHandler {
                 }
                 const rstream = _fs.createReadStream(absPath);
                 const wstream = _fs.createWriteStream(cachePath);
-                return stream_1.pipeline(rstream, _zlib.createGzip(), wstream, (gzipErr) => {
+                return stream_1.pipeline(rstream, createGzip(), wstream, (gzipErr) => {
                     destroy(rstream);
                     destroy(wstream);
                     return ctx.handleError(gzipErr, () => {
@@ -134,7 +137,7 @@ class MimeHandler {
                 'Content-Encoding': 'gzip'
             });
             const rstream = _fs.createReadStream(absPath);
-            return stream_1.pipeline(rstream, _zlib.createGzip(), ctx.res, (gzipErr) => {
+            return stream_1.pipeline(rstream, createGzip(), ctx.res, (gzipErr) => {
                 destroy(rstream);
             }), void 0;
         }
@@ -160,7 +163,7 @@ class MimeHandler {
         if (ctx.server.config.staticFile.compression && isGzip) {
             ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
             const rstream = _fs.createReadStream(absPath);
-            return stream_1.pipeline(rstream, _zlib.createGzip(), ctx.res, (gzipErr) => {
+            return stream_1.pipeline(rstream, createGzip(), ctx.res, (gzipErr) => {
                 destroy(rstream);
             }), void 0;
         }

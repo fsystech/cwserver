@@ -16,7 +16,7 @@ export declare class Util {
         [x: string]: any;
     };
     /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise. */
-    static isArrayLike(obj?: any): obj is [];
+    static isArrayLike<T>(obj?: any): obj is T[];
     static isError(obj: any): obj is Error;
     static throwIfError(obj: any): void;
     static pipeOutputStream(absPath: string, ctx: IContext): void;

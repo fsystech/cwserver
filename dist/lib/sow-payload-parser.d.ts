@@ -6,12 +6,10 @@ export declare type UploadFileInfo = {
     name: string;
     fileName: string;
     contentDisposition: string;
-    fileSize: number;
     tempPath: string | undefined;
 };
 export interface IPostedFileInfo {
     getContentDisposition(): string;
-    getFileSize(): number;
     getName(): string;
     getFileName(): string;
     getContentType(): string;
@@ -20,8 +18,6 @@ export interface IPostedFileInfo {
     readSync(): Buffer;
     read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
     getTempPath(): string | undefined;
-    setInfo(tempFile?: string, fileSize?: number): void;
-    isEmptyHeader(): boolean;
     clear(): void;
 }
 export interface IPayloadParser {
@@ -35,7 +31,7 @@ export interface IPayloadParser {
     getFilesSync(next: (file: IPostedFileInfo) => void): void;
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
     getData(): string;
-    readData(onReadEnd: (err?: Error | string) => void): void;
+    readData(onReadEnd: (err?: Error) => void): void;
     readDataAsync(): Promise<void>;
 }
 export declare enum ContentType {
@@ -49,16 +45,12 @@ export declare class PostedFileInfo implements IPostedFileInfo {
     private _fname;
     private _fileName;
     private _fcontentType;
-    private _fileSize;
     private _isMoved;
     private _tempFile?;
     private _isDisposed;
-    constructor(disposition: string, fname: string, fileName: string, fcontentType: string);
-    setInfo(tempFile?: string, fileSize?: number): void;
-    isEmptyHeader(): boolean;
+    constructor(disposition: string, fname: string, fileName: string, fcontentType: string, tempFile: string);
     getTempPath(): string | undefined;
     getContentDisposition(): string;
-    getFileSize(): number;
     getName(): string;
     getFileName(): string;
     getContentType(): string;
@@ -73,12 +65,13 @@ export declare class PayloadParser implements IPayloadParser {
     private _contentType;
     private _contentTypeEnum;
     private _contentLength;
-    private _payloadDataParser;
+    private _parser;
     private _req;
     private _isReadEnd;
     private _isDisposed;
-    private _isConnectionActive;
-    constructor(req: IRequest, tempDir: string);
+    private _part;
+    private _multipartParser?;
+    constructor(req: IRequest, tempDir?: string);
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
@@ -94,6 +87,9 @@ export declare class PayloadParser implements IPayloadParser {
     };
     getData(): string;
     readDataAsync(): Promise<void>;
-    readData(onReadEnd: (err?: Error | string) => void): void;
+    private tryFinish;
+    private skipPart;
+    private onPart;
+    readData(onReadEnd: (err?: Error) => void): void;
     clear(): void;
 }

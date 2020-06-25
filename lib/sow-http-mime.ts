@@ -39,6 +39,9 @@ const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "htm", gzip: false },
     { cache: false, ext: "wjsx", gzip: false }
 ];
+function createGzip(): _zlib.Gzip {
+    return _zlib.createGzip( { level: _zlib.constants.Z_BEST_COMPRESSION } );
+}
 class MimeHandler {
     static getCachePath( ctx: IContext ): string {
         const dir: string = ctx.server.mapPath( `/web/temp/cache/` );
@@ -93,7 +96,7 @@ class MimeHandler {
                 }
                 const rstream: _fs.ReadStream = _fs.createReadStream( absPath );
                 const wstream: _fs.WriteStream = _fs.createWriteStream( cachePath );
-                return pipeline( rstream, _zlib.createGzip(), wstream, ( gzipErr: NodeJS.ErrnoException | null ) => {
+                return pipeline( rstream, createGzip(), wstream, ( gzipErr: NodeJS.ErrnoException | null ) => {
                     destroy( rstream ); destroy( wstream );
                     return ctx.handleError( gzipErr, (): void => {
                         return _fs.stat( cachePath, ( cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats ) => {
@@ -127,7 +130,7 @@ class MimeHandler {
                 'Content-Encoding': 'gzip'
             } );
             const rstream: _fs.ReadStream = _fs.createReadStream( absPath );
-            return pipeline( rstream, _zlib.createGzip(), ctx.res, ( gzipErr: NodeJS.ErrnoException | null ) => {
+            return pipeline( rstream, createGzip(), ctx.res, ( gzipErr: NodeJS.ErrnoException | null ) => {
                 destroy( rstream );
             } ), void 0;
         }
@@ -159,7 +162,7 @@ class MimeHandler {
         if ( ctx.server.config.staticFile.compression && isGzip ) {
             ctx.res.status( 200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' } );
             const rstream: _fs.ReadStream = _fs.createReadStream( absPath );
-            return pipeline( rstream, _zlib.createGzip(), ctx.res, ( gzipErr: NodeJS.ErrnoException | null ) => {
+            return pipeline( rstream, createGzip(), ctx.res, ( gzipErr: NodeJS.ErrnoException | null ) => {
                 destroy( rstream );
             } ), void 0;
         }
@@ -167,9 +170,7 @@ class MimeHandler {
         return Util.pipeOutputStream( absPath, ctx );
     }
     static _render(
-        ctx: IContext,
-        mimeType: string,
-        absPath: string
+        ctx: IContext, mimeType: string, absPath: string
     ): void {
         ctx.req.socket.setNoDelay( true );
         if ( ctx.path.indexOf( 'favicon.ico' ) > -1 ) {
@@ -215,10 +216,8 @@ class MimeHandler {
         } );
     }
     static render(
-        ctx: IContext,
-        mimeType: string,
-        maybeDir?: string,
-        checkFile?: boolean
+        ctx: IContext, mimeType: string,
+        maybeDir?: string, checkFile?: boolean
     ): void {
         const absPath: string = typeof ( maybeDir ) === "string" && maybeDir ? _path.resolve( `${maybeDir}/${ctx.path}` ) : ctx.server.mapPath( ctx.path );
         if ( typeof ( checkFile ) === "boolean" && checkFile === true ) {

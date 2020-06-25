@@ -77,7 +77,7 @@ export class Util {
         return _isPlainObject( obj );
     }
     /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise. */
-    public static isArrayLike( obj?: any ): obj is [] {
+    public static isArrayLike<T>( obj?: any ): obj is T[] {
         if ( obj === null || obj === undefined ) return false;
         const result = Object.prototype.toString.call( obj );
         return result === "[object NodeList]" || result === "[object Array]" ? true : false;
