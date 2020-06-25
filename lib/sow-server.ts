@@ -48,6 +48,7 @@ export interface IContext {
     write( str: string ): void;
     transferError( err: NodeJS.ErrnoException | Error ): void;
     handleError( err: NodeJS.ErrnoException | Error | null | undefined, next: () => void ): void;
+    setSession( loginId: string, roleId: string, userData: any ): IContext;
     dispose(): string | void;
 }
 export interface IServerEncryption {
@@ -330,6 +331,9 @@ export class Context implements IContext {
         if ( !this.isDisposed ) {
             return this.server.transferRequest( this, path );
         }
+    }
+    setSession( loginId: string, roleId: string, userData: any ): IContext{
+        return this.server.setSession(this, loginId, roleId, userData), this;
     }
     dispose(): string | void {
         if ( this.isDisposed ) return void 0;
@@ -843,7 +847,7 @@ export interface IAppUtility {
     readonly server: ISowServer;
     readonly controller: IController;
 }
-if ( !global.sow || ( global.sow && !global.sow.server ) ) {
+if ( !global.sow ) {
     global.sow = new SowGlobal();
 }
 export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtility {
@@ -886,17 +890,13 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
         }
         _app.on( "response-end", ( req: IRequest, res: IResponse ): void => {
             if ( _server.config.isDebug ) {
-                let resPath: string = "";
                 const ctx: IContext | undefined = getMyContext( req.id );
-                if ( ctx ) {
-                    resPath = ctx.path;
-                } else {
-                    resPath = req.path;
-                }
-                if ( res.statusCode && HttpStatus.isErrorCode( res.statusCode ) ) {
-                    _server.log.error( `Send ${res.statusCode} ${resPath}` );
-                } else {
-                    _server.log.success( `Send ${res.statusCode || 200} ${resPath}` );
+                if ( ctx && !ctx.isDisposed ) {
+                    if ( res.statusCode && HttpStatus.isErrorCode( res.statusCode ) ) {
+                        _server.log.error( `Send ${res.statusCode} ${ctx.path}` );
+                    } else {
+                        _server.log.success( `Send ${res.statusCode} ${ctx.path}` );
+                    }
                 }
             }
             return removeContext( req.id );
@@ -929,8 +929,6 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
                     if ( !exists ) return _ctx.next( 404 );
                     return forWord( _ctx );
                 } );
-                // if ( !Util.isExists( `${root}/${_ctx.path}`, _ctx.next ) ) return;
-                // return forWord( _ctx );
             };
             if ( !evt || typeof ( evt ) !== "function" ) {
                 _app.use( route, ( req: IRequest, res: IResponse, next: NextFunction ) => {
@@ -966,18 +964,18 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
         global.sow.server.emit( "register-view", _app, _controller, _server );
         _controller.sort();
         _app.on( "error", ( req: IRequest, res: IResponse, err?: number | Error ): void => {
-            if ( !res.isAlive ) return;
-            const _context = _process.createContext( req, res, ( _err?: any ): void => {
-                if ( res.isAlive ) {
-                    res.status( 500 ).send( "Nothing to do...." );
+            if ( res.isAlive ) {
+                const context: IContext = _process.createContext( req, res, ( cerr?: any ): void => {
+                    if ( res.isAlive ) {
+                        res.status( 500 ).send( "Unable to catch error reason." );
+                    }
+                } );
+                if ( !err ) {
+                    return context.transferRequest( 404 );
                 }
-            } );
-            if ( !err ) {
-                return _context.transferRequest( 404 );
-            }
-            if ( err instanceof Error ) {
-                _server.addError( _context, err );
-                return _context.transferRequest( 500 );
+                if ( err instanceof Error ) {
+                    return context.transferError( err );
+                }
             }
         } );
         _app.prerequisites( ( req: IRequest, res: IResponse, next: NextFunction ): void => {

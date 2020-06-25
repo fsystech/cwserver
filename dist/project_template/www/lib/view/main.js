@@ -45,6 +45,17 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 	//		ctx.next(200);
 	//	});
 	//});
+	global.sow.server.on( "register-view", ( app, controller, server ) => {
+		controller.get( '/authenticate/:loginId/:roleid', ( ctx, requestParam ) => {
+			if ( ctx.req.session.isAuthenticated ) {
+				ctx.res.status( 200 ).type( "html" ).send( `Hello ${ctx.req.session.loginId}` );
+			} else {
+				ctx.setSession(/*loginId*/requestParam.query.loginId,/*roleId*/requestParam.query.roleId, /*userData*/{ token: ctx.req.query.token } );
+				ctx.res.status( 200 ).type( "html" ).send( `Authentication success ${ctx.req.query.loginId}` );
+			}
+			return ctx.next( 200 );
+		} );
+	} );
 	controller
 		.get( '/', ( ctx ) => {
 			return ctx.res.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );

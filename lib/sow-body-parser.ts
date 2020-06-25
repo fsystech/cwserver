@@ -5,6 +5,7 @@
 */
 // 11:17 PM 5/5/2020
 import { EventEmitter } from 'events';
+import {deprecate} from 'util';
 import * as _fs from 'fs';
 import * as _path from 'path';
 import Dicer from 'dicer';
@@ -12,7 +13,7 @@ import { pipeline } from 'stream';
 import os from 'os';
 import destroy = require( 'destroy' );
 import { IRequest } from './sow-server-core';
-import { ToNumber } from './sow-static';
+import { ToNumber, IDispose } from './sow-static';
 import { Util } from './sow-util';
 import * as fsw from './sow-fsw';
 import { ErrorHandler } from './sow-fsw';
@@ -23,7 +24,7 @@ export type UploadFileInfo = {
     contentDisposition: string;
     tempPath: string | undefined
 };
-export interface IPostedFileInfo {
+export interface IPostedFileInfo extends IDispose {
     getContentDisposition(): string;
     getName(): string;
     getFileName(): string;
@@ -33,9 +34,17 @@ export interface IPostedFileInfo {
     readSync(): Buffer;
     read( next: ( err: Error | NodeJS.ErrnoException | null, data: Buffer ) => void ): void;
     getTempPath(): string | undefined;
+    /** @deprecated since v2.0.3 - use `dispose` instead. */
     clear(): void;
 }
-export interface IPayloadParser {
+interface IMultipartDataReader extends IDispose {
+    readonly forceExit: boolean;
+    read( partStream: Dicer.PartStream, tempDir: string ): void;
+    on( ev: "field", handler: ( str: string ) => void ): IMultipartDataReader;
+    on( ev: "file", handler: ( file: IPostedFileInfo ) => void ): IMultipartDataReader;
+    on( ev: "end", handler: ( err?: Error ) => void ): IMultipartDataReader;
+}
+export interface IBodyParser extends IDispose {
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
@@ -45,9 +54,19 @@ export interface IPayloadParser {
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync( next: ( file: IPostedFileInfo ) => void ): void;
     getFiles( next: ( file?: IPostedFileInfo, done?: () => void ) => void ): void;
+    getJson(): NodeJS.Dict<string>;
     getData(): string;
     readData( onReadEnd: ( err?: Error ) => void ): void;
     readDataAsync(): Promise<void>;
+    /** @deprecated since v2.0.3 - use `dispose` instead. */
+    clear(): void;
+}
+function dispose<T extends IDispose>( data: T[] ) {
+    while ( true ) {
+        const instance: T | undefined = data.shift();
+        if ( !instance ) break;
+        instance.dispose();
+    }
 }
 const incomingContentType: {
     URL_ENCODE: string;
@@ -58,17 +77,17 @@ const incomingContentType: {
     APP_JSON: "application/json",
     MULTIPART: "multipart/form-data"
 }
-export enum ContentType {
+enum ContentType {
     URL_ENCODE = 1,
     APP_JSON = 2,
     MULTIPART = 3,
     UNKNOWN = -1
 }
-const extractBetween = (
+function extractBetween(
     data: string,
     separator1: string,
     separator2: string
-): string => {
+): string {
     let result: string = "";
     let start: number = 0;
     let limit: number = 0;
@@ -81,7 +100,7 @@ const extractBetween = (
     }
     return result;
 }
-export class PostedFileInfo implements IPostedFileInfo  {
+class PostedFileInfo implements IPostedFileInfo {
     private _fcontentDisposition: string;
     private _fname: string;
     private _fileName: string;
@@ -148,7 +167,7 @@ export class PostedFileInfo implements IPostedFileInfo  {
             } );
         }
     }
-    public clear(): void {
+    public dispose(): void {
         if ( this._isDisposed ) return;
         this._isDisposed = true;
         if ( !this._isMoved && this._tempFile ) {
@@ -161,16 +180,11 @@ export class PostedFileInfo implements IPostedFileInfo  {
         delete this._fcontentType;
         if ( this._tempFile ) delete this._tempFile;
     }
+    public clear(): void {
+        this.dispose();
+    }
 }
 const RE_BOUNDARY: RegExp = /^multipart\/.+?(?:; boundary=(?:(?:"(.+)")|(?:([^\s]+))))$/i;
-interface IMultipartDataReader {
-    readonly forceExit: boolean;
-    read( partStream: Dicer.PartStream, tempDir: string ): void;
-    clear(): void;
-    on( ev: "field", handler: ( str: string ) => void ): IMultipartDataReader;
-    on( ev: "file", handler: ( file: IPostedFileInfo ) => void ): IMultipartDataReader;
-    on( ev: "end", handler: ( err?: Error ) => void ): IMultipartDataReader;
-}
 class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
     private _forceExit: boolean;
     private _writeStream?: _fs.WriteStream;
@@ -236,23 +250,22 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
                     this.destroy();
                     this.emit( "end", err );
                 } );
-                const file = new PostedFileInfo( disposition, fieldName.replace( /"/gi, "" ), fileName.replace( /"/gi, "" ), contentType.replace( /"/gi, "" ), tempFile );
-                this.emit( "file", file );
+                this.emit( "file", new PostedFileInfo( disposition, fieldName.replace( /"/gi, "" ), fileName.replace( /"/gi, "" ), contentType.replace( /"/gi, "" ), tempFile ) );
             } else {
                 return this.exit( "Content type not found in requested file...." );
             }
         } );
     }
-    public clear() {
+    public dispose() {
         if ( this._isDisposed ) return;
         this._isDisposed = true;
         this.removeAllListeners();
         this.destroy();
     }
 }
-class PayloadDataParser {
+class DataParser {
     public files: IPostedFileInfo[];
-    public payloadStr: string;
+    public bodyStr: string;
     private _errors: ( Error | NodeJS.ErrnoException )[];
     private _tempDir: string;
     private _readers: IMultipartDataReader[];
@@ -260,12 +273,12 @@ class PayloadDataParser {
         tempDir: string
     ) {
         this._errors = [];
-        this.files = []; this.payloadStr = "";
+        this.files = []; this.bodyStr = "";
         this._tempDir = tempDir;
         this._readers = [];
     }
-    public onRawData( str: string ): void {
-        this.payloadStr += str;
+    public onRawData( buff: string ): void {
+        this.bodyStr += buff;
     }
     public onPart( partStream: Dicer.PartStream, next: ( forceExit: boolean ) => void ): void {
         const reader: IMultipartDataReader = new MultipartDataReader();
@@ -273,8 +286,8 @@ class PayloadDataParser {
             return this.files.push( file ), void 0;
         } );
         reader.on( "field", ( data: string ): void => {
-            if ( this.payloadStr.length > 0 ) {
-                this.payloadStr += "&";
+            if ( this.bodyStr.length > 0 ) {
+                this.bodyStr += "&";
             }
             return this.onRawData( data );
         } );
@@ -283,7 +296,7 @@ class PayloadDataParser {
                 this._errors.push( err );
             }
             next( reader.forceExit );
-            return reader.clear();
+            return reader.dispose();
         } );
         reader.read( partStream, this._tempDir );
         this._readers.push( reader );
@@ -299,22 +312,17 @@ class PayloadDataParser {
         }
     }
     public clear(): void {
-        while ( true ) {
-            const reader: IMultipartDataReader | undefined = this._readers.shift();
-            if ( !reader ) break;
-            reader.clear();
-        }
-        this.files.forEach( pf => pf.clear() );
-        this.files.length = 0;
+        dispose( this._readers );
+        dispose( this.files );
         if ( this._errors )
             delete this._errors;
     }
 }
-export class PayloadParser implements IPayloadParser {
+class BodyParser implements IBodyParser {
     private _contentType: string;
     private _contentTypeEnum: ContentType;
     private _contentLength: number;
-    private _parser: PayloadDataParser;
+    private _parser: DataParser;
     private _req: IRequest;
     private _isReadEnd: boolean;
     private _isDisposed: boolean;
@@ -337,7 +345,7 @@ export class PayloadParser implements IPayloadParser {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
         if ( this._contentTypeEnum !== ContentType.UNKNOWN ) {
-            this._parser = new PayloadDataParser( tempDir || os.tmpdir() );
+            this._parser = new DataParser( tempDir || os.tmpdir() );
             this._req = req;
         } else {
             this._parser = Object.create( null );
@@ -426,13 +434,13 @@ export class PayloadParser implements IPayloadParser {
         };
         return forward();
     }
-    public getJson(): { [key: string]: any; } {
-        const payLoadStr: string = this.getData();
+    public getJson(): NodeJS.Dict<string> {
+        const bodyStr: string = this.getData();
         if ( this._contentTypeEnum === ContentType.APP_JSON ) {
-            return JSON.parse( payLoadStr );
+            return JSON.parse( bodyStr );
         }
-        const outObj: { [key: string]: any; } = {};
-        payLoadStr.split( "&" ).forEach( ( part: string ): void => {
+        const outObj: NodeJS.Dict<string> = {};
+        bodyStr.split( "&" ).forEach( ( part: string ): void => {
             const kv: string[] = part.split( "=" );
             if ( kv.length > 0 ) {
                 const val = kv[1];
@@ -443,7 +451,7 @@ export class PayloadParser implements IPayloadParser {
     }
     public getData(): string {
         this.validate( false );
-        return this._parser.payloadStr;
+        return this._parser.bodyStr;
     }
     public readDataAsync(): Promise<void> {
         return new Promise( ( resolve, reject ) => {
@@ -478,6 +486,17 @@ export class PayloadParser implements IPayloadParser {
             return this.tryFinish( onReadEnd );
         } );
     }
+    private finalEvent( ev: "close" | "error", onReadEnd: ( err?: Error ) => void ): ( err?: Error ) => void {
+        return ( err?: Error ) => {
+            if ( ev === "close" ) {
+                if ( this._isReadEnd ) return;
+                err = new Error( "CLIENET_DISCONNECTED" );
+            }
+            this._isReadEnd = true;
+            this._part.length = 0;
+            return onReadEnd( err );
+        }
+    }
     public readData( onReadEnd: ( err?: Error ) => void ): void {
         if ( !this.isValidRequest() )
             return onReadEnd( new Error( "Invalid request defiend...." ) );
@@ -489,6 +508,7 @@ export class PayloadParser implements IPayloadParser {
                 this._isReadEnd = true;
                 return onReadEnd();
             } );
+            this._req.on( "close", this.finalEvent( "close", onReadEnd ) );
             return;
         }
         const match: RegExpExecArray | null = RE_BOUNDARY.exec( this._contentType );
@@ -501,21 +521,12 @@ export class PayloadParser implements IPayloadParser {
                 this._isReadEnd = true;
                 return this.tryFinish( onReadEnd );
             } );
-            this._multipartParser.on( "error", ( err: Error ) => {
-                this._isReadEnd = true;
-                this._part.length = 0;
-                return onReadEnd( err );
-            } );
-            this._req.on( "close", () => {
-                if ( !this._isReadEnd ) {
-                    this._isReadEnd = true;
-                    return onReadEnd( new Error( "CLIENET_DISCONNECTED" ) );
-                }
-            } );
+            this._multipartParser.on( "error", this.finalEvent( "error", onReadEnd ) );
+            this._req.on( "close", this.finalEvent( "close", onReadEnd ) );
             this._req.pipe( this._multipartParser );
         }
     }
-    public clear(): void {
+    public dispose(): void {
         if ( this._isDisposed ) return;
         this._isDisposed = true;
         if ( this._isReadEnd ) {
@@ -531,5 +542,20 @@ export class PayloadParser implements IPayloadParser {
         delete this._contentType;
         delete this._contentLength;
     }
+    public clear(): void {
+        this.dispose();
+    }
+}
+/** @deprecated since v2.0.3 - use `getBodyParser` instead. */
+export const { PayloadParser } = ( () => {
+    return { PayloadParser: deprecate( BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1' ) };
+} )();
+BodyParser.prototype.clear = deprecate( BodyParser.prototype.clear, '`parser.clear` is depreciated, please use `parser.dispose` instead.', 'v2.0.3:2' );
+PostedFileInfo.prototype.clear = deprecate( PostedFileInfo.prototype.clear, '`file.clear` is depreciated, please use `file.dispose` instead.', 'v2.0.3:3' );
+export function getBodyParser(
+    req: IRequest,
+    tempDir?: string
+): IBodyParser {
+    return new BodyParser( req, tempDir );
 }
 // 3:20 PM 5/6/2020

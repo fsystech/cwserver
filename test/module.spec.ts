@@ -1201,7 +1201,7 @@ describe( "cwserver-post", () => {
             } );
     } );
 } );
-describe( "cwserver-multipart-paylod-parser", () => {
+describe( "cwserver-multipart-body-parser", () => {
     const processReq = ( done: Mocha.Done, saveto?: string, reqPath?: string ): void => {
         let fileName = "";
         let filePath = "";
@@ -1869,7 +1869,7 @@ describe( "cwserver-utility", () => {
                 fsw.moveFile( leargeFile, `${leargeFile}.not`, ( errz: NodeJS.ErrnoException | null ) => {
                     done();
                 }, true );
-            } );
+            }, true );
         } )();
     } );
     describe( 'config', () => {
@@ -2098,13 +2098,18 @@ describe( "cwserver-utility", () => {
                 expect( shouldBeError( () => {
                     appUtility.server.getErrorPath( 100 );
                 } ) ).toBeInstanceOf( Error );
-                const oldError = Util.clone( appUtility.server.config.errorPage );
+                let oldError = Util.clone( appUtility.server.config.errorPage );
                 appUtility.server.config.errorPage = {};
                 expect( appUtility.server.getErrorPath( 500 ) ).toBeDefined();
                 expect( shouldBeError( () => {
                     appUtility.server.getErrorPath( 402 );
                 } ) ).toBeInstanceOf( Error );
                 Util.extend( appUtility.server.config.errorPage, oldError );
+                expect( appUtility.server.getErrorPath( 500, true ) ).toBeDefined();
+                oldError = Util.clone( appUtility.server.errorPage );
+                appUtility.server.errorPage = {};
+                expect( appUtility.server.getErrorPath( 500, true ) ).toBeUndefined();
+                Util.extend( appUtility.server.errorPage, oldError );
             } )();
             expect( shouldBeError( () => {
                 appUtility.server.parseMaxAge( "10N" );

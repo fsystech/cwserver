@@ -98,8 +98,25 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
     server.addVirtualDir( "/vtest/virtual/", vDir );
 } );
 ```
+### Authetication
+Session cookie name use from ```app.config.json => session.cookie```<br/>
+and session encryption use ```app.config.json => session.key```
+```
+global.sow.server.on( "register-view", ( app, controller, server ) => {
+    controller.get( '/authenticate/:loginId/:roleid', ( ctx, requestParam ) => {
+        if ( ctx.req.session.isAuthenticated ) {
+            ctx.res.status( 200 ).type( "html" ).send( `Hello ${ctx.req.session.loginId}` );
+        } else {
+            server.setSession( ctx, /*loginId*/requestParam.query.loginId,/*roleId*/requestParam.query.roleId, /*userData*/{ token: ctx.req.query.token } );
+            ctx.res.status( 200 ).type( "html" ).send( `Authentication success ${ctx.req.query.loginId}` );
+        }
+        return ctx.next( 200 );
+    } );
+} );
+```
 ### Handle post data ###
 ```
+const { getBodyParser, fsw } = require( 'cwserver' );
 global.sow.server.on( "register-view", ( app, controller, server ) => {
     const downloadDir = server.mapPath( "/upload/data/" );
     if ( !fs.existsSync( downloadDir ) ) {
@@ -107,14 +124,18 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
     }
     const tempDir = server.mapPath( "/upload/temp/" );
     controller.post( '/post-async', async ( ctx ) => {
-        const parser = new PayloadParser( ctx.req, tempDir );
+        const parser = getBodyParser( ctx.req, tempDir );
         await parser.readDataAsync();
         if ( parser.isUrlEncoded() || parser.isAppJson() ) {
-            ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
-            return ctx.res.end( JSON.stringify( parser.getJson() ) ), ctx.next( 200 ), void 0;
+            ctx.res.status( 200, { 'Content-Type': 'application/json' } );
+            ctx.res.end( JSON.stringify( parser.getJson() ) );
+            parser.dispose();
+            return ctx.next( 200 );
         }
-        parser.saveAsSync( downloadDir );
-        return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
+        parser.saveAsSync( downloadDir ); parser.dispose();
+        return ctx.res.status( 200 ).send( "<h1>success</h1>" );
+        // or
+        // return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
         // or
         /*const data = [];
         parser.getFilesSync( ( file ) => {
@@ -123,19 +144,18 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
                 name: file.getName(),
                 file_name: file.getFileName(),
                 content_disposition: file.getContentDisposition(),
-                file_size: file.getFileSize(),
                 temp_path: file.getTempPath()
             } );
             file.saveAsSync( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
         } );
-        return ctx.res.json( data );*/
+        return ctx.res.status( 200 ).json( data );*/
     } )
 } );
 ```
 [See more test here](https://github.com/safeonlineworld/cwserver/blob/master/test/test-view.ts)<br/> 
 ### Template Engine ###
 Template can run ```config.defaultExt``` file extension or ```ctx.res.render( ctx, to_file_path )``` <br/>
-Example of server-side script in ```config.defaultExt``` or ```.htm|.html```<br/>
+Example of server-side script in ```config.defaultExt``` or ```app.config.json => template.ext```<br/>
 ```
 ctx.res.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );
 ```

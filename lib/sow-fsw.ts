@@ -30,7 +30,6 @@ function isSameDrive( src: string, dest: string ): boolean {
     const broot: string = _path.parse( dest ).root;
     return aroot.substring( 0, aroot.indexOf( ":" ) ) === broot.substring( 0, broot.indexOf( ":" ) );
 }
-
 export function moveFile(
     src: string, dest: string,
     next: ( err: NodeJS.ErrnoException | null ) => void,

@@ -29,6 +29,7 @@ export interface IContext {
     write(str: string): void;
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
+    setSession(loginId: string, roleId: string, userData: any): IContext;
     dispose(): string | void;
 }
 export interface IServerEncryption {
@@ -175,6 +176,7 @@ export declare class Context implements IContext {
     redirect(url: string): void;
     write(str: string): void;
     transferRequest(path: string | number): void;
+    setSession(loginId: string, roleId: string, userData: any): IContext;
     dispose(): string | void;
 }
 export declare class ServerConfig implements IServerConfig {

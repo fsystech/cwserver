@@ -17,6 +17,9 @@ export interface IResInfo {
     isInternalErrorCode: boolean;
     description: string;
 }
+export interface IDispose {
+    dispose(): void;
+}
 export class Session implements ISession {
     isAuthenticated: boolean;
     loginId: string;

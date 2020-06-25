@@ -22,7 +22,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PayloadParser = exports.PostedFileInfo = exports.ContentType = void 0;
+exports.getBodyParser = exports.PayloadParser = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -30,6 +30,7 @@ exports.PayloadParser = exports.PostedFileInfo = exports.ContentType = void 0;
 */
 // 11:17 PM 5/5/2020
 const events_1 = require("events");
+const util_1 = require("util");
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const dicer_1 = __importDefault(require("dicer"));
@@ -39,6 +40,14 @@ const destroy = require("destroy");
 const sow_static_1 = require("./sow-static");
 const sow_util_1 = require("./sow-util");
 const fsw = __importStar(require("./sow-fsw"));
+function dispose(data) {
+    while (true) {
+        const instance = data.shift();
+        if (!instance)
+            break;
+        instance.dispose();
+    }
+}
 const incomingContentType = {
     URL_ENCODE: "application/x-www-form-urlencoded",
     APP_JSON: "application/json",
@@ -50,8 +59,8 @@ var ContentType;
     ContentType[ContentType["APP_JSON"] = 2] = "APP_JSON";
     ContentType[ContentType["MULTIPART"] = 3] = "MULTIPART";
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
-})(ContentType = exports.ContentType || (exports.ContentType = {}));
-const extractBetween = (data, separator1, separator2) => {
+})(ContentType || (ContentType = {}));
+function extractBetween(data, separator1, separator2) {
     let result = "";
     let start = 0;
     let limit = 0;
@@ -63,7 +72,7 @@ const extractBetween = (data, separator1, separator2) => {
             result = data.substring(start, limit);
     }
     return result;
-};
+}
 class PostedFileInfo {
     constructor(disposition, fname, fileName, fcontentType, tempFile) {
         this._fcontentDisposition = disposition;
@@ -120,7 +129,7 @@ class PostedFileInfo {
             });
         }
     }
-    clear() {
+    dispose() {
         if (this._isDisposed)
             return;
         this._isDisposed = true;
@@ -135,8 +144,10 @@ class PostedFileInfo {
         if (this._tempFile)
             delete this._tempFile;
     }
+    clear() {
+        this.dispose();
+    }
 }
-exports.PostedFileInfo = PostedFileInfo;
 const RE_BOUNDARY = /^multipart\/.+?(?:; boundary=(?:(?:"(.+)")|(?:([^\s]+))))$/i;
 class MultipartDataReader extends events_1.EventEmitter {
     constructor() {
@@ -197,15 +208,14 @@ class MultipartDataReader extends events_1.EventEmitter {
                     this.destroy();
                     this.emit("end", err);
                 });
-                const file = new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), tempFile);
-                this.emit("file", file);
+                this.emit("file", new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), tempFile));
             }
             else {
                 return this.exit("Content type not found in requested file....");
             }
         });
     }
-    clear() {
+    dispose() {
         if (this._isDisposed)
             return;
         this._isDisposed = true;
@@ -213,16 +223,16 @@ class MultipartDataReader extends events_1.EventEmitter {
         this.destroy();
     }
 }
-class PayloadDataParser {
+class DataParser {
     constructor(tempDir) {
         this._errors = [];
         this.files = [];
-        this.payloadStr = "";
+        this.bodyStr = "";
         this._tempDir = tempDir;
         this._readers = [];
     }
-    onRawData(str) {
-        this.payloadStr += str;
+    onRawData(buff) {
+        this.bodyStr += buff;
     }
     onPart(partStream, next) {
         const reader = new MultipartDataReader();
@@ -230,8 +240,8 @@ class PayloadDataParser {
             return this.files.push(file), void 0;
         });
         reader.on("field", (data) => {
-            if (this.payloadStr.length > 0) {
-                this.payloadStr += "&";
+            if (this.bodyStr.length > 0) {
+                this.bodyStr += "&";
             }
             return this.onRawData(data);
         });
@@ -240,7 +250,7 @@ class PayloadDataParser {
                 this._errors.push(err);
             }
             next(reader.forceExit);
-            return reader.clear();
+            return reader.dispose();
         });
         reader.read(partStream, this._tempDir);
         this._readers.push(reader);
@@ -256,19 +266,13 @@ class PayloadDataParser {
         }
     }
     clear() {
-        while (true) {
-            const reader = this._readers.shift();
-            if (!reader)
-                break;
-            reader.clear();
-        }
-        this.files.forEach(pf => pf.clear());
-        this.files.length = 0;
+        dispose(this._readers);
+        dispose(this.files);
         if (this._errors)
             delete this._errors;
     }
 }
-class PayloadParser {
+class BodyParser {
     constructor(req, tempDir) {
         this._isDisposed = false;
         this._part = [];
@@ -287,7 +291,7 @@ class PayloadParser {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
         if (this._contentTypeEnum !== ContentType.UNKNOWN) {
-            this._parser = new PayloadDataParser(tempDir || os_1.default.tmpdir());
+            this._parser = new DataParser(tempDir || os_1.default.tmpdir());
             this._req = req;
         }
         else {
@@ -376,12 +380,12 @@ class PayloadParser {
         return forward();
     }
     getJson() {
-        const payLoadStr = this.getData();
+        const bodyStr = this.getData();
         if (this._contentTypeEnum === ContentType.APP_JSON) {
-            return JSON.parse(payLoadStr);
+            return JSON.parse(bodyStr);
         }
         const outObj = {};
-        payLoadStr.split("&").forEach((part) => {
+        bodyStr.split("&").forEach((part) => {
             const kv = part.split("=");
             if (kv.length > 0) {
                 const val = kv[1];
@@ -392,7 +396,7 @@ class PayloadParser {
     }
     getData() {
         this.validate(false);
-        return this._parser.payloadStr;
+        return this._parser.bodyStr;
     }
     readDataAsync() {
         return new Promise((resolve, reject) => {
@@ -431,6 +435,18 @@ class PayloadParser {
             return this.tryFinish(onReadEnd);
         });
     }
+    finalEvent(ev, onReadEnd) {
+        return (err) => {
+            if (ev === "close") {
+                if (this._isReadEnd)
+                    return;
+                err = new Error("CLIENET_DISCONNECTED");
+            }
+            this._isReadEnd = true;
+            this._part.length = 0;
+            return onReadEnd(err);
+        };
+    }
     readData(onReadEnd) {
         if (!this.isValidRequest())
             return onReadEnd(new Error("Invalid request defiend...."));
@@ -442,6 +458,7 @@ class PayloadParser {
                 this._isReadEnd = true;
                 return onReadEnd();
             });
+            this._req.on("close", this.finalEvent("close", onReadEnd));
             return;
         }
         const match = RE_BOUNDARY.exec(this._contentType);
@@ -454,21 +471,12 @@ class PayloadParser {
                 this._isReadEnd = true;
                 return this.tryFinish(onReadEnd);
             });
-            this._multipartParser.on("error", (err) => {
-                this._isReadEnd = true;
-                this._part.length = 0;
-                return onReadEnd(err);
-            });
-            this._req.on("close", () => {
-                if (!this._isReadEnd) {
-                    this._isReadEnd = true;
-                    return onReadEnd(new Error("CLIENET_DISCONNECTED"));
-                }
-            });
+            this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
+            this._req.on("close", this.finalEvent("close", onReadEnd));
             this._req.pipe(this._multipartParser);
         }
     }
-    clear() {
+    dispose() {
         if (this._isDisposed)
             return;
         this._isDisposed = true;
@@ -486,7 +494,19 @@ class PayloadParser {
         delete this._contentType;
         delete this._contentLength;
     }
+    clear() {
+        this.dispose();
+    }
 }
-exports.PayloadParser = PayloadParser;
+/** @deprecated since v2.0.3 - use `getBodyParser` instead. */
+exports.PayloadParser = (() => {
+    return { PayloadParser: util_1.deprecate(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
+})().PayloadParser;
+BodyParser.prototype.clear = util_1.deprecate(BodyParser.prototype.clear, '`parser.clear` is depreciated, please use `parser.dispose` instead.', 'v2.0.3:2');
+PostedFileInfo.prototype.clear = util_1.deprecate(PostedFileInfo.prototype.clear, '`file.clear` is depreciated, please use `file.dispose` instead.', 'v2.0.3:3');
+function getBodyParser(req, tempDir) {
+    return new BodyParser(req, tempDir);
+}
+exports.getBodyParser = getBodyParser;
 // 3:20 PM 5/6/2020
-//# sourceMappingURL=sow-payload-parser.js.map
+//# sourceMappingURL=sow-body-parser.js.map

@@ -198,6 +198,9 @@ class Context {
             return this.server.transferRequest(this, path);
         }
     }
+    setSession(loginId, roleId, userData) {
+        return this.server.setSession(this, loginId, roleId, userData), this;
+    }
     dispose() {
         if (this.isDisposed)
             return void 0;
@@ -640,7 +643,7 @@ class SowGlobal {
         return this._HttpMime;
     }
 }
-if (!global.sow || (global.sow && !global.sow.server)) {
+if (!global.sow) {
     global.sow = new SowGlobal();
 }
 function initilizeServer(appRoot, wwwName) {
@@ -686,19 +689,14 @@ function initilizeServer(appRoot, wwwName) {
         }
         _app.on("response-end", (req, res) => {
             if (_server.config.isDebug) {
-                let resPath = "";
                 const ctx = exports.getMyContext(req.id);
-                if (ctx) {
-                    resPath = ctx.path;
-                }
-                else {
-                    resPath = req.path;
-                }
-                if (res.statusCode && sow_http_status_1.HttpStatus.isErrorCode(res.statusCode)) {
-                    _server.log.error(`Send ${res.statusCode} ${resPath}`);
-                }
-                else {
-                    _server.log.success(`Send ${res.statusCode || 200} ${resPath}`);
+                if (ctx && !ctx.isDisposed) {
+                    if (res.statusCode && sow_http_status_1.HttpStatus.isErrorCode(res.statusCode)) {
+                        _server.log.error(`Send ${res.statusCode} ${ctx.path}`);
+                    }
+                    else {
+                        _server.log.success(`Send ${res.statusCode} ${ctx.path}`);
+                    }
                 }
             }
             return exports.removeContext(req.id);
@@ -734,8 +732,6 @@ function initilizeServer(appRoot, wwwName) {
                         return _ctx.next(404);
                     return forWord(_ctx);
                 });
-                // if ( !Util.isExists( `${root}/${_ctx.path}`, _ctx.next ) ) return;
-                // return forWord( _ctx );
             };
             if (!evt || typeof (evt) !== "function") {
                 _app.use(route, (req, res, next) => {
@@ -772,19 +768,18 @@ function initilizeServer(appRoot, wwwName) {
         global.sow.server.emit("register-view", _app, _controller, _server);
         _controller.sort();
         _app.on("error", (req, res, err) => {
-            if (!res.isAlive)
-                return;
-            const _context = _process.createContext(req, res, (_err) => {
-                if (res.isAlive) {
-                    res.status(500).send("Nothing to do....");
+            if (res.isAlive) {
+                const context = _process.createContext(req, res, (cerr) => {
+                    if (res.isAlive) {
+                        res.status(500).send("Unable to catch error reason.");
+                    }
+                });
+                if (!err) {
+                    return context.transferRequest(404);
                 }
-            });
-            if (!err) {
-                return _context.transferRequest(404);
-            }
-            if (err instanceof Error) {
-                _server.addError(_context, err);
-                return _context.transferRequest(500);
+                if (err instanceof Error) {
+                    return context.transferError(err);
+                }
             }
         });
         _app.prerequisites((req, res, next) => {

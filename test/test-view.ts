@@ -18,10 +18,10 @@ import {
 import { SowHttpCache } from '../lib/sow-http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
-	socketInitilizer, PayloadParser,
+	socketInitilizer, getBodyParser, PayloadParser,
 	HttpMimeHandler, Streamer, Encryption
 } from '../index';
-import { IPostedFileInfo, UploadFileInfo } from '../lib/sow-payload-parser';
+import { IPostedFileInfo, UploadFileInfo, IBodyParser } from '../lib/sow-body-parser';
 import { assert, Util } from '../lib/sow-util';
 const mimeHandler = new HttpMimeHandler();
 export function shouldBeError( next: () => void, printerr?: boolean ): Error | void {
@@ -114,7 +114,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	fsw.mkdirSync( tempDir );
 	controller.post( '/post', async ( ctx: IContext, requestParam?: IRequestParam ) => {
 		const task: string | void = typeof ( ctx.req.query.task ) === "string" ? ctx.req.query.task.toString() : void 0;
-		const parser = new PayloadParser( ctx.req, tempDir );
+		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
 		if ( parser.isMultipart() ) {
 			return ctx.next( 404 );
 		}
@@ -147,35 +147,33 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			return ctx.next( 200 );
 		} );
 	} ).post( '/post-async/:id', async ( ctx: IContext, requestParam?: IRequestParam ) => {
-		const parser = new PayloadParser( ctx.req, tempDir );
+		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
 		if ( parser.isUrlEncoded() || parser.isAppJson() ) {
 			await parser.readDataAsync();
 			ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
 			return ctx.res.end( JSON.stringify( parser.getJson() ) ), ctx.next( 200 );
 		}
 		parser.saveAsSync( downloadDir );
-		parser.clear();
+		parser.dispose();
 		return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
 	} ).post( '/upload-invalid-file', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
-		const parser = new PayloadParser( ctx.req );
+		const parser:IBodyParser = getBodyParser( ctx.req );
 		try {
 			await parser.readDataAsync();
 			ctx.res.status( 200 ).json( parser.getUploadFileInfo() );
 		} catch ( e ) {
-			parser.clear();
+			parser.dispose();
 			ctx.transferError( e );
 		}
 	} ).post( '/abort-error', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
-		console.log( '/abort-error' );
-		const parser = new PayloadParser( ctx.req, tempDir );
+		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
 		let err: Error | undefined;
 		try {
 			await parser.readDataAsync();
-			console.log( "No Error" );
 		} catch ( e ) {
 			err = e;
 		}
-		parser.clear();
+		parser.dispose();
 		if ( err ) {
 			if ( err.message.indexOf( "CLIENET_DISCONNECTED" ) > -1 ) return ctx.next( -500 );
 			console.log( err );
@@ -185,14 +183,14 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		throw new Error( "Should not here..." );
 	} ).post( '/upload-malformed-data', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		ctx.req.push( "This is normal line\n".repeat( 5 ) );
-		const parser = new PayloadParser( ctx.req, tempDir );
+		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
 		let err: Error | undefined;
 		try {
 			await parser.readDataAsync();
 		} catch ( e ) {
 			err = e;
 		}
-		parser.clear();
+		parser.dispose();
 		if ( err ) {
 			server.addError( ctx, err );
 			return server.transferRequest( ctx, 500 );
@@ -200,7 +198,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		// throw new Error( "Should not here..." );
 	} ).post( '/upload-test', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		try {
-			const parser = new PayloadParser( ctx.req, tempDir );
+			const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
 			expect( shouldBeError( () => {
 				parser.getFiles( ( pf ) => {
 					console.log( pf );
@@ -215,7 +213,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			await parser.readDataAsync();
 			const data: UploadFileInfo[] = parser.getUploadFileInfo();
 			parser.saveAsSync( downloadDir );
-			parser.clear();
+			parser.dispose();
 			ctx.res.json( data.shift() || {} );
 			ctx.next( 200 );
 		} catch ( e ) {
@@ -224,7 +222,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	} ).post( '/upload-non-bolock', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 		if ( ctx.res.isAlive ) {
 			expect( ctx.req.get( "content-type" ) ).toBeDefined();
-			const parser = new PayloadParser( ctx.req, tempDir );
+			const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
 			return parser.readData( ( err ) => {
 				assert( err === undefined, "parser.readData" );
 				const data: UploadFileInfo[] = parser.getUploadFileInfo();
@@ -249,7 +247,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		}
 	} ).post( '/upload', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		const saveTo = typeof ( ctx.req.query.saveto ) === "string" ? ctx.req.query.saveto.toString() : void 0;
-		const parser = new PayloadParser( ctx.req, tempDir );
+		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
 		expect( shouldBeError( () => {
 			parser.saveAsSync( downloadDir );
 		} ) ).toBeInstanceOf( Error );
@@ -262,8 +260,9 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				parser.getFilesSync( ( file: IPostedFileInfo ): void => {
 					expect( file.readSync() ).toBeInstanceOf( Buffer );
 					if ( saveTo ) {
-						if ( saveTo === "C" )
+						if ( saveTo === "C" ){
 							file.clear();
+						}
 						return;
 					}
 					file.saveAsSync( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
@@ -283,8 +282,8 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				ctx.res.json( data.shift() || {} );
 				ctx.next( 200 );
 			}
-			parser.clear();
-			expect( parser.clear() ).not.toBeInstanceOf( Error );
+			parser.dispose();
+			expect( parser.dispose() ).not.toBeInstanceOf( Error );
 		} );
 	} );
 } );
@@ -293,10 +292,16 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		.get( "/test-context", ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			try {
 				const mCtx: IContext = server.createContext( Object.create( {
-					id: "1010", dispose: function () { }
+					id: "1010", dispose () {
+						// Nothing to do
+					 }
 				} ), Object.create( {
-					id: "1010", dispose: function () { }
-				} ), () => { } );
+					id: "1010", dispose () {
+						// Nothing to do
+					 }
+				} ), () => {
+					// Nothing to do
+				} );
 				removeContext( "10101" );
 				getMyContext( "10101" );
 				removeContext( "1010" );
@@ -360,10 +365,14 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 					ctx.res.end = oldEnd;
 				} )();
 				( () => {
-					const parser = new PayloadParser( ctx.req, server.mapPath( "/upload/temp/" ) );
+					const parser:IBodyParser = getBodyParser( ctx.req, server.mapPath( "/upload/temp/" ) );
 					expect( shouldBeError( () => {
 						parser.getData();
 					} ) ).toBeInstanceOf( Error );
+					parser.dispose();
+				} )();
+				( () => {
+					const parser = new PayloadParser( ctx.req, server.mapPath( "/upload/temp/" ) );
 					parser.clear();
 				} )();
 				process.env.TASK_TYPE = 'TESTX';
@@ -504,7 +513,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				result.data.userInfo.loginId = loginID;
 				result.data.error = false;
 				// res, loginId, roleId, userData
-				server.setSession( ctx, /*loginId*/loginID,/*roleId*/"Admin", /*userData*/{ token: result.data.token } );
+				ctx.setSession( /*loginId*/loginID,/*roleId*/"Admin", /*userData*/{ token: result.data.token } );
 			}
 			ctx.res.writeHead( result.code, { 'Content-Type': 'application/json' } );
 			ctx.write( JSON.stringify( result.data ) );
