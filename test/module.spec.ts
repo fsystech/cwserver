@@ -1163,16 +1163,37 @@ describe( "cwserver-post", () => {
                 done();
             } );
     } );
-    it( 'send post request content type urlencoded', ( done: Mocha.Done ): void => {
+    it( 'send post request content exceed max length', function ( done: Mocha.Done ): void {
+        this.timeout( 5000 );
+        const largeBuff: Buffer = crypto.randomBytes( 1024 * 5 );
         getAgent()
-            .post( `http://localhost:${appUtility.port}/post` )
+            .post( `http://localhost:${appUtility.port}/post-data` )
             .type( 'form' )
-            .send( { name: 'rajibs', occupation: 'kutukutu' } )
+            .send( {
+                name: 'rajibs',
+                occupation: 'kutukutu',
+                large: largeBuff.toString( 'hex' )
+            } )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                done();
+            } );
+    } );
+    it( 'send post request content type urlencoded', function ( done: Mocha.Done ): void {
+        this.timeout( 10000 );
+        getAgent()
+            .post( `http://localhost:${appUtility.port}/post-test-data` )
+            .type( 'form' )
+            .send( {
+                name: 'rajibs',
+                occupation: 'kutukutu',
+                data:"Hello world Not Working".repeat(10)
+            } )
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 toBeApplicationJson( res.header["content-type"] );
-                expect( res.body.name ).toBe( 'rajibs' );
+                // expect( res.body.name ).toBe( 'rajibs' );
                 done();
             } );
     } );

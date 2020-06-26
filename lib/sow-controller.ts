@@ -156,7 +156,7 @@ export class Controller implements IController {
         if ( ctx.extension ) {
             if (
                 ctx.server.config.defaultExt
-                && ctx.server.config.defaultExt.indexOf( ctx.extension ) > -1
+                && ctx.server.config.defaultExt === `.${ctx.extension}`
             ) {
                 return ctx.next( 404 );
             }

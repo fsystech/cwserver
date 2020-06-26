@@ -9,6 +9,12 @@ export declare type UploadFileInfo = {
     contentDisposition: string;
     tempPath: string | undefined;
 };
+export declare type FileInfo = {
+    contentDisposition: string;
+    name: string;
+    fileName: string;
+    contentType: string;
+};
 export interface IPostedFileInfo extends IDispose {
     getContentDisposition(): string;
     getName(): string;
@@ -28,17 +34,27 @@ export interface IBodyParser extends IDispose {
     isMultipart(): boolean;
     isValidRequest(): boolean;
     saveAsSync(absPath: string): void;
+    /**
+     * Default Urlencoded max length 20971520 (20mb)
+     * You can override between this length
+     */
+    setMaxBuffLength(length: number): IBodyParser;
     saveAs(outdir: string, next: (err: Error | NodeJS.ErrnoException | null) => void, errorHandler: ErrorHandler): void;
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync(next: (file: IPostedFileInfo) => void): void;
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
     getJson(): NodeJS.Dict<string>;
     getData(): string;
+    parse(onReadEnd: (err?: Error) => void): void;
+    parseSync(): Promise<void>;
+    /** @deprecated since v2.0.3 - use `parse` instead. */
     readData(onReadEnd: (err?: Error) => void): void;
+    /** @deprecated since v2.0.3 - use `parseSync` instead. */
     readDataAsync(): Promise<void>;
     /** @deprecated since v2.0.3 - use `dispose` instead. */
     clear(): void;
 }
+export declare function decodeBodyBuffer(buff: Buffer, part: (k: string, v: string) => void): void;
 declare class BodyParser implements IBodyParser {
     private _contentType;
     private _contentTypeEnum;
@@ -49,7 +65,9 @@ declare class BodyParser implements IBodyParser {
     private _isDisposed;
     private _part;
     private _multipartParser?;
+    private _maxBuffLength;
     constructor(req: IRequest, tempDir?: string);
+    setMaxBuffLength(length: number): IBodyParser;
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
@@ -63,10 +81,12 @@ declare class BodyParser implements IBodyParser {
     getJson(): NodeJS.Dict<string>;
     getData(): string;
     readDataAsync(): Promise<void>;
+    parseSync(): Promise<void>;
     private tryFinish;
     private skipPart;
     private onPart;
     private finalEvent;
+    parse(onReadEnd: (err?: Error) => void): void;
     readData(onReadEnd: (err?: Error) => void): void;
     dispose(): void;
     clear(): void;

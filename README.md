@@ -107,7 +107,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
         if ( ctx.req.session.isAuthenticated ) {
             ctx.res.status( 200 ).type( "html" ).send( `Hello ${ctx.req.session.loginId}` );
         } else {
-            server.setSession( ctx, /*loginId*/requestParam.query.loginId,/*roleId*/requestParam.query.roleId, /*userData*/{ token: ctx.req.query.token } );
+            ctx.setSession(/*loginId*/requestParam.query.loginId,/*roleId*/requestParam.query.roleId, /*userData*/{ token: ctx.req.query.token } );
             ctx.res.status( 200 ).type( "html" ).send( `Authentication success ${ctx.req.query.loginId}` );
         }
         return ctx.next( 200 );
@@ -125,7 +125,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
     const tempDir = server.mapPath( "/upload/temp/" );
     controller.post( '/post-async', async ( ctx ) => {
         const parser = getBodyParser( ctx.req, tempDir );
-        await parser.readDataAsync();
+        await parser.parseSync();
         if ( parser.isUrlEncoded() || parser.isAppJson() ) {
             ctx.res.status( 200, { 'Content-Type': 'application/json' } );
             ctx.res.end( JSON.stringify( parser.getJson() ) );

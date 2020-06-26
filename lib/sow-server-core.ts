@@ -135,13 +135,20 @@ function getCommonHeader( contentType: string, contentLength?: number, isGzip?: 
     }
     return header;
 }
-export function getClientIpFromHeader( headers: IncomingHttpHeaders ): string | void {
-    return ( headers['x-forwarded-for'] )?.toString();
-}
-export function getClientIp( req: IRequest ): string | void {
-    if ( req.socket.remoteAddress ) {
-        return req.socket.remoteAddress;
+export function getClientIpFromHeader( headers: IncomingHttpHeaders ): string {
+    const res: number | string | string[] | undefined = headers['x-forwarded-for'];
+    if ( res ) {
+        return res.toString().split( ',' )[0];
     }
+    return "";
+}
+export function parseUrl( url?: string ): UrlWithParsedQuery {
+    if ( url ) {
+        return urlHelpers.parse( url, true );
+    }
+    return Object.create( {
+        pathname: null, query: {}
+    } );
 }
 class Request extends IncomingMessage implements IRequest {
     private _q: UrlWithParsedQuery | undefined;
@@ -160,7 +167,7 @@ class Request extends IncomingMessage implements IRequest {
     }
     public get q(): UrlWithParsedQuery {
         if ( this._q !== undefined ) return this._q;
-        this._q = urlHelpers.parse( this.url || '', true );
+        this._q = parseUrl( this.url );
         return this._q;
     }
     public get cookies(): NodeJS.Dict<string> {
@@ -184,7 +191,7 @@ class Request extends IncomingMessage implements IRequest {
     }
     public get ip(): string {
         if ( this._ip !== undefined ) return this._ip;
-        this._ip = getClientIp( this ) || '';
+        this._ip = this.socket.remoteAddress || getClientIpFromHeader( this.headers );
         return this._ip;
     }
     public get id(): string {

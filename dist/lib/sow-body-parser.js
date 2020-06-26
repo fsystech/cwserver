@@ -22,7 +22,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBodyParser = exports.PayloadParser = void 0;
+exports.getBodyParser = exports.PayloadParser = exports.decodeBodyBuffer = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -75,10 +75,12 @@ function extractBetween(data, separator1, separator2) {
 }
 class PostedFileInfo {
     constructor(disposition, fname, fileName, fcontentType, tempFile) {
-        this._fcontentDisposition = disposition;
-        this._fname = fname;
-        this._fileName = fileName;
-        this._fcontentType = fcontentType;
+        this._fileInfo = {
+            contentDisposition: disposition,
+            name: fname,
+            fileName,
+            contentType: fcontentType
+        };
         this._isMoved = false;
         this._isDisposed = false;
         this._tempFile = tempFile;
@@ -87,16 +89,16 @@ class PostedFileInfo {
         return this._tempFile;
     }
     getContentDisposition() {
-        return this._fcontentDisposition;
+        return this._fileInfo.contentDisposition;
     }
     getName() {
-        return this._fname;
+        return this._fileInfo.name;
     }
     getFileName() {
-        return this._fileName;
+        return this._fileInfo.fileName;
     }
     getContentType() {
-        return this._fcontentType;
+        return this._fileInfo.contentType;
     }
     validate(arg) {
         if (!this._tempFile || this._isMoved)
@@ -137,10 +139,7 @@ class PostedFileInfo {
             if (_fs.existsSync(this._tempFile))
                 _fs.unlinkSync(this._tempFile);
         }
-        delete this._fcontentDisposition;
-        delete this._fname;
-        delete this._fileName;
-        delete this._fcontentType;
+        delete this._fileInfo;
         if (this._tempFile)
             delete this._tempFile;
     }
@@ -167,7 +166,8 @@ class MultipartDataReader extends events_1.EventEmitter {
         this.emit("end", new Error(reason));
     }
     read(partStream, tempDir) {
-        let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false, data = "";
+        let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false;
+        const data = [];
         partStream.on("header", (header) => {
             for (const [key, value] of Object.entries(header)) {
                 if (sow_util_1.Util.isArrayLike(value)) {
@@ -185,7 +185,7 @@ class MultipartDataReader extends events_1.EventEmitter {
                                 continue;
                             }
                             fieldName = extractBetween(part, "name=\"", "\"");
-                            data += fieldName += "=";
+                            data.push(Buffer.from(fieldName += "="));
                             continue;
                         }
                         if (key === "content-type") {
@@ -196,9 +196,11 @@ class MultipartDataReader extends events_1.EventEmitter {
             }
             if (!isFile) {
                 return partStream.on("data", (chunk) => {
-                    data += chunk.toString();
+                    if (typeof (chunk) !== "string") {
+                        data.push(chunk);
+                    }
                 }).on("end", () => {
-                    this.emit("field", data);
+                    this.emit("field", Buffer.concat(data));
                     this.emit("end");
                 }), void 0;
             }
@@ -226,22 +228,39 @@ class MultipartDataReader extends events_1.EventEmitter {
 class DataParser {
     constructor(tempDir) {
         this._errors = [];
-        this.files = [];
-        this.bodyStr = "";
+        this._files = [];
+        this._body = [];
         this._tempDir = tempDir;
         this._readers = [];
+        this._isFirst = true;
+    }
+    get files() {
+        return this._files;
     }
     onRawData(buff) {
-        this.bodyStr += buff;
+        this._isFirst = false;
+        if (Buffer.isBuffer(buff)) {
+            this._body.push(buff);
+        }
+        else {
+            this._body.push(Buffer.from(buff));
+        }
     }
-    onPart(partStream, next) {
+    get body() {
+        return Buffer.concat(this._body);
+    }
+    getRawData() {
+        return this.body.toString();
+    }
+    onPart(partStream, next, emit) {
         const reader = new MultipartDataReader();
         reader.on("file", (file) => {
-            return this.files.push(file), void 0;
+            // emit( "file", file );
+            return this._files.push(file), void 0;
         });
         reader.on("field", (data) => {
-            if (this.bodyStr.length > 0) {
-                this.bodyStr += "&";
+            if (!this._isFirst) {
+                this.onRawData("&");
             }
             return this.onRawData(data);
         });
@@ -267,15 +286,49 @@ class DataParser {
     }
     clear() {
         dispose(this._readers);
-        dispose(this.files);
+        dispose(this._files);
+        this._body.length = 0;
+        delete this._body;
         if (this._errors)
             delete this._errors;
     }
 }
+function decode(str) {
+    return decodeURIComponent(str.replace(/\+/g, ' '));
+}
+function decodeBodyBuffer(buff, part) {
+    let p = 0;
+    const len = buff.length;
+    while (p < len) {
+        let nd = 0, eq = 0;
+        for (let i = p; i < len; ++i) {
+            if (buff[i] === 0x3D /*=*/) {
+                if (eq !== 0) {
+                    throw new Error("Malformed data...");
+                }
+                eq = i;
+            }
+            else if (buff[i] === 0x26 /*&*/) {
+                nd = i;
+                break;
+            }
+        }
+        if (nd === 0)
+            nd = len;
+        if (eq === 0) {
+            throw new Error("Malformed data");
+        }
+        part(decode(buff.toString('binary', p, eq)), decode(buff.toString('binary', eq + 1, nd)));
+        p = nd + 1;
+    }
+}
+exports.decodeBodyBuffer = decodeBodyBuffer;
+const MaxBuffLength = 1024 * 1024 * 20; // (20mb)
 class BodyParser {
     constructor(req, tempDir) {
         this._isDisposed = false;
         this._part = [];
+        this._maxBuffLength = MaxBuffLength;
         this._contentType = req.get("content-type") || "";
         this._contentLength = sow_static_1.ToNumber(req.get("content-length") || 0);
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
@@ -299,6 +352,12 @@ class BodyParser {
             this._req = Object.create(null);
         }
         this._isReadEnd = false;
+    }
+    setMaxBuffLength(length) {
+        if (length > MaxBuffLength || length <= 0)
+            throw new Error(`Max buff length should be between ${MaxBuffLength} and non zero`);
+        this._maxBuffLength = length;
+        return this;
     }
     isUrlEncoded() {
         return this._contentTypeEnum === ContentType.URL_ENCODE;
@@ -380,27 +439,26 @@ class BodyParser {
         return forward();
     }
     getJson() {
-        const bodyStr = this.getData();
+        this.isValidRequest();
         if (this._contentTypeEnum === ContentType.APP_JSON) {
-            return JSON.parse(bodyStr);
+            return JSON.parse(this._parser.getRawData());
         }
         const outObj = {};
-        bodyStr.split("&").forEach((part) => {
-            const kv = part.split("=");
-            if (kv.length > 0) {
-                const val = kv[1];
-                outObj[decodeURIComponent(kv[0])] = val ? decodeURIComponent(val) : void 0;
-            }
+        decodeBodyBuffer(this._parser.body, (k, v) => {
+            outObj[k] = v;
         });
         return outObj;
     }
     getData() {
         this.validate(false);
-        return this._parser.bodyStr;
+        return this._parser.getRawData();
     }
     readDataAsync() {
+        return this.parseSync();
+    }
+    parseSync() {
         return new Promise((resolve, reject) => {
-            this.readData((err) => {
+            this.parse((err) => {
                 if (err)
                     return reject(err);
                 return resolve();
@@ -447,12 +505,17 @@ class BodyParser {
             return onReadEnd(err);
         };
     }
-    readData(onReadEnd) {
+    parse(onReadEnd) {
         if (!this.isValidRequest())
             return onReadEnd(new Error("Invalid request defiend...."));
+        if (this._contentTypeEnum === ContentType.APP_JSON || this._contentTypeEnum === ContentType.URL_ENCODE) {
+            if (this._contentLength > this._maxBuffLength) {
+                return onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`));
+            }
+        }
         if (this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON) {
             this._req.on("data", (chunk) => {
-                this._parser.onRawData(chunk.toString());
+                this._parser.onRawData(chunk);
             });
             this._req.on("end", () => {
                 this._isReadEnd = true;
@@ -475,6 +538,9 @@ class BodyParser {
             this._req.on("close", this.finalEvent("close", onReadEnd));
             this._req.pipe(this._multipartParser);
         }
+    }
+    readData(onReadEnd) {
+        return this.parse(onReadEnd);
     }
     dispose() {
         if (this._isDisposed)
@@ -502,8 +568,10 @@ class BodyParser {
 exports.PayloadParser = (() => {
     return { PayloadParser: util_1.deprecate(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
 })().PayloadParser;
-BodyParser.prototype.clear = util_1.deprecate(BodyParser.prototype.clear, '`parser.clear` is depreciated, please use `parser.dispose` instead.', 'v2.0.3:2');
-PostedFileInfo.prototype.clear = util_1.deprecate(PostedFileInfo.prototype.clear, '`file.clear` is depreciated, please use `file.dispose` instead.', 'v2.0.3:3');
+BodyParser.prototype.clear = util_1.deprecate(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
+BodyParser.prototype.readData = util_1.deprecate(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
+BodyParser.prototype.readDataAsync = util_1.deprecate(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
+PostedFileInfo.prototype.clear = util_1.deprecate(PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');
 function getBodyParser(req, tempDir) {
     return new BodyParser(req, tempDir);
 }

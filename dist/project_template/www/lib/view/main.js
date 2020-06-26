@@ -19,7 +19,7 @@ function _generateRandomNumber( num ) {
 	return result;
 }
 global.sow.server.on( "register-view", ( app, controller, server ) => {
-	const { PayloadParser, Encryption, Util } = require( 'cwserver' );
+	const { getBodyParser, Encryption, Util, fsw } = require( 'cwserver' );
 	// const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
 	// const ws = socketInitilizer(server, require("../socket-client"));
 	//ws.create(require("socket.io"));
@@ -28,14 +28,8 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 	// server.addVirtualDir( "/sow", _path.resolve( server.getRoot() + "\\sow\\" ) );
 	const tempDir = server.mapPath( "/upload/temp/" );
 	const downloadDir = server.mapPath( "/upload/data/" );
-	function getSize( size ) {
-		if ( size < 1024 ) return `${size}Byte`;
-		let kb = ( size / 1024 );
-		if ( kb <= 1024 ) return `${kb.toFixed( 2 )}KB`;
-		let mb = ( kb / 1024 );
-		if ( mb <= 1024 ) return `${mb.toFixed( 2 )}MB`;
-		return `${( mb / 1024 ).toFixed( 2 )}GB`;
-	}
+	fsw.mkdirSync( tempDir );
+	fsw.mkdirSync( downloadDir );
 	//controller.get('/ws', (ctx)=>{
 	//	ctx.res.json(ws.wsEvent,true, (err)=>{
 	//		if(err){
@@ -59,10 +53,6 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 	controller
 		.get( '/', ( ctx ) => {
 			return ctx.res.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );
-		} )
-		.get( '/readme', ( ctx ) => {
-			ctx.res.status( 200 );
-			return Util.sendResponse( ctx, server.mapPath( "readme.html" ) );
 		} )
 		.get( '/task/:id', ( ctx, match ) => {
 			return ctx.res.status( 200 ).json( { reqPath: ctx.path, servedFrom: "/task/:id", q: match } );
@@ -117,15 +107,15 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 		} ).any( "/post_data_async", async ( ctx ) => {
 			if ( ctx.req.method !== "POST" ) return ctx.next( 404 );
 			try {
-				let parser = new PayloadParser( ctx.req, tempDir );
-				await parser.readDataAsync();
+				let parser = getBodyParser( ctx.req, tempDir );
+				await parser.parseSync();
 				if ( parser.isUrlEncoded() ) {
 					ctx.res.status( 200 ).json( parser.getJson() );
 				} else {
 					parser.saveAsSync( downloadDir );
 					ctx.res.type( "html" ).status( 200 ).send( "File uploaded..." );
 				}
-				parser.clear();
+				parser.dispose();
 				return ctx.next( 200 );
 			} catch ( err ) {
 				parser.clear();
@@ -133,8 +123,8 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 			}
 		} ).any( "/post_data", ( ctx ) => {
 			if ( ctx.req.method !== "POST" ) return ctx.next( 404 );
-			let parser = new PayloadParser( ctx.req, tempDir );
-			parser.readData( ( err ) => {
+			let parser = getBodyParser( ctx.req, tempDir );
+			parser.parse( ( err ) => {
 				if ( err ) {
 					if ( typeof ( err ) === "string" && err === "CLIENET_DISCONNECTED" ) return ctx.next( -500 );
 					parser.clear();
@@ -151,7 +141,6 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 						fileInfo += `<li>name:${file.getName()}</li>`;
 						fileInfo += `<li>file_name:${file.getFileName()}</li>`;
 						fileInfo += `<li>content_disposition:${file.getContentDisposition()}</li>`;
-						fileInfo += `<li>file Size: ${getSize( file.getFileSize() )}</li>`;
 						fileInfo += `<li>Writing file ${file.getFileName()}</li>`;
 						file.saveAsSync( `${downloadDir}/${_generateRandomNumber()}_${file.getFileName()}` );
 						count++;

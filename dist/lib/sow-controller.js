@@ -164,7 +164,7 @@ class Controller {
             return void 0;
         if (ctx.extension) {
             if (ctx.server.config.defaultExt
-                && ctx.server.config.defaultExt.indexOf(ctx.extension) > -1) {
+                && ctx.server.config.defaultExt === `.${ctx.extension}`) {
                 return ctx.next(404);
             }
             if (ctx.server.config.template.ext.indexOf(ctx.extension) > -1) {

@@ -38,7 +38,8 @@
     "map",
     "mp3",
     "mp4",
-    "pdf"
+    "pdf",
+    "htm"
   ],
   "defaultExt": ".html",
   "defaultDoc": [ "index", "default" ],

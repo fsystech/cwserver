@@ -22,7 +22,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.App = exports.getClientIp = exports.getClientIpFromHeader = exports.parseCookie = void 0;
+exports.App = exports.parseUrl = exports.getClientIpFromHeader = exports.parseCookie = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -111,16 +111,22 @@ function getCommonHeader(contentType, contentLength, isGzip) {
     return header;
 }
 function getClientIpFromHeader(headers) {
-    var _a;
-    return (_a = (headers['x-forwarded-for'])) === null || _a === void 0 ? void 0 : _a.toString();
+    const res = headers['x-forwarded-for'];
+    if (res) {
+        return res.toString().split(',')[0];
+    }
+    return "";
 }
 exports.getClientIpFromHeader = getClientIpFromHeader;
-function getClientIp(req) {
-    if (req.socket.remoteAddress) {
-        return req.socket.remoteAddress;
+function parseUrl(url) {
+    if (url) {
+        return url_1.default.parse(url, true);
     }
+    return Object.create({
+        pathname: null, query: {}
+    });
 }
-exports.getClientIp = getClientIp;
+exports.parseUrl = parseUrl;
 class Request extends http_1.IncomingMessage {
     get cleanSocket() {
         if (this._cleanSocket === undefined)
@@ -133,7 +139,7 @@ class Request extends http_1.IncomingMessage {
     get q() {
         if (this._q !== undefined)
             return this._q;
-        this._q = url_1.default.parse(this.url || '', true);
+        this._q = parseUrl(this.url);
         return this._q;
     }
     get cookies() {
@@ -160,7 +166,7 @@ class Request extends http_1.IncomingMessage {
     get ip() {
         if (this._ip !== undefined)
             return this._ip;
-        this._ip = getClientIp(this) || '';
+        this._ip = this.socket.remoteAddress || getClientIpFromHeader(this.headers);
         return this._ip;
     }
     get id() {
