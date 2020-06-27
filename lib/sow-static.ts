@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 9:01 PM 5/2/2020
+import { assert } from './sow-util';
 export interface ISession {
     isAuthenticated: boolean;
     loginId: string;
@@ -19,6 +20,63 @@ export interface IResInfo {
 }
 export interface IDispose {
     dispose(): void;
+}
+export interface IBufferAarry extends IDispose {
+    readonly data: Buffer;
+    readonly length: number;
+    push( buff: Buffer | string ): number;
+    clear(): void;
+    toString( encoding?: BufferEncoding ): string;
+}
+export class BufferAarry implements IBufferAarry {
+    private _data: Buffer[];
+    private _length: number;
+    private _isDispose: boolean;
+    private get _msg(): string {
+        return "This `BufferAarry` instance already disposed....";
+    }
+    public get data(): Buffer {
+        assert( !this._isDispose, this._msg );
+        return Buffer.concat( this._data, this.length );
+    }
+    public get length(): number {
+        assert( !this._isDispose, this._msg );
+        return this._length;
+    }
+    constructor() {
+        this._data = []; this._isDispose = false;
+        this._length = 0;
+    }
+    public push( buff: Buffer | string ): number {
+        assert( !this._isDispose, this._msg );
+        if ( Buffer.isBuffer( buff ) ) {
+            this._length += buff.length;
+            this._data.push( buff );
+            return buff.length;
+        }
+        const nBuff: Buffer = Buffer.from( buff );
+        this._length += nBuff.length;
+        this._data.push( nBuff );
+        return nBuff.length;
+    }
+    public clear(): void {
+        assert( !this._isDispose, this._msg );
+        this._data.length = 0;
+        this._length = 0;
+    }
+    public toString( encoding?: BufferEncoding ): string {
+        return this.data.toString( encoding );
+    }
+    public dispose(): void {
+        if ( !this._isDispose ) {
+            this._isDispose = true;
+            this._data.length = 0;
+            this._length = 0;
+            delete this._data;
+            delete this._length;
+        }
+        return void 0;
+    }
 }
 export class Session implements ISession {
     isAuthenticated: boolean;

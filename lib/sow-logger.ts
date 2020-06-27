@@ -6,8 +6,9 @@
 // 11:26 PM 9/28/2019
 import * as _fs from 'fs';
 import * as _path from 'path';
+import { IDispose, IBufferAarry, BufferAarry } from './sow-static';
 import * as fsw from './sow-fsw';
-export interface ILogger {
+export interface ILogger extends IDispose {
     newLine(): any;
     write( msg: string, color?: string ): ILogger;
     log( msg: string, color?: string ): ILogger;
@@ -15,7 +16,6 @@ export interface ILogger {
     success( msg: string ): ILogger;
     error( msg: string ): ILogger;
     reset(): ILogger;
-    dispose(): any;
     writeToStream( str: string ): void;
     flush(): boolean;
 }
@@ -82,7 +82,7 @@ export class Logger implements ILogger {
     private _isDebug: boolean;
     private _canWrite: boolean;
     private _tz: string;
-    private _buff: Buffer[] = [];
+    private _buff: IBufferAarry;
     private _blockSize: number = 0;
     private _maxBlockSize: number = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
     private _fd: number = -1;
@@ -91,6 +91,7 @@ export class Logger implements ILogger {
         tz?: string, userInteractive?: boolean,
         isDebug?: boolean, maxBlockSize?: number
     ) {
+        this._buff = new BufferAarry();
         this._userInteractive = typeof ( userInteractive ) !== "boolean" ? true : userInteractive;
         this._isDebug = typeof ( isDebug ) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false; this._tz = "+6";
@@ -121,16 +122,14 @@ export class Logger implements ILogger {
             throw new Error("File not open yet....");
         }
         if ( this._buff.length === 0 ) return false;
-        _fs.appendFileSync( this._fd, Buffer.concat( this._buff ) );
-        this._buff.length = 0;
+        _fs.appendFileSync( this._fd, this._buff.data );
+        this._buff.clear();
         this._blockSize = 0;
         return true;
     }
     public writeToStream( str: string ): void {
         if ( this._canWrite === false ) return void 0;
-        const buff = Buffer.from( str );
-        this._blockSize += buff.byteLength;
-        this._buff.push( buff );
+        this._blockSize += this._buff.push( str );
         if ( this._blockSize < this._maxBlockSize ) {
             return void 0;
         }
@@ -187,5 +186,6 @@ export class Logger implements ILogger {
             this._fd = -1;
             this._canWrite = false;
         }
+        this._buff.dispose();
     }
 }

@@ -14,6 +14,7 @@ import { ISowServer, IContext } from './sow-server';
 import { IController } from './sow-controller';
 import { Util } from './sow-util';
 import * as fsw from './sow-fsw';
+import { IBufferAarry, BufferAarry } from './sow-static';
 enum ContentType {
     JS = 0,
     CSS= 1,
@@ -21,7 +22,7 @@ enum ContentType {
 }
 type BundlerFileInfo = { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean };
 const responseWriteGzip = (
-    ctx: IContext, buff: Buffer,
+    ctx: IContext, buff: IBufferAarry,
     cte: ContentType
 ): void => {
     ctx.res.status( 200, {
@@ -30,7 +31,7 @@ const responseWriteGzip = (
     } );
     const compressor = _zlib.createGzip( { level: _zlib.constants.Z_BEST_COMPRESSION } );
     compressor.pipe( ctx.res );
-    compressor.end( buff );
+    compressor.end( buff.data ); buff.dispose();
     return compressor.on( "end", () => {
         compressor.unpipe( ctx.res );
         ctx.next( 200 );
@@ -132,9 +133,9 @@ This 'Combiner' contains the following files:\n`;
     static readBuffer(
         ctx: IContext,
         files: BundlerFileInfo[], copyright: string,
-        next: ( buffer: Buffer ) => void
+        next: ( buffer: IBufferAarry ) => void
     ): void {
-        const out: Buffer[] = [];
+        const out: IBufferAarry = new BufferAarry();
         let istr: string = this.getInfo();
         files.forEach( ( inf, index ) => {
             istr += `${index + 1}==>${inf.name}\r\n`;
@@ -146,7 +147,7 @@ This 'Combiner' contains the following files:\n`;
         const forward = (): void => {
             const inf: BundlerFileInfo | undefined = files.shift();
             if ( !inf ) {
-                return next( Buffer.concat( out ) );
+                return next( out );
             }
             out.push( Buffer.from( `\r\n/*${inf.name}*/\r\n` ) );
             if ( inf.isOwn === true ) {
@@ -201,14 +202,14 @@ This 'Combiner' contains the following files:\n`;
                     ctx.res.status( 304, { 'Content-Type': this.getResContentType( cte ) } );
                     return ctx.res.end(), ctx.next( 304 );
                 }
-                return this.readBuffer( ctx, files, server.copyright(), ( buffer: Buffer ): void => {
+                return this.readBuffer( ctx, files, server.copyright(), ( buffer: IBufferAarry ): void => {
                     ctx.req.socket.setNoDelay( true );
                     if ( isGzip === false || !server.config.bundler.compress ) {
                         ctx.res.status( 200, {
                             'Content-Type': this.getResContentType( cte ),
                             'Content-Length': buffer.length
                         } );
-                        return ctx.res.end( buffer ), ctx.next( 200 );
+                        return ctx.res.end( buffer.data ), buffer.dispose(), ctx.next( 200 );
                     }
                     return responseWriteGzip( ctx, buffer, cte );
                 } );
@@ -275,9 +276,9 @@ This 'Combiner' contains the following files:\n`;
                             }
                             return Util.pipeOutputStream( cachpath, ctx );
                         }
-                        return this.readBuffer( ctx, files, server.copyright(), ( buffer: Buffer ): void => {
+                        return this.readBuffer( ctx, files, server.copyright(), ( buffer: IBufferAarry ): void => {
                             if ( !server.config.bundler.compress ) {
-                                return _fs.writeFile( cachpath, buffer, ( werr: NodeJS.ErrnoException | null ): void => {
+                                return _fs.writeFile( cachpath, buffer.data, ( werr: NodeJS.ErrnoException | null ): void => {
                                     return ctx.handleError( werr, () => {
                                         return _fs.stat( cachpath, ( cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats ) => {
                                             return ctx.handleError( cserr, () => {
@@ -290,14 +291,15 @@ This 'Combiner' contains the following files:\n`;
                                                     'Content-Type': this.getResContentType( cte ),
                                                     'Content-Length': buffer.length
                                                 } );
-                                                ctx.res.end( buffer );
+                                                ctx.res.end( buffer.data ); buffer.dispose();
                                                 return ctx.next( 200 );
                                             } );
                                         } );
                                     } );
                                 } );
                             }
-                            return _zlib.gzip( buffer, ( error: Error | null, buff: Buffer ): void => {
+                            return _zlib.gzip( buffer.data, ( error: Error | null, buff: Buffer ): void => {
+                                buffer.dispose();
                                 return ctx.handleError( error, () => {
                                     return _fs.writeFile( cachpath, buff, ( err: NodeJS.ErrnoException | null ): void => {
                                         return ctx.handleError( err, () => {

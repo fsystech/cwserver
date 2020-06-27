@@ -13,7 +13,7 @@ import { pipeline } from 'stream';
 import os from 'os';
 import destroy = require( 'destroy' );
 import { IRequest } from './sow-server-core';
-import { ToNumber, IDispose } from './sow-static';
+import { ToNumber, IDispose, IBufferAarry, BufferAarry } from './sow-static';
 import { Util } from './sow-util';
 import * as fsw from './sow-fsw';
 import { ErrorHandler } from './sow-fsw';
@@ -222,7 +222,7 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
             fieldName: string = "", fileName: string = "",
             disposition: string = "", contentType: string = "",
             isFile: boolean = false;
-        const data: Buffer[] = [];
+        const body: IBufferAarry = new BufferAarry();
         partStream.on( "header", ( header: object ): void => {
             for ( const [key, value] of Object.entries( header ) ) {
                 if ( Util.isArrayLike<string>( value ) ) {
@@ -240,7 +240,7 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
                                 continue;
                             }
                             fieldName = extractBetween( part, "name=\"", "\"" );
-                            data.push( Buffer.from( fieldName += "=" ) );
+                            body.push( Buffer.from( fieldName += "=" ) );
                             continue;
                         }
                         if ( key === "content-type" ) {
@@ -251,11 +251,10 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
             }
             if ( !isFile ) {
                 return partStream.on( "data", ( chunk: string | Buffer ): void => {
-                    if ( typeof ( chunk ) !== "string" ) {
-                        data.push( chunk );
-                    }
+                    body.push( chunk );
                 } ).on( "end", () => {
-                    this.emit( "field", Buffer.concat( data ) );
+                    this.emit( "field", body.data );
+                    body.dispose();
                     this.emit( "end" );
                 } ), void 0;
             }
@@ -278,51 +277,52 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
         this.destroy();
     }
 }
-class DataParser {
+interface IDataParser extends IDispose {
+    readonly files: IPostedFileInfo[];
+    readonly body: Buffer;
+    onRawData( buff: Buffer | string ): void;
+    getRawData( encoding?: BufferEncoding ): string;
+    onPart( partStream: Dicer.PartStream,
+        next: ( forceExit: boolean ) => void
+    ): void;
+    getError(): string | void;
+}
+class DataParser implements IDataParser {
     private _files: IPostedFileInfo[];
-    public get files() {
-        return this._files;
-    }
-    private _body: Buffer[];
+    private _body: IBufferAarry;
     private _errors: ( Error | NodeJS.ErrnoException )[];
     private _tempDir: string;
     private _readers: IMultipartDataReader[];
-    private _isFirst: boolean;
+    private _buffNd: Buffer;
+    public get files(): IPostedFileInfo[] {
+        return this._files;
+    }
+    public get body(): Buffer {
+        return this._body.data;
+    }
     constructor(
         tempDir: string
     ) {
-        this._errors = [];
-        this._files = []; this._body = [];
-        this._tempDir = tempDir;
-        this._readers = [];
-        this._isFirst = true;
+        this._errors = []; this._files = [];
+        this._body = new BufferAarry(); this._buffNd = Buffer.from( "&" );
+        this._readers = []; this._tempDir = tempDir;
     }
     public onRawData( buff: Buffer | string ): void {
-        this._isFirst = false;
-        if ( Buffer.isBuffer( buff ) ) {
-            this._body.push( buff );
-        } else {
-            this._body.push( Buffer.from( buff ) )
-        }
+        this._body.push( buff );
     }
-    public get body() {
-        return Buffer.concat( this._body );
-    }
-    public getRawData(): string {
-        return this.body.toString();
+    public getRawData( encoding?: BufferEncoding): string {
+        return this._body.toString( encoding );
     }
     public onPart( partStream: Dicer.PartStream,
-        next: ( forceExit: boolean ) => void,
-        emit?: ( ...args: any[] ) => void
+        next: ( forceExit: boolean ) => void
     ): void {
         const reader: IMultipartDataReader = new MultipartDataReader();
         reader.on( "file", ( file: IPostedFileInfo ): void => {
-            // emit( "file", file );
             return this._files.push( file ), void 0;
         } );
         reader.on( "field", ( data: Buffer ): void => {
-            if ( !this._isFirst ) {
-                this.onRawData( "&" );
+            if ( this._body.length > 0 ) {
+                this.onRawData( this._buffNd );
             }
             return this.onRawData( data );
         } );
@@ -346,10 +346,10 @@ class DataParser {
             return str;
         }
     }
-    public clear(): void {
+    public dispose(): void {
         dispose( this._readers );
         dispose( this._files );
-        this._body.length = 0;
+        this._body.dispose();
         delete this._body;
         if ( this._errors )
             delete this._errors;
@@ -386,7 +386,7 @@ class BodyParser implements IBodyParser {
     private _contentType: string;
     private _contentTypeEnum: ContentType;
     private _contentLength: number;
-    private _parser: DataParser;
+    private _parser: IDataParser;
     private _req: IRequest;
     private _isReadEnd: boolean;
     private _isDisposed: boolean;
@@ -540,21 +540,23 @@ class BodyParser implements IBodyParser {
     private skipPart( partStream: Dicer.PartStream ): void {
         partStream.resume();
     }
-    private onPart( partStream: Dicer.PartStream, onReadEnd: ( err?: Error ) => void ): void {
-        this._part.push( 1 );
-        this._parser.onPart( partStream, ( forceExit: boolean ): void => {
-            if ( forceExit ) {
-                this._part.length = 0;
-                this.skipPart( partStream );
-                if ( this._multipartParser ) {
-                    this._multipartParser.removeListener( 'part', this.onPart );
-                    this._multipartParser.on( "part", this.skipPart )
+    private onPart( onReadEnd: ( err?: Error ) => void ): ( partStream: Dicer.PartStream )=>void {
+        return ( partStream: Dicer.PartStream ): void => {
+            this._part.push( 1 );
+            this._parser.onPart( partStream, ( forceExit: boolean ): void => {
+                if ( forceExit ) {
+                    this._part.length = 0;
+                    this.skipPart( partStream );
+                    if ( this._multipartParser ) {
+                        this._multipartParser.removeListener( 'part', this.onPart );
+                        this._multipartParser.on( "part", this.skipPart )
+                    }
+                } else {
+                    this._part.shift();
                 }
-            } else {
-                this._part.shift();
-            }
-            return this.tryFinish( onReadEnd );
-        } );
+                return this.tryFinish( onReadEnd );
+            } );
+        }
     }
     private finalEvent( ev: "close" | "error", onReadEnd: ( err?: Error ) => void ): ( err?: Error ) => void {
         return ( err?: Error ) => {
@@ -589,9 +591,7 @@ class BodyParser implements IBodyParser {
         const match: RegExpExecArray | null = RE_BOUNDARY.exec( this._contentType );
         if ( match ) {
             this._multipartParser = new Dicer( { boundary: match[1] || match[2] } );
-            this._multipartParser.on( "part", ( stream: Dicer.PartStream ): void => {
-                this.onPart( stream, onReadEnd );
-            } );
+            this._multipartParser.on( "part", this.onPart( onReadEnd ) );
             this._multipartParser.on( "finish", (): void => {
                 this._isReadEnd = true;
                 return this.tryFinish( onReadEnd );
@@ -608,7 +608,7 @@ class BodyParser implements IBodyParser {
         if ( this._isDisposed ) return;
         this._isDisposed = true;
         if ( this._isReadEnd ) {
-            this._parser.clear();
+            this._parser.dispose();
             delete this._parser;
         }
         if ( this._multipartParser ) {

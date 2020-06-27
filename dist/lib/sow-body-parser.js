@@ -167,7 +167,7 @@ class MultipartDataReader extends events_1.EventEmitter {
     }
     read(partStream, tempDir) {
         let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false;
-        const data = [];
+        const body = new sow_static_1.BufferAarry();
         partStream.on("header", (header) => {
             for (const [key, value] of Object.entries(header)) {
                 if (sow_util_1.Util.isArrayLike(value)) {
@@ -185,7 +185,7 @@ class MultipartDataReader extends events_1.EventEmitter {
                                 continue;
                             }
                             fieldName = extractBetween(part, "name=\"", "\"");
-                            data.push(Buffer.from(fieldName += "="));
+                            body.push(Buffer.from(fieldName += "="));
                             continue;
                         }
                         if (key === "content-type") {
@@ -196,11 +196,10 @@ class MultipartDataReader extends events_1.EventEmitter {
             }
             if (!isFile) {
                 return partStream.on("data", (chunk) => {
-                    if (typeof (chunk) !== "string") {
-                        data.push(chunk);
-                    }
+                    body.push(chunk);
                 }).on("end", () => {
-                    this.emit("field", Buffer.concat(data));
+                    this.emit("field", body.data);
+                    body.dispose();
                     this.emit("end");
                 }), void 0;
             }
@@ -229,38 +228,31 @@ class DataParser {
     constructor(tempDir) {
         this._errors = [];
         this._files = [];
-        this._body = [];
-        this._tempDir = tempDir;
+        this._body = new sow_static_1.BufferAarry();
+        this._buffNd = Buffer.from("&");
         this._readers = [];
-        this._isFirst = true;
+        this._tempDir = tempDir;
     }
     get files() {
         return this._files;
     }
-    onRawData(buff) {
-        this._isFirst = false;
-        if (Buffer.isBuffer(buff)) {
-            this._body.push(buff);
-        }
-        else {
-            this._body.push(Buffer.from(buff));
-        }
-    }
     get body() {
-        return Buffer.concat(this._body);
+        return this._body.data;
     }
-    getRawData() {
-        return this.body.toString();
+    onRawData(buff) {
+        this._body.push(buff);
     }
-    onPart(partStream, next, emit) {
+    getRawData(encoding) {
+        return this._body.toString(encoding);
+    }
+    onPart(partStream, next) {
         const reader = new MultipartDataReader();
         reader.on("file", (file) => {
-            // emit( "file", file );
             return this._files.push(file), void 0;
         });
         reader.on("field", (data) => {
-            if (!this._isFirst) {
-                this.onRawData("&");
+            if (this._body.length > 0) {
+                this.onRawData(this._buffNd);
             }
             return this.onRawData(data);
         });
@@ -284,10 +276,10 @@ class DataParser {
             return str;
         }
     }
-    clear() {
+    dispose() {
         dispose(this._readers);
         dispose(this._files);
-        this._body.length = 0;
+        this._body.dispose();
         delete this._body;
         if (this._errors)
             delete this._errors;
@@ -476,22 +468,24 @@ class BodyParser {
     skipPart(partStream) {
         partStream.resume();
     }
-    onPart(partStream, onReadEnd) {
-        this._part.push(1);
-        this._parser.onPart(partStream, (forceExit) => {
-            if (forceExit) {
-                this._part.length = 0;
-                this.skipPart(partStream);
-                if (this._multipartParser) {
-                    this._multipartParser.removeListener('part', this.onPart);
-                    this._multipartParser.on("part", this.skipPart);
+    onPart(onReadEnd) {
+        return (partStream) => {
+            this._part.push(1);
+            this._parser.onPart(partStream, (forceExit) => {
+                if (forceExit) {
+                    this._part.length = 0;
+                    this.skipPart(partStream);
+                    if (this._multipartParser) {
+                        this._multipartParser.removeListener('part', this.onPart);
+                        this._multipartParser.on("part", this.skipPart);
+                    }
                 }
-            }
-            else {
-                this._part.shift();
-            }
-            return this.tryFinish(onReadEnd);
-        });
+                else {
+                    this._part.shift();
+                }
+                return this.tryFinish(onReadEnd);
+            });
+        };
     }
     finalEvent(ev, onReadEnd) {
         return (err) => {
@@ -527,9 +521,7 @@ class BodyParser {
         const match = RE_BOUNDARY.exec(this._contentType);
         if (match) {
             this._multipartParser = new dicer_1.default({ boundary: match[1] || match[2] });
-            this._multipartParser.on("part", (stream) => {
-                this.onPart(stream, onReadEnd);
-            });
+            this._multipartParser.on("part", this.onPart(onReadEnd));
             this._multipartParser.on("finish", () => {
                 this._isReadEnd = true;
                 return this.tryFinish(onReadEnd);
@@ -547,7 +539,7 @@ class BodyParser {
             return;
         this._isDisposed = true;
         if (this._isReadEnd) {
-            this._parser.clear();
+            this._parser.dispose();
             delete this._parser;
         }
         if (this._multipartParser) {

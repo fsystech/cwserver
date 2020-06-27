@@ -1,4 +1,5 @@
-export interface ILogger {
+import { IDispose } from './sow-static';
+export interface ILogger extends IDispose {
     newLine(): any;
     write(msg: string, color?: string): ILogger;
     log(msg: string, color?: string): ILogger;
@@ -6,7 +7,6 @@ export interface ILogger {
     success(msg: string): ILogger;
     error(msg: string): ILogger;
     reset(): ILogger;
-    dispose(): any;
     writeToStream(str: string): void;
     flush(): boolean;
 }

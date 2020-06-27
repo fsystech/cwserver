@@ -28,6 +28,7 @@ exports.Logger = exports.ConsoleColor = exports.LogTime = void 0;
 // 11:26 PM 9/28/2019
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
+const sow_static_1 = require("./sow-static");
 const fsw = __importStar(require("./sow-fsw"));
 class LogTime {
     static dfo(t) {
@@ -93,10 +94,10 @@ ConsoleColor.BgCyan = '\x1b[46m';
 ConsoleColor.BgWhite = '\x1b[47m';
 class Logger {
     constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
-        this._buff = [];
         this._blockSize = 0;
         this._maxBlockSize = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
         this._fd = -1;
+        this._buff = new sow_static_1.BufferAarry();
         this._userInteractive = typeof (userInteractive) !== "boolean" ? true : userInteractive;
         this._isDebug = typeof (isDebug) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false;
@@ -132,17 +133,15 @@ class Logger {
         }
         if (this._buff.length === 0)
             return false;
-        _fs.appendFileSync(this._fd, Buffer.concat(this._buff));
-        this._buff.length = 0;
+        _fs.appendFileSync(this._fd, this._buff.data);
+        this._buff.clear();
         this._blockSize = 0;
         return true;
     }
     writeToStream(str) {
         if (this._canWrite === false)
             return void 0;
-        const buff = Buffer.from(str);
-        this._blockSize += buff.byteLength;
-        this._buff.push(buff);
+        this._blockSize += this._buff.push(str);
         if (this._blockSize < this._maxBlockSize) {
             return void 0;
         }
@@ -206,6 +205,7 @@ class Logger {
             this._fd = -1;
             this._canWrite = false;
         }
+        this._buff.dispose();
     }
 }
 exports.Logger = Logger;

@@ -33,6 +33,7 @@ const sow_encryption_1 = require("./sow-encryption");
 const sow_http_cache_1 = require("./sow-http-cache");
 const sow_util_1 = require("./sow-util");
 const fsw = __importStar(require("./sow-fsw"));
+const sow_static_1 = require("./sow-static");
 var ContentType;
 (function (ContentType) {
     ContentType[ContentType["JS"] = 0] = "JS";
@@ -46,7 +47,8 @@ const responseWriteGzip = (ctx, buff, cte) => {
     });
     const compressor = _zlib.createGzip({ level: _zlib.constants.Z_BEST_COMPRESSION });
     compressor.pipe(ctx.res);
-    compressor.end(buff);
+    compressor.end(buff.data);
+    buff.dispose();
     return compressor.on("end", () => {
         compressor.unpipe(ctx.res);
         ctx.next(200);
@@ -144,7 +146,7 @@ This 'Combiner' contains the following files:\n`;
         return forword();
     }
     static readBuffer(ctx, files, copyright, next) {
-        const out = [];
+        const out = new sow_static_1.BufferAarry();
         let istr = this.getInfo();
         files.forEach((inf, index) => {
             istr += `${index + 1}==>${inf.name}\r\n`;
@@ -156,7 +158,7 @@ This 'Combiner' contains the following files:\n`;
         const forward = () => {
             const inf = files.shift();
             if (!inf) {
-                return next(Buffer.concat(out));
+                return next(out);
             }
             out.push(Buffer.from(`\r\n/*${inf.name}*/\r\n`));
             if (inf.isOwn === true) {
@@ -220,7 +222,7 @@ This 'Combiner' contains the following files:\n`;
                             'Content-Type': this.getResContentType(cte),
                             'Content-Length': buffer.length
                         });
-                        return ctx.res.end(buffer), ctx.next(200);
+                        return ctx.res.end(buffer.data), buffer.dispose(), ctx.next(200);
                     }
                     return responseWriteGzip(ctx, buffer, cte);
                 });
@@ -291,7 +293,7 @@ This 'Combiner' contains the following files:\n`;
                         }
                         return this.readBuffer(ctx, files, server.copyright(), (buffer) => {
                             if (!server.config.bundler.compress) {
-                                return _fs.writeFile(cachpath, buffer, (werr) => {
+                                return _fs.writeFile(cachpath, buffer.data, (werr) => {
                                     return ctx.handleError(werr, () => {
                                         return _fs.stat(cachpath, (cserr, cstat) => {
                                             return ctx.handleError(cserr, () => {
@@ -304,14 +306,16 @@ This 'Combiner' contains the following files:\n`;
                                                     'Content-Type': this.getResContentType(cte),
                                                     'Content-Length': buffer.length
                                                 });
-                                                ctx.res.end(buffer);
+                                                ctx.res.end(buffer.data);
+                                                buffer.dispose();
                                                 return ctx.next(200);
                                             });
                                         });
                                     });
                                 });
                             }
-                            return _zlib.gzip(buffer, (error, buff) => {
+                            return _zlib.gzip(buffer.data, (error, buff) => {
+                                buffer.dispose();
                                 return ctx.handleError(error, () => {
                                     return _fs.writeFile(cachpath, buff, (err) => {
                                         return ctx.handleError(err, () => {

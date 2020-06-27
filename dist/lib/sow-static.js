@@ -1,6 +1,62 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToResponseTime = exports.ToNumber = exports.ResInfo = exports.Session = void 0;
+exports.ToResponseTime = exports.ToNumber = exports.ResInfo = exports.Session = exports.BufferAarry = void 0;
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 9:01 PM 5/2/2020
+const sow_util_1 = require("./sow-util");
+class BufferAarry {
+    constructor() {
+        this._data = [];
+        this._isDispose = false;
+        this._length = 0;
+    }
+    get _msg() {
+        return "This `BufferAarry` instance already disposed....";
+    }
+    get data() {
+        sow_util_1.assert(!this._isDispose, this._msg);
+        return Buffer.concat(this._data, this.length);
+    }
+    get length() {
+        sow_util_1.assert(!this._isDispose, this._msg);
+        return this._length;
+    }
+    push(buff) {
+        sow_util_1.assert(!this._isDispose, this._msg);
+        if (Buffer.isBuffer(buff)) {
+            this._length += buff.length;
+            this._data.push(buff);
+            return buff.length;
+        }
+        const nBuff = Buffer.from(buff);
+        this._length += nBuff.length;
+        this._data.push(nBuff);
+        return nBuff.length;
+    }
+    clear() {
+        sow_util_1.assert(!this._isDispose, this._msg);
+        this._data.length = 0;
+        this._length = 0;
+    }
+    toString(encoding) {
+        return this.data.toString(encoding);
+    }
+    dispose() {
+        if (!this._isDispose) {
+            this._isDispose = true;
+            this._data.length = 0;
+            this._length = 0;
+            delete this._data;
+            delete this._length;
+        }
+        return void 0;
+    }
+}
+exports.BufferAarry = BufferAarry;
 class Session {
     constructor() {
         this.isAuthenticated = false;
