@@ -6,7 +6,7 @@
 // 11:26 PM 9/28/2019
 import * as _fs from 'fs';
 import * as _path from 'path';
-import { IDispose, IBufferAarry, BufferAarry } from './sow-static';
+import { IDispose, IBufferArray, BufferArray } from './sow-static';
 import * as fsw from './sow-fsw';
 export interface ILogger extends IDispose {
     newLine(): any;
@@ -82,7 +82,7 @@ export class Logger implements ILogger {
     private _isDebug: boolean;
     private _canWrite: boolean;
     private _tz: string;
-    private _buff: IBufferAarry;
+    private _buff: IBufferArray;
     private _blockSize: number = 0;
     private _maxBlockSize: number = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
     private _fd: number = -1;
@@ -91,7 +91,7 @@ export class Logger implements ILogger {
         tz?: string, userInteractive?: boolean,
         isDebug?: boolean, maxBlockSize?: number
     ) {
-        this._buff = new BufferAarry();
+        this._buff = new BufferArray();
         this._userInteractive = typeof ( userInteractive ) !== "boolean" ? true : userInteractive;
         this._isDebug = typeof ( isDebug ) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false; this._tz = "+6";

@@ -14,7 +14,7 @@ import { ISowServer, IContext } from './sow-server';
 import { IController } from './sow-controller';
 import { Util } from './sow-util';
 import * as fsw from './sow-fsw';
-import { IBufferAarry, BufferAarry } from './sow-static';
+import { IBufferArray, BufferArray } from './sow-static';
 enum ContentType {
     JS = 0,
     CSS= 1,
@@ -22,7 +22,7 @@ enum ContentType {
 }
 type BundlerFileInfo = { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean };
 const responseWriteGzip = (
-    ctx: IContext, buff: IBufferAarry,
+    ctx: IContext, buff: IBufferArray,
     cte: ContentType
 ): void => {
     ctx.res.status( 200, {
@@ -133,9 +133,9 @@ This 'Combiner' contains the following files:\n`;
     static readBuffer(
         ctx: IContext,
         files: BundlerFileInfo[], copyright: string,
-        next: ( buffer: IBufferAarry ) => void
+        next: ( buffer: IBufferArray ) => void
     ): void {
-        const out: IBufferAarry = new BufferAarry();
+        const out: IBufferArray = new BufferArray();
         let istr: string = this.getInfo();
         files.forEach( ( inf, index ) => {
             istr += `${index + 1}==>${inf.name}\r\n`;
@@ -202,7 +202,7 @@ This 'Combiner' contains the following files:\n`;
                     ctx.res.status( 304, { 'Content-Type': this.getResContentType( cte ) } );
                     return ctx.res.end(), ctx.next( 304 );
                 }
-                return this.readBuffer( ctx, files, server.copyright(), ( buffer: IBufferAarry ): void => {
+                return this.readBuffer( ctx, files, server.copyright(), ( buffer: IBufferArray ): void => {
                     ctx.req.socket.setNoDelay( true );
                     if ( isGzip === false || !server.config.bundler.compress ) {
                         ctx.res.status( 200, {
@@ -276,7 +276,7 @@ This 'Combiner' contains the following files:\n`;
                             }
                             return Util.pipeOutputStream( cachpath, ctx );
                         }
-                        return this.readBuffer( ctx, files, server.copyright(), ( buffer: IBufferAarry ): void => {
+                        return this.readBuffer( ctx, files, server.copyright(), ( buffer: IBufferArray ): void => {
                             if ( !server.config.bundler.compress ) {
                                 return _fs.writeFile( cachpath, buffer.data, ( werr: NodeJS.ErrnoException | null ): void => {
                                     return ctx.handleError( werr, () => {

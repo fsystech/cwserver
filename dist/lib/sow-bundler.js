@@ -146,7 +146,7 @@ This 'Combiner' contains the following files:\n`;
         return forword();
     }
     static readBuffer(ctx, files, copyright, next) {
-        const out = new sow_static_1.BufferAarry();
+        const out = new sow_static_1.BufferArray();
         let istr = this.getInfo();
         files.forEach((inf, index) => {
             istr += `${index + 1}==>${inf.name}\r\n`;

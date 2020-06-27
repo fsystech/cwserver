@@ -21,19 +21,19 @@ export interface IResInfo {
 export interface IDispose {
     dispose(): void;
 }
-export interface IBufferAarry extends IDispose {
+export interface IBufferArray extends IDispose {
     readonly data: Buffer;
     readonly length: number;
     push( buff: Buffer | string ): number;
     clear(): void;
     toString( encoding?: BufferEncoding ): string;
 }
-export class BufferAarry implements IBufferAarry {
+export class BufferArray implements IBufferArray {
     private _data: Buffer[];
     private _length: number;
     private _isDispose: boolean;
     private get _msg(): string {
-        return "This `BufferAarry` instance already disposed....";
+        return "This `BufferArray` instance already disposed....";
     }
     public get data(): Buffer {
         assert( !this._isDispose, this._msg );

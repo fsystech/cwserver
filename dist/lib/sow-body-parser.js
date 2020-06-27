@@ -167,7 +167,7 @@ class MultipartDataReader extends events_1.EventEmitter {
     }
     read(partStream, tempDir) {
         let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false;
-        const body = new sow_static_1.BufferAarry();
+        const body = new sow_static_1.BufferArray();
         partStream.on("header", (header) => {
             for (const [key, value] of Object.entries(header)) {
                 if (sow_util_1.Util.isArrayLike(value)) {
@@ -228,7 +228,7 @@ class DataParser {
     constructor(tempDir) {
         this._errors = [];
         this._files = [];
-        this._body = new sow_static_1.BufferAarry();
+        this._body = new sow_static_1.BufferArray();
         this._buffNd = Buffer.from("&");
         this._readers = [];
         this._tempDir = tempDir;

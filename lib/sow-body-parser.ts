@@ -13,7 +13,7 @@ import { pipeline } from 'stream';
 import os from 'os';
 import destroy = require( 'destroy' );
 import { IRequest } from './sow-server-core';
-import { ToNumber, IDispose, IBufferAarry, BufferAarry } from './sow-static';
+import { ToNumber, IDispose, IBufferArray, BufferArray } from './sow-static';
 import { Util } from './sow-util';
 import * as fsw from './sow-fsw';
 import { ErrorHandler } from './sow-fsw';
@@ -222,7 +222,7 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
             fieldName: string = "", fileName: string = "",
             disposition: string = "", contentType: string = "",
             isFile: boolean = false;
-        const body: IBufferAarry = new BufferAarry();
+        const body: IBufferArray = new BufferArray();
         partStream.on( "header", ( header: object ): void => {
             for ( const [key, value] of Object.entries( header ) ) {
                 if ( Util.isArrayLike<string>( value ) ) {
@@ -289,7 +289,7 @@ interface IDataParser extends IDispose {
 }
 class DataParser implements IDataParser {
     private _files: IPostedFileInfo[];
-    private _body: IBufferAarry;
+    private _body: IBufferArray;
     private _errors: ( Error | NodeJS.ErrnoException )[];
     private _tempDir: string;
     private _readers: IMultipartDataReader[];
@@ -304,7 +304,7 @@ class DataParser implements IDataParser {
         tempDir: string
     ) {
         this._errors = []; this._files = [];
-        this._body = new BufferAarry(); this._buffNd = Buffer.from( "&" );
+        this._body = new BufferArray(); this._buffNd = Buffer.from( "&" );
         this._readers = []; this._tempDir = tempDir;
     }
     public onRawData( buff: Buffer | string ): void {

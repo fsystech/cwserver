@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToResponseTime = exports.ToNumber = exports.ResInfo = exports.Session = exports.BufferAarry = void 0;
+exports.ToResponseTime = exports.ToNumber = exports.ResInfo = exports.Session = exports.BufferArray = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -8,14 +8,14 @@ exports.ToResponseTime = exports.ToNumber = exports.ResInfo = exports.Session = 
 */
 // 9:01 PM 5/2/2020
 const sow_util_1 = require("./sow-util");
-class BufferAarry {
+class BufferArray {
     constructor() {
         this._data = [];
         this._isDispose = false;
         this._length = 0;
     }
     get _msg() {
-        return "This `BufferAarry` instance already disposed....";
+        return "This `BufferArray` instance already disposed....";
     }
     get data() {
         sow_util_1.assert(!this._isDispose, this._msg);
@@ -56,7 +56,7 @@ class BufferAarry {
         return void 0;
     }
 }
-exports.BufferAarry = BufferAarry;
+exports.BufferArray = BufferArray;
 class Session {
     constructor() {
         this.isAuthenticated = false;

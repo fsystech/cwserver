@@ -14,7 +14,7 @@ import * as io from 'socket.io-client';
 import * as fsw from '../lib/sow-fsw';
 import { HttpStatus } from "../lib/sow-http-status";
 import * as cwserver from '../index';
-import { Session, ToNumber, ToResponseTime, IBufferAarry, BufferAarry } from '../lib/sow-static';
+import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/sow-static';
 import {
     IAppUtility, IContext,
     readAppVersion
@@ -918,7 +918,6 @@ describe( "cwserver-bundler", () => {
                 ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
             } )
             .end( ( err, res ) => {
-                console.log(err);
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-type"] ).toBe( "application/x-javascript; charset=utf-8" );
@@ -1188,7 +1187,7 @@ describe( "cwserver-post", () => {
             .send( {
                 name: 'rajibs',
                 occupation: 'kutukutu',
-                data:"Hello world Not Working".repeat(10)
+                data: "Hello world Not Working".repeat( 10 )
             } )
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
@@ -1884,25 +1883,25 @@ describe( "cwserver-utility", () => {
         expect( plainText ).toEqual( appUtility.server.encryption.decryptFromHex( enc ) );
         enc = appUtility.server.encryption.encryptUri( plainText );
         expect( plainText ).toEqual( appUtility.server.encryption.decryptUri( enc ) );
-        (()=>{
-            const buff:IBufferAarry = new BufferAarry();
-            buff.push("Hello world");
-            buff.push(Buffer.from("Hello world"));
-            expect(buff.toString("utf-8")).toBeDefined();
-            expect(buff.data).toBeInstanceOf(Buffer);
-            expect(buff.length).toBeGreaterThan(0);
+        ( () => {
+            const buff: IBufferArray = new BufferArray();
+            buff.push( "Hello world" );
+            buff.push( Buffer.from( "Hello world" ) );
+            expect( buff.toString( "utf-8" ) ).toBeDefined();
+            expect( buff.data ).toBeInstanceOf( Buffer );
+            expect( buff.length ).toBeGreaterThan( 0 );
             buff.dispose();
-            expect(shouldBeError(()=>{
-                console.log(buff.length);
-            })).toBeInstanceOf(Error);
-            expect(shouldBeError(()=>{
-                buff.push("Should be error");
-            })).toBeInstanceOf(Error);
-            expect(shouldBeError(()=>{
-               console.log(buff.toString());
-            })).toBeInstanceOf(Error);
+            expect( shouldBeError( () => {
+                console.log( buff.length );
+            } ) ).toBeInstanceOf( Error );
+            expect( shouldBeError( () => {
+                buff.push( "Should be error" );
+            } ) ).toBeInstanceOf( Error );
+            expect( shouldBeError( () => {
+                console.log( buff.toString() );
+            } ) ).toBeInstanceOf( Error );
             buff.dispose();
-        })();
+        } )();
         ( () => {
             fsw.moveFile( `${logDir}/temp/nofile.lg`, "./", ( err: NodeJS.ErrnoException | null ) => {
                 expect( err ).toBeInstanceOf( Error );

@@ -97,7 +97,7 @@ class Logger {
         this._blockSize = 0;
         this._maxBlockSize = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
         this._fd = -1;
-        this._buff = new sow_static_1.BufferAarry();
+        this._buff = new sow_static_1.BufferArray();
         this._userInteractive = typeof (userInteractive) !== "boolean" ? true : userInteractive;
         this._isDebug = typeof (isDebug) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false;
