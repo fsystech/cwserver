@@ -70,7 +70,7 @@ function createCookie(name, val, options) {
         str += `;Path=/`;
     }
     if (options.expires && !options.maxAge)
-        str += `;Expires=${sow_static_1.ToResponseTime(options.expires.getTime())}`;
+        str += `;Expires=${sow_static_1.ToResponseTime(options.expires)}`;
     if (options.maxAge && !options.expires)
         str += `;Expires=${sow_static_1.ToResponseTime(Date.now() + options.maxAge)}`;
     if (options.secure)
@@ -315,7 +315,10 @@ class Response extends http_1.ServerResponse {
     render(ctx, path, status) {
         return sow_template_1.Template.parse(ctx, path, status);
     }
-    redirect(url) {
+    redirect(url, force) {
+        if (force) {
+            this.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');
+        }
         return this.status(this.statusCode, {
             'Location': url
         }).end();

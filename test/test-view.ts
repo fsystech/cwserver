@@ -520,8 +520,14 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			if ( ctx.session.loginId !== ctx.req.query.loginId ) return ctx.next( 401 );
 			ctx.res.json( ctx.session ); return ctx.next( 200 );
 		} )
+		.get( '/signout', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			if ( !ctx.session.isAuthenticated ) {
+				return ctx.next( 401, true );
+			}
+			ctx.signOut().redirect( "/", true ).next( 302, true );
+		} )
 		.any( '/redirect', ( ctx: IContext, requestParam?: IRequestParam ): void => {
-			return ctx.redirect( "/" ), ctx.next( 301, false );
+			return ctx.redirect( "/", true ), ctx.next( 302, false );
 		} )
 		.any( '/pass-error', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			server.addError( ctx, new Error( 'test pass-error' ) );
@@ -531,7 +537,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		.get( '/authenticate', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			if ( !ctx.req.query.loginId ) {
 				if ( !ctx.req.session.isAuthenticated ) return ctx.next( 401 );
-				return ctx.res.status( 301 ).redirect( "/" ), ctx.next( 301, false );
+				return ctx.res.status( 302 ).redirect( "/" ), ctx.next( 302, false );
 			}
 			const loginID = ctx.req.query.loginId.toString();
 			const result = {

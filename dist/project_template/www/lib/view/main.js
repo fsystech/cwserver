@@ -19,7 +19,7 @@ function _generateRandomNumber( num ) {
 	return result;
 }
 global.sow.server.on( "register-view", ( app, controller, server ) => {
-	const { getBodyParser, Encryption, Util, fsw } = require( 'cwserver' );
+	const { getBodyParser, Encryption, fsw } = require( 'cwserver' );
 	// const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
 	// const ws = socketInitilizer(server, require("../socket-client"));
 	//ws.create(require("socket.io"));

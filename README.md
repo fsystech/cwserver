@@ -114,6 +114,17 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
     } );
 } );
 ```
+### SignOut From Application ###
+```
+global.sow.server.on( "register-view", ( app, controller, server ) => {
+	controller.get( '/signout', ( ctx, requestParam ) => {
+		if ( ctx.session.isAuthenticated ) {
+			ctx.signOut();
+		}
+		ctx.redirect( "/" ).next( 302, true );
+	} );
+} );
+```
 ### Handle post data ###
 ```
 const { getBodyParser, fsw } = require( 'cwserver' );

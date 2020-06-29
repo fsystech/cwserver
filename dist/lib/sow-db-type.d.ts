@@ -1,3 +1,4 @@
+/// <reference types="node" />
 export interface FieldDef {
     name: string;
     tableID: number;
@@ -19,31 +20,21 @@ export interface QueryResultBase {
 export interface QueryResult<R extends QueryResultRow = any> extends QueryResultBase {
     rows: R[];
 }
+export declare type IoResult = {
+    ret_val: number;
+    ret_msg: string;
+    ret_data_table?: NodeJS.Dict<string>;
+};
+export declare type QResult<R> = {
+    isError: boolean;
+    err?: Error;
+    res?: QueryResult<R>;
+};
 export interface ISowDatabaseType {
     [id: string]: (...args: any[]) => any;
     getConn(): any;
-    executeIo(sp: string, ctx: string, formObj: string, next: (resp: {
-        ret_val: number;
-        ret_msg: string;
-        ret_data_table?: {
-            [key: string]: any;
-        };
-    }) => void): void;
-    executeIoAsync(sp: string, ctx: string, formObj: string): Promise<{
-        ret_val: number;
-        ret_msg: string;
-        ret_data_table?: {
-            [key: string]: any;
-        };
-    }>;
-    query<R extends QueryResultRow = any, I extends any[] = any[]>(queryText: string, values: any[], callback: (result: {
-        isError: boolean;
-        err?: Error;
-        res?: QueryResult<R>;
-    }) => void): void;
-    queryAsync<R extends QueryResultRow = any, I extends any[] = any[]>(queryText: string, values: any[]): Promise<{
-        isError: boolean;
-        err?: Error;
-        res?: QueryResult<R>;
-    }>;
+    executeIo(sp: string, ctx: string, formObj: string, next: (resp: IoResult) => void): void;
+    executeIoAsync(sp: string, ctx: string, formObj: string): Promise<IoResult>;
+    query<R extends QueryResultRow = any>(queryText: string, values: any[], callback: (result: QResult<R>) => void): void;
+    queryAsync<R extends QueryResultRow = any>(queryText: string, values: any[]): Promise<QResult<R>>;
 }

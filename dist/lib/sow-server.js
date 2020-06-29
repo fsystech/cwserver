@@ -183,10 +183,11 @@ class Context {
         }
         // Nothing to do, context destroyed or response header already been sent
     }
-    redirect(url) {
+    redirect(url, force) {
         if (!this.isDisposed) {
-            return this.res.status(301).redirect(url), void 0;
+            this.res.status(302).redirect(url, force);
         }
+        return this;
     }
     write(str) {
         if (!this.isDisposed) {
@@ -197,6 +198,12 @@ class Context {
         if (!this.isDisposed) {
             return this.server.transferRequest(this, path);
         }
+    }
+    signOut() {
+        this.res.cookie(this.server.config.session.cookie, "", {
+            expires: -1
+        });
+        return this;
     }
     setSession(loginId, roleId, userData) {
         return this.server.setSession(this, loginId, roleId, userData), this;
@@ -655,10 +662,13 @@ function initilizeServer(appRoot, wwwName) {
             if (transfer && typeof (transfer) !== "boolean") {
                 throw new Error("transfer argument should be ?boolean....");
             }
-            if (!code || code < 0 || code === 200 || code === 304 || (typeof (transfer) === "boolean" && transfer === false)) {
-                if (code)
-                    return void 0;
+            if (!code) {
                 return next();
+            }
+            if (code < 0
+                || (typeof (transfer) === "boolean" && transfer === false)
+                || !sow_http_status_1.HttpStatus.isErrorCode(code)) {
+                return void 0;
             }
             return _server.transferRequest(ctx, code);
         },

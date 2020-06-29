@@ -13,7 +13,8 @@ export declare type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunc
 export interface CookieOptions {
     maxAge?: number;
     signed?: boolean;
-    expires?: Date;
+    /** Date | timestamp*/
+    expires?: Date | number;
     httpOnly?: boolean;
     path?: string;
     domain?: string;
@@ -44,7 +45,7 @@ export interface IResponse extends ServerResponse {
     cookie(name: string, val: string, options: CookieOptions): IResponse;
     get(name: string): string | void;
     set(field: string, value: number | string | string[]): IResponse;
-    redirect(url: string): void;
+    redirect(url: string, force?: boolean): void;
     render(ctx: IContext, path: string, status?: IResInfo): void;
     type(extension: string): IResponse;
     send(chunk?: Buffer | string | number | boolean | {

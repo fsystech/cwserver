@@ -4,7 +4,6 @@
 * See the accompanying LICENSE file for terms.
 */
 // 9:01 PM 5/2/2020
-import { assert } from './sow-util';
 export interface ISession {
     isAuthenticated: boolean;
     loginId: string;
@@ -31,24 +30,25 @@ export interface IBufferArray extends IDispose {
 export class BufferArray implements IBufferArray {
     private _data: Buffer[];
     private _length: number;
-    private _isDispose: boolean;
-    private get _msg(): string {
-        return "This `BufferArray` instance already disposed....";
-    }
+    private _isDisposed: boolean;
     public get data(): Buffer {
-        assert( !this._isDispose, this._msg );
+        this.isDisposed();
         return Buffer.concat( this._data, this.length );
     }
     public get length(): number {
-        assert( !this._isDispose, this._msg );
+        this.isDisposed();
         return this._length;
     }
     constructor() {
-        this._data = []; this._isDispose = false;
+        this._data = []; this._isDisposed = false;
         this._length = 0;
     }
+    private isDisposed(): void {
+        if ( this._isDisposed )
+            throw new Error( "This `BufferArray` instance already disposed." );
+    }
     public push( buff: Buffer | string ): number {
-        assert( !this._isDispose, this._msg );
+        this.isDisposed();
         if ( Buffer.isBuffer( buff ) ) {
             this._length += buff.length;
             this._data.push( buff );
@@ -60,7 +60,7 @@ export class BufferArray implements IBufferArray {
         return nBuff.length;
     }
     public clear(): void {
-        assert( !this._isDispose, this._msg );
+        this.isDisposed();
         this._data.length = 0;
         this._length = 0;
     }
@@ -68,10 +68,9 @@ export class BufferArray implements IBufferArray {
         return this.data.toString( encoding );
     }
     public dispose(): void {
-        if ( !this._isDispose ) {
-            this._isDispose = true;
+        if ( !this._isDisposed ) {
+            this._isDisposed = true;
             this._data.length = 0;
-            this._length = 0;
             delete this._data;
             delete this._length;
         }
@@ -149,8 +148,17 @@ const dfm = ( t: number ): string => {
     t += 1;
     return _map.month[t];
 };
-export function ToResponseTime( timestamp?: number ): string {
+export function ToResponseTime( timestamp?: number | Date ): string {
     // Thu, 01 May 2020 23:34:07 GMT
-    const date = typeof ( timestamp ) === "number" && timestamp > 0 ? new Date( timestamp ) : new Date();
+    let date: Date;
+    if ( timestamp ) {
+        if ( typeof ( timestamp ) === "number" ) {
+            date = new Date( timestamp );
+        } else {
+            date = timestamp;
+        }
+    } else {
+        date = new Date();
+    }
     return `${dfo( date.getDay() )}, ${dfon( date.getDate() )} ${dfm( date.getMonth() )} ${date.getFullYear()} ${dfon( date.getHours() )}:${dfon( date.getMinutes() )}:${dfon( date.getSeconds() )} GMT`;
 }

@@ -190,7 +190,7 @@ class PostedFileInfo implements IPostedFileInfo {
                 _fs.unlinkSync( this._tempFile );
         }
         delete this._fileInfo;
-        if ( this._tempFile ) delete this._tempFile;
+        delete this._tempFile;
     }
     public clear(): void {
         this.dispose();
@@ -205,8 +205,9 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
         return this._forceExit;
     }
     private destroy() {
-        if ( this._writeStream && !this._writeStream.destroyed )
+        if ( this._writeStream && !this._writeStream.destroyed ) {
             destroy( this._writeStream );
+        }
     }
     private exit( reason: string ): void {
         this._forceExit = true;
@@ -240,7 +241,8 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
                                 continue;
                             }
                             fieldName = extractBetween( part, "name=\"", "\"" );
-                            body.push( Buffer.from( fieldName += "=" ) );
+                            fieldName += "=";
+                            body.push( fieldName );
                             continue;
                         }
                         if ( key === "content-type" ) {
@@ -258,6 +260,8 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
                     this.emit( "end" );
                 } ), void 0;
             }
+            // no more needed body
+            body.dispose();
             if ( contentType.length > 0 ) {
                 const tempFile: string = _path.resolve( `${tempDir}/${Util.guid()}.temp` );
                 this._writeStream = pipeline( partStream, _fs.createWriteStream( tempFile, { 'flags': 'a' } ), ( err: NodeJS.ErrnoException | null ) => {
@@ -275,6 +279,8 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
         this._isDisposed = true;
         this.removeAllListeners();
         this.destroy();
+        delete this._writeStream;
+        delete this._forceExit;
     }
 }
 interface IDataParser extends IDispose {

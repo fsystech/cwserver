@@ -43,12 +43,13 @@ export interface IContext {
     servedFrom?: string;
     server: ISowServer;
     next: CtxNext;
-    redirect( url: string ): void;
+    redirect( url: string, force?: boolean ): IContext;
     transferRequest( toPath: string | number ): void;
     write( str: string ): void;
     transferError( err: NodeJS.ErrnoException | Error ): void;
     handleError( err: NodeJS.ErrnoException | Error | null | undefined, next: () => void ): void;
     setSession( loginId: string, roleId: string, userData: any ): IContext;
+    signOut(): IContext;
     dispose(): string | void;
 }
 export interface IServerEncryption {
@@ -317,10 +318,11 @@ export class Context implements IContext {
         }
         // Nothing to do, context destroyed or response header already been sent
     }
-    redirect( url: string ): void {
+    redirect( url: string, force?: boolean ): IContext {
         if ( !this.isDisposed ) {
-            return this.res.status( 301 ).redirect( url ), void 0;
+            this.res.status( 302 ).redirect( url, force );
         }
+        return this;
     }
     write( str: string ): void {
         if ( !this.isDisposed ) {
@@ -331,6 +333,12 @@ export class Context implements IContext {
         if ( !this.isDisposed ) {
             return this.server.transferRequest( this, path );
         }
+    }
+    signOut(): IContext {
+        this.res.cookie( this.server.config.session.cookie, "", {
+            expires: -1
+        } );
+        return this;
     }
     setSession( loginId: string, roleId: string, userData: any ): IContext{
         return this.server.setSession(this, loginId, roleId, userData), this;
@@ -858,9 +866,14 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
             if ( transfer && typeof ( transfer ) !== "boolean" ) {
                 throw new Error( "transfer argument should be ?boolean...." );
             }
-            if ( !code || code < 0 || code === 200 || code === 304 || ( typeof ( transfer ) === "boolean" && transfer === false ) ) {
-                if ( code ) return void 0;
+            if ( !code ) {
                 return next();
+            }
+            if ( code < 0
+                || ( typeof ( transfer ) === "boolean" && transfer === false )
+                || !HttpStatus.isErrorCode( code )
+            ) {
+                return void 0;
             }
             return _server.transferRequest( ctx, code );
         },

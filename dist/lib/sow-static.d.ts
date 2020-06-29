@@ -25,11 +25,11 @@ export interface IBufferArray extends IDispose {
 export declare class BufferArray implements IBufferArray {
     private _data;
     private _length;
-    private _isDispose;
-    private get _msg();
+    private _isDisposed;
     get data(): Buffer;
     get length(): number;
     constructor();
+    private isDisposed;
     push(buff: Buffer | string): number;
     clear(): void;
     toString(encoding?: BufferEncoding): string;
@@ -51,4 +51,4 @@ export declare class ResInfo implements IResInfo {
     constructor();
 }
 export declare function ToNumber(obj: any): number;
-export declare function ToResponseTime(timestamp?: number): string;
+export declare function ToResponseTime(timestamp?: number | Date): string;

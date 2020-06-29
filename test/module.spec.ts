@@ -1691,6 +1691,17 @@ describe( "cwserver-error", () => {
     } );
 } );
 describe( "cwserver-controller-reset", () => {
+    it( 'signout request: connection should be redirect to home', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/signout` )
+            .end( ( err, res ) => {
+                expect( err ).not.toBeInstanceOf( Error );
+                expect( res.status ).toBe( 200 );
+                expect( res.redirects.length ).toEqual( 1 ); // should be redirect home page
+                expect( res.redirects.indexOf( `http://localhost:${appUtility.port}/` ) ).toBeGreaterThan( -1 );
+                done();
+            } );
+    } );
     it( 'config.defaultDoc', ( done: Mocha.Done ): void => {
         const defaultExt = appUtility.server.config.defaultExt;
         const defaultDoc = appUtility.server.config.defaultDoc;
@@ -2234,7 +2245,7 @@ describe( "cwserver-schema-validator", () => {
                             "maxAge": {
                                 "type": "string",
                                 "minLength": 2,
-                                "description": "maxAge = m = Month | d = Day | h = Hour | m = Minute."
+                                "description": "maxAge = m = Month | d = Day | h = Hour."
                             },
                             "key": {
                                 "type": "string",

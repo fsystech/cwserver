@@ -140,8 +140,7 @@ class PostedFileInfo {
                 _fs.unlinkSync(this._tempFile);
         }
         delete this._fileInfo;
-        if (this._tempFile)
-            delete this._tempFile;
+        delete this._tempFile;
     }
     clear() {
         this.dispose();
@@ -158,8 +157,9 @@ class MultipartDataReader extends events_1.EventEmitter {
         return this._forceExit;
     }
     destroy() {
-        if (this._writeStream && !this._writeStream.destroyed)
+        if (this._writeStream && !this._writeStream.destroyed) {
             destroy(this._writeStream);
+        }
     }
     exit(reason) {
         this._forceExit = true;
@@ -185,7 +185,8 @@ class MultipartDataReader extends events_1.EventEmitter {
                                 continue;
                             }
                             fieldName = extractBetween(part, "name=\"", "\"");
-                            body.push(Buffer.from(fieldName += "="));
+                            fieldName += "=";
+                            body.push(fieldName);
                             continue;
                         }
                         if (key === "content-type") {
@@ -203,6 +204,8 @@ class MultipartDataReader extends events_1.EventEmitter {
                     this.emit("end");
                 }), void 0;
             }
+            // no more needed body
+            body.dispose();
             if (contentType.length > 0) {
                 const tempFile = _path.resolve(`${tempDir}/${sow_util_1.Util.guid()}.temp`);
                 this._writeStream = stream_1.pipeline(partStream, _fs.createWriteStream(tempFile, { 'flags': 'a' }), (err) => {
@@ -222,6 +225,8 @@ class MultipartDataReader extends events_1.EventEmitter {
         this._isDisposed = true;
         this.removeAllListeners();
         this.destroy();
+        delete this._writeStream;
+        delete this._forceExit;
     }
 }
 class DataParser {

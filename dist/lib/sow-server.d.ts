@@ -24,12 +24,13 @@ export interface IContext {
     servedFrom?: string;
     server: ISowServer;
     next: CtxNext;
-    redirect(url: string): void;
+    redirect(url: string, force?: boolean): IContext;
     transferRequest(toPath: string | number): void;
     write(str: string): void;
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
     setSession(loginId: string, roleId: string, userData: any): IContext;
+    signOut(): IContext;
     dispose(): string | void;
 }
 export interface IServerEncryption {
@@ -173,9 +174,10 @@ export declare class Context implements IContext {
     constructor(_server: ISowServer, _req: IRequest, _res: IResponse, _session: ISession);
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
-    redirect(url: string): void;
+    redirect(url: string, force?: boolean): IContext;
     write(str: string): void;
     transferRequest(path: string | number): void;
+    signOut(): IContext;
     setSession(loginId: string, roleId: string, userData: any): IContext;
     dispose(): string | void;
 }

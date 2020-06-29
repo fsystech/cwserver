@@ -25,7 +25,8 @@ export type HandlerFunc = ( req: IRequest, res: IResponse, next: NextFunction, r
 export interface CookieOptions {
     maxAge?: number;
     signed?: boolean;
-    expires?: Date;
+    /** Date | timestamp*/
+    expires?: Date | number;
     httpOnly?: boolean;
     path?: string;
     domain?: string;
@@ -56,7 +57,7 @@ export interface IResponse extends ServerResponse {
     cookie( name: string, val: string, options: CookieOptions ): IResponse;
     get( name: string ): string | void;
     set( field: string, value: number | string | string[] ): IResponse;
-    redirect( url: string ): void;
+    redirect( url: string, force?: boolean ): void;
     render( ctx: IContext, path: string, status?: IResInfo ): void;
     type( extension: string ): IResponse;
     send( chunk?: Buffer | string | number | boolean | { [key: string]: any } ): void;
@@ -103,7 +104,7 @@ function createCookie( name: string, val: string, options: CookieOptions ): stri
         str += `;Path=/`;
     }
     if ( options.expires && !options.maxAge )
-        str += `;Expires=${ToResponseTime( options.expires.getTime() )}`;
+        str += `;Expires=${ToResponseTime( options.expires )}`;
     if ( options.maxAge && !options.expires )
         str += `;Expires=${ToResponseTime( Date.now() + options.maxAge )}`;
     if ( options.secure )
@@ -338,7 +339,10 @@ class Response extends ServerResponse implements IResponse {
     public render( ctx: IContext, path: string, status?: IResInfo ): void {
         return Template.parse( ctx, path, status );
     }
-    public redirect( url: string ): void {
+    public redirect( url: string, force?: boolean ): void {
+        if ( force ) {
+            this.setHeader( 'cache-control', 'no-store, no-cache, must-revalidate, immutable' );
+        }
         return this.status( this.statusCode, {
             'Location': url
         } ).end();
