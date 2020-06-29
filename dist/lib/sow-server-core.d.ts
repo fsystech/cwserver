@@ -13,7 +13,7 @@ export declare type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunc
 export interface CookieOptions {
     maxAge?: number;
     signed?: boolean;
-    /** Date | timestamp*/
+    /** Date | timestamp */
     expires?: Date | number;
     httpOnly?: boolean;
     path?: string;
