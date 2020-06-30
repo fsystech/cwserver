@@ -366,26 +366,21 @@ function canReadFileCache(ctx, filePath, cachePath, next) {
 class TemplateLink {
     static processResponse(status) {
         return (ctx, body, isCompressed) => {
-            ctx.res.set('Cache-Control', 'no-store');
+            ctx.res.noCache();
             if (isCompressed && isCompressed === true) {
                 return _zlib.gzip(Buffer.from(body), (error, buff) => {
                     return ctx.handleError(error, () => {
-                        ctx.res.status(status.code, {
-                            'Content-Type': 'text/html',
+                        return ctx.res.type("html").noCache().status(status.code, {
                             'Content-Encoding': 'gzip',
                             'Content-Length': buff.length
-                        });
-                        ctx.res.end(buff);
-                        ctx.next(status.code, status.isErrorCode === false);
+                        }).end(buff), ctx.next(status.code, status.isErrorCode === false);
                     });
                 });
             }
             return ctx.handleError(null, () => {
-                ctx.res.status(status.code, {
-                    'Content-Type': 'text/html',
+                return ctx.res.type("html").noCache().status(status.code, {
                     'Content-Length': Buffer.byteLength(body)
-                });
-                return ctx.res.end(body), ctx.next(status.code, status.isErrorCode === false);
+                }).end(body), ctx.next(status.code, status.isErrorCode === false);
             });
         };
     }
@@ -405,7 +400,7 @@ class TemplateLink {
                                     return ctx.transferError(e);
                                 }
                             }
-                            ctx.res.set('Cache-Control', 'no-store');
+                            ctx.res.noCache();
                             return ctx.res.asHTML(200).end(result.str), ctx.next(status.code, status.isErrorCode === false);
                         });
                     });
@@ -438,11 +433,7 @@ class TemplateLink {
             if (typeof (func) === "function") {
                 return func(ctx, this.processResponse(status));
             }
-            ctx.res.status(status.code, {
-                'Content-Type': 'text/html',
-                'Cache-Control': 'no-store'
-            });
-            return ctx.res.end(func), ctx.next(status.code, status.isErrorCode === false);
+            return ctx.res.type("html").noCache().status(status.code).end(func), ctx.next(status.code, status.isErrorCode === false);
         });
     }
     static _tryFileCacheOrLive(ctx, filePath, next) {
@@ -490,11 +481,7 @@ class TemplateLink {
                         return ctx.transferError(e);
                     }
                 }
-                ctx.res.status(status.code, {
-                    'Content-Type': 'text/html',
-                    'Cache-Control': 'no-store'
-                });
-                return ctx.res.end(func), ctx.next(status.code, status.isErrorCode === false);
+                return ctx.res.type("html").noCache().status(status.code).end(func), ctx.next(status.code, status.isErrorCode === false);
             });
         });
     }

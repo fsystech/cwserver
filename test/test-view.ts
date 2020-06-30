@@ -435,10 +435,18 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			throw new Error( "runtime-error" );
 		} )
 		.any( '/test-any/*', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			ctx.res.setHeader( 'cache-control', 'no-store, no-cache, must-revalidate, immutable' );
+			ctx.res.noCache();
+			ctx.res.setHeader( 'cache-control', 'max-age=300' );
+			ctx.res.noCache();
 			expect( server.passError( ctx ) ).toBeFalsy();
-			ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
+			ctx.res.status(200, {'cache-control':void 0});
+			ctx.res.status(200).json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
+			ctx.res.send= ()=>{
+				return void 0;
+			}
 			server.addError( ctx, new Error( "__INVALID___" ) );
-			expect( server.passError( ctx ) ).toBeFalsy();
+			expect( server.passError( ctx ) ).toBeTruthy();
 			disposeContext( ctx );
 			disposeContext( ctx );
 			removeContext( "12" );

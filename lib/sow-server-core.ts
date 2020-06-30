@@ -60,6 +60,7 @@ export interface IResponse extends ServerResponse {
     redirect( url: string, force?: boolean ): void;
     render( ctx: IContext, path: string, status?: IResInfo ): void;
     type( extension: string ): IResponse;
+    noCache(): IResponse;
     send( chunk?: Buffer | string | number | boolean | { [key: string]: any } ): void;
     dispose(): void;
 }
@@ -255,6 +256,17 @@ class Response extends ServerResponse implements IResponse {
     public set method( val: string ) {
         this._method = val;
     }
+    public noCache(): IResponse {
+        const header: string | void = this.get( 'cache-control' );
+        if ( header ) {
+            if ( header.indexOf( 'must-revalidate' ) > -1 ) {
+                return this;
+            }
+            this.removeHeader( 'cache-control' );
+        }
+        this.setHeader( 'cache-control', 'no-store, no-cache, must-revalidate, immutable' );
+        return this;
+    }
     public status( code: number, headers?: OutgoingHttpHeaders ): IResponse {
         this.statusCode = code;
         if ( headers ) {
@@ -341,7 +353,7 @@ class Response extends ServerResponse implements IResponse {
     }
     public redirect( url: string, force?: boolean ): void {
         if ( force ) {
-            this.setHeader( 'cache-control', 'no-store, no-cache, must-revalidate, immutable' );
+            this.noCache();
         }
         return this.status( this.statusCode, {
             'Location': url

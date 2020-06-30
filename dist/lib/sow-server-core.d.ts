@@ -48,6 +48,7 @@ export interface IResponse extends ServerResponse {
     redirect(url: string, force?: boolean): void;
     render(ctx: IContext, path: string, status?: IResInfo): void;
     type(extension: string): IResponse;
+    noCache(): IResponse;
     send(chunk?: Buffer | string | number | boolean | {
         [key: string]: any;
     }): void;

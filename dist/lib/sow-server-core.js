@@ -228,6 +228,17 @@ class Response extends http_1.ServerResponse {
     set method(val) {
         this._method = val;
     }
+    noCache() {
+        const header = this.get('cache-control');
+        if (header) {
+            if (header.indexOf('must-revalidate') > -1) {
+                return this;
+            }
+            this.removeHeader('cache-control');
+        }
+        this.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');
+        return this;
+    }
     status(code, headers) {
         this.statusCode = code;
         if (headers) {
@@ -317,7 +328,7 @@ class Response extends http_1.ServerResponse {
     }
     redirect(url, force) {
         if (force) {
-            this.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');
+            this.noCache();
         }
         return this.status(this.statusCode, {
             'Location': url

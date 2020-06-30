@@ -672,7 +672,7 @@ ${appRoot}\\www_public
                 loginId, roleId, userData
             } ), this.config.session.key ), {
             maxAge: this.config.session.maxAge,
-            httpOnly: true, sameSite: "strict",
+            httpOnly: true, sameSite: "none",
             secure: this.config.session.isSecure
         } ), true;
     }
@@ -712,6 +712,7 @@ ${appRoot}\\www_public
             let nextPath: string | void;
             let tryServer: boolean = false;
             if ( status.isErrorCode ) {
+                ctx.res.noCache();
                 if ( status.isInternalErrorCode && ctx.errorPage.indexOf( "\\dist\\error_page\\500" ) > -1 ) {
                     return this.passError( ctx ), void 0;
                 }
@@ -881,7 +882,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
             const _context = _server.createContext( req, res, next );
             const _next = _context.next;
             _context.next = ( code?: number | undefined, transfer?: boolean ): any => {
-                if ( code && code === -404 ) return next();
+                // if ( code && code === -404 ) return next();
                 return _process.render( code, _context, _next, transfer );
             }
             return _context;

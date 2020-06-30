@@ -84,6 +84,18 @@ function handleError(
     Util.throwIfError( err );
     return next();
 }
+function toBeApplicationJson( val?: string ): void {
+    if ( !val ) throw new Error( "content-type required application/json. Found empty." );
+    expect( val.indexOf( "application/json" ) ).toBeGreaterThanOrEqual( 0 );
+}
+function toBeApplicationJavaScript( val?: string ): void {
+    if ( !val ) throw new Error( "content-type required application/javascript. Found empty." );
+    expect( val.indexOf( "application/javascript" ) ).toBeGreaterThanOrEqual( 0 );
+}
+function toBeTextHtml( val?: string ): void {
+    if ( !val ) throw new Error( "content-type required text/html. Found empty." );
+    expect( val.indexOf( "text/html" ) ).toBeGreaterThanOrEqual( 0 );
+}
 describe( "cwserver-core", () => {
     it( "initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", ( done: Mocha.Done ): void => {
         const root: string = path.resolve( `${appRoot}/ewww` ); // path.resolve( appRoot, "/ewww" );
@@ -448,7 +460,7 @@ describe( "cwserver-get", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 done();
             } );
     } );
@@ -528,7 +540,7 @@ describe( "cwserver-template-engine", () => {
                 Util.extend( appUtility.server.config.template, old );
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 done();
             } );
     } );
@@ -560,7 +572,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 500 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 fs.unlinkSync( filePath );
                 done();
             } );
@@ -575,7 +587,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 expect( res.header["content-encoding"] ).toBe( "gzip" );
                 fs.unlinkSync( filePath );
                 done();
@@ -587,7 +599,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 404 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 done();
             } );
     } );
@@ -597,7 +609,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 404 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 done();
             } );
     } );
@@ -609,7 +621,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 appUtility.server.config.defaultExt = defaultExt;
                 done();
             } );
@@ -624,7 +636,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 done();
             } );
     } );
@@ -638,7 +650,7 @@ describe( "cwserver-template-engine", () => {
                 }
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                expect( res.header["content-type"] ).toBe( "text/html" );
+                toBeTextHtml(res.header["content-type"]);
                 done();
             } );
     } );
@@ -655,7 +667,7 @@ describe( "cwserver-template-engine", () => {
                         .end( ( err, res ) => {
                             expect( err ).not.toBeInstanceOf( Error );
                             expect( res.status ).toBe( 200 );
-                            expect( res.header["content-type"] ).toBe( "text/html" );
+                            toBeTextHtml(res.header["content-type"]);
                             done();
                         } );
                 } );
@@ -1128,14 +1140,6 @@ describe( "cwserver-bundler-error", () => {
             } );
     } );
 } );
-function toBeApplicationJson( val?: string ): void {
-    if ( !val ) throw new Error( "content-type required application/json. Found empty." );
-    expect( val.indexOf( "application/json" ) ).toBeGreaterThanOrEqual( 0 );
-}
-function toBeApplicationJavaScript( val?: string ): void {
-    if ( !val ) throw new Error( "content-type required application/json. Found empty." );
-    expect( val.indexOf( "application/javascript" ) ).toBeGreaterThanOrEqual( 0 );
-}
 describe( "cwserver-post", () => {
     it( 'send post request content type application/json', ( done: Mocha.Done ): void => {
         getAgent()
