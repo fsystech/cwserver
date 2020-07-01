@@ -234,7 +234,9 @@ class TemplateParser {
     static parse(ctx, appRoot, str, next) {
         return this.implimentTemplateExtend(ctx, appRoot, str, (istr) => {
             return this.implimentAttachment(ctx, appRoot, istr, (astr) => {
-                return next(astr.replace(/^\s*$(?:\r\n?|\n)/gm, "\n"));
+                return next(astr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match) => {
+                    return match.replace(/<script runat="template-engine">/gi, "{%").replace(/<\/script>/gi, "%}");
+                }).replace(/^\s*$(?:\r\n?|\n)/gm, "\n"));
             });
         });
     }
@@ -301,7 +303,8 @@ class TemplateCore {
     }
     static isScript(str) {
         if (/{%/gi.test(str) === true
-            || /{=/gi.test(str) === true) {
+            || /{=/gi.test(str) === true
+            || /<script runat="template-engine">/gi.test(str)) {
             return true;
         }
         return false;
@@ -343,25 +346,22 @@ class TemplateCore {
 }
 exports.TemplateCore = TemplateCore;
 function canReadFileCache(ctx, filePath, cachePath, next) {
-    if (ctx.server.config.template.cache) {
-        return fsw.isExists(cachePath, (exists) => {
-            if (!exists)
-                return next(false);
-            return fsw.compairFile(filePath, cachePath, (err, changed) => {
-                return ctx.handleError(err, () => {
-                    if (changed) {
-                        return _fs.unlink(cachePath, (uerr) => {
-                            return ctx.handleError(uerr, () => {
-                                return next(false);
-                            });
+    return fsw.isExists(cachePath, (exists) => {
+        if (!exists)
+            return next(false);
+        return fsw.compairFile(filePath, cachePath, (err, changed) => {
+            return ctx.handleError(err, () => {
+                if (changed) {
+                    return _fs.unlink(cachePath, (uerr) => {
+                        return ctx.handleError(uerr, () => {
+                            return next(false);
                         });
-                    }
-                    return next(true);
-                });
-            }, ctx.handleError.bind(ctx));
-        });
-    }
-    return next(false);
+                    });
+                }
+                return next(true);
+            });
+        }, ctx.handleError.bind(ctx));
+    });
 }
 class TemplateLink {
     static processResponse(status) {
@@ -373,14 +373,14 @@ class TemplateLink {
                         return ctx.res.type("html").noCache().status(status.code, {
                             'Content-Encoding': 'gzip',
                             'Content-Length': buff.length
-                        }).end(buff), ctx.next(status.code, status.isErrorCode === false);
+                        }).end(buff);
                     });
                 });
             }
             return ctx.handleError(null, () => {
                 return ctx.res.type("html").noCache().status(status.code, {
                     'Content-Length': Buffer.byteLength(body)
-                }).end(body), ctx.next(status.code, status.isErrorCode === false);
+                }).end(body);
             });
         };
     }
@@ -401,7 +401,7 @@ class TemplateLink {
                                 }
                             }
                             ctx.res.noCache();
-                            return ctx.res.asHTML(200).end(result.str), ctx.next(status.code, status.isErrorCode === false);
+                            return ctx.res.type("html").status(200).noCache().send(result.str);
                         });
                     });
                 });
@@ -433,7 +433,7 @@ class TemplateLink {
             if (typeof (func) === "function") {
                 return func(ctx, this.processResponse(status));
             }
-            return ctx.res.type("html").noCache().status(status.code).end(func), ctx.next(status.code, status.isErrorCode === false);
+            return ctx.res.type("html").noCache().status(status.code).end(func);
         });
     }
     static _tryFileCacheOrLive(ctx, filePath, next) {
@@ -481,7 +481,7 @@ class TemplateLink {
                         return ctx.transferError(e);
                     }
                 }
-                return ctx.res.type("html").noCache().status(status.code).end(func), ctx.next(status.code, status.isErrorCode === false);
+                return ctx.res.type("html").noCache().status(status.code).end(func);
             });
         });
     }

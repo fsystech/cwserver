@@ -747,7 +747,7 @@ describe( "cwserver-template-engine", () => {
             } );
         } );
         tasks.push( () => {
-            fs.writeFileSync( filePath, '<placeholder id="test">\r\n</placeholder>{% ERROR %} {= NOPX =}\r\n\r\n\r\n' );
+            fs.writeFileSync( filePath, '<placeholder id="test">\r\n</placeholder><script runat="template-engine">\r\nvar xy = 0;\r\n</script>{% ERROR %} {= NOPX =}\r\n\r\n\r\n' );
             TemplateCore.run( ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id="test">\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ) => {
                 return forward();
             } );

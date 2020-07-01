@@ -164,8 +164,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 		if ( parser.isUrlEncoded() || parser.isAppJson() ) {
 			await parser.parseSync();
-			ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
-			return ctx.res.end( JSON.stringify( parser.getJson() ) ), ctx.next( 200 );
+			return ctx.res.status( 200 ).json( parser.getJson() );
 		}
 		parser.saveAsSync( downloadDir );
 		parser.dispose();

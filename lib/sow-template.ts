@@ -269,7 +269,9 @@ class TemplateParser {
     ): void {
         return this.implimentTemplateExtend( ctx, appRoot, str, ( istr: string ): void => {
             return this.implimentAttachment( ctx, appRoot, istr, ( astr: string ) => {
-                return next( astr.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" ) );
+                return next( astr.replace( /<script runat="template-engine">([\s\S]+?)<\/script>/gi, ( match: string ): string => {
+                    return match.replace( /<script runat="template-engine">/gi, "{%" ).replace( /<\/script>/gi, "%}" );
+                } ).replace( /^\s*$(?:\r\n?|\n)/gm, "\n" ) );
             } );
         } );
     }
@@ -335,7 +337,8 @@ export class TemplateCore {
     }
     private static isScript( str: string ): boolean {
         if ( /{%/gi.test( str ) === true
-            || /{=/gi.test( str ) === true ) {
+            || /{=/gi.test( str ) === true
+            || /<script runat="template-engine">/gi.test( str ) ) {
             return true;
         }
         return false;
@@ -385,24 +388,21 @@ export class TemplateCore {
     }
 }
 function canReadFileCache( ctx: IContext, filePath: string, cachePath: string, next: ( readCache: boolean ) => void ): void {
-    if ( ctx.server.config.template.cache ) {
-        return fsw.isExists( cachePath, ( exists: boolean ): void => {
-            if ( !exists ) return next( false );
-            return fsw.compairFile( filePath, cachePath, ( err: NodeJS.ErrnoException | null, changed: boolean ) => {
-                return ctx.handleError( err, () => {
-                    if ( changed ) {
-                        return _fs.unlink( cachePath, ( uerr: NodeJS.ErrnoException | null ): void => {
-                            return ctx.handleError( uerr, () => {
-                                return next( false );
-                            } );
+    return fsw.isExists( cachePath, ( exists: boolean ): void => {
+        if ( !exists ) return next( false );
+        return fsw.compairFile( filePath, cachePath, ( err: NodeJS.ErrnoException | null, changed: boolean ) => {
+            return ctx.handleError( err, () => {
+                if ( changed ) {
+                    return _fs.unlink( cachePath, ( uerr: NodeJS.ErrnoException | null ): void => {
+                        return ctx.handleError( uerr, () => {
+                            return next( false );
                         } );
-                    }
-                    return next( true );
-                } );
-            }, ctx.handleError.bind( ctx ) );
-        } );
-    }
-    return next( false );
+                    } );
+                }
+                return next( true );
+            } );
+        }, ctx.handleError.bind( ctx ) );
+    } );
 }
 class TemplateLink {
     private static processResponse( status: IResInfo ): SendBoxNext {
@@ -414,14 +414,14 @@ class TemplateLink {
                         return ctx.res.type( "html" ).noCache().status( status.code, {
                             'Content-Encoding': 'gzip',
                             'Content-Length': buff.length
-                        } ).end( buff ), ctx.next( status.code, status.isErrorCode === false );
+                        } ).end( buff );
                     } );
                 } );
             }
             return ctx.handleError( null, () => {
                 return ctx.res.type( "html" ).noCache().status( status.code, {
                     'Content-Length': Buffer.byteLength( body )
-                } ).end( body ), ctx.next( status.code, status.isErrorCode === false );
+                } ).end( body );
             } );
         }
     }
@@ -440,7 +440,7 @@ class TemplateLink {
                                 }
                             }
                             ctx.res.noCache();
-                            return ctx.res.asHTML( 200 ).end( result.str ), ctx.next( status.code, status.isErrorCode === false );
+                            return ctx.res.type( "html" ).status( 200 ).noCache().send( result.str );
                         } );
                     } );
                 } );
@@ -475,7 +475,7 @@ class TemplateLink {
             if ( typeof ( func ) === "function" ) {
                 return func( ctx, this.processResponse( status ) );
             }
-            return ctx.res.type( "html" ).noCache().status( status.code ).end( func ), ctx.next( status.code, status.isErrorCode === false );
+            return ctx.res.type( "html" ).noCache().status( status.code ).end( func );
         } );
     }
     private static _tryFileCacheOrLive(
@@ -527,7 +527,7 @@ class TemplateLink {
                         return ctx.transferError( e );
                     }
                 }
-                return ctx.res.type( "html" ).noCache().status( status.code ).end( func ), ctx.next( status.code, status.isErrorCode === false );
+                return ctx.res.type( "html" ).noCache().status( status.code ).end( func );
             } );
         } );
     }
