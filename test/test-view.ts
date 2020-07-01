@@ -8,7 +8,7 @@ import {
 } from '../lib/sow-router';
 import {
 	IApplication, IRequest, IResponse, NextFunction,
-	parseCookie, parseUrl, getClientIpFromHeader
+	parseCookie, parseUrl, getClientIpFromHeader, escapePath
 } from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
 import {
@@ -40,7 +40,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		expect( parseUrl().pathname ).toBeNull();
 		expect( getClientIpFromHeader( req.headers ) ).toBeDefined();
 		req.headers['x-forwarded-for'] = "127.0.0.1,127.0.0.5";
-		expect( getClientIpFromHeader( req.headers ) ).toEqual('127.0.0.1');
+		expect( getClientIpFromHeader( req.headers ) ).toEqual( '127.0.0.1' );
 		throw new Error( "Application should be fire Error event" );
 	} ).prerequisites( ( req: IRequest, res: IResponse, next: NextFunction ): void => {
 		expect( req.session ).toBeInstanceOf( Object );
@@ -128,7 +128,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		}
 	} ).post( '/post', async ( ctx: IContext, requestParam?: IRequestParam ) => {
 		const task: string | void = typeof ( ctx.req.query.task ) === "string" ? ctx.req.query.task.toString() : void 0;
-		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
+		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 		if ( parser.isMultipart() ) {
 			return ctx.next( 404 );
 		}
@@ -161,7 +161,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			return ctx.next( 200 );
 		} );
 	} ).post( '/post-async/:id', async ( ctx: IContext, requestParam?: IRequestParam ) => {
-		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
+		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 		if ( parser.isUrlEncoded() || parser.isAppJson() ) {
 			await parser.parseSync();
 			ctx.res.writeHead( 200, { 'Content-Type': 'application/json' } );
@@ -186,7 +186,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			return ctx.res.status( 200 ).json( parser.getUploadFileInfo() );
 		} );
 	} ).post( '/upload-invalid-file', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
-		const parser:IBodyParser = getBodyParser( ctx.req );
+		const parser: IBodyParser = getBodyParser( ctx.req );
 		try {
 			await parser.readDataAsync();
 			ctx.res.status( 200 ).json( parser.getUploadFileInfo() );
@@ -195,7 +195,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			ctx.transferError( e );
 		}
 	} ).post( '/abort-error', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
-		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
+		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 		let err: Error | undefined;
 		try {
 			parser.setMaxBuffLength( 1024 * 1024 * 20 );
@@ -213,7 +213,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		throw new Error( "Should not here..." );
 	} ).post( '/upload-malformed-data', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		ctx.req.push( "This is normal line\n".repeat( 5 ) );
-		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
+		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 		let err: Error | undefined;
 		try {
 			await parser.parseSync();
@@ -228,7 +228,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		// throw new Error( "Should not here..." );
 	} ).post( '/upload-test', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		try {
-			const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
+			const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 			expect( shouldBeError( () => {
 				parser.getFiles( ( pf ) => {
 					console.log( pf );
@@ -252,7 +252,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	} ).post( '/upload-non-bolock', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 		if ( ctx.res.isAlive ) {
 			expect( ctx.req.get( "content-type" ) ).toBeDefined();
-			const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
+			const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 			return parser.parse( ( err ) => {
 				assert( err === undefined, "parser.parse" );
 				const data: UploadFileInfo[] = parser.getUploadFileInfo();
@@ -278,7 +278,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		}
 	} ).post( '/upload', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		const saveTo = typeof ( ctx.req.query.saveto ) === "string" ? ctx.req.query.saveto.toString() : void 0;
-		const parser:IBodyParser = getBodyParser( ctx.req, tempDir );
+		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 		expect( shouldBeError( () => {
 			parser.saveAsSync( downloadDir );
 		} ) ).toBeInstanceOf( Error );
@@ -291,7 +291,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				parser.getFilesSync( ( file: IPostedFileInfo ): void => {
 					expect( file.readSync() ).toBeInstanceOf( Buffer );
 					if ( saveTo ) {
-						if ( saveTo === "C" ){
+						if ( saveTo === "C" ) {
 							file.clear();
 						}
 						return;
@@ -322,14 +322,16 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	controller
 		.get( "/test-context", ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			try {
+				expect( escapePath() ).toBeDefined();
 				const mCtx: IContext = server.createContext( Object.create( {
-					id: "1010", dispose () {
+					id: "1010", dispose() {
 						// Nothing to do
-					 }
+					},
+					path: "/index.html"
 				} ), Object.create( {
-					id: "1010", dispose () {
+					id: "1010", dispose() {
 						// Nothing to do
-					 }
+					}
 				} ), () => {
 					// Nothing to do
 				} );
@@ -396,7 +398,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 					ctx.res.end = oldEnd;
 				} )();
 				( () => {
-					const parser:IBodyParser = getBodyParser( ctx.req, server.mapPath( "/upload/temp/" ) );
+					const parser: IBodyParser = getBodyParser( ctx.req, server.mapPath( "/upload/temp/" ) );
 					expect( shouldBeError( () => {
 						parser.getData();
 					} ) ).toBeInstanceOf( Error );
@@ -407,12 +409,12 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 						decodeBodyBuffer( Buffer.from( "data==10&p=10&c=10" ), ( k: string, b: string ): void => {
 							// Nothing to do
 						} )
-					} ) ).toBeInstanceOf(Error);
+					} ) ).toBeInstanceOf( Error );
 					expect( shouldBeError( () => {
 						decodeBodyBuffer( Buffer.from( "&data==10&p=10&c=10" ), ( k: string, b: string ): void => {
 							// Nothing to do
 						} )
-					} ) ).toBeInstanceOf(Error);
+					} ) ).toBeInstanceOf( Error );
 				} )();
 				( () => {
 					const parser = new PayloadParser( ctx.req, server.mapPath( "/upload/temp/" ) );
@@ -440,9 +442,9 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			ctx.res.setHeader( 'cache-control', 'max-age=300' );
 			ctx.res.noCache();
 			expect( server.passError( ctx ) ).toBeFalsy();
-			ctx.res.status(200, {'cache-control':void 0});
-			ctx.res.status(200).json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
-			ctx.res.send= ()=>{
+			ctx.res.status( 200, { 'cache-control': void 0 } );
+			ctx.res.status( 200 ).json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam } );
+			ctx.res.send = () => {
 				return void 0;
 			}
 			server.addError( ctx, new Error( "__INVALID___" ) );
@@ -489,6 +491,11 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				domain: "localhost", path: "/",
 				expires: new Date(), secure: true,
 				sameSite: 'none'
+			} );
+			ctx.res.cookie( "test-4", "test", {
+				domain: "localhost", path: "/",
+				expires: new Date(), secure: true,
+				sameSite: 'strict'
 			} );
 			expect( ctx.req.cookies ).toBeInstanceOf( Object );
 			expect( ctx.req.ip ).toBeDefined();

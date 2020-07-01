@@ -95,6 +95,17 @@ export function parseCookie(
     if ( cook instanceof Object ) return cook;
     return getCook( cook.split( ';' ) );
 }
+export function escapePath( unsafe?: string | null ): string {
+    if ( !unsafe ) return "";
+    return unsafe
+        .replace( /%/gi, "" )
+        .replace( /=/gi, "" )
+        .replace( /</gi, "" )
+        .replace( />/gi, "" )
+        .replace( /&/gi, "" )
+        .trim()
+        ;
+}
 function createCookie( name: string, val: string, options: CookieOptions ): string {
     let str = `${name}=${val}`;
     if ( options.domain )
@@ -185,7 +196,7 @@ class Request extends IncomingMessage implements IRequest {
     }
     public get path(): string {
         if ( this._path !== undefined ) return this._path;
-        this._path = this.q.pathname ? decodeURIComponent( this.q.pathname ) : '';
+        this._path = decodeURIComponent( escapePath( this.q.pathname ) );
         return this._path;
     }
     public set path( val: string ) {

@@ -71,6 +71,7 @@ export interface IApplication {
 export declare function parseCookie(cook: undefined | string[] | string | {
     [x: string]: any;
 }): NodeJS.Dict<string>;
+export declare function escapePath(unsafe?: string | null): string;
 export declare function getClientIpFromHeader(headers: IncomingHttpHeaders): string;
 export declare function parseUrl(url?: string): UrlWithParsedQuery;
 export declare function App(): IApplication;

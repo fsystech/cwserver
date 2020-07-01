@@ -440,7 +440,7 @@ ${appRoot}\\www_public
     }
     createContext(req, res, next) {
         const _context = exports.getContext(this, req, res);
-        _context.path = decodeURIComponent(req.path);
+        _context.path = req.path;
         _context.root = _context.path;
         _context.next = next;
         _context.extension = sow_util_1.Util.getExtension(_context.path) || "";
@@ -486,7 +486,7 @@ ${appRoot}\\www_public
             loginId, roleId, userData
         }), this.config.session.key), {
             maxAge: this.config.session.maxAge,
-            httpOnly: true, sameSite: "none",
+            httpOnly: true,
             secure: this.config.session.isSecure
         }), true;
     }

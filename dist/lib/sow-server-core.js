@@ -22,7 +22,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.App = exports.parseUrl = exports.getClientIpFromHeader = exports.parseCookie = void 0;
+exports.App = exports.parseUrl = exports.getClientIpFromHeader = exports.escapePath = exports.parseCookie = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -59,6 +59,18 @@ function parseCookie(cook) {
     return getCook(cook.split(';'));
 }
 exports.parseCookie = parseCookie;
+function escapePath(unsafe) {
+    if (!unsafe)
+        return "";
+    return unsafe
+        .replace(/%/gi, "")
+        .replace(/=/gi, "")
+        .replace(/</gi, "")
+        .replace(/>/gi, "")
+        .replace(/&/gi, "")
+        .trim();
+}
+exports.escapePath = escapePath;
 function createCookie(name, val, options) {
     let str = `${name}=${val}`;
     if (options.domain)
@@ -157,7 +169,7 @@ class Request extends http_1.IncomingMessage {
     get path() {
         if (this._path !== undefined)
             return this._path;
-        this._path = this.q.pathname ? decodeURIComponent(this.q.pathname) : '';
+        this._path = decodeURIComponent(escapePath(this.q.pathname));
         return this._path;
     }
     set path(val) {

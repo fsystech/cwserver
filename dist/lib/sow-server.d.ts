@@ -126,7 +126,7 @@ export interface ISowServer {
     mapPath(path: string): string;
     pathToUrl(path: string): string;
     addError(ctx: IContext, ex: Error | string): IContext;
-    escape(unsafe?: string): string;
+    escape(unsafe?: string | null): string;
     addVirtualDir(route: string, root: string, evt?: (ctx: IContext) => void): void;
     virtualInfo(route: string): {
         route: string;
@@ -277,7 +277,7 @@ export declare class SowServer implements ISowServer {
     mapPath(path: string): string;
     pathToUrl(path: string): string;
     addError(ctx: IContext, ex: string | Error): IContext;
-    escape(unsafe?: string): string;
+    escape(unsafe?: string | null): string;
     addVirtualDir(route: string, root: string, evt?: (ctx: IContext) => void): void;
     virtualInfo(_route: string): {
         route: string;

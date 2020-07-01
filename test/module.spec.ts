@@ -460,7 +460,7 @@ describe( "cwserver-get", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 done();
             } );
     } );
@@ -472,7 +472,7 @@ describe( "cwserver-get", () => {
                 expect( res.status ).toBe( 200 );
                 toBeApplicationJson( res.header["content-type"] );
                 const cook: string[] = res.get( "Set-Cookie" );
-                expect( cook.length ).toEqual( 3 );
+                expect( cook.length ).toBeGreaterThan( 3 );
                 done();
             } );
     } );
@@ -540,7 +540,7 @@ describe( "cwserver-template-engine", () => {
                 Util.extend( appUtility.server.config.template, old );
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 done();
             } );
     } );
@@ -572,7 +572,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 500 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 fs.unlinkSync( filePath );
                 done();
             } );
@@ -587,7 +587,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 expect( res.header["content-encoding"] ).toBe( "gzip" );
                 fs.unlinkSync( filePath );
                 done();
@@ -599,7 +599,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 404 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 done();
             } );
     } );
@@ -609,7 +609,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 404 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 done();
             } );
     } );
@@ -621,7 +621,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 appUtility.server.config.defaultExt = defaultExt;
                 done();
             } );
@@ -636,7 +636,7 @@ describe( "cwserver-template-engine", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 done();
             } );
     } );
@@ -650,7 +650,7 @@ describe( "cwserver-template-engine", () => {
                 }
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                toBeTextHtml(res.header["content-type"]);
+                toBeTextHtml( res.header["content-type"] );
                 done();
             } );
     } );
@@ -667,7 +667,7 @@ describe( "cwserver-template-engine", () => {
                         .end( ( err, res ) => {
                             expect( err ).not.toBeInstanceOf( Error );
                             expect( res.status ).toBe( 200 );
-                            toBeTextHtml(res.header["content-type"]);
+                            toBeTextHtml( res.header["content-type"] );
                             done();
                         } );
                 } );
@@ -694,7 +694,7 @@ describe( "cwserver-template-engine", () => {
             }
             return nextFunc();
         };
-        const ctx: IContext = appUtility.server.createContext( Object.create( { id: Util.guid() } ), Object.create( null ), ( err?: any ): void => {
+        const ctx: IContext = appUtility.server.createContext( Object.create( { id: Util.guid(), path: "/myfle.html" } ), Object.create( null ), ( err?: any ): void => {
             expect( err ).not.toBeInstanceOf( Error );
         } );
         ctx.handleError = ( err: NodeJS.ErrnoException | Error | null | undefined, next: () => void ): void => {

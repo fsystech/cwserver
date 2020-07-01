@@ -138,7 +138,7 @@ export interface ISowServer {
     mapPath( path: string ): string;
     pathToUrl( path: string ): string;
     addError( ctx: IContext, ex: Error | string ): IContext;
-    escape( unsafe?: string ): string;
+    escape( unsafe?: string | null): string;
     addVirtualDir(
         route: string, root: string,
         evt?: ( ctx: IContext ) => void
@@ -626,7 +626,7 @@ ${appRoot}\\www_public
     }
     createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext {
         const _context = getContext( this, req, res );
-        _context.path = decodeURIComponent( req.path ); _context.root = _context.path;
+        _context.path = req.path; _context.root = _context.path;
         _context.next = next;
         _context.extension = Util.getExtension( _context.path ) || "";
         return _context;
@@ -672,7 +672,7 @@ ${appRoot}\\www_public
                 loginId, roleId, userData
             } ), this.config.session.key ), {
             maxAge: this.config.session.maxAge,
-            httpOnly: true, sameSite: "none",
+            httpOnly: true,
             secure: this.config.session.isSecure
         } ), true;
     }
@@ -770,7 +770,7 @@ ${appRoot}\\www_public
             .replace( this.nodeModuleregx, "$engine/" );
         return ctx;
     }
-    escape( unsafe?: string ): string {
+    escape( unsafe?: string | null ): string {
         if ( !unsafe ) return "";
         return unsafe
             .replace( /&/gi, "&amp;" )
