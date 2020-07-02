@@ -14,11 +14,11 @@ import * as fsw from './sow-fsw';
 type SendBoxNext = ( ctx: IContext, body: string, isCompressed?: boolean ) => void;
 export type SendBox = ( ctx: IContext, next: SendBoxNext, isCompressed?: boolean ) => void;
 interface IScriptTag {
+    readonly lre: RegExp;
+    readonly rre: RegExp;
+    readonly repre: RegExp;
     l: string;
-    lre: RegExp;
     r: string;
-    rre: RegExp;
-    repre: RegExp;
 }
 interface IParserInfo {
     line: string;
@@ -66,23 +66,41 @@ class ParserInfo implements IParserInfo {
 }
 class ScriptTag implements IScriptTag {
     public l: string;
-    public lre: RegExp;
+    public get lre(): RegExp {
+        return /{%/gi;
+    }
     public r: string;
-    public rre: RegExp;
+    public get rre(): RegExp {
+        return /%}/gi;
+    }
     public repre: RegExp;
-    constructor(
-        l: string, lre: RegExp, r: string,
-        rre: RegExp, repre: RegExp ) {
-        this.l = l; this.lre = lre; this.r = r;
-        this.rre = rre; this.repre = repre;
+    constructor() {
+        this.l = '{%'; this.r = '%}';
+        this.repre = /NO_NEED/gi;
+    }
+}
+class WriteTag implements IScriptTag {
+    public l: string;
+    public get lre() {
+        return /{=/gi;
+    };
+    public r: string;
+    public get rre(): RegExp {
+        return /=}/gi;
+    }
+    public get repre(): RegExp {
+        return /{=(.+?)=}/gi;
+    }
+    constructor( ) {
+        this.l = '{='; this.r = '=}';
     }
 }
 class Tag implements ITag {
     public script: IScriptTag;
     public write: IScriptTag;
     constructor() {
-        this.script = new ScriptTag( '{%', /{%/g, '%}', /%}/g, /{=(.+?)=}/g );
-        this.write = new ScriptTag( '{=', /{=/g, '=}', /=}/g, /{=(.+?)=}/g );
+        this.script = new ScriptTag( );
+        this.write = new WriteTag(  );
     }
 }
 class ScriptParser implements IScriptParser {
@@ -100,18 +118,29 @@ class ScriptParser implements IScriptParser {
         parserInfo.isTagStart = true;
         switch ( parserInfo.tag ) {
             case this.tag.script.l: /*{%*/
-                ( this.tag.script.rre.test( parserInfo.line ) === true
-                    ? ( parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
-                        parserInfo.line = parserInfo.line.replace( this.tag.script.lre, "\x0f;" )
-                            .replace( this.tag.script.rre, " __RSP += \x0f" ) )
-                    : parserInfo.isTagEnd = false,
-                    parserInfo.line = parserInfo.line.replace( this.tag.script.lre, "\x0f;\r\n" ).replace( /'/g, '\x0f' ) );
+                if ( this.tag.script.rre.test( parserInfo.line ) === true ) {
+                    parserInfo.isTagEnd = true; parserInfo.isTagStart = false;
+                    const index: number = parserInfo.line.indexOf( "{" );
+                    let startPart: string | undefined;
+                    if ( index > 0 ) {
+                        startPart = parserInfo.line.substring( 0, index ) + "\x0f;";
+                    }
+                    parserInfo.line = parserInfo.line.substring( index + 2, parserInfo.line.length );
+                    parserInfo.line = parserInfo.line.substring( 0, parserInfo.line.indexOf( "%" ) );
+                    parserInfo.line += " __RSP += \x0f";
+                    if ( startPart ) {
+                        parserInfo.line = startPart + parserInfo.line;
+                    }
+                    break;
+                }
+                parserInfo.isTagEnd = false;
+                parserInfo.line = parserInfo.line.replace( this.tag.script.lre, "\x0f;\r\n" ).replace( /'/g, '\x0f' );
                 break;
             case this.tag.write.l: /*{=*/
                 ( this.tag.write.rre.test( parserInfo.line ) === true ?
                     ( parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
-                        parserInfo.line = parserInfo.line.replace( this.tag.write.repre, ( match ) => {
-                            return !match ? '' : match.replace( /'/gi, '\x0f' );
+                        parserInfo.line = parserInfo.line.replace( this.tag.write.repre, ( match: string ): string => {
+                            return match.replace( /'/gi, '\x0f' );
                         } ).replace( this.tag.write.lre, "\x0f; __RSP +=" )
                             .replace( this.tag.write.rre, "; __RSP += \x0f" ) )
                     : parserInfo.isTagEnd = false,

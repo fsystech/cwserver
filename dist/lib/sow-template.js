@@ -49,18 +49,38 @@ class ParserInfo {
     }
 }
 class ScriptTag {
-    constructor(l, lre, r, rre, repre) {
-        this.l = l;
-        this.lre = lre;
-        this.r = r;
-        this.rre = rre;
-        this.repre = repre;
+    constructor() {
+        this.l = '{%';
+        this.r = '%}';
+        this.repre = /NO_NEED/gi;
+    }
+    get lre() {
+        return /{%/gi;
+    }
+    get rre() {
+        return /%}/gi;
+    }
+}
+class WriteTag {
+    constructor() {
+        this.l = '{=';
+        this.r = '=}';
+    }
+    get lre() {
+        return /{=/gi;
+    }
+    ;
+    get rre() {
+        return /=}/gi;
+    }
+    get repre() {
+        return /{=(.+?)=}/gi;
     }
 }
 class Tag {
     constructor() {
-        this.script = new ScriptTag('{%', /{%/g, '%}', /%}/g, /{=(.+?)=}/g);
-        this.write = new ScriptTag('{=', /{=/g, '=}', /=}/g, /{=(.+?)=}/g);
+        this.script = new ScriptTag();
+        this.write = new WriteTag();
     }
 }
 class ScriptParser {
@@ -77,18 +97,30 @@ class ScriptParser {
         parserInfo.isTagStart = true;
         switch (parserInfo.tag) {
             case this.tag.script.l: /*{%*/
-                (this.tag.script.rre.test(parserInfo.line) === true
-                    ? (parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
-                        parserInfo.line = parserInfo.line.replace(this.tag.script.lre, "\x0f;")
-                            .replace(this.tag.script.rre, " __RSP += \x0f"))
-                    : parserInfo.isTagEnd = false,
-                    parserInfo.line = parserInfo.line.replace(this.tag.script.lre, "\x0f;\r\n").replace(/'/g, '\x0f'));
+                if (this.tag.script.rre.test(parserInfo.line) === true) {
+                    parserInfo.isTagEnd = true;
+                    parserInfo.isTagStart = false;
+                    const index = parserInfo.line.indexOf("{");
+                    let startPart;
+                    if (index > 0) {
+                        startPart = parserInfo.line.substring(0, index) + "\x0f;";
+                    }
+                    parserInfo.line = parserInfo.line.substring(index + 2, parserInfo.line.length);
+                    parserInfo.line = parserInfo.line.substring(0, parserInfo.line.indexOf("%"));
+                    parserInfo.line += " __RSP += \x0f";
+                    if (startPart) {
+                        parserInfo.line = startPart + parserInfo.line;
+                    }
+                    break;
+                }
+                parserInfo.isTagEnd = false;
+                parserInfo.line = parserInfo.line.replace(this.tag.script.lre, "\x0f;\r\n").replace(/'/g, '\x0f');
                 break;
             case this.tag.write.l: /*{=*/
                 (this.tag.write.rre.test(parserInfo.line) === true ?
                     (parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
                         parserInfo.line = parserInfo.line.replace(this.tag.write.repre, (match) => {
-                            return !match ? '' : match.replace(/'/gi, '\x0f');
+                            return match.replace(/'/gi, '\x0f');
                         }).replace(this.tag.write.lre, "\x0f; __RSP +=")
                             .replace(this.tag.write.rre, "; __RSP += \x0f"))
                     : parserInfo.isTagEnd = false,
