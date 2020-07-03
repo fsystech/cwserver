@@ -11,6 +11,7 @@ import { HttpStatus } from './sow-http-status';
 import { IResInfo } from './sow-static';
 import { IContext } from './sow-server';
 import * as fsw from './sow-fsw';
+import { generateRandomString } from './sow-util';
 type SendBoxNext = ( ctx: IContext, body: string, isCompressed?: boolean ) => void;
 export type SendBox = ( ctx: IContext, next: SendBoxNext, isCompressed?: boolean ) => void;
 interface IScriptTag {
@@ -91,7 +92,7 @@ class WriteTag implements IScriptTag {
     public get repre(): RegExp {
         return /{=(.+?)=}/gi;
     }
-    constructor( ) {
+    constructor() {
         this.l = '{='; this.r = '=}';
     }
 }
@@ -99,8 +100,8 @@ class Tag implements ITag {
     public script: IScriptTag;
     public write: IScriptTag;
     constructor() {
-        this.script = new ScriptTag( );
-        this.write = new WriteTag(  );
+        this.script = new ScriptTag();
+        this.write = new WriteTag();
     }
 }
 class ScriptParser implements IScriptParser {
@@ -110,7 +111,7 @@ class ScriptParser implements IScriptParser {
     }
     startTage( parserInfo: IParserInfo ): void {
         if ( parserInfo.line.indexOf( parserInfo.tag ) <= -1 ) {
-            if ( parserInfo.isLastTag && parserInfo.isTagEnd  ) {
+            if ( parserInfo.isLastTag && parserInfo.isTagEnd ) {
                 parserInfo.line = parserInfo.line + "\x0f; __RSP += \x0f";
             }
             return;
@@ -313,16 +314,16 @@ export class TemplateCore {
             if ( !str ) {
                 throw new Error( "No script found to compile...." );
             }
-            const context: { [x: string]: SendBox; } = {
-                thisNext: templateNext
-            };
-            const script = new _vm.Script( `thisNext = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};` );
-            _vm.createContext( context );
-            script.runInContext( context );
+            const sendbox: string = `${generateRandomString( 30 )}_thisNext`;
+            global.sow.templateCtx[sendbox] = templateNext;
+            const script: _vm.Script = new _vm.Script( `sow.templateCtx.${sendbox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};` );
+            script.runInContext( _vm.createContext( global ) );
+            const func: SendBox | undefined = global.sow.templateCtx[sendbox];
+            delete global.sow.templateCtx[sendbox];
             return next( {
                 str,
                 isScript: true,
-                sendBox: context.thisNext
+                sendBox: func
             } );
         } catch ( e ) {
             return next( { str: "", err: e } );
@@ -341,7 +342,7 @@ export class TemplateCore {
                 out += "\r\n__RSP += '';"; continue;
             }
             // parserInfo.line = parserInfo.line.replace( /^\s*|\s*$/g, ' ' );
-            parserInfo.line = parserInfo.line.replace(/(?:\r\n|\r|\n)/g, '');
+            parserInfo.line = parserInfo.line.replace( /(?:\r\n|\r|\n)/g, '' );
             if ( parserInfo.isTagEnd === true ) {
                 parserInfo.line = "__RSP += \x0f" + parserInfo.line;
             }
@@ -436,7 +437,6 @@ function canReadFileCache( ctx: IContext, filePath: string, cachePath: string, n
 class TemplateLink {
     private static processResponse( status: IResInfo ): SendBoxNext {
         return ( ctx: IContext, body: string, isCompressed?: boolean ): void => {
-            ctx.res.noCache();
             if ( isCompressed && isCompressed === true ) {
                 return _zlib.gzip( Buffer.from( body ), ( error: Error | null, buff: Buffer ) => {
                     return ctx.handleError( error, () => {
@@ -463,12 +463,13 @@ class TemplateLink {
                         return ctx.handleError( result.err, () => {
                             if ( result.sendBox ) {
                                 try {
-                                    return result.sendBox( ctx, this.processResponse( status ), false );
+                                    result.sendBox( ctx, this.processResponse( status ), false );
+                                    delete result.sendBox;
+                                    return void 0;
                                 } catch ( e ) {
                                     return ctx.transferError( e );
                                 }
                             }
-                            ctx.res.noCache();
                             return ctx.res.type( "html" ).status( 200 ).noCache().send( result.str );
                         } );
                     } );

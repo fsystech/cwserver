@@ -2,12 +2,10 @@
 import { ISession, IResInfo } from "./sow-static";
 import { IRequestParam } from './sow-router';
 import { NextFunction, IApplication, IRequest, IResponse } from './sow-server-core';
-import { Server } from 'http';
 import { ISowDatabaseType } from './sow-db-type';
 import { IController } from './sow-controller';
 import { ICryptoInfo } from "./sow-encryption";
 import { ILogger } from "./sow-logger";
-import { IMimeType } from './sow-http-mime-types';
 export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 export declare type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 export interface IContext {
@@ -134,7 +132,6 @@ export interface ISowServer {
     } | void;
     formatPath(name: string, noCheck?: boolean): string;
     createBundle(str: string): string;
-    getHttpServer(): Server;
     getRoot(): string;
     getPublic(): string;
     getPublicDirName(): string;
@@ -256,7 +253,6 @@ export declare class SowServer implements ISowServer {
     };
     constructor(appRoot: string, wwwName?: string);
     on(ev: "shutdown", handler: () => void): void;
-    getHttpServer(): Server;
     getRoot(): string;
     parseMaxAge(maxAge: any): number;
     getPublic(): string;
@@ -286,23 +282,6 @@ export declare class SowServer implements ISowServer {
     formatPath(name: string, noCheck?: boolean): string;
     createBundle(str: string): string;
 }
-declare type IViewRegister = (app: IApplication, controller: IController, server: ISowServer) => void;
-interface ISowGlobalServer {
-    on(ev: "register-view", next: IViewRegister): void;
-    emit(ev: "register-view", app: IApplication, controller: IController, server: ISowServer): void;
-}
-interface ISowGlobal {
-    isInitilized: boolean;
-    readonly HttpMime: IMimeType<string>;
-    readonly server: ISowGlobalServer;
-}
-declare global {
-    namespace NodeJS {
-        interface Global {
-            sow: ISowGlobal;
-        }
-    }
-}
 export interface IAppUtility {
     readonly init: () => IApplication;
     readonly public: string;
@@ -313,4 +292,3 @@ export interface IAppUtility {
     readonly controller: IController;
 }
 export declare function initilizeServer(appRoot: string, wwwName?: string): IAppUtility;
-export {};

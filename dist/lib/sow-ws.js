@@ -99,11 +99,11 @@ class SowSocket {
             return false;
         return soc.sendMsg(method, data), true;
     }
-    create(ioserver) {
+    create(ioserver, httpServer) {
         if (this.implimented)
             return false;
         this.implimented = true;
-        const io = ioserver(this._server.getHttpServer(), {
+        const io = ioserver(httpServer, {
             path: this._server.config.socketPath,
             pingTimeout: (1000 * 5),
             cookie: true
@@ -171,8 +171,8 @@ function socketInitilizer(server, wsClientInfo) {
         get wsEvent() {
             return _wsEvent ? _wsEvent : (_wsEvent = wsClientInfo.getServerEvent(), _wsEvent);
         },
-        create(ioserver) {
-            return _ws.create(ioserver);
+        create(ioserver, httpServer) {
+            return _ws.create(ioserver, httpServer);
         }
     };
 }

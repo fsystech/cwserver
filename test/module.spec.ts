@@ -1209,8 +1209,7 @@ describe( "cwserver-post", () => {
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
-                toBeApplicationJson( res.header["content-type"] );
-                expect( res.body.name ).toBe( 'rajibs' );
+                toBeTextHtml( res.header["content-type"] );
                 done();
             } );
     } );

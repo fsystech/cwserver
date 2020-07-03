@@ -8,6 +8,7 @@ import { ISowServer } from './sow-server';
 import { ISession } from './sow-static';
 import { Util } from './sow-util';
 import { EventEmitter } from 'events';
+import { Server } from 'http';
 /** [socket.io blueprint] */
 interface Socket extends EventEmitter {
     nsp: object;
@@ -183,10 +184,10 @@ class SowSocket implements ISowSocket {
         if ( !soc ) return false;
         return soc.sendMsg( method, data ), true;
     }
-    create( ioserver: ioServer ): boolean {
+    create( ioserver: ioServer, httpServer: Server ): boolean {
         if ( this.implimented ) return false;
         this.implimented = true;
-        const io = ioserver( this._server.getHttpServer(), {
+        const io = ioserver( httpServer, {
             path: this._server.config.socketPath,
             pingTimeout: ( 1000 * 5 ),
             cookie: true
@@ -240,7 +241,7 @@ class SowSocket implements ISowSocket {
 export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
     isConnectd: boolean;
     wsEvent: { [x: string]: any; } | void;
-    create: ( ioserver: ioServer ) => boolean;
+    create: ( ioserver: ioServer, httpServer: Server ) => boolean;
 } {
     if ( typeof ( wsClientInfo.client ) !== "function" ) {
         throw new Error( "`getClient` event did not registered..." );
@@ -257,8 +258,8 @@ export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInf
         get wsEvent(): { [x: string]: any; } | void {
             return _wsEvent ? _wsEvent : ( _wsEvent = wsClientInfo.getServerEvent(), _wsEvent );
         },
-        create( ioserver: ioServer ): boolean {
-            return _ws.create( ioserver );
+        create( ioserver: ioServer, httpServer: Server ): boolean {
+            return _ws.create( ioserver, httpServer );
         }
     };
 }

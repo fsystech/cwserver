@@ -31,6 +31,7 @@ const _zlib = __importStar(require("zlib"));
 const _path = __importStar(require("path"));
 const sow_http_status_1 = require("./sow-http-status");
 const fsw = __importStar(require("./sow-fsw"));
+const sow_util_1 = require("./sow-util");
 function templateNext(ctx, next, isCompressed) {
     throw new Error("Method not implemented.");
 }
@@ -279,16 +280,16 @@ class TemplateCore {
             if (!str) {
                 throw new Error("No script found to compile....");
             }
-            const context = {
-                thisNext: templateNext
-            };
-            const script = new _vm.Script(`thisNext = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};`);
-            _vm.createContext(context);
-            script.runInContext(context);
+            const sendbox = `${sow_util_1.generateRandomString(30)}_thisNext`;
+            global.sow.templateCtx[sendbox] = templateNext;
+            const script = new _vm.Script(`sow.templateCtx.${sendbox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};`);
+            script.runInContext(_vm.createContext(global));
+            const func = global.sow.templateCtx[sendbox];
+            delete global.sow.templateCtx[sendbox];
             return next({
                 str,
                 isScript: true,
-                sendBox: context.thisNext
+                sendBox: func
             });
         }
         catch (e) {
@@ -398,7 +399,6 @@ function canReadFileCache(ctx, filePath, cachePath, next) {
 class TemplateLink {
     static processResponse(status) {
         return (ctx, body, isCompressed) => {
-            ctx.res.noCache();
             if (isCompressed && isCompressed === true) {
                 return _zlib.gzip(Buffer.from(body), (error, buff) => {
                     return ctx.handleError(error, () => {
@@ -426,13 +426,14 @@ class TemplateLink {
                         return ctx.handleError(result.err, () => {
                             if (result.sendBox) {
                                 try {
-                                    return result.sendBox(ctx, this.processResponse(status), false);
+                                    result.sendBox(ctx, this.processResponse(status), false);
+                                    delete result.sendBox;
+                                    return void 0;
                                 }
                                 catch (e) {
                                     return ctx.transferError(e);
                                 }
                             }
-                            ctx.res.noCache();
                             return ctx.res.type("html").status(200).noCache().send(result.str);
                         });
                     });

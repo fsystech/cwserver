@@ -50,8 +50,8 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	expect( shouldBeError( () => { socketInitilizer( server, SocketErr2() ) } ) ).toBeInstanceOf( Error );
 	const ws = socketInitilizer( server, SocketClient() );
 	const io = require( "socket.io" );
-	ws.create( io );
-	expect( ws.create( io ) ).toEqual( false );
+	ws.create( io, app.server );
+	expect( ws.create( io, app.server ) ).toEqual( false );
 	expect( ws.isConnectd ).toEqual( true );
 	controller.get( '/ws-server-event', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 		const event = ws.wsEvent;
@@ -164,7 +164,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 		if ( parser.isUrlEncoded() || parser.isAppJson() ) {
 			await parser.parseSync();
-			return ctx.res.status( 200 ).json( parser.getJson() );
+			return ctx.res.asHTML( 200 ).end( JSON.stringify( parser.getJson() ) );
 		}
 		parser.saveAsSync( downloadDir );
 		parser.dispose();

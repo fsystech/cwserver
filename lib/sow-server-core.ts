@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 2:40 PM 5/7/2020
+import './sow-global';
 import {
     createServer, OutgoingHttpHeaders, IncomingHttpHeaders,
     Server, IncomingMessage, ServerResponse

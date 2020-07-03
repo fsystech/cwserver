@@ -13,7 +13,6 @@ import {
     IRequest, IResponse,
     App as sowAppCore, parseCookie as cookieParser
 } from './sow-server-core';
-import { Server } from 'http';
 import * as _fs from 'fs';
 import * as _path from 'path';
 import * as fsw from './sow-fsw';
@@ -25,10 +24,9 @@ import { Controller, IController } from './sow-controller';
 import { Encryption, ICryptoInfo } from "./sow-encryption";
 import { HttpStatus } from "./sow-http-status";
 import { Logger, ILogger } from "./sow-logger";
-import { loadMimeType, IMimeType } from './sow-http-mime-types';
 export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => void;
 export type AppHandler = ( ctx: IContext, requestParam?: IRequestParam ) => void;
-// -------------------------------------------------------
+// ----------------------------------------------------------
 export interface IContext {
     isDisposed: boolean;
     error?: string;
@@ -149,7 +147,6 @@ export interface ISowServer {
     } | void;
     formatPath( name: string, noCheck?: boolean ): string;
     createBundle( str: string ): string;
-    getHttpServer(): Server;
     getRoot(): string;
     getPublic(): string;
     getPublicDirName(): string;
@@ -529,9 +526,6 @@ ${appRoot}\\www_public
     on( ev: "shutdown", handler: () => void ): void {
         throw new Error( "Method not implemented." );
     }
-    getHttpServer(): Server {
-        throw new Error( "Method not implemented." );
-    }
     getRoot(): string {
         return this.root;
     }
@@ -793,60 +787,6 @@ ${appRoot}\\www_public
         return Encryption.encryptUri( str, this.config.encryptionKey );
     }
 }
-type IViewRegister = ( app: IApplication, controller: IController, server: ISowServer ) => void;
-interface ISowGlobalServer {
-    on( ev: "register-view", next: IViewRegister ): void;
-    emit( ev: "register-view", app: IApplication, controller: IController, server: ISowServer ): void;
-}
-class SowGlobalServer implements ISowGlobalServer {
-    private _evt: IViewRegister[];
-    private _isInitilized: boolean;
-    constructor() {
-        this._evt = [];
-        this._isInitilized = false;
-    }
-    public emit( ev: "register-view", app: IApplication, controller: IController, server: ISowServer ): void {
-        this._evt.forEach( handler => {
-            return handler( app, controller, server );
-        } );
-        this._evt.length = 0;
-        this._isInitilized = true;
-    }
-    public on( ev: "register-view", next: ( app: IApplication, controller: IController, server: ISowServer ) => void ): void {
-        if ( this._isInitilized ) {
-            throw new Error( "After initilize view, you should not register new veiw." );
-        }
-        this._evt.push( next );
-    }
-}
-interface ISowGlobal {
-    isInitilized: boolean;
-    readonly HttpMime: IMimeType<string>;
-    readonly server: ISowGlobalServer;
-}
-class SowGlobal implements ISowGlobal {
-    public isInitilized: boolean;
-    _server: ISowGlobalServer;
-    _HttpMime: IMimeType<string>;
-    public get server() {
-        return this._server;
-    }
-    public get HttpMime() {
-        return this._HttpMime;
-    }
-    constructor() {
-        this._server = new SowGlobalServer();
-        this.isInitilized = false;
-        this._HttpMime = loadMimeType<string>();
-    }
-}
-declare global {
-    namespace NodeJS {
-        interface Global {
-            sow: ISowGlobal;
-        }
-    }
-}
 export interface IAppUtility {
     readonly init: () => IApplication;
     readonly public: string;
@@ -855,9 +795,6 @@ export interface IAppUtility {
     readonly log: ILogger;
     readonly server: ISowServer;
     readonly controller: IController;
-}
-if ( !global.sow ) {
-    global.sow = new SowGlobal();
 }
 export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtility {
     if ( global.sow.isInitilized ) throw new Error( "Server instance can initilize 1 time..." );
@@ -891,9 +828,6 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
     const _controller: IController = new Controller();
     function initilize(): IApplication {
         const _app: IApplication = sowAppCore();
-        _server.getHttpServer = (): Server => {
-            return _app.server;
-        };
         _server.on = ( ev: "shutdown", handler: () => void ): void => {
             _app.on( ev, handler );
         };

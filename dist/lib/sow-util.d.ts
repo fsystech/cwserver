@@ -1,6 +1,7 @@
 import { IContext } from './sow-server';
 export declare function assert(condition: any, expr: string): void;
 export declare function getLibRoot(): string;
+export declare function generateRandomString(num: number): string;
 export declare class Util {
     static guid(): string;
     static extend(destination: any, source: any, deep?: boolean): {

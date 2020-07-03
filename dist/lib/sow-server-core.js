@@ -29,6 +29,7 @@ exports.App = exports.parseUrl = exports.getClientIpFromHeader = exports.escapeP
 * See the accompanying LICENSE file for terms.
 */
 // 2:40 PM 5/7/2020
+require("./sow-global");
 const http_1 = require("http");
 const events_1 = require("events");
 const sow_router_1 = require("./sow-router");

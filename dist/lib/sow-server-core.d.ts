@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import './sow-global';
 import { OutgoingHttpHeaders, IncomingHttpHeaders, Server, IncomingMessage, ServerResponse } from 'http';
 import { IRequestParam } from './sow-router';
 import { ISession, IResInfo } from './sow-static';

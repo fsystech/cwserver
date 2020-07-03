@@ -2,6 +2,7 @@
 import { ISowServer } from './sow-server';
 import { ISession } from './sow-static';
 import { EventEmitter } from 'events';
+import { Server } from 'http';
 /** [socket.io blueprint] */
 interface Socket extends EventEmitter {
     nsp: object;
@@ -99,6 +100,6 @@ export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsCl
     wsEvent: {
         [x: string]: any;
     } | void;
-    create: (ioserver: ioServer) => boolean;
+    create: (ioserver: ioServer, httpServer: Server) => boolean;
 };
 export {};

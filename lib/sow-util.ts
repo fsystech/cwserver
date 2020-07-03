@@ -56,6 +56,15 @@ export function assert( condition: any, expr: string ) {
 export function getLibRoot(): string {
     return _path.resolve( __dirname, process.env.SCRIPT === "TS" ? '..' : '../..' );
 }
+export function generateRandomString( num: number ): string {
+    const
+        charset: string = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    let result: string = "";
+    for ( let i = 0, n = charset.length; i < num; ++i ) {
+        result += charset.charAt( Math.floor( Math.random() * n ) );
+    }
+    return result;
+}
 export class Util {
     public static guid(): string {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, ( c: string ) => {
