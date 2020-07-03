@@ -22,7 +22,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 	const { getBodyParser, Encryption, fsw } = require( 'cwserver' );
 	// const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
 	// const ws = socketInitilizer(server, require("../socket-client"));
-	//ws.create(require("socket.io"));
+	//ws.create( require("socket.io"), app.httpServer );
 
 	// Create your virtual dir
 	// server.addVirtualDir( "/sow", _path.resolve( server.getRoot() + "\\sow\\" ) );

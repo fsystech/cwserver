@@ -15,7 +15,7 @@ process.on( 'exit', () => {
     server.log.reset(); server.log.dispose();
 } );
 process.on( 'SIGINT', () => {
-    server.log.error( "Caught interrupt signal" );
+    server.log.error( "Caught interrupt signal" ).reset();
     setTimeout( () => {
         process.exit( 0 );
     }, 200 );

@@ -56,7 +56,7 @@ export interface IResponse extends ServerResponse {
     dispose(): void;
 }
 export interface IApplication {
-    readonly server: Server;
+    readonly httpServer: Server;
     readonly isRunning: boolean;
     clearHandler(): void;
     use(handler: HandlerFunc): IApplication;

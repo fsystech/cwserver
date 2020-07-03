@@ -50,8 +50,8 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	expect( shouldBeError( () => { socketInitilizer( server, SocketErr2() ) } ) ).toBeInstanceOf( Error );
 	const ws = socketInitilizer( server, SocketClient() );
 	const io = require( "socket.io" );
-	ws.create( io, app.server );
-	expect( ws.create( io, app.server ) ).toEqual( false );
+	ws.create( io, app.httpServer );
+	expect( ws.create( io, app.httpServer ) ).toEqual( false );
 	expect( ws.isConnectd ).toEqual( true );
 	controller.get( '/ws-server-event', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 		const event = ws.wsEvent;

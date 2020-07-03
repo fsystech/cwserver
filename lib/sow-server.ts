@@ -28,18 +28,18 @@ export type CtxNext = ( code?: number | undefined, transfer?: boolean ) => void;
 export type AppHandler = ( ctx: IContext, requestParam?: IRequestParam ) => void;
 // ----------------------------------------------------------
 export interface IContext {
-    isDisposed: boolean;
+    readonly isDisposed: boolean;
     error?: string;
     errorPage: string;
     errorCode: number;
-    res: IResponse;
-    req: IRequest;
+    readonly res: IResponse;
+    readonly req: IRequest;
     path: string;
     extension: string;
     root: string;
-    session: ISession;
+    readonly session: ISession;
     servedFrom?: string;
-    server: ISowServer;
+    readonly server: ISowServer;
     next: CtxNext;
     redirect( url: string, force?: boolean ): IContext;
     transferRequest( toPath: string | number ): void;
@@ -118,12 +118,15 @@ export interface IServerConfig {
     };
 }
 export interface ISowServer {
-    version: string;
-    errorPage: { [x: string]: string; };
+    readonly version: string;
+    readonly errorPage: { [x: string]: string; };
+    readonly log: ILogger;
+    readonly config: IServerConfig;
+    readonly encryption: IServerEncryption;
+    readonly db: NodeJS.Dict<ISowDatabaseType>;
+    readonly port: string | number;
     copyright(): string;
-    log: ILogger;
     createContext( req: IRequest, res: IResponse, next: NextFunction ): IContext;
-    config: IServerConfig;
     initilize(): void;
     implimentConfig( config: NodeJS.Dict<any> ): void;
     setDefaultProtectionHeader( res: IResponse ): void;
@@ -136,7 +139,7 @@ export interface ISowServer {
     mapPath( path: string ): string;
     pathToUrl( path: string ): string;
     addError( ctx: IContext, ex: Error | string ): IContext;
-    escape( unsafe?: string | null): string;
+    escape( unsafe?: string | null ): string;
     addVirtualDir(
         route: string, root: string,
         evt?: ( ctx: IContext ) => void
@@ -150,9 +153,7 @@ export interface ISowServer {
     getRoot(): string;
     getPublic(): string;
     getPublicDirName(): string;
-    encryption: IServerEncryption;
     parseMaxAge( maxAge: any ): number;
-    db: { [x: string]: ISowDatabaseType; };
     on( ev: 'shutdown', handler: () => void ): void;
 }
 export type IViewHandler = ( app: IApplication, controller: IController, server: ISowServer ) => void;
@@ -201,7 +202,7 @@ export const {
         },
         getContext: ( server: ISowServer, req: IRequest, res: IResponse ): IContext => {
             if ( _curContext[req.id] ) return _curContext[req.id];
-            const context: IContext = new Context( server, req, res, req.session );
+            const context: IContext = new Context( server, req, res );
             _curContext[req.id] = context;
             return context;
         }
@@ -210,19 +211,28 @@ export const {
 function isDefined<T>( a: T | null | undefined ): a is T {
     return a !== null && a !== undefined;
 }
-const parseMaxAge = ( maxAge: any ): number => {
-    if ( typeof ( maxAge ) !== "string" ) throw new Error( `Invalid maxAage...` );
-    let add: number = 0;
-    const length: number = maxAge.length;
-    const type: string = maxAge.charAt( length - 1 ).toUpperCase();
-    add = parseInt( maxAge.substring( 0, length - 1 ) );
-    if ( isNaN( add ) ) throw new Error( `Invalid maxAage format ${maxAge}` );
+function getEpoch( type: string, add: number, maxAge: string ): number {
     switch ( type ) {
-        case "D": return ( ( 24 * add ) * 60 * 60 * 1000 );
-        case "H": return ( add * 60 * 60 * 1000 );
-        case "M": return ( add * 60 * 1000 );
+        case "M": return ( add * 60 * 1000 ); // Minute
+        case "H": return getEpoch( "M", 60, maxAge ) * add; // Hour
+        case "D": return getEpoch( "H", 24, maxAge ) * add; // Day
+        case "MM": return getEpoch( "D", 30, maxAge ) * add; // Month
         default: throw new Error( `Invalid maxAage format ${maxAge}` );
     }
+}
+function parseMaxAge( maxAge: any ): number {
+    if ( typeof ( maxAge ) !== "string" ) throw new Error( `Invalid maxAage...` );
+    let add: string = "", type: string = "";
+    for ( const part of maxAge ) {
+        if ( /^\d$/.test( part ) ) {
+            if ( type.length > 0 ) throw new Error( `Invalid maxAage format ${maxAge}` );
+            add += part; continue;
+        }
+        type += part;
+    }
+    if ( type.length === 0 || add.length === 0 )
+        throw new Error( `Invalid maxAage format ${maxAge}` );
+    return getEpoch( type.toUpperCase(), parseInt( add ), maxAge );
 }
 const _formatPath = ( () => {
     const _exportObj = ( server: ISowServer, name: string ): {
@@ -274,40 +284,52 @@ export class ServerEncryption implements IServerEncryption {
     }
 }
 export class Context implements IContext {
-    isDisposed: boolean;
-    error?: string;
-    errorPage: string;
-    errorCode: number;
-    res: IResponse;
-    req: IRequest;
-    path: string;
-    extension: string;
-    root: string;
-    session: ISession;
-    servedFrom?: string;
-    server: ISowServer;
-    next: CtxNext;
+    private _isDisposed: boolean;
+    public get isDisposed(): boolean {
+        return this._isDisposed;
+    }
+    public error?: string;
+    public errorPage: string;
+    public errorCode: number;
+    private _res: IResponse;
+    private _req: IRequest;
+    public get res(): IResponse {
+        return this._res;
+    }
+    public get req(): IRequest {
+        return this._req;
+    }
+    public path: string;
+    public extension: string;
+    public root: string;
+    public get session(): ISession {
+        return this._req.session;
+    }
+    public servedFrom?: string;
+    private _server: ISowServer;
+    public get server(): ISowServer {
+        return this._server;
+    }
+    public next: CtxNext;
     constructor(
-        _server: ISowServer,
-        _req: IRequest,
-        _res: IResponse,
-        _session: ISession
+        server: ISowServer,
+        req: IRequest,
+        res: IResponse
     ) {
-        this.isDisposed = false;
+        this._isDisposed = false;
         this.error = void 0; this.path = ""; this.root = "";
-        this.res = _res; this.req = _req; this.server = _server;
-        this.session = _session; this.extension = "";
+        this._res = res; this._req = req; this._server = server;
+        this.extension = ""; this.errorPage = ""; this.errorCode = 0;
         this.next = Object.create( null );
-        this.errorPage = ""; this.errorCode = 0;
     }
     transferError( err: NodeJS.ErrnoException | Error ): void {
-        if ( !this.isDisposed ) {
-            this.server.addError( this, err );
-            return this.server.transferRequest( this, 500 );
+        if ( !this._isDisposed ) {
+            this._server.addError( this, err );
+            return this._server.transferRequest( this, 500 );
         }
     }
     handleError( err: NodeJS.ErrnoException | Error | null | undefined, next: () => void ): void {
-        if ( !this.isDisposed && !this.res.headersSent ) {
+        if ( !this._isDisposed && !this._res.headersSent ) {
             if ( Util.isError( err ) ) {
                 return this.transferError( err );
             }
@@ -316,40 +338,39 @@ export class Context implements IContext {
         // Nothing to do, context destroyed or response header already been sent
     }
     redirect( url: string, force?: boolean ): IContext {
-        if ( !this.isDisposed ) {
-            this.res.status( 302 ).redirect( url, force );
+        if ( !this._isDisposed ) {
+            this._res.status( 302 ).redirect( url, force );
         }
         return this;
     }
     write( str: string ): void {
-        if ( !this.isDisposed ) {
-            return this.res.write( str ), void 0;
+        if ( !this._isDisposed ) {
+            return this._res.write( str ), void 0;
         }
     }
     transferRequest( path: string | number ): void {
-        if ( !this.isDisposed ) {
-            return this.server.transferRequest( this, path );
+        if ( !this._isDisposed ) {
+            return this._server.transferRequest( this, path );
         }
     }
     signOut(): IContext {
-        this.res.cookie( this.server.config.session.cookie, "", {
+        this._res.cookie( this._server.config.session.cookie, "", {
             expires: -1
         } );
         return this;
     }
-    setSession( loginId: string, roleId: string, userData: any ): IContext{
-        return this.server.setSession(this, loginId, roleId, userData), this;
+    setSession( loginId: string, roleId: string, userData: any ): IContext {
+        return this._server.setSession( this, loginId, roleId, userData ), this;
     }
     dispose(): string | void {
-        if ( this.isDisposed ) return void 0;
-        this.isDisposed = true;
-        const id: string = this.req.id;
-        delete this.server; delete this.path;
-        this.res.dispose(); delete this.res;
-        this.req.dispose(); delete this.req;
+        if ( this._isDisposed ) return void 0;
+        this._isDisposed = true;
+        const id: string = this._req.id;
+        delete this._server; delete this.path;
+        this._res.dispose(); delete this._res;
+        this._req.dispose(); delete this._req;
         delete this.extension; delete this.root;
-        delete this.session; delete this.servedFrom;
-        delete this.error;
+        delete this.servedFrom; delete this.error;
         return id;
     }
 }
@@ -443,7 +464,7 @@ export class ServerConfig implements IServerConfig {
             fileCache: false
         };
         this.cacheHeader = {
-            maxAge: 2592000000, // 30Day
+            maxAge: parseMaxAge( "30D" ), // 30Day
             serverRevalidate: true
         };
         this.liveStream = [];
@@ -457,23 +478,44 @@ export class ServerConfig implements IServerConfig {
     }
 }
 export class SowServer implements ISowServer {
-    get version() {
+    public get version() {
         return appVersion;
     }
-    config: IServerConfig;
-    root: string;
-    public: string;
-    rootregx: RegExp;
-    publicregx: RegExp;
-    nodeModuleregx: RegExp;
-    log: ILogger;
-    userInteractive: boolean;
-    port: string | number;
-    db: { [x: string]: ISowDatabaseType; };
-    encryption: IServerEncryption;
-    errorPage: { [x: string]: string; };
+    private _config: IServerConfig;
+    private _public: string;
+    private _log: ILogger;
+    private _port: string | number;
+    private _db: NodeJS.Dict<ISowDatabaseType>;
+    private _errorPage: { [x: string]: string; };
+    private _encryption: IServerEncryption;
+    private root: string;
+    private rootregx: RegExp;
+    private publicregx: RegExp;
+    private nodeModuleregx: RegExp;
+    private userInteractive: boolean;
+    public get config(): IServerConfig {
+        return this._config;
+    }
+    public get public(): string {
+        return this._public;
+    }
+    public get log(): ILogger {
+        return this._log;
+    }
+    public get port(): string | number {
+        return this._port;
+    }
+    public get db(): NodeJS.Dict<ISowDatabaseType> {
+        return this._db;
+    }
+    public get encryption(): IServerEncryption {
+        return this._encryption;
+    }
+    public get errorPage(): { [x: string]: string; } {
+        return this._errorPage;
+    }
     constructor( appRoot: string, wwwName?: string ) {
-        this.port = 0;
+        this._port = 0;
         if ( !wwwName ) {
             if ( process.env.IISNODE_VERSION ) {
                 throw new Error( `
@@ -489,9 +531,9 @@ ${appRoot}\\www_public
             throw new Error( `Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root` );
         }
         this.root = appRoot;
-        this.public = wwwName.toString();
-        this.config = new ServerConfig();
-        this.db = {};
+        this._public = wwwName.toString();
+        this._config = new ServerConfig();
+        this._db = {};
         const absPath: string = _path.resolve( `${this.root}/${this.public}/config/app.config.json` );
         if ( !_fs.existsSync( absPath ) ) {
             throw new Error( `No config file found in ${absPath}` );
@@ -506,7 +548,7 @@ ${appRoot}\\www_public
             throw new Error( `Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...` );
         }
         const libRoot: string = getLibRoot();
-        this.errorPage = {
+        this._errorPage = {
             "404": _path.resolve( `${libRoot}/dist/error_page/404.html` ),
             "401": _path.resolve( `${libRoot}/dist/error_page/401.html` ),
             "500": _path.resolve( `${libRoot}/dist/error_page/500.html` )
@@ -518,14 +560,17 @@ ${appRoot}\\www_public
         this.nodeModuleregx = new RegExp( `${this.root.replace( /\\/gi, '/' ).replace( /\/dist/gi, "" )}/node_modules/express/`, "gi" );
         this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         this.initilize();
-        this.log = new Logger( `./log/`, this.public, void 0, this.userInteractive, this.config.isDebug );
-        this.encryption = new ServerEncryption( this.config.encryptionKey );
+        this._log = new Logger( `./log/`, this.public, void 0, this.userInteractive, this.config.isDebug );
+        this._encryption = new ServerEncryption( this.config.encryptionKey );
         fsw.mkdirSync( this.getPublic(), "/web/temp/cache/" );
+        this.on = Object.create( null );
+        this.addVirtualDir = Object.create( null );
+        this.virtualInfo = Object.create( null );
         return;
     }
-    on( ev: "shutdown", handler: () => void ): void {
-        throw new Error( "Method not implemented." );
-    }
+    on: ( ev: "shutdown", handler: () => void ) => void;
+    addVirtualDir: ( route: string, root: string, evt?: ( ctx: IContext ) => void ) => void;
+    virtualInfo: ( route: string ) => { route: string; root: string; } | void;
     getRoot(): string {
         return this.root;
     }
@@ -545,11 +590,11 @@ ${appRoot}\\www_public
             throw new Error( 'hidden_directory should be Array...' );
         }
         if ( process.env.IISNODE_VERSION && process.env.PORT ) {
-            this.port = process.env.PORT;
+            this._port = process.env.PORT;
         } else {
             if ( !this.config.hostInfo.port )
                 throw new Error( 'Listener port required...' );
-            this.port = this.config.hostInfo.port;
+            this._port = this.config.hostInfo.port;
         }
         this.config.encryptionKey = Encryption.updateCryptoKeyIV( config.encryptionKey );
         if ( this.config.session ) {
@@ -574,12 +619,12 @@ ${appRoot}\\www_public
             this.config.database.forEach( ( conf: IDatabaseConfig ): void => {
                 if ( !conf.module )
                     throw new Error( "database module name requeired." );
-                if ( this.db[conf.module] )
+                if ( this._db[conf.module] )
                     throw new Error( `database module ${conf.module} already exists.` );
                 if ( !conf.path )
                     throw new Error( `No path defined for module ${conf.module}` );
                 conf.path = this.formatPath( conf.path );
-                this.db[conf.module] = new ( require( conf.path ) )( conf.dbConn )
+                this._db[conf.module] = new ( require( conf.path ) )( conf.dbConn )
             } );
         }
         if ( !this.config.errorPage || ( Util.isPlainObject( this.config.errorPage ) && Object.keys( this.config.errorPage ).length === 0 ) ) {
@@ -756,7 +801,11 @@ ${appRoot}\\www_public
         } else {
             ctx.error += `\r\n\r\nNext Error occured in ${ctx.path}`;
         }
-        ctx.error += `${( typeof ( ex ) === "string" ? " " + ex : "\r\n" + ex.stack?.toString() )}`;
+        if ( typeof ( ex ) === "string" ) {
+            ctx.error += " " + ex;
+        } else {
+            ctx.error += "\r\n" + ex.stack;
+        }
         ctx.error = ctx.error
             .replace( /\\/gi, '/' )
             .replace( this.rootregx, "$root" )
@@ -772,12 +821,6 @@ ${appRoot}\\www_public
             .replace( />/gi, "&gt;" )
             .replace( /\r\n/gi, "<br/>" )
             .replace( /\n/gi, "<br/>" );
-    }
-    addVirtualDir( route: string, root: string, evt?: ( ctx: IContext ) => void ): void {
-        throw new Error( "Method not implemented." );
-    }
-    virtualInfo( _route: string ): { route: string; root: string; } | void {
-        throw new Error( "Method not implemented." );
     }
     formatPath( name: string, noCheck?: boolean ): string {
         return _formatPath( this, name, noCheck );

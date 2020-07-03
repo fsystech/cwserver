@@ -126,7 +126,7 @@
           "type": "string",
           "minLength": 2,
           "default": "7d",
-          "description": "maxAge = m = Month | d = Day | h = Hour | m = Minute."
+          "description": "maxAge = mm = Month | d = Day | h = Hour | m = Minute."
         },
         "serverRevalidate": {
           "type": "boolean",
@@ -185,7 +185,7 @@
           "type": "string",
           "minLength": 2,
           "default": "7d",
-          "description": "maxAge = m = Month | d = Day | h = Hour | m = Minute."
+          "description": "maxAge = mm = Month | d = Day | h = Hour | m = Minute."
         },
         "key": {
           "type": "string",

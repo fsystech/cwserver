@@ -77,7 +77,7 @@ _a = (() => {
         getContext: (server, req, res) => {
             if (_curContext[req.id])
                 return _curContext[req.id];
-            const context = new Context(server, req, res, req.session);
+            const context = new Context(server, req, res);
             _curContext[req.id] = context;
             return context;
         }
@@ -86,22 +86,32 @@ _a = (() => {
 function isDefined(a) {
     return a !== null && a !== undefined;
 }
-const parseMaxAge = (maxAge) => {
-    if (typeof (maxAge) !== "string")
-        throw new Error(`Invalid maxAage...`);
-    let add = 0;
-    const length = maxAge.length;
-    const type = maxAge.charAt(length - 1).toUpperCase();
-    add = parseInt(maxAge.substring(0, length - 1));
-    if (isNaN(add))
-        throw new Error(`Invalid maxAage format ${maxAge}`);
+function getEpoch(type, add, maxAge) {
     switch (type) {
-        case "D": return ((24 * add) * 60 * 60 * 1000);
-        case "H": return (add * 60 * 60 * 1000);
-        case "M": return (add * 60 * 1000);
+        case "M": return (add * 60 * 1000); // Minute
+        case "H": return getEpoch("M", 60, maxAge) * add; // Hour
+        case "D": return getEpoch("H", 24, maxAge) * add; // Day
+        case "MM": return getEpoch("D", 30, maxAge) * add; // Month
         default: throw new Error(`Invalid maxAage format ${maxAge}`);
     }
-};
+}
+function parseMaxAge(maxAge) {
+    if (typeof (maxAge) !== "string")
+        throw new Error(`Invalid maxAage...`);
+    let add = "", type = "";
+    for (const part of maxAge) {
+        if (/^\d$/.test(part)) {
+            if (type.length > 0)
+                throw new Error(`Invalid maxAage format ${maxAge}`);
+            add += part;
+            continue;
+        }
+        type += part;
+    }
+    if (type.length === 0 || add.length === 0)
+        throw new Error(`Invalid maxAage format ${maxAge}`);
+    return getEpoch(type.toUpperCase(), parseInt(add), maxAge);
+}
 const _formatPath = (() => {
     const _exportObj = (server, name) => {
         if (name === "root")
@@ -153,28 +163,42 @@ class ServerEncryption {
 }
 exports.ServerEncryption = ServerEncryption;
 class Context {
-    constructor(_server, _req, _res, _session) {
-        this.isDisposed = false;
+    constructor(server, req, res) {
+        this._isDisposed = false;
         this.error = void 0;
         this.path = "";
         this.root = "";
-        this.res = _res;
-        this.req = _req;
-        this.server = _server;
-        this.session = _session;
+        this._res = res;
+        this._req = req;
+        this._server = server;
         this.extension = "";
-        this.next = Object.create(null);
         this.errorPage = "";
         this.errorCode = 0;
+        this.next = Object.create(null);
+    }
+    get isDisposed() {
+        return this._isDisposed;
+    }
+    get res() {
+        return this._res;
+    }
+    get req() {
+        return this._req;
+    }
+    get session() {
+        return this._req.session;
+    }
+    get server() {
+        return this._server;
     }
     transferError(err) {
-        if (!this.isDisposed) {
-            this.server.addError(this, err);
-            return this.server.transferRequest(this, 500);
+        if (!this._isDisposed) {
+            this._server.addError(this, err);
+            return this._server.transferRequest(this, 500);
         }
     }
     handleError(err, next) {
-        if (!this.isDisposed && !this.res.headersSent) {
+        if (!this._isDisposed && !this._res.headersSent) {
             if (sow_util_1.Util.isError(err)) {
                 return this.transferError(err);
             }
@@ -183,44 +207,43 @@ class Context {
         // Nothing to do, context destroyed or response header already been sent
     }
     redirect(url, force) {
-        if (!this.isDisposed) {
-            this.res.status(302).redirect(url, force);
+        if (!this._isDisposed) {
+            this._res.status(302).redirect(url, force);
         }
         return this;
     }
     write(str) {
-        if (!this.isDisposed) {
-            return this.res.write(str), void 0;
+        if (!this._isDisposed) {
+            return this._res.write(str), void 0;
         }
     }
     transferRequest(path) {
-        if (!this.isDisposed) {
-            return this.server.transferRequest(this, path);
+        if (!this._isDisposed) {
+            return this._server.transferRequest(this, path);
         }
     }
     signOut() {
-        this.res.cookie(this.server.config.session.cookie, "", {
+        this._res.cookie(this._server.config.session.cookie, "", {
             expires: -1
         });
         return this;
     }
     setSession(loginId, roleId, userData) {
-        return this.server.setSession(this, loginId, roleId, userData), this;
+        return this._server.setSession(this, loginId, roleId, userData), this;
     }
     dispose() {
-        if (this.isDisposed)
+        if (this._isDisposed)
             return void 0;
-        this.isDisposed = true;
-        const id = this.req.id;
-        delete this.server;
+        this._isDisposed = true;
+        const id = this._req.id;
+        delete this._server;
         delete this.path;
-        this.res.dispose();
-        delete this.res;
-        this.req.dispose();
-        delete this.req;
+        this._res.dispose();
+        delete this._res;
+        this._req.dispose();
+        delete this._req;
         delete this.extension;
         delete this.root;
-        delete this.session;
         delete this.servedFrom;
         delete this.error;
         return id;
@@ -267,7 +290,7 @@ class ServerConfig {
             fileCache: false
         };
         this.cacheHeader = {
-            maxAge: 2592000000,
+            maxAge: parseMaxAge("30D"),
             serverRevalidate: true
         };
         this.liveStream = [];
@@ -283,7 +306,7 @@ class ServerConfig {
 exports.ServerConfig = ServerConfig;
 class SowServer {
     constructor(appRoot, wwwName) {
-        this.port = 0;
+        this._port = 0;
         if (!wwwName) {
             if (process.env.IISNODE_VERSION) {
                 throw new Error(`
@@ -299,9 +322,9 @@ ${appRoot}\\www_public
             throw new Error(`Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root`);
         }
         this.root = appRoot;
-        this.public = wwwName.toString();
-        this.config = new ServerConfig();
-        this.db = {};
+        this._public = wwwName.toString();
+        this._config = new ServerConfig();
+        this._db = {};
         const absPath = _path.resolve(`${this.root}/${this.public}/config/app.config.json`);
         if (!_fs.existsSync(absPath)) {
             throw new Error(`No config file found in ${absPath}`);
@@ -316,7 +339,7 @@ ${appRoot}\\www_public
             throw new Error(`Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
         }
         const libRoot = sow_util_1.getLibRoot();
-        this.errorPage = {
+        this._errorPage = {
             "404": _path.resolve(`${libRoot}/dist/error_page/404.html`),
             "401": _path.resolve(`${libRoot}/dist/error_page/401.html`),
             "500": _path.resolve(`${libRoot}/dist/error_page/500.html`)
@@ -328,16 +351,37 @@ ${appRoot}\\www_public
         this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/express/`, "gi");
         this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         this.initilize();
-        this.log = new sow_logger_1.Logger(`./log/`, this.public, void 0, this.userInteractive, this.config.isDebug);
-        this.encryption = new ServerEncryption(this.config.encryptionKey);
+        this._log = new sow_logger_1.Logger(`./log/`, this.public, void 0, this.userInteractive, this.config.isDebug);
+        this._encryption = new ServerEncryption(this.config.encryptionKey);
         fsw.mkdirSync(this.getPublic(), "/web/temp/cache/");
+        this.on = Object.create(null);
+        this.addVirtualDir = Object.create(null);
+        this.virtualInfo = Object.create(null);
         return;
     }
     get version() {
         return exports.appVersion;
     }
-    on(ev, handler) {
-        throw new Error("Method not implemented.");
+    get config() {
+        return this._config;
+    }
+    get public() {
+        return this._public;
+    }
+    get log() {
+        return this._log;
+    }
+    get port() {
+        return this._port;
+    }
+    get db() {
+        return this._db;
+    }
+    get encryption() {
+        return this._encryption;
+    }
+    get errorPage() {
+        return this._errorPage;
     }
     getRoot() {
         return this.root;
@@ -358,12 +402,12 @@ ${appRoot}\\www_public
             throw new Error('hidden_directory should be Array...');
         }
         if (process.env.IISNODE_VERSION && process.env.PORT) {
-            this.port = process.env.PORT;
+            this._port = process.env.PORT;
         }
         else {
             if (!this.config.hostInfo.port)
                 throw new Error('Listener port required...');
-            this.port = this.config.hostInfo.port;
+            this._port = this.config.hostInfo.port;
         }
         this.config.encryptionKey = sow_encryption_1.Encryption.updateCryptoKeyIV(config.encryptionKey);
         if (this.config.session) {
@@ -388,12 +432,12 @@ ${appRoot}\\www_public
             this.config.database.forEach((conf) => {
                 if (!conf.module)
                     throw new Error("database module name requeired.");
-                if (this.db[conf.module])
+                if (this._db[conf.module])
                     throw new Error(`database module ${conf.module} already exists.`);
                 if (!conf.path)
                     throw new Error(`No path defined for module ${conf.module}`);
                 conf.path = this.formatPath(conf.path);
-                this.db[conf.module] = new (require(conf.path))(conf.dbConn);
+                this._db[conf.module] = new (require(conf.path))(conf.dbConn);
             });
         }
         if (!this.config.errorPage || (sow_util_1.Util.isPlainObject(this.config.errorPage) && Object.keys(this.config.errorPage).length === 0)) {
@@ -573,7 +617,6 @@ ${appRoot}\\www_public
         return path.substring(0, index).replace(/\\/gi, "/");
     }
     addError(ctx, ex) {
-        var _a;
         ctx.path = this.pathToUrl(ctx.path);
         if (!ctx.error) {
             ctx.error = `Error occured in ${ctx.path}`;
@@ -581,7 +624,12 @@ ${appRoot}\\www_public
         else {
             ctx.error += `\r\n\r\nNext Error occured in ${ctx.path}`;
         }
-        ctx.error += `${(typeof (ex) === "string" ? " " + ex : "\r\n" + ((_a = ex.stack) === null || _a === void 0 ? void 0 : _a.toString()))}`;
+        if (typeof (ex) === "string") {
+            ctx.error += " " + ex;
+        }
+        else {
+            ctx.error += "\r\n" + ex.stack;
+        }
         ctx.error = ctx.error
             .replace(/\\/gi, '/')
             .replace(this.rootregx, "$root")
@@ -598,12 +646,6 @@ ${appRoot}\\www_public
             .replace(/>/gi, "&gt;")
             .replace(/\r\n/gi, "<br/>")
             .replace(/\n/gi, "<br/>");
-    }
-    addVirtualDir(route, root, evt) {
-        throw new Error("Method not implemented.");
-    }
-    virtualInfo(_route) {
-        throw new Error("Method not implemented.");
     }
     formatPath(name, noCheck) {
         return _formatPath(this, name, noCheck);

@@ -66,7 +66,7 @@ export interface IResponse extends ServerResponse {
     dispose(): void;
 }
 export interface IApplication {
-    readonly server: Server;
+    readonly httpServer: Server;
     readonly isRunning: boolean;
     clearHandler(): void;
     use( handler: HandlerFunc ): IApplication;
@@ -408,9 +408,9 @@ class Response extends ServerResponse implements IResponse {
     }
 }
 class Application extends EventEmitter implements IApplication {
-    private _server: Server;
-    public get server() {
-        return this._server;
+    private _httpServer: Server;
+    public get httpServer() {
+        return this._httpServer;
     }
     private _appHandler: ILayerInfo<HandlerFunc>[];
     private _prerequisitesHandler: ILayerInfo<HandlerFunc>[];
@@ -418,9 +418,9 @@ class Application extends EventEmitter implements IApplication {
     public get isRunning() {
         return this._isRunning;
     }
-    constructor( server: Server ) {
+    constructor( httpServer: Server ) {
         super();
-        this._server = server;
+        this._httpServer = httpServer;
         this._appHandler = [];
         this._prerequisitesHandler = [];
         this._isRunning = false;
@@ -446,7 +446,7 @@ class Application extends EventEmitter implements IApplication {
             }, 0 );
         } else {
             this._isRunning = false;
-            this.server.close().once( 'close', () => resolveTerminating() );
+            this._httpServer.close().once( 'close', () => resolveTerminating() );
         }
         return promise;
     }
@@ -538,7 +538,7 @@ class Application extends EventEmitter implements IApplication {
         if ( this.isRunning ) {
             throw new Error( 'Server already running....' );
         }
-        return this.server.listen( handle, () => {
+        return this._httpServer.listen( handle, () => {
             this._isRunning = true;
             if ( listeningListener )
                 return listeningListener();

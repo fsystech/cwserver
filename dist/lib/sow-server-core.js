@@ -386,15 +386,15 @@ class Response extends http_1.ServerResponse {
     }
 }
 class Application extends events_1.EventEmitter {
-    constructor(server) {
+    constructor(httpServer) {
         super();
-        this._server = server;
+        this._httpServer = httpServer;
         this._appHandler = [];
         this._prerequisitesHandler = [];
         this._isRunning = false;
     }
-    get server() {
-        return this._server;
+    get httpServer() {
+        return this._httpServer;
     }
     get isRunning() {
         return this._isRunning;
@@ -421,7 +421,7 @@ class Application extends events_1.EventEmitter {
         }
         else {
             this._isRunning = false;
-            this.server.close().once('close', () => resolveTerminating());
+            this._httpServer.close().once('close', () => resolveTerminating());
         }
         return promise;
     }
@@ -513,7 +513,7 @@ class Application extends events_1.EventEmitter {
         if (this.isRunning) {
             throw new Error('Server already running....');
         }
-        return this.server.listen(handle, () => {
+        return this._httpServer.listen(handle, () => {
             this._isRunning = true;
             if (listeningListener)
                 return listeningListener();

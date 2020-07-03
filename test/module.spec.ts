@@ -1930,6 +1930,7 @@ describe( "cwserver-utility", () => {
         let untouchedConfig: { [x: string]: any; } = {};
         it( 'database', function ( done: Mocha.Done ): void {
             this.timeout( 5000 );
+            expect( appUtility.server.db.pg ).toBeUndefined();
             untouchedConfig = cwserver.Util.clone( appUtility.server.config );
             expect( shouldBeError( () => {
                 try {
@@ -2161,7 +2162,9 @@ describe( "cwserver-utility", () => {
                 Util.extend( appUtility.server.config.errorPage, oldError );
                 expect( appUtility.server.getErrorPath( 500, true ) ).toBeDefined();
                 oldError = Util.clone( appUtility.server.errorPage );
-                appUtility.server.errorPage = {};
+                for(const prop in appUtility.server.errorPage){
+                    delete appUtility.server.errorPage[prop];
+                }
                 expect( appUtility.server.getErrorPath( 500, true ) ).toBeUndefined();
                 Util.extend( appUtility.server.errorPage, oldError );
             } )();
@@ -2173,6 +2176,10 @@ describe( "cwserver-utility", () => {
             } ) ).toBeInstanceOf( Error );
             expect( appUtility.server.parseMaxAge( "1H" ) ).not.toBeInstanceOf( Error );
             expect( appUtility.server.parseMaxAge( "1M" ) ).not.toBeInstanceOf( Error );
+            expect( appUtility.server.parseMaxAge( "1MM" ) ).not.toBeInstanceOf( Error );
+            expect( shouldBeError( () => {
+                appUtility.server.parseMaxAge( "D1MM" );
+            } ) ).toBeInstanceOf( Error );
             expect( shouldBeError( () => {
                 appUtility.server.parseMaxAge( {} );
             } ) ).toBeInstanceOf( Error );

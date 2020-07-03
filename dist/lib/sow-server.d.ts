@@ -9,18 +9,18 @@ import { ILogger } from "./sow-logger";
 export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 export declare type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 export interface IContext {
-    isDisposed: boolean;
+    readonly isDisposed: boolean;
     error?: string;
     errorPage: string;
     errorCode: number;
-    res: IResponse;
-    req: IRequest;
+    readonly res: IResponse;
+    readonly req: IRequest;
     path: string;
     extension: string;
     root: string;
-    session: ISession;
+    readonly session: ISession;
     servedFrom?: string;
-    server: ISowServer;
+    readonly server: ISowServer;
     next: CtxNext;
     redirect(url: string, force?: boolean): IContext;
     transferRequest(toPath: string | number): void;
@@ -102,14 +102,17 @@ export interface IServerConfig {
     };
 }
 export interface ISowServer {
-    version: string;
-    errorPage: {
+    readonly version: string;
+    readonly errorPage: {
         [x: string]: string;
     };
+    readonly log: ILogger;
+    readonly config: IServerConfig;
+    readonly encryption: IServerEncryption;
+    readonly db: NodeJS.Dict<ISowDatabaseType>;
+    readonly port: string | number;
     copyright(): string;
-    log: ILogger;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
-    config: IServerConfig;
     initilize(): void;
     implimentConfig(config: NodeJS.Dict<any>): void;
     setDefaultProtectionHeader(res: IResponse): void;
@@ -135,11 +138,7 @@ export interface ISowServer {
     getRoot(): string;
     getPublic(): string;
     getPublicDirName(): string;
-    encryption: IServerEncryption;
     parseMaxAge(maxAge: any): number;
-    db: {
-        [x: string]: ISowDatabaseType;
-    };
     on(ev: 'shutdown', handler: () => void): void;
 }
 export declare type IViewHandler = (app: IApplication, controller: IController, server: ISowServer) => void;
@@ -155,20 +154,24 @@ export declare class ServerEncryption implements IServerEncryption {
     decryptUri(encryptedText: string): string;
 }
 export declare class Context implements IContext {
-    isDisposed: boolean;
+    private _isDisposed;
+    get isDisposed(): boolean;
     error?: string;
     errorPage: string;
     errorCode: number;
-    res: IResponse;
-    req: IRequest;
+    private _res;
+    private _req;
+    get res(): IResponse;
+    get req(): IRequest;
     path: string;
     extension: string;
     root: string;
-    session: ISession;
+    get session(): ISession;
     servedFrom?: string;
-    server: ISowServer;
+    private _server;
+    get server(): ISowServer;
     next: CtxNext;
-    constructor(_server: ISowServer, _req: IRequest, _res: IResponse, _session: ISession);
+    constructor(server: ISowServer, req: IRequest, res: IResponse);
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
     redirect(url: string, force?: boolean): IContext;
@@ -235,24 +238,34 @@ export declare class ServerConfig implements IServerConfig {
 }
 export declare class SowServer implements ISowServer {
     get version(): string;
-    config: IServerConfig;
-    root: string;
-    public: string;
-    rootregx: RegExp;
-    publicregx: RegExp;
-    nodeModuleregx: RegExp;
-    log: ILogger;
-    userInteractive: boolean;
-    port: string | number;
-    db: {
-        [x: string]: ISowDatabaseType;
-    };
-    encryption: IServerEncryption;
-    errorPage: {
+    private _config;
+    private _public;
+    private _log;
+    private _port;
+    private _db;
+    private _errorPage;
+    private _encryption;
+    private root;
+    private rootregx;
+    private publicregx;
+    private nodeModuleregx;
+    private userInteractive;
+    get config(): IServerConfig;
+    get public(): string;
+    get log(): ILogger;
+    get port(): string | number;
+    get db(): NodeJS.Dict<ISowDatabaseType>;
+    get encryption(): IServerEncryption;
+    get errorPage(): {
         [x: string]: string;
     };
     constructor(appRoot: string, wwwName?: string);
-    on(ev: "shutdown", handler: () => void): void;
+    on: (ev: "shutdown", handler: () => void) => void;
+    addVirtualDir: (route: string, root: string, evt?: (ctx: IContext) => void) => void;
+    virtualInfo: (route: string) => {
+        route: string;
+        root: string;
+    } | void;
     getRoot(): string;
     parseMaxAge(maxAge: any): number;
     getPublic(): string;
@@ -274,11 +287,6 @@ export declare class SowServer implements ISowServer {
     pathToUrl(path: string): string;
     addError(ctx: IContext, ex: string | Error): IContext;
     escape(unsafe?: string | null): string;
-    addVirtualDir(route: string, root: string, evt?: (ctx: IContext) => void): void;
-    virtualInfo(_route: string): {
-        route: string;
-        root: string;
-    } | void;
     formatPath(name: string, noCheck?: boolean): string;
     createBundle(str: string): string;
 }
