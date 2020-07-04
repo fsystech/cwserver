@@ -43,7 +43,7 @@ export interface IContext {
     next: CtxNext;
     redirect( url: string, force?: boolean ): IContext;
     transferRequest( toPath: string | number ): void;
-    write( str: string ): void;
+    write( chunk: Buffer | string | number | boolean | { [key: string]: any } ): void;
     transferError( err: NodeJS.ErrnoException | Error ): void;
     handleError( err: NodeJS.ErrnoException | Error | null | undefined, next: () => void ): void;
     setSession( loginId: string, roleId: string, userData: any ): IContext;
@@ -310,7 +310,17 @@ export class Context implements IContext {
     public get server(): ISowServer {
         return this._server;
     }
-    public next: CtxNext;
+    private _next?: CtxNext;
+    public get next(): CtxNext {
+        if ( !this._isDisposed && this._next ) return this._next;
+        return ( code?: number, transfer?: boolean ): void => {
+            // Unreachable....
+            console.log( 'Warning: `context already destroyed or "next" function doesn\'t set yet`' );
+        };
+    }
+    public set next( val: CtxNext ) {
+        this._next = val;
+    }
     constructor(
         server: ISowServer,
         req: IRequest,
@@ -320,7 +330,6 @@ export class Context implements IContext {
         this.error = void 0; this.path = ""; this.root = "";
         this._res = res; this._req = req; this._server = server;
         this.extension = ""; this.errorPage = ""; this.errorCode = 0;
-        this.next = Object.create( null );
     }
     transferError( err: NodeJS.ErrnoException | Error ): void {
         if ( !this._isDisposed ) {
@@ -343,9 +352,9 @@ export class Context implements IContext {
         }
         return this;
     }
-    write( str: string ): void {
+    write( chunk: Buffer | string | number | boolean | { [key: string]: any } ): void {
         if ( !this._isDisposed ) {
-            return this._res.write( str ), void 0;
+            return this._res.write( chunk ), void 0;
         }
     }
     transferRequest( path: string | number ): void {
@@ -354,17 +363,23 @@ export class Context implements IContext {
         }
     }
     signOut(): IContext {
-        this._res.cookie( this._server.config.session.cookie, "", {
-            expires: -1
-        } );
+        if ( !this._isDisposed ) {
+            this._res.cookie( this._server.config.session.cookie, "", {
+                expires: -1
+            } );
+        }
         return this;
     }
     setSession( loginId: string, roleId: string, userData: any ): IContext {
-        return this._server.setSession( this, loginId, roleId, userData ), this;
+        if ( !this._isDisposed ) {
+            this._server.setSession( this, loginId, roleId, userData );
+        }
+        return this;
     }
     dispose(): string | void {
         if ( this._isDisposed ) return void 0;
         this._isDisposed = true;
+        delete this._next;
         const id: string = this._req.id;
         delete this._server; delete this.path;
         this._res.dispose(); delete this._res;

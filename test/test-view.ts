@@ -338,6 +338,15 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				getMyContext( "10101" );
 				removeContext( "1010" );
 				mCtx.dispose();
+				mCtx.transferError(new Error("Test"));
+				mCtx.handleError(null, ()=>{
+					// Nothing to do
+				});
+				mCtx.redirect("/test");
+				mCtx.write("");
+				mCtx.transferRequest(0);
+				mCtx.signOut();
+				mCtx.setSession("Test","Test",{});
 				const nctx: IContext = server.createContext( ctx.req, ctx.res, ctx.next );
 				nctx.path = "/not-found/404/";
 				nctx.req.path = "/not-found/404/";

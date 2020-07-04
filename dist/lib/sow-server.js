@@ -174,7 +174,6 @@ class Context {
         this.extension = "";
         this.errorPage = "";
         this.errorCode = 0;
-        this.next = Object.create(null);
     }
     get isDisposed() {
         return this._isDisposed;
@@ -190,6 +189,17 @@ class Context {
     }
     get server() {
         return this._server;
+    }
+    get next() {
+        if (!this._isDisposed && this._next)
+            return this._next;
+        return (code, transfer) => {
+            // Unreachable....
+            console.log('Warning: `context already destroyed or "next" function doesn\'t set yet`');
+        };
+    }
+    set next(val) {
+        this._next = val;
     }
     transferError(err) {
         if (!this._isDisposed) {
@@ -212,9 +222,9 @@ class Context {
         }
         return this;
     }
-    write(str) {
+    write(chunk) {
         if (!this._isDisposed) {
-            return this._res.write(str), void 0;
+            return this._res.write(chunk), void 0;
         }
     }
     transferRequest(path) {
@@ -223,18 +233,24 @@ class Context {
         }
     }
     signOut() {
-        this._res.cookie(this._server.config.session.cookie, "", {
-            expires: -1
-        });
+        if (!this._isDisposed) {
+            this._res.cookie(this._server.config.session.cookie, "", {
+                expires: -1
+            });
+        }
         return this;
     }
     setSession(loginId, roleId, userData) {
-        return this._server.setSession(this, loginId, roleId, userData), this;
+        if (!this._isDisposed) {
+            this._server.setSession(this, loginId, roleId, userData);
+        }
+        return this;
     }
     dispose() {
         if (this._isDisposed)
             return void 0;
         this._isDisposed = true;
+        delete this._next;
         const id = this._req.id;
         delete this._server;
         delete this.path;
