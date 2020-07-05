@@ -479,14 +479,14 @@ class Application extends EventEmitter implements IApplication {
                 try {
                     return routeInfo.layer.handler.call( this, req, res, _next );
                 } catch ( e ) {
-                    return next( e );
+                    return this.emit( 'error', req, res, e ), void 0;
                 }
             }
             return _next();
         }
-        function _next( statusCode?: number | Error ): any {
+        const _next = ( statusCode?: number | Error ): any => {
             if ( statusCode instanceof Error ) {
-                return next( statusCode );
+                return this.emit( 'error', req, res, statusCode ), void 0;
             }
             count++;
             return Loop();
@@ -494,11 +494,8 @@ class Application extends EventEmitter implements IApplication {
         return Loop();
     }
     public handleRequest( req: IRequest, res: IResponse ): void {
-        this._handleRequest( req, res, this._prerequisitesHandler, ( err?: Error ): void => {
-            if ( err ) {
-                return this.emit( 'error', req, res, err ), void 0;
-            }
-            this._handleRequest( req, res, this._appHandler, ( _err?: Error ): void => {
+        return this._handleRequest( req, res, this._prerequisitesHandler, ( err?: Error ): void => {
+            return this._handleRequest( req, res, this._appHandler, ( _err?: Error ): void => {
                 return this.emit( 'error', req, res, _err ), void 0;
             }, false );
         }, true );

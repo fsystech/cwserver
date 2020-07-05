@@ -454,26 +454,23 @@ class Application extends events_1.EventEmitter {
                     return routeInfo.layer.handler.call(this, req, res, _next);
                 }
                 catch (e) {
-                    return next(e);
+                    return this.emit('error', req, res, e), void 0;
                 }
             }
             return _next();
         };
-        function _next(statusCode) {
+        const _next = (statusCode) => {
             if (statusCode instanceof Error) {
-                return next(statusCode);
+                return this.emit('error', req, res, statusCode), void 0;
             }
             count++;
             return Loop();
-        }
+        };
         return Loop();
     }
     handleRequest(req, res) {
-        this._handleRequest(req, res, this._prerequisitesHandler, (err) => {
-            if (err) {
-                return this.emit('error', req, res, err), void 0;
-            }
-            this._handleRequest(req, res, this._appHandler, (_err) => {
+        return this._handleRequest(req, res, this._prerequisitesHandler, (err) => {
+            return this._handleRequest(req, res, this._appHandler, (_err) => {
                 return this.emit('error', req, res, _err), void 0;
             }, false);
         }, true);

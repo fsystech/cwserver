@@ -51,24 +51,56 @@ $BODY$
 ALTER FUNCTION my_shcema.__get_dataset(jsonb, jsonb)
   OWNER TO postgres;
 */
+/**
+ * @typedef {{host: string; port: number;user: string; database: string; password: string;}} IConnectionInfo
+ */
 const { Util } = require( "cwserver" );
 const _pg = require( 'pg' );
+/** @type {string} */
 const _sp_q = 'SELECT _ret_val as ret_val, _ret_msg as ret_msg, _ret_data_table as ret_data_table FROM';
+/** @type {IConnectionInfo} */
 const _default_config = {
     host: "localhost",
     port: 5432,
-    user: "postgres"
+    user: "postgres",
+    database: void 0,
+    password: void 0
 };
-function parse_out_field( name ) {
+/**
+ * Parse out direction properties
+ * @param {string} name 
+ */
+function parseOutField( name ) {
     if ( name.charAt( 0 ) !== '_' ) return name;
     return name.substring( 1 );
 }
-function parse_result( rs ) {
+/**
+ * Parse PGSQL Stored Procedure response result
+ * @param {import('pg').QueryResult} response
+ * @param {(prop:string, value:any)=>any} transform
+ * @returns {NodeJS.Dict<any>} result
+ */
+function parseResult( response, transform ) {
     let result = {};
-    rs.fields.forEach( ( field_info ) => {
-        result[parse_out_field( field_info.name )] = rs.rows[0][field_info.name];
+    response.fields.forEach( ( fieldInfo ) => {
+        const prop = parseOutField( fieldInfo.name );
+        result[prop] = transform( prop, response.rows[0][fieldInfo.name] );
     } );
     return result;
+}
+/**
+ * Transform Databse Result
+ * @param {string} prop
+ * @param {any} val
+ * @returns {any}
+ */
+function transformResult( prop, val ) {
+    switch ( prop ) {
+        case "ret_val": return parseInt( val );
+        case "ret_msg": return typeof ( val ) === "string" ? val : String( val );
+        case "ret_data_table": return typeof ( val ) === "string" ? JSON.parse( val ) : val;
+    }
+    return val;
 }
 /** this lib created according to ISowDatabaseType*/
 /**
@@ -87,17 +119,34 @@ function parse_result( rs ) {
  * server.db.pgsql.*
  * */
 class PgSQL {
+    /**
+     * PGSQL instance initilize
+     * @param {IConnectionInfo} connectionInfo
+     * @returns {PgSQL}
+     */
     constructor( connectionInfo ) {
+        /** @type {IConnectionInfo} */
         this.connectionInfo = Util.clone( _default_config );
         Util.extend( this.connectionInfo, connectionInfo );
     }
+    /**
+     * Get PGSQL Client 
+     * @returns {_pg.Client}
+     */
     getConn() {
         return new ( _pg.Client )( this.connectionInfo );
     }
-    query( queryText, values, callback) {
+    /**
+     * PGSQL Execute plain text quary
+     * @param {string} queryText
+     * @param {any[]} values
+     * @param {(result: import('cwserver/dist/lib/sow-db-type').QResult<R>) => void} callback
+     * @returns {void}
+     */
+    query( queryText, values, callback ) {
         const conn = this.getConn();
         return conn.connect( cerr => {
-            if ( cerr ) return callback( { isError: true, err: err } );
+            if ( cerr ) return callback( { isError: true, err: cerr } );
             return conn.query( queryText, values, ( err, res ) => {
                 if ( err ) return callback( { isError: true, err: err } );
                 conn.end( function ( err ) {
@@ -106,6 +155,12 @@ class PgSQL {
             } );
         } );
     }
+    /**
+     * PGSQL Execute Async plain text quary
+     * @param {string} queryText
+     * @param {any[]} values
+     * @returns {Promise<import('cwserver/dist/lib/sow-db-type').QResult<R>>}
+     */
     queryAsync( queryText, values ) {
         return new Promise( async ( resolve, reject ) => {
             const conn = this.getConn();
@@ -119,6 +174,14 @@ class PgSQL {
             }
         } );
     }
+    /**
+     * PGSQL Execute Stored Procedure
+     * @param {string} sp
+     * @param {string} ctx
+     * @param {string} form_obj
+     * @param {(result: import('cwserver/dist/lib/sow-db-type').IoResult) => void} next
+     * @returns {void}
+     */
     executeIo( sp, ctx, form_obj, next ) {
         const conn = this.getConn();
         return conn.connect( cerr => {
@@ -126,11 +189,18 @@ class PgSQL {
             conn.query( `${_sp_q} ${sp}($1::jsonb, $2::jsonb)`, [ctx, form_obj], ( err, rs ) => {
                 if ( err ) return next( { ret_val: -1, ret_msg: err.message } );
                 conn.end( function ( err ) {
-                    return  next( parse_result( rs ) );
+                    return next( parseResult( rs, transformResult ) );
                 } );
             } );
         } ), void 0;
     }
+    /**
+     * PGSQL Execute Stored Procedure
+     * @param {string} sp
+     * @param {string} ctx
+     * @param {string} form_obj
+     * @returns {Promise<import('cwserver/dist/lib/sow-db-type').IoResult>}
+     */
     executeIoAsync( sp, ctx, form_obj ) {
         return new Promise( async ( resolve, reject ) => {
             try {
@@ -138,7 +208,7 @@ class PgSQL {
                 await conn.connect();
                 let res = await conn.query( `${_sp_q} ${sp}($1::jsonb, $2::jsonb)`, [ctx, form_obj] );
                 await conn.end();
-                return resolve( parse_result( res ) );
+                return resolve( parseResult( res, transformResult ) );
             } catch ( e ) {
                 return resolve( { ret_val: -1, ret_msg: e.message } );
             }
@@ -146,13 +216,3 @@ class PgSQL {
     }
 }
 module.exports = PgSQL;
-/*
-//async function getData( server, ctx ) {
-    let result = await server.db.pgsql.executeIoAsync( "my_shcema.__get_dataset", JSON.stringify( {
-        login_id: ctx.req.session.loginId
-    } ), JSON.stringify( {
-        trade_date: "2020-02-03"
-    } ) );
-//    console.log( `${t}==>${result.ret_msg}` );
-//}
-*/

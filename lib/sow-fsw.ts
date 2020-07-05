@@ -87,7 +87,7 @@ export function readJson<T>(
     return _fs.readFile( absPath, ( err: NodeJS.ErrnoException | null, data: Buffer ) => {
         return errHandler( err, () => {
             try {
-                return next( null, JSON.parse( data.toString( "utf8" ) ) );
+                return next( null, JSON.parse( data.toString( "utf8" ).replace( /^\uFEFF/, '' ) ) );
             } catch ( e ) {
                 return next( e );
             }
@@ -95,7 +95,7 @@ export function readJson<T>(
     } );
 }
 export function readJsonSync<T>( absPath: string ): NodeJS.Dict<T> | void {
-    const jsonstr = _fs.readFileSync( absPath, "utf8" ).replace( /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "" ).replace( /^\s*$(?:\r\n?|\n)/gm, "" );
+    const jsonstr = _fs.readFileSync( absPath, "utf8" ).replace( /^\uFEFF/, '' ).replace( /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "" ).replace( /^\s*$(?:\r\n?|\n)/gm, "" );
     try {
         return JSON.parse( jsonstr );
     } catch ( e ) {

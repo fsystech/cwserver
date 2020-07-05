@@ -93,7 +93,7 @@ function readJson(absPath, next, errHandler) {
     return _fs.readFile(absPath, (err, data) => {
         return errHandler(err, () => {
             try {
-                return next(null, JSON.parse(data.toString("utf8")));
+                return next(null, JSON.parse(data.toString("utf8").replace(/^\uFEFF/, '')));
             }
             catch (e) {
                 return next(e);
@@ -103,7 +103,7 @@ function readJson(absPath, next, errHandler) {
 }
 exports.readJson = readJson;
 function readJsonSync(absPath) {
-    const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
+    const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
     try {
         return JSON.parse(jsonstr);
     }
