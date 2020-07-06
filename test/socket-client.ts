@@ -1,13 +1,13 @@
 import expect from 'expect';
-import { wsClient } from '../index';
-const clientInfo = wsClient();
-clientInfo.on( "beforeInitiateConnection", ( session, socket ) => {
+import { wsClient, IWsClientInfo, ISowSocketServer, ISowSocketInfo, IOSocket, ISession, ISowServer } from '../index';
+const clientInfo: IWsClientInfo = wsClient();
+clientInfo.on( "beforeInitiateConnection", ( session: ISession, socket: IOSocket ) => {
     /*if ( !session.isAuthenticated ) {
         return socket.emit( "unauthorized", "Authentication failed" ), socket.disconnect( true ), false;
     }*/
     return true;
 } );
-clientInfo.on( "getClient", ( me, session, wsServer, server ) => {
+clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: ISowSocketServer, server: ISowServer ) => {
     const _client = {
         'test-msg': ( data: any ): void => {
             expect( me.getSocket() ).toBeDefined();
@@ -53,7 +53,7 @@ clientInfo.on( "getClient", ( me, session, wsServer, server ) => {
         client: []
     } : _client;
 } );
-clientInfo.on( "connected", ( me, wsServer ) => {
+clientInfo.on( "connected", ( me: ISowSocketInfo, wsServer: ISowSocketServer ) => {
      const method = me.isReconnectd ? "on-re-connected-user" : "on-connect-user";
      wsServer.getClientByExceptToken( me.token ).forEach( conn => {
         conn.sendMsg( method, {
@@ -65,7 +65,7 @@ clientInfo.on( "connected", ( me, wsServer ) => {
         token: me.token, hash: me.hash, loginId: me.loginId
      } );
 } );
-clientInfo.on( "disConnected", ( me, wsServer ) => {
+clientInfo.on( "disConnected", ( me: ISowSocketInfo, wsServer: ISowSocketServer ) => {
     // Here disconnect any user
     wsServer.getClientByExceptToken( me.token ).forEach( conn => {
         conn.sendMsg( "on-disconnected-user", {
@@ -73,8 +73,8 @@ clientInfo.on( "disConnected", ( me, wsServer ) => {
         } );
      } );
 } );
-const error1 = wsClient();
-error1.on( "getClient", ( me, session, wsServer, server ) => {
+const error1: IWsClientInfo = wsClient();
+error1.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: ISowSocketServer, server: ISowServer ) => {
     const _client = {
         'test-msg': ( data: any ) => {
             return wsServer.sendMsg( me.token, "on-test-msg", data );
@@ -85,19 +85,19 @@ error1.on( "getClient", ( me, session, wsServer, server ) => {
         client: []
     } : _client;
 } );
-export function SocketErr1() {
+export function SocketErr1(): IWsClientInfo {
     return error1;
 }
-const error2 = wsClient();
-error2.on( "beforeInitiateConnection", ( session, socket ) => {
+const error2: IWsClientInfo = wsClient();
+error2.on( "beforeInitiateConnection", ( session: ISession, socket: IOSocket ) => {
     /*if ( !session.isAuthenticated ) {
         return socket.emit( "unauthorized", "Authentication failed" ), socket.disconnect( true ), false;
     }*/
     return true;
 } );
-export function SocketErr2() {
+export function SocketErr2(): IWsClientInfo {
     return error2;
 }
-export function SocketClient() {
+export function SocketClient(): IWsClientInfo {
     return clientInfo;
 }

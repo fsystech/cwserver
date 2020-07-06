@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToResponseTime = exports.ToNumber = exports.ResInfo = exports.Session = exports.BufferArray = void 0;
+exports.ToResponseTime = exports.ToNumber = exports.toString = exports.ResInfo = exports.Session = exports.BufferArray = void 0;
 class BufferArray {
     constructor() {
         this._data = [];
@@ -71,6 +71,12 @@ class ResInfo {
     ;
 }
 exports.ResInfo = ResInfo;
+function toString(val) {
+    if (!val)
+        return "";
+    return typeof (val) === "string" ? val : String(val);
+}
+exports.toString = toString;
 function ToNumber(obj) {
     if (!obj)
         return 0;

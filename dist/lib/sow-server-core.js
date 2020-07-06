@@ -80,7 +80,7 @@ function createCookie(name, val, options) {
         str += `;Path=${options.path}`;
     }
     else {
-        str += `;Path=/`;
+        str += ';Path=/';
     }
     if (options.expires && !options.maxAge)
         str += `;Expires=${sow_static_1.ToResponseTime(options.expires)}`;
@@ -124,11 +124,8 @@ function getCommonHeader(contentType, contentLength, isGzip) {
     return header;
 }
 function getClientIpFromHeader(headers) {
-    const res = headers['x-forwarded-for'];
-    if (res) {
-        return res.toString().split(',')[0];
-    }
-    return "";
+    const res = sow_static_1.toString(headers['x-forwarded-for']);
+    return res.split(',')[0];
 }
 exports.getClientIpFromHeader = getClientIpFromHeader;
 function parseUrl(url) {
@@ -144,11 +141,8 @@ class Request extends http_1.IncomingMessage {
     get isMobile() {
         if (this._isMobile !== undefined)
             return this._isMobile;
-        const userAgent = this.get('user-agent');
-        this._isMobile = false;
-        if (userAgent) {
-            this._isMobile = /mobile/gi.test(userAgent);
-        }
+        const userAgent = sow_static_1.toString(this.get('user-agent'));
+        this._isMobile = /mobile/gi.test(userAgent);
         return this._isMobile;
     }
     get cleanSocket() {
@@ -189,7 +183,7 @@ class Request extends http_1.IncomingMessage {
     get ip() {
         if (this._ip !== undefined)
             return this._ip;
-        this._ip = this.socket.remoteAddress || getClientIpFromHeader(this.headers);
+        this._ip = sow_static_1.toString(this.socket.remoteAddress);
         return this._ip;
     }
     get id() {
@@ -246,7 +240,7 @@ class Response extends http_1.ServerResponse {
         this._isAlive = val;
     }
     get method() {
-        return this._method || "";
+        return sow_static_1.toString(this._method);
     }
     set method(val) {
         this._method = val;
@@ -280,7 +274,7 @@ class Response extends http_1.ServerResponse {
             if (val instanceof Array) {
                 return JSON.stringify(val);
             }
-            return String(val);
+            return sow_static_1.toString(val);
         }
     }
     set(field, value) {

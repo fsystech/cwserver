@@ -10,7 +10,7 @@ import { Util } from './sow-util';
 import { EventEmitter } from 'events';
 import { Server } from 'http';
 /** [socket.io blueprint] */
-interface Socket extends EventEmitter {
+export interface IOSocket extends EventEmitter {
     nsp: object;
     server: object;
     adapter: object;
@@ -22,28 +22,28 @@ interface Socket extends EventEmitter {
     connected: boolean;
     disconnected: boolean;
     handshake: any;
-    json: Socket;
-    volatile: Socket;
-    broadcast: Socket;
-    to( room: string ): Socket;
-    in( room: string ): Socket;
-    use( fn: ( packet: any[], next: ( err?: any ) => void ) => void ): Socket;
-    send( ...args: any[] ): Socket;
-    write( ...args: any[] ): Socket;
-    join( name: string | string[], fn?: ( err?: any ) => void ): Socket;
-    leave( name: string, fn?: ()=>void ): Socket;
+    json: IOSocket;
+    volatile: IOSocket;
+    broadcast: IOSocket;
+    to( room: string ): IOSocket;
+    in( room: string ): IOSocket;
+    use( fn: ( packet: any[], next: ( err?: any ) => void ) => void ): IOSocket;
+    send( ...args: any[] ): IOSocket;
+    write( ...args: any[] ): IOSocket;
+    join( name: string | string[], fn?: ( err?: any ) => void ): IOSocket;
+    leave( name: string, fn?: () => void ): IOSocket;
     leaveAll(): void;
-    disconnect( close?: boolean ): Socket;
+    disconnect( close?: boolean ): IOSocket;
     listeners( event: string ): (()=>void)[];
-    compress( compress: boolean ): Socket;
+    compress( compress: boolean ): IOSocket;
     error( err: any ): void;
 }
 interface Namespace {
     _path: string;
     close( ...args: any[]): void;
-    use( fn: ( socket: Socket, fn: ( err?: any ) => void ) => void ): Namespace
-    on( event: 'connect', listener: ( socket: Socket ) => void ): Namespace;
-    on( event: 'connection', listener: ( socket: Socket ) => void ): this;
+    use( fn: ( socket: IOSocket, fn: ( err?: any ) => void ) => void ): Namespace
+    on( event: 'connect', listener: ( socket: IOSocket ) => void ): Namespace;
+    on( event: 'connection', listener: ( socket: IOSocket ) => void ): this;
 }
 type ioServer = ( server: any, opt: { path?: string, pingTimeout?: number, cookie?: boolean } ) => Namespace;
 /** [/socket.io blueprint] */
@@ -51,7 +51,7 @@ export interface IWsClientInfo {
     on( ev: 'getClient', handler: IWsClient ): void;
     on( ev: 'disConnected' | 'connected', handler: IEvtHandler ): void;
     on( ev: 'beforeInitiateConnection', handler: IWsNext ): void;
-    emit( ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket ): void;
+    emit( ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocketServer ): void;
     getServerEvent(): { [x: string]: any; } | void;
     beforeInitiateConnection: IWsNext;
     client: IWsClient;
@@ -65,10 +65,10 @@ export interface ISowSocketInfo {
     isAuthenticated: boolean;
     isReconnectd: boolean;
     group?: string;
-    getSocket(): Socket;
+    getSocket(): IOSocket;
     sendMsg( method: string, data: any ): void;
 }
-export interface ISowSocket {
+export interface ISowSocketServer {
     isActiveSocket( token: string ): boolean;
     getOwners( group?: string ): ISowSocketInfo[];
     findByHash( hash: string ): ISowSocketInfo[];
@@ -81,9 +81,9 @@ export interface ISowSocket {
     removeSocket( token: string ): boolean;
     sendMsg( token: string, method: string, data?: any ): boolean;
 }
-type IEvtHandler = ( me: ISowSocketInfo, wsServer: ISowSocket ) => void;
-type IWsNext = ( session: ISession, socket: Socket ) => void | boolean;
-type IWsClient = ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer ) => { [x: string]: any; };
+type IEvtHandler = ( me: ISowSocketInfo, wsServer: ISowSocketServer ) => void;
+type IWsNext = ( session: ISession, socket: IOSocket ) => void | boolean;
+type IWsClient = ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocketServer, server: ISowServer ) => { [x: string]: any; };
 class WsClientInfo implements IWsClientInfo {
     beforeInitiateConnection: IWsNext = Object.create( null );
     client: IWsClient = Object.create( null );
@@ -105,7 +105,7 @@ class WsClientInfo implements IWsClientInfo {
         this.event[ev] = handler;
         return void 0;
     }
-    emit( ev: string, me: ISowSocketInfo, wsServer: ISowSocket ): void {
+    emit( ev: string, me: ISowSocketInfo, wsServer: ISowSocketServer ): void {
         if ( this.event[ev] ) {
             return this.event[ev]( me, wsServer );
         }
@@ -114,7 +114,7 @@ class WsClientInfo implements IWsClientInfo {
 export function wsClient( ): IWsClientInfo {
     return new WsClientInfo( );
 }
-class SowSocket implements ISowSocket {
+class SowSocketServer implements ISowSocketServer {
     _server: ISowServer;
     _wsClients: IWsClientInfo;
     implimented: boolean;
@@ -198,15 +198,15 @@ class SowSocket implements ISowSocket {
         if ( !this._server.config.socketPath ) {
             this._server.config.socketPath = io._path;
         }
-        io.use( ( socket: Socket, next: ( err?: any ) => void ): void => {
+        io.use( ( socket: IOSocket, next: ( err?: any ) => void ): void => {
             socket.request.session = this._server.parseSession( socket.request.headers.cookie );
             if ( this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) {
                 return next();
             }
         } );
-        return io.on( "connect", ( socket: Socket ): void => {
+        return io.on( "connect", ( socket: IOSocket ): void => {
             this.connected = socket.connected;
-        } ).on( 'connection', ( socket: Socket ): void => {
+        } ).on( 'connection', ( socket: IOSocket ): void => {
             const _me: ISowSocketInfo = ( (): ISowSocketInfo => {
                 const socketInfo: ISowSocketInfo = {
                     token: Util.guid(),
@@ -217,7 +217,7 @@ class SowSocket implements ISowSocket {
                     isOwner: false,
                     group: void 0,
                     isReconnectd: false,
-                    getSocket: (): Socket => { return socket; },
+                    getSocket: (): IOSocket => { return socket; },
                     sendMsg: ( method: string, data: any ): void => {
                         return socket.emit( method, data ), void 0;
                     },
@@ -226,8 +226,10 @@ class SowSocket implements ISowSocket {
                 return socketInfo;
             } )();
             socket.on( 'disconnect', ( ...args: any[] ): void => {
-                if ( !this.removeSocket( _me.token ) ) return;
-                return this._wsClients.emit( "disConnected", _me, this ), void 0;
+                if ( this.removeSocket( _me.token ) ) {
+                    this._wsClients.emit( "disConnected", _me, this );
+                }
+                return void 0;
             } );
             const client = this._wsClients.client( _me, socket.request.session, this, this._server );
             for ( const method in client ) {
@@ -237,11 +239,15 @@ class SowSocket implements ISowSocket {
         } ), true;
     }
 }
-/** If you want to use it you've to install socket.io */
+/**
+ * If you want to use it you've to install socket.io
+ * const ws = socketInitilizer( server, SocketClient() );
+ * ws.create( require( "socket.io" ), app.httpServer );
+ */
 export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
     isConnectd: boolean;
     wsEvent: { [x: string]: any; } | void;
-    create: ( ioserver: ioServer, httpServer: Server ) => boolean;
+    create: ( ioserver: any, httpServer: Server ) => boolean;
 } {
     if ( typeof ( wsClientInfo.client ) !== "function" ) {
         throw new Error( "`getClient` event did not registered..." );
@@ -250,7 +256,7 @@ export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInf
         throw new Error( "`beforeInitiateConnection` event did not registered..." );
     }
     let _wsEvent: { [x: string]: any; } | void = void 0;
-    const _ws: SowSocket = new SowSocket( server, wsClientInfo );
+    const _ws: SowSocketServer = new SowSocketServer( server, wsClientInfo );
     return {
         get isConnectd(): boolean {
             return _ws.implimented;
@@ -258,7 +264,7 @@ export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInf
         get wsEvent(): { [x: string]: any; } | void {
             return _wsEvent ? _wsEvent : ( _wsEvent = wsClientInfo.getServerEvent(), _wsEvent );
         },
-        create( ioserver: ioServer, httpServer: Server ): boolean {
+        create( ioserver: any, httpServer: Server ): boolean {
             return _ws.create( ioserver, httpServer );
         }
     };

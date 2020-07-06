@@ -20,3 +20,4 @@ export { IRequestParam } from './lib/sow-router';
 export { IController } from './lib/sow-controller';
 export { ISession } from './lib/sow-static';
 export { IPostedFileInfo, UploadFileInfo, IBodyParser } from './lib/sow-body-parser';
+export { IWsClientInfo, ISowSocketServer, ISowSocketInfo, IOSocket } from './lib/sow-ws';

@@ -41,7 +41,7 @@ function wsClient() {
     return new WsClientInfo();
 }
 exports.wsClient = wsClient;
-class SowSocket {
+class SowSocketServer {
     constructor(server, wsClientInfo) {
         this.implimented = false;
         this.socket = [];
@@ -142,9 +142,10 @@ class SowSocket {
                 return socketInfo;
             })();
             socket.on('disconnect', (...args) => {
-                if (!this.removeSocket(_me.token))
-                    return;
-                return this._wsClients.emit("disConnected", _me, this), void 0;
+                if (this.removeSocket(_me.token)) {
+                    this._wsClients.emit("disConnected", _me, this);
+                }
+                return void 0;
             });
             const client = this._wsClients.client(_me, socket.request.session, this, this._server);
             for (const method in client) {
@@ -154,7 +155,11 @@ class SowSocket {
         }), true;
     }
 }
-/** If you want to use it you've to install socket.io */
+/**
+ * If you want to use it you've to install socket.io
+ * const ws = socketInitilizer( server, SocketClient() );
+ * ws.create( require( "socket.io" ), app.httpServer );
+ */
 function socketInitilizer(server, wsClientInfo) {
     if (typeof (wsClientInfo.client) !== "function") {
         throw new Error("`getClient` event did not registered...");
@@ -163,7 +168,7 @@ function socketInitilizer(server, wsClientInfo) {
         throw new Error("`beforeInitiateConnection` event did not registered...");
     }
     let _wsEvent = void 0;
-    const _ws = new SowSocket(server, wsClientInfo);
+    const _ws = new SowSocketServer(server, wsClientInfo);
     return {
         get isConnectd() {
             return _ws.implimented;

@@ -4,7 +4,7 @@ import { ISession } from './sow-static';
 import { EventEmitter } from 'events';
 import { Server } from 'http';
 /** [socket.io blueprint] */
-interface Socket extends EventEmitter {
+export interface IOSocket extends EventEmitter {
     nsp: object;
     server: object;
     adapter: object;
@@ -21,40 +21,28 @@ interface Socket extends EventEmitter {
     connected: boolean;
     disconnected: boolean;
     handshake: any;
-    json: Socket;
-    volatile: Socket;
-    broadcast: Socket;
-    to(room: string): Socket;
-    in(room: string): Socket;
-    use(fn: (packet: any[], next: (err?: any) => void) => void): Socket;
-    send(...args: any[]): Socket;
-    write(...args: any[]): Socket;
-    join(name: string | string[], fn?: (err?: any) => void): Socket;
-    leave(name: string, fn?: () => void): Socket;
+    json: IOSocket;
+    volatile: IOSocket;
+    broadcast: IOSocket;
+    to(room: string): IOSocket;
+    in(room: string): IOSocket;
+    use(fn: (packet: any[], next: (err?: any) => void) => void): IOSocket;
+    send(...args: any[]): IOSocket;
+    write(...args: any[]): IOSocket;
+    join(name: string | string[], fn?: (err?: any) => void): IOSocket;
+    leave(name: string, fn?: () => void): IOSocket;
     leaveAll(): void;
-    disconnect(close?: boolean): Socket;
+    disconnect(close?: boolean): IOSocket;
     listeners(event: string): (() => void)[];
-    compress(compress: boolean): Socket;
+    compress(compress: boolean): IOSocket;
     error(err: any): void;
 }
-interface Namespace {
-    _path: string;
-    close(...args: any[]): void;
-    use(fn: (socket: Socket, fn: (err?: any) => void) => void): Namespace;
-    on(event: 'connect', listener: (socket: Socket) => void): Namespace;
-    on(event: 'connection', listener: (socket: Socket) => void): this;
-}
-declare type ioServer = (server: any, opt: {
-    path?: string;
-    pingTimeout?: number;
-    cookie?: boolean;
-}) => Namespace;
 /** [/socket.io blueprint] */
 export interface IWsClientInfo {
     on(ev: 'getClient', handler: IWsClient): void;
     on(ev: 'disConnected' | 'connected', handler: IEvtHandler): void;
     on(ev: 'beforeInitiateConnection', handler: IWsNext): void;
-    emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocket): void;
+    emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocketServer): void;
     getServerEvent(): {
         [x: string]: any;
     } | void;
@@ -70,10 +58,10 @@ export interface ISowSocketInfo {
     isAuthenticated: boolean;
     isReconnectd: boolean;
     group?: string;
-    getSocket(): Socket;
+    getSocket(): IOSocket;
     sendMsg(method: string, data: any): void;
 }
-export interface ISowSocket {
+export interface ISowSocketServer {
     isActiveSocket(token: string): boolean;
     getOwners(group?: string): ISowSocketInfo[];
     findByHash(hash: string): ISowSocketInfo[];
@@ -88,18 +76,22 @@ export interface ISowSocket {
     removeSocket(token: string): boolean;
     sendMsg(token: string, method: string, data?: any): boolean;
 }
-declare type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocket) => void;
-declare type IWsNext = (session: ISession, socket: Socket) => void | boolean;
-declare type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocket, server: ISowServer) => {
+declare type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocketServer) => void;
+declare type IWsNext = (session: ISession, socket: IOSocket) => void | boolean;
+declare type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocketServer, server: ISowServer) => {
     [x: string]: any;
 };
 export declare function wsClient(): IWsClientInfo;
-/** If you want to use it you've to install socket.io */
+/**
+ * If you want to use it you've to install socket.io
+ * const ws = socketInitilizer( server, SocketClient() );
+ * ws.create( require( "socket.io" ), app.httpServer );
+ */
 export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
     isConnectd: boolean;
     wsEvent: {
         [x: string]: any;
     } | void;
-    create: (ioserver: ioServer, httpServer: Server) => boolean;
+    create: (ioserver: any, httpServer: Server) => boolean;
 };
 export {};

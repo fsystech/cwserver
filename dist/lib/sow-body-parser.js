@@ -326,8 +326,8 @@ class BodyParser {
         this._isDisposed = false;
         this._part = [];
         this._maxBuffLength = MaxBuffLength;
-        this._contentType = req.get("content-type") || "";
-        this._contentLength = sow_static_1.ToNumber(req.get("content-length") || 0);
+        this._contentType = sow_static_1.toString(req.get("content-type"));
+        this._contentLength = sow_static_1.ToNumber(req.get("content-length"));
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
         }

@@ -21,13 +21,20 @@ var __importStar = (this && this.__importStar) || function (mod) {
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initilizeServer = exports.SowServer = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.readAppVersion = exports.appVersion = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 10:13 PM 5/2/2020
+const sow_static_1 = require("./sow-static");
 const sow_server_core_1 = require("./sow-server-core");
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const fsw = __importStar(require("./sow-fsw"));
 const sow_util_1 = require("./sow-util");
 const sow_schema_validator_1 = require("./sow-schema-validator");
-const sow_static_1 = require("./sow-static");
+const sow_static_2 = require("./sow-static");
 const sow_controller_1 = require("./sow-controller");
 const sow_encryption_1 = require("./sow-encryption");
 const sow_http_status_1 = require("./sow-http-status");
@@ -524,7 +531,7 @@ ${appRoot}\\www_public
     parseSession(cook) {
         if (!this.config.session.cookie || this.config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
-        const session = new sow_static_1.Session();
+        const session = new sow_static_2.Session();
         const cookies = sow_server_core_1.parseCookie(cook);
         const value = cookies[this.config.session.cookie];
         if (!value)
@@ -839,7 +846,7 @@ function initilizeServer(appRoot, wwwName) {
         get public() { return _server.public; },
         get port() { return _server.port; },
         get log() { return _server.log; },
-        get socketPath() { return _server.config.socketPath || ""; },
+        get socketPath() { return sow_static_1.toString(_server.config.socketPath); },
         get server() { return _server; },
         get controller() { return _controller; }
     };

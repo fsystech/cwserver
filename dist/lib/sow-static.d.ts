@@ -50,5 +50,6 @@ export declare class ResInfo implements IResInfo {
     description: string;
     constructor();
 }
+export declare function toString(val: any): string;
 export declare function ToNumber(obj: any): number;
 export declare function ToResponseTime(timestamp?: number | Date): string;
