@@ -41,6 +41,7 @@ export interface IRequest extends IncomingMessage {
     readonly cookies: NodeJS.Dict<string>;
     readonly query: ParsedUrlQuery;
     readonly ip: string;
+    readonly isMobile: boolean;
     cleanSocket: boolean;
     path: string;
     session: ISession;
@@ -172,6 +173,16 @@ class Request extends IncomingMessage implements IRequest {
     private _ip: string | undefined;
     private _id: string | undefined;
     private _cleanSocket: boolean | undefined;
+    private _isMobile: boolean | undefined;
+    public get isMobile() {
+        if ( this._isMobile !== undefined ) return this._isMobile;
+        const userAgent: string | void = this.get( 'user-agent' );
+        this._isMobile = false;
+        if ( userAgent ) {
+            this._isMobile = /mobile/gi.test( userAgent );
+        }
+        return this._isMobile;
+    }
     public get cleanSocket() {
         if ( this._cleanSocket === undefined ) return false;
         return this._cleanSocket;

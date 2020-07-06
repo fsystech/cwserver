@@ -132,6 +132,8 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		if ( parser.isMultipart() ) {
 			return ctx.next( 404 );
 		}
+		expect(ctx.req.isMobile).toBeTruthy();
+		expect(ctx.req.isMobile).toBeTruthy();
 		if ( task && task === "ERROR" ) {
 			try {
 				await parser.parseSync();

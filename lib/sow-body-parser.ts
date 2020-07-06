@@ -65,7 +65,7 @@ export interface IBodyParser extends IDispose {
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync( next: ( file: IPostedFileInfo ) => void ): void;
     getFiles( next: ( file?: IPostedFileInfo, done?: () => void ) => void ): void;
-    getJson(): NodeJS.Dict<string>;
+    getJson(): NodeJS.Dict<any>;
     getData(): string;
     parse( onReadEnd: ( err?: Error ) => void ): void;
     parseSync(): Promise<void>;
@@ -511,7 +511,7 @@ class BodyParser implements IBodyParser {
         };
         return forward();
     }
-    public getJson(): NodeJS.Dict<string> {
+    public getJson(): NodeJS.Dict<any> {
         this.isValidRequest();
         if ( this._contentTypeEnum === ContentType.APP_JSON ) {
             return JSON.parse( this._parser.getRawData() );

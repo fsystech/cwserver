@@ -43,7 +43,7 @@ export interface IBodyParser extends IDispose {
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync(next: (file: IPostedFileInfo) => void): void;
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
-    getJson(): NodeJS.Dict<string>;
+    getJson(): NodeJS.Dict<any>;
     getData(): string;
     parse(onReadEnd: (err?: Error) => void): void;
     parseSync(): Promise<void>;
@@ -78,7 +78,7 @@ declare class BodyParser implements IBodyParser {
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync(next: (file: IPostedFileInfo) => void): void;
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
-    getJson(): NodeJS.Dict<string>;
+    getJson(): NodeJS.Dict<any>;
     getData(): string;
     readDataAsync(): Promise<void>;
     parseSync(): Promise<void>;

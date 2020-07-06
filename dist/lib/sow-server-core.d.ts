@@ -29,6 +29,7 @@ export interface IRequest extends IncomingMessage {
     readonly cookies: NodeJS.Dict<string>;
     readonly query: ParsedUrlQuery;
     readonly ip: string;
+    readonly isMobile: boolean;
     cleanSocket: boolean;
     path: string;
     session: ISession;

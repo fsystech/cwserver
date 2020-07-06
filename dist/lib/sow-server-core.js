@@ -141,6 +141,16 @@ function parseUrl(url) {
 }
 exports.parseUrl = parseUrl;
 class Request extends http_1.IncomingMessage {
+    get isMobile() {
+        if (this._isMobile !== undefined)
+            return this._isMobile;
+        const userAgent = this.get('user-agent');
+        this._isMobile = false;
+        if (userAgent) {
+            this._isMobile = /mobile/gi.test(userAgent);
+        }
+        return this._isMobile;
+    }
     get cleanSocket() {
         if (this._cleanSocket === undefined)
             return false;
