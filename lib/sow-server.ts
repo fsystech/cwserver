@@ -5,7 +5,7 @@
 */
 // 10:13 PM 5/2/2020
 import {
-    ISession, IResInfo
+    ISession, IResInfo, toString
 } from "./sow-static";
 import { IRequestParam } from './sow-router';
 import {
@@ -1013,7 +1013,7 @@ export function initilizeServer( appRoot: string, wwwName?: string ): IAppUtilit
         get public() { return _server.public; },
         get port() { return _server.port; },
         get log() { return _server.log; },
-        get socketPath() { return _server.config.socketPath || ""; },
+        get socketPath() { return toString( _server.config.socketPath ); },
         get server() { return _server; },
         get controller() { return _controller; }
     }

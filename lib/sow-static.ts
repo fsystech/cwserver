@@ -102,6 +102,10 @@ export class ResInfo implements IResInfo {
         this.description = "Ok";
     };
 }
+export function toString( val: any ): string {
+    if ( !val ) return "";
+    return typeof ( val ) === "string" ? val : String( val );
+}
 export function ToNumber( obj: any ): number {
     if ( !obj ) return 0;
     if ( typeof ( obj ) === "number" ) return obj;

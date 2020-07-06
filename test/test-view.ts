@@ -12,16 +12,17 @@ import {
 } from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
 import {
-	ISowServer, IContext,
 	disposeContext, getMyContext, removeContext
 } from '../lib/sow-server';
 import { SowHttpCache } from '../lib/sow-http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
+	ISowServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
 	socketInitilizer, getBodyParser, PayloadParser,
 	HttpMimeHandler, Streamer, Encryption
 } from '../index';
-import { IPostedFileInfo, UploadFileInfo, IBodyParser, decodeBodyBuffer } from '../lib/sow-body-parser';
+import { toString } from '../lib/sow-static';
+import { decodeBodyBuffer } from '../lib/sow-body-parser';
 import { assert, Util } from '../lib/sow-util';
 const mimeHandler = new HttpMimeHandler();
 export function shouldBeError( next: () => void, printerr?: boolean ): Error | void {
@@ -32,10 +33,15 @@ export function shouldBeError( next: () => void, printerr?: boolean ): Error | v
 		return e;
 	}
 };
+expect( toString( 1 ) ).toEqual( "1" );
 global.sow.server.on( "register-view", ( app: IApplication, controller: IController, server: ISowServer ) => {
 	expect( parseCookie( ["test"] ) ).toBeInstanceOf( Object );
 	expect( parseCookie( {} ) ).toBeInstanceOf( Object );
-	app.use( "/app-error", ( req: IRequest, res: IResponse, next: NextFunction ) => {
+	app.use( "/app-pass-error-to-next", ( req: IRequest, res: IResponse, next: NextFunction ) => {
+		expect( res.isAlive ).toBeTruthy();
+		expect( res.isAlive ).toBeTruthy();
+		return next( new Error( "Error Test...." ) );
+	} ).use( "/app-error", ( req: IRequest, res: IResponse, next: NextFunction ) => {
 		expect( req.session ).toBeInstanceOf( Object );
 		expect( parseUrl().pathname ).toBeNull();
 		expect( getClientIpFromHeader( req.headers ) ).toBeDefined();
@@ -132,8 +138,8 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		if ( parser.isMultipart() ) {
 			return ctx.next( 404 );
 		}
-		expect(ctx.req.isMobile).toBeTruthy();
-		expect(ctx.req.isMobile).toBeTruthy();
+		expect( ctx.req.isMobile ).toBeTruthy();
+		expect( ctx.req.isMobile ).toBeTruthy();
 		if ( task && task === "ERROR" ) {
 			try {
 				await parser.parseSync();
@@ -340,15 +346,15 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				getMyContext( "10101" );
 				removeContext( "1010" );
 				mCtx.dispose();
-				mCtx.transferError(new Error("Test"));
-				mCtx.handleError(null, ()=>{
+				mCtx.transferError( new Error( "Test" ) );
+				mCtx.handleError( null, () => {
 					// Nothing to do
-				});
-				mCtx.redirect("/test");
-				mCtx.write("");
-				mCtx.transferRequest(0);
+				} );
+				mCtx.redirect( "/test" );
+				mCtx.write( "" );
+				mCtx.transferRequest( 0 );
 				mCtx.signOut();
-				mCtx.setSession("Test","Test",{});
+				mCtx.setSession( "Test", "Test", {} );
 				const nctx: IContext = server.createContext( ctx.req, ctx.res, ctx.next );
 				nctx.path = "/not-found/404/";
 				nctx.req.path = "/not-found/404/";

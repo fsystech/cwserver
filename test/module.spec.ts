@@ -1694,6 +1694,15 @@ describe( "cwserver-error", () => {
                 done();
             } );
     } );
+    it( 'app.use pass error to next', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/app-pass-error-to-next` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 500 );
+                done();
+            } );
+    } );
 } );
 describe( "cwserver-controller-reset", () => {
     it( 'signout request: connection should be redirect to home', ( done: Mocha.Done ): void => {

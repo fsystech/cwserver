@@ -11,7 +11,7 @@ import {
 } from 'http';
 import { EventEmitter } from 'events';
 import { IRequestParam, ILayerInfo, IRouteInfo, getRouteInfo, getRouteMatcher } from './sow-router';
-import { ToResponseTime, ISession, IResInfo } from './sow-static';
+import { ToResponseTime, toString, ISession, IResInfo } from './sow-static';
 import { HttpStatus } from './sow-http-status';
 import { IContext } from './sow-server';
 import { Template } from './sow-template';
@@ -115,7 +115,7 @@ function createCookie( name: string, val: string, options: CookieOptions ): stri
     if ( options.path ) {
         str += `;Path=${options.path}`;
     } else {
-        str += `;Path=/`;
+        str += ';Path=/';
     }
     if ( options.expires && !options.maxAge )
         str += `;Expires=${ToResponseTime( options.expires )}`;
@@ -151,11 +151,8 @@ function getCommonHeader( contentType: string, contentLength?: number, isGzip?: 
     return header;
 }
 export function getClientIpFromHeader( headers: IncomingHttpHeaders ): string {
-    const res: number | string | string[] | undefined = headers['x-forwarded-for'];
-    if ( res ) {
-        return res.toString().split( ',' )[0];
-    }
-    return "";
+    const res: string = toString( headers['x-forwarded-for'] );
+    return res.split( ',' )[0];
 }
 export function parseUrl( url?: string ): UrlWithParsedQuery {
     if ( url ) {
@@ -176,11 +173,8 @@ class Request extends IncomingMessage implements IRequest {
     private _isMobile: boolean | undefined;
     public get isMobile() {
         if ( this._isMobile !== undefined ) return this._isMobile;
-        const userAgent: string | void = this.get( 'user-agent' );
-        this._isMobile = false;
-        if ( userAgent ) {
-            this._isMobile = /mobile/gi.test( userAgent );
-        }
+        const userAgent: string = toString( this.get( 'user-agent' ) );
+        this._isMobile = /mobile/gi.test( userAgent );
         return this._isMobile;
     }
     public get cleanSocket() {
@@ -216,7 +210,7 @@ class Request extends IncomingMessage implements IRequest {
     }
     public get ip(): string {
         if ( this._ip !== undefined ) return this._ip;
-        this._ip = this.socket.remoteAddress || getClientIpFromHeader( this.headers );
+        this._ip = toString( this.socket.remoteAddress );
         return this._ip;
     }
     public get id(): string {
@@ -274,7 +268,7 @@ class Response extends ServerResponse implements IResponse {
         this._isAlive = val;
     }
     public get method() {
-        return this._method || "";
+        return toString( this._method );
     }
     public set method( val: string ) {
         this._method = val;
@@ -307,7 +301,7 @@ class Response extends ServerResponse implements IResponse {
             if ( val instanceof Array ) {
                 return JSON.stringify( val );
             }
-            return String( val );
+            return toString( val );
         }
     }
     public set( field: string, value: number | string | string[] ): IResponse {

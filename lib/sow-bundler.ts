@@ -41,13 +41,13 @@ class Bundlew {
     static getInfo(): string {
         return `/*
 ||####################################################################################################################################||
-||#  Sow 'Combiner'                                                                                                                  #||
+||#  Sow "Combiner"                                                                                                                  #||
 ||#  Version: 1.0.0.1; Build Date : Fri May 01, 2020 1:33:49 GMT+0600 (BDT)                                                          #||
-||#  Sow( https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver)). All rights reserved          #||
+||#  Sow( https://github.com/safeonlineworld/cwserver). All rights reserved                                                          #||
 ||#  Email: mssclang@outlook.com;                                                                                                    #||
 ||####################################################################################################################################||
 ---------------------------------------------------------------------------------------------------------------------------------------
-This 'Combiner' contains the following files:\n`;
+This "Combiner" contains the following files:\n`;
     }
     static getResContentType( ctEnum: ContentType ): string {
         if ( ctEnum === ContentType.JS )

@@ -13,7 +13,7 @@ import { pipeline } from 'stream';
 import os from 'os';
 import destroy = require( 'destroy' );
 import { IRequest } from './sow-server-core';
-import { ToNumber, IDispose, IBufferArray, BufferArray } from './sow-static';
+import { ToNumber, toString, IDispose, IBufferArray, BufferArray } from './sow-static';
 import { Util } from './sow-util';
 import * as fsw from './sow-fsw';
 import { ErrorHandler } from './sow-fsw';
@@ -404,8 +404,8 @@ class BodyParser implements IBodyParser {
         tempDir?: string
     ) {
         this._isDisposed = false; this._part = []; this._maxBuffLength = MaxBuffLength;
-        this._contentType = req.get( "content-type" ) || "";
-        this._contentLength = ToNumber( req.get( "content-length" ) || 0 );
+        this._contentType = toString( req.get( "content-type" ) );
+        this._contentLength = ToNumber( req.get( "content-length" ) );
         if ( this._contentType.indexOf( incomingContentType.MULTIPART ) > -1 ) {
             this._contentTypeEnum = ContentType.MULTIPART;
         } else if ( this._contentType.indexOf( incomingContentType.URL_ENCODE ) > -1 && this._contentType === incomingContentType.URL_ENCODE ) {
