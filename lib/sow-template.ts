@@ -8,7 +8,7 @@ import * as _vm from 'vm';
 import * as _zlib from 'zlib';
 import * as _path from 'path';
 import { HttpStatus } from './sow-http-status';
-import { IResInfo } from './sow-static';
+import { IResInfo, IDispose } from './sow-static';
 import { IContext } from './sow-server';
 import * as fsw from './sow-fsw';
 import { generateRandomString } from './sow-util';
@@ -33,7 +33,7 @@ interface ITag {
     script: IScriptTag;
     write: IScriptTag;
 }
-interface IScriptParser {
+interface IScriptParser extends IDispose {
     tag: ITag;
     startTage( parserInfo: IParserInfo ): void;
     endTage( parserInfo: IParserInfo ): void;
@@ -104,12 +104,28 @@ class Tag implements ITag {
         this.write = new WriteTag();
     }
 }
+class CommentTag {
+    public get jsStart() {
+        return /\/\*{%\*\//gi;
+    }
+    public get jsEnd() {
+        return /\/\*%}\*\//gi;
+    }
+    public get htmlStart() {
+        return /<\!--{%-->/gi;
+    }
+    public get htmlEnd() {
+        return /<\!--%}-->/gi;
+    }
+}
 class ScriptParser implements IScriptParser {
-    tag: ITag;
+    public tag: ITag;
+    private _cmnt: CommentTag;
     constructor() {
         this.tag = new Tag();
+        this._cmnt = new CommentTag();
     }
-    startTage( parserInfo: IParserInfo ): void {
+    public startTage( parserInfo: IParserInfo ): void {
         if ( parserInfo.line.indexOf( parserInfo.tag ) <= -1 ) {
             if ( parserInfo.isLastTag && parserInfo.isTagEnd ) {
                 parserInfo.line = parserInfo.line + "\x0f; __RSP += \x0f";
@@ -123,18 +139,42 @@ class ScriptParser implements IScriptParser {
                     parserInfo.isTagEnd = true; parserInfo.isTagStart = false;
                     const index: number = parserInfo.line.indexOf( "{" );
                     let startPart: string | undefined;
-                    if ( index > 0 ) {
-                        startPart = parserInfo.line.substring( 0, index ) + "\x0f;";
+                    if ( this._cmnt.jsStart.test( parserInfo.line )/** hasJsCmnt */ ) {
+                        if ( index > 2 ) {
+                            startPart = parserInfo.line.substring( 0, index - 2 ) + "\x0f;";
+                            parserInfo.line = parserInfo.line.substring( index + 4 );
+                        }
+                        parserInfo.line = parserInfo.line.replace( this._cmnt.jsEnd, "" );
+                        parserInfo.line += " __RSP += \x0f";
+                    } else if ( this._cmnt.htmlStart.test( parserInfo.line ) /* hasHtmlCmnt*/ ) {
+                        if ( index > 4 ) {
+                            startPart = parserInfo.line.substring( 0, index - 4 ) + "\x0f;";
+                            parserInfo.line = parserInfo.line.substring( index + 5 );
+                        }
+                        parserInfo.line = parserInfo.line.replace( this._cmnt.htmlEnd, "" );
+                        parserInfo.line += " __RSP += \x0f";
+                    } else {
+                        if ( index > 0 ) {
+                            startPart = parserInfo.line.substring( 0, index ) + "\x0f;";
+                        }
+                        parserInfo.line = parserInfo.line.substring( index + 2, parserInfo.line.length );
+                        parserInfo.line = parserInfo.line.substring( 0, parserInfo.line.indexOf( "%" ) );
+                        parserInfo.line += " __RSP += \x0f";
                     }
-                    parserInfo.line = parserInfo.line.substring( index + 2, parserInfo.line.length );
-                    parserInfo.line = parserInfo.line.substring( 0, parserInfo.line.indexOf( "%" ) );
-                    parserInfo.line += " __RSP += \x0f";
                     if ( startPart ) {
                         parserInfo.line = startPart + parserInfo.line;
                     }
                     break;
                 }
                 parserInfo.isTagEnd = false;
+                if ( this._cmnt.jsStart.test( parserInfo.line )/** hasJsCmnt */ ) {
+                    parserInfo.line = parserInfo.line.replace( this._cmnt.jsStart, "\x0f;" ).replace( /'/g, '\x0f' );
+                    break;
+                }
+                if ( this._cmnt.htmlStart.test( parserInfo.line ) /* hasHtmlCmnt*/ ) {
+                    parserInfo.line = parserInfo.line.replace( this._cmnt.htmlStart, "\x0f;" ).replace( /'/g, '\x0f' );
+                    break;
+                }
                 parserInfo.line = parserInfo.line.replace( this.tag.script.lre, "\x0f;\r\n" ).replace( /'/g, '\x0f' );
                 break;
             case this.tag.write.l: /*{=*/
@@ -151,16 +191,26 @@ class ScriptParser implements IScriptParser {
         parserInfo.startTageName = ( !parserInfo.isTagEnd ? parserInfo.tag : void 0 );
         return;
     }
-    endTage( parserInfo: IParserInfo ): void {
+    public endTage( parserInfo: IParserInfo ): void {
         if ( parserInfo.isTagStart === false && parserInfo.isTagEnd === true ) return;
         if ( parserInfo.isTagStart !== false && parserInfo.isTagEnd !== true ) {
             parserInfo.isTagStart = true;
             switch ( parserInfo.tag ) {
                 case this.tag.script.r: /*%}*/
-                    ( this.tag.script.rre.test( parserInfo.line ) === true ?
-                        ( parserInfo.isTagEnd = true, parserInfo.isTagStart = false,
-                            parserInfo.line = parserInfo.line.replace( this.tag.script.rre, " __RSP += \x0f" ) )
-                        : parserInfo.isTagEnd = false );
+                    if ( this.tag.script.rre.test( parserInfo.line ) === true ) {
+                        parserInfo.isTagEnd = true; parserInfo.isTagStart = false;
+                        if ( this._cmnt.jsEnd.test( parserInfo.line ) ) {
+                            parserInfo.line = parserInfo.line.replace( this._cmnt.jsEnd, "__RSP += \x0f" );
+                            break;
+                        }
+                        if ( this._cmnt.htmlEnd.test( parserInfo.line ) ) {
+                            parserInfo.line = parserInfo.line.replace( this._cmnt.htmlEnd, "__RSP += \x0f" );
+                            break;
+                        }
+                        parserInfo.line = parserInfo.line.replace( this.tag.script.rre, " __RSP += \x0f" );
+                        break;
+                    }
+                    parserInfo.isTagEnd = false;
                     break;
                 case this.tag.write.r: /*=}*/
                     ( this.tag.write.rre.test( parserInfo.line ) === true ?
@@ -171,6 +221,10 @@ class ScriptParser implements IScriptParser {
             parserInfo.startTageName = ( !parserInfo.isTagEnd ? parserInfo.startTageName : void 0 );
         }
         return;
+    }
+    public dispose() {
+        delete this.tag;
+        delete this._cmnt;
     }
 }
 class TemplateParser {
@@ -310,10 +364,10 @@ export class TemplateCore {
     public static compile(
         str: string | undefined, next: TemplateNextFunc
     ): void {
+        if ( !str ) {
+            return next( { str: "", err: new Error( "No script found to compile...." ) } );
+        }
         try {
-            if ( !str ) {
-                throw new Error( "No script found to compile...." );
-            }
             const sendbox: string = `${generateRandomString( 30 )}_thisNext`;
             global.sow.templateCtx[sendbox] = templateNext;
             const script: _vm.Script = new _vm.Script( `sow.templateCtx.${sendbox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};` );
@@ -326,7 +380,7 @@ export class TemplateCore {
                 sendBox: func
             } );
         } catch ( e ) {
-            return next( { str: "", err: e } );
+            return next( { str, err: e } );
         }
     }
     private static parseScript( str: string ): string | undefined {
@@ -362,6 +416,7 @@ export class TemplateCore {
                 out += parserInfo.line;
             }
         }
+        scriptParser.dispose();
         out = out.replace( /__RSP \+\= '';/g, '' );
         return out.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" );
     }

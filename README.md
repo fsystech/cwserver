@@ -180,6 +180,33 @@ Code block:
     }
 %}
 ```
+```
+<ul>
+  {% users.forEach(function(user){ %}
+    {= user =}
+  {% }); %}
+</ul>
+
+<ul>
+  <!--{%--> users.forEach(function(user){ <!--%}-->
+    {= user =}
+  <!--{%--> }); <!--%}-->
+</ul>
+
+<script>
+    var userLength = 0;
+    /*{%*/ if ( users.length > 0 ) {/*%}*/
+    userLength = {= users.length =};
+    /*{%*/ } /*%}*/
+</script>
+
+<script>
+    var userLength = 0;
+    {% if ( users.length > 0 ) { %}
+    userLength = {= users.length =};
+    {% } %}
+</script>
+```
 Response write: ```{= myVar =}``` or ```ctx.write(myVar)```<br/>
 ```
 {%

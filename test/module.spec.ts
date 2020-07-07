@@ -747,6 +747,11 @@ describe( "cwserver-template-engine", () => {
             } );
         } );
         tasks.push( () => {
+            TemplateCore.run( ctx, spublic, `/*{%*/var xy = 0;/*%}*/\n/*{%*/\nvar xy = 0;\n/*%}*/\n   <!--{%-->var xy = 0;<!--%}-->\n<!--{%-->\nvar xy = 0;\n<!--%}-->`, ( params: CompilerResult ) => {
+                return forward();
+            } );
+        } );
+        tasks.push( () => {
             fs.writeFileSync( filePath, '<placeholder id="test">\r\n</placeholder><script runat="template-engine">\r\nvar xy = 0;\r\n</script>{% ERROR %} {= NOPX =}\r\n\r\n\r\n' );
             TemplateCore.run( ctx, spublic, `#extends /template/invalid.html\r\n<impl-placeholder id="test">\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ) => {
                 return forward();
