@@ -1807,6 +1807,10 @@ describe( "cwserver-utility", () => {
     it( "test-app-utility", function ( done: Mocha.Done ): void {
         this.timeout( 5000 );
         expect( shouldBeError( () => {
+            appUtility.server.addMimeType( "text", "text/plain" );
+        } ) ).toBeInstanceOf( Error );
+        expect(appUtility.server.addMimeType( "tmpl", "text/plain" )).not.toBeInstanceOf(Error);
+        expect( shouldBeError( () => {
             assert( false, "test" );
         } ) ).toBeInstanceOf( Error );
         expect( shouldBeError( () => {

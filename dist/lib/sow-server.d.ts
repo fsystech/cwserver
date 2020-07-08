@@ -137,6 +137,7 @@ export interface ISowServer {
     } | void;
     formatPath(name: string, noCheck?: boolean): string;
     createBundle(str: string): string;
+    addMimeType(extension: string, val: string): void;
     getRoot(): string;
     getPublic(): string;
     getPublicDirName(): string;
@@ -295,6 +296,7 @@ export declare class SowServer implements ISowServer {
     escape(unsafe?: string | null): string;
     formatPath(name: string, noCheck?: boolean): string;
     createBundle(str: string): string;
+    addMimeType(extension: string, val: string): void;
 }
 export interface IAppUtility {
     readonly init: () => IApplication;

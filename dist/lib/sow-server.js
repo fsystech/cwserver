@@ -678,6 +678,9 @@ ${appRoot}\\www_public
             throw new Error("No string found to create bundle...");
         return sow_encryption_1.Encryption.encryptUri(str, this.config.encryptionKey);
     }
+    addMimeType(extension, val) {
+        return global.sow.HttpMime.add(extension, val);
+    }
 }
 exports.SowServer = SowServer;
 function initilizeServer(appRoot, wwwName) {

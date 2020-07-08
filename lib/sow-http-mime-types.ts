@@ -10,6 +10,7 @@ import * as _path from 'path';
 import { assert, getLibRoot } from './sow-util';
 export interface IMimeType<T> {
     readonly type: ( extension: string ) => T | undefined;
+    readonly add: ( extension: string, val: T ) => void;
 }
 export function loadMimeType<T>(): IMimeType<T> {
     const libRoot: string = getLibRoot();
@@ -17,6 +18,12 @@ export function loadMimeType<T>(): IMimeType<T> {
     assert( _fs.existsSync( absPath ), `No mime-type found in ${libRoot}\nPlease re-install cwserver` );
     const data: NodeJS.Dict<T> = JSON.parse( _fs.readFileSync( absPath, "utf-8" ) );
     return {
+        add: ( extension: string, val: T ): void => {
+            if ( data[extension] )
+                throw new Error( `This given extension (${extension}) already exists` );
+            data[extension] = val;
+            return void 0;
+        },
         type: ( extension: string ): T | undefined => {
             return data[extension];
         }

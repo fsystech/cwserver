@@ -150,6 +150,7 @@ export interface ISowServer {
     } | void;
     formatPath( name: string, noCheck?: boolean ): string;
     createBundle( str: string ): string;
+    addMimeType( extension: string, val: string ): void;
     getRoot(): string;
     getPublic(): string;
     getPublicDirName(): string;
@@ -843,6 +844,9 @@ ${appRoot}\\www_public
     createBundle( str: string ): string {
         if ( !str ) throw new Error( "No string found to create bundle..." )
         return Encryption.encryptUri( str, this.config.encryptionKey );
+    }
+    addMimeType( extension: string, val: string ): void {
+        return global.sow.HttpMime.add( extension, val );
     }
 }
 export interface IAppUtility {
