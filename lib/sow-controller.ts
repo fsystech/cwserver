@@ -7,6 +7,8 @@
 import { HttpMimeHandler } from './sow-http-mime';
 import { IHttpMimeHandler } from './sow-http-mime';
 import { IContext, AppHandler } from './sow-server';
+import { HttpStatus } from './sow-http-status';
+import { ToNumber } from './sow-static';
 import * as fsw from './sow-fsw';
 import {
     getRouteMatcher, getRouteInfo,
@@ -137,6 +139,9 @@ export class Controller implements IController {
             const fileName: string | void = getFileName( ctx.req.path );
             if ( !fileName ) return ctx.next( 404 );
             if ( ctx.server.config.defaultDoc.indexOf( fileName ) > -1 ) return ctx.next( 404 );
+            if ( HttpStatus.isErrorFileName( fileName /*401*/ ) ) {
+                return ctx.transferRequest( ToNumber( fileName ) );
+            }
             const path: string = ctx.server.mapPath( `/${ctx.req.path}${ctx.server.config.defaultExt}` );
             return fsw.isExists( path, ( exists: boolean, url: string ): void => {
                 if ( exists ) return ctx.res.render( ctx, url );

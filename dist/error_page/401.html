@@ -19,7 +19,12 @@
 <body>
     <h1>401 Unauthorized</h1>
     <p class="zoom-area"><a href="/"><img style="width: 100px;" src="/logo/logo_blue.png?v={= ctx.server.config.packageVersion =}" alt="{=ctx.server.config.appName=}" /></a></p>
+    <!--{%-->const reason = ctx.req.query["reason"];<!--%}-->
+    <!--{%-->if ( reason ) {<!--%}-->
+    <h1 style="color:red; font-size:10px;" class="error-description">{= Buffer.from( reason, 'base64' ).toString() =}</h1>
+    <!--{%-->} else{<!--%}-->
     <h1 style="color:red; font-size:10px;" class="error-description">Unauthorized to access {= ( ctx.root || ctx.path ) =}</h1>
+    <!--{%-->}<!--%}-->
     <section class="error-container">
         <span><span>4</span></span>
         <span>0</span>

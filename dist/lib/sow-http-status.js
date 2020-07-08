@@ -133,6 +133,15 @@ class HttpStatus {
         // console.log( out );
         return out;
     }
+    static isErrorFileName(name) {
+        if (/^\d*$/.test(name) === false)
+            return false;
+        const inf = _group[name.charAt(0)];
+        if (!inf || (inf && inf.error === false))
+            return false;
+        const statusCode = sow_static_1.ToNumber(name);
+        return this.isValidCode(statusCode);
+    }
     static isErrorCode(code) {
         const inf = _group[String(code).charAt(0)];
         if (!inf)

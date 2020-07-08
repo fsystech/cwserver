@@ -353,9 +353,7 @@ class TemplateParser {
     ): void {
         return this.implimentTemplateExtend( ctx, appRoot, str, ( istr: string ): void => {
             return this.implimentAttachment( ctx, appRoot, istr, ( astr: string ) => {
-                return next( astr.replace( /<script runat="template-engine">([\s\S]+?)<\/script>/gi, ( match: string ): string => {
-                    return match.replace( /<script runat="template-engine">/gi, "{%" ).replace( /<\/script>/gi, "%}" );
-                } ).replace( /^\s*$(?:\r\n?|\n)/gm, "\n" ) );
+                return next( astr.replace( /^\s*$(?:\r\n?|\n)/gm, "\n" ) );
             } );
         } );
     }
@@ -462,7 +460,9 @@ export class TemplateCore {
     ): void {
         return this._run( ctx, appRoot, str, ( fstr: string, isTemplate: boolean ): void => {
             if ( this.isScript( fstr ) ) {
-                return this.compile( this.parseScript( fstr ), next );
+                return this.compile( this.parseScript( fstr.replace( /<script runat="template-engine">([\s\S]+?)<\/script>/gi, ( match: string ): string => {
+                    return match.replace( /<script runat="template-engine">/gi, "{%" ).replace( /<\/script>/gi, "%}" );
+                } ) ), next );
             }
             return next( {
                 str: fstr,

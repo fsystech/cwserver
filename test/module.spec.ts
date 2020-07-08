@@ -605,7 +605,7 @@ describe( "cwserver-template-engine", () => {
     } );
     it( 'send get request should be 404 response', ( done: Mocha.Done ): void => {
         getAgent()
-            .get( `http://localhost:${appUtility.port}/404` )
+            .get( `http://localhost:${appUtility.port}/ksdafsfasbd` )
             .end( ( err, res ) => {
                 expect( err ).toBeInstanceOf( Error );
                 expect( res.status ).toBe( 404 );
@@ -1699,6 +1699,15 @@ describe( "cwserver-error", () => {
                 done();
             } );
     } );
+    it( 'try direct access error page with error code', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/404` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 404 );
+                done();
+            } );
+    } );
     it( 'app.use pass error to next', ( done: Mocha.Done ): void => {
         getAgent()
             .get( `http://localhost:${appUtility.port}/app-pass-error-to-next` )
@@ -1851,6 +1860,10 @@ describe( "cwserver-utility", () => {
         expect( HttpStatus.fromPath( "result", 200 ) ).toEqual( 200 );
         expect( HttpStatus.fromPath( "/result", 200 ) ).toEqual( 200 );
         expect( HttpStatus.getResInfo( "/result", 0 ).isValid ).toEqual( false );
+        expect(HttpStatus.isErrorFileName("404")).toBeTruthy();
+        expect(HttpStatus.isErrorFileName("404_test")).toBeFalsy();
+        expect(HttpStatus.isErrorFileName("201")).toBeFalsy();
+        expect(HttpStatus.isErrorFileName("9077")).toBeFalsy();
         expect( HttpStatus.isValidCode( 45510 ) ).toEqual( false );
         expect( HttpStatus.statusCode ).toBeInstanceOf( Object );
         expect( ToNumber( null ) ).toEqual( 0 );

@@ -13,10 +13,9 @@ import { pipeline } from 'stream';
 import os from 'os';
 import destroy = require( 'destroy' );
 import { IRequest } from './sow-server-core';
-import { ToNumber, toString, IDispose, IBufferArray, BufferArray } from './sow-static';
+import { ToNumber, toString, IDispose, IBufferArray, BufferArray, ErrorHandler } from './sow-static';
 import { Util } from './sow-util';
 import * as fsw from './sow-fsw';
-import { ErrorHandler } from './sow-fsw';
 export type UploadFileInfo = {
     contentType: string;
     name: string;

@@ -131,6 +131,13 @@ export class HttpStatus {
         // console.log( out );
         return out;
     }
+    static isErrorFileName( name: string ): boolean {
+        if ( /^\d*$/.test( name ) === false ) return false;
+        const inf: GroupType | undefined = _group[name.charAt( 0 )];
+        if ( !inf || ( inf && inf.error === false ) ) return false;
+        const statusCode: number = ToNumber( name );
+        return this.isValidCode( statusCode );
+    }
     static isErrorCode( code: any ): boolean {
         const inf: GroupType | undefined = _group[String( code ).charAt( 0 )];
         if ( !inf )

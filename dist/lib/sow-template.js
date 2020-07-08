@@ -323,9 +323,7 @@ class TemplateParser {
     static parse(ctx, appRoot, str, next) {
         return this.implimentTemplateExtend(ctx, appRoot, str, (istr) => {
             return this.implimentAttachment(ctx, appRoot, istr, (astr) => {
-                return next(astr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match) => {
-                    return match.replace(/<script runat="template-engine">/gi, "{%").replace(/<\/script>/gi, "%}");
-                }).replace(/^\s*$(?:\r\n?|\n)/gm, "\n"));
+                return next(astr.replace(/^\s*$(?:\r\n?|\n)/gm, "\n"));
             });
         });
     }
@@ -424,7 +422,9 @@ class TemplateCore {
     static run(ctx, appRoot, str, next) {
         return this._run(ctx, appRoot, str, (fstr, isTemplate) => {
             if (this.isScript(fstr)) {
-                return this.compile(this.parseScript(fstr), next);
+                return this.compile(this.parseScript(fstr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match) => {
+                    return match.replace(/<script runat="template-engine">/gi, "{%").replace(/<\/script>/gi, "%}");
+                })), next);
             }
             return next({
                 str: fstr,

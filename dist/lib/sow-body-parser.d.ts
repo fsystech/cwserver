@@ -1,7 +1,6 @@
 /// <reference types="node" />
 import { IRequest } from './sow-server-core';
-import { IDispose } from './sow-static';
-import { ErrorHandler } from './sow-fsw';
+import { IDispose, ErrorHandler } from './sow-static';
 export declare type UploadFileInfo = {
     contentType: string;
     name: string;

@@ -482,7 +482,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 		.get( '/user/:id/settings', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: requestParam } );
 		} )
-		.get( '/404', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+		.get( '/ksdafsfasbd', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			return Util.sendResponse( ctx, "/invalid/not-found/no.html" );
 		} );
 

@@ -6,10 +6,7 @@
 // 5:17 PM 6/15/2020
 import * as _fs from 'fs';
 import * as _path from 'path';
-export type ErrorHandler = (
-    err: NodeJS.ErrnoException | Error | null | undefined,
-    next: () => void
-) => void;
+import { ErrorHandler } from './sow-static';
 export function stat(
     path: string,
     next: ( err?: NodeJS.ErrnoException | null, stat?: _fs.Stats ) => void,

@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import * as _fs from 'fs';
-export declare type ErrorHandler = (err: NodeJS.ErrnoException | Error | null | undefined, next: () => void) => void;
+import { ErrorHandler } from './sow-static';
 export declare function stat(path: string, next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void, errHandler: ErrorHandler): void;
 export declare function moveFile(src: string, dest: string, next: (err: NodeJS.ErrnoException | null) => void, force?: boolean): void;
 /** compairFile a stat.mtime > b stat.mtime */

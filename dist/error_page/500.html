@@ -1,4 +1,9 @@
-﻿<!DOCTYPE html>
+﻿<script runat="template-engine">
+    if ( !ctx.error || ctx.error.length === 0 ) {
+        return ctx.transferRequest( 404 );
+    }
+</script>
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8" />

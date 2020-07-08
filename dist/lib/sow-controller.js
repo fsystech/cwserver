@@ -27,6 +27,8 @@ exports.Controller = void 0;
 */
 // 11:16 PM 5/2/2020
 const sow_http_mime_1 = require("./sow-http-mime");
+const sow_http_status_1 = require("./sow-http-status");
+const sow_static_1 = require("./sow-static");
 const fsw = __importStar(require("./sow-fsw"));
 const sow_router_1 = require("./sow-router");
 const routeTable = {
@@ -144,6 +146,9 @@ class Controller {
                 return ctx.next(404);
             if (ctx.server.config.defaultDoc.indexOf(fileName) > -1)
                 return ctx.next(404);
+            if (sow_http_status_1.HttpStatus.isErrorFileName(fileName /*401*/)) {
+                return ctx.transferRequest(sow_static_1.ToNumber(fileName));
+            }
             const path = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
             return fsw.isExists(path, (exists, url) => {
                 if (exists)

@@ -8,5 +8,6 @@ export declare class HttpStatus {
     static fromPath(path: string | any, statusCode: any): number;
     static isValidCode(statusCode: number): boolean;
     static getResInfo(path: string | number, code: any): IResInfo;
+    static isErrorFileName(name: string): boolean;
     static isErrorCode(code: any): boolean;
 }
