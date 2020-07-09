@@ -70,11 +70,13 @@ export interface ISowSocketInfo {
     sendMsg( method: string, data: any ): void;
 }
 export interface ISowSocketServer {
+    readonly clients: ISowSocketInfo[];
     isActiveSocket( token: string ): boolean;
     getOwners( group?: string ): ISowSocketInfo[];
     findByHash( hash: string ): ISowSocketInfo[];
     findByLogin( loginId: string ): ISowSocketInfo[];
-    findeByRoleId( roleId: string ): ISowSocketInfo[];
+    findByRoleId( roleId: string ): ISowSocketInfo[];
+    findByToken( token: string ): ISowSocketInfo[];
     toList( sockets: ISowSocketInfo[] ): { [x: string]: any; }[];
     getClientByExceptHash( exceptHash: string, group?: string ): ISowSocketInfo[];
     getClientByExceptLogin( exceptLoginId: string, group?: string ): ISowSocketInfo[];
@@ -120,32 +122,38 @@ class SowSocketServer implements ISowSocketServer {
     _server: ISowServer;
     _wsClients: IWsClientInfo;
     implimented: boolean;
-    socket: ISowSocketInfo[];
+    _clients: ISowSocketInfo[];
+    public get clients() {
+        return this._clients;
+    }
     connected: boolean;
     constructor( server: ISowServer, wsClientInfo: IWsClientInfo ) {
-        this.implimented = false; this.socket = [];
+        this.implimented = false; this._clients = [];
         this.connected = false;
         this._server = server; this._wsClients = wsClientInfo;
     }
     isActiveSocket( token: string ): boolean {
-        return this.socket.some( soc => soc.token === token );
+        return this._clients.some( soc => soc.token === token );
     }
     getOwners( group?: string ): ISowSocketInfo[] {
-        return group ? this.socket.filter( soc => soc.isOwner === true && soc.group === group ): this.socket.filter( soc => soc.isOwner === true );
+        return group ? this._clients.filter( soc => soc.isOwner === true && soc.group === group ) : this._clients.filter( soc => soc.isOwner === true );
     }
     findByHash( hash: string ): ISowSocketInfo[] {
-        return this.socket.filter( soc => soc.hash === hash );
+        return this._clients.filter( soc => soc.hash === hash );
     }
     findByLogin( loginId: string ): ISowSocketInfo[] {
-        return this.socket.filter( soc => soc.loginId === loginId );
+        return this._clients.filter( soc => soc.loginId === loginId );
     }
-    findeByRoleId( roleId: string ): ISowSocketInfo[] {
-        return this.socket.filter( soc => soc.roleId === roleId );
+    findByRoleId( roleId: string ): ISowSocketInfo[] {
+        return this._clients.filter( soc => soc.roleId === roleId );
     }
-    toList( sockets: ISowSocketInfo[] ): { [x: string]: any; }[] {
+    findByToken( token: string ): ISowSocketInfo[] {
+        return this._clients.filter( soc => soc.token === token );
+    }
+    toList( clients: ISowSocketInfo[] ): { [x: string]: any; }[] {
         const list: { [x: string]: any; }[] = [];
-        if ( sockets.length === 0 ) return list;
-        sockets.forEach( a => {
+        if ( clients.length === 0 ) return list;
+        clients.forEach( a => {
             list.push( {
                 token: a.token, hash: a.hash, loginId: a.loginId
             } );
@@ -153,35 +161,35 @@ class SowSocketServer implements ISowSocketServer {
         return list;
     }
     getClientByExceptHash( exceptHash: string, group?: string ): ISowSocketInfo[] {
-        return !group ? this.socket.filter(
+        return !group ? this._clients.filter(
             soc => soc.hash !== exceptHash
-        ) : this.socket.filter(
+        ) : this._clients.filter(
             soc => soc.hash !== exceptHash && soc.group === group
         );
     }
     getClientByExceptLogin( exceptLoginId: string, group?: string ): ISowSocketInfo[] {
-        return !group ? this.socket.filter(
+        return !group ? this._clients.filter(
             soc => soc.loginId !== exceptLoginId
-        ) : this.socket.filter(
+        ) : this._clients.filter(
             soc => soc.loginId !== exceptLoginId && soc.group === group
         );
     }
     getClientByExceptToken( token: string, group?: string ): ISowSocketInfo[] {
-        return !group ? this.socket.filter(
+        return !group ? this._clients.filter(
             soc => soc.token !== token
-        ) : this.socket.filter(
+        ) : this._clients.filter(
             soc => soc.token !== token && soc.group === group
         );
     }
     getSocket( token: string ): ISowSocketInfo | void {
-        return this.socket.find( soc => soc.token === token );
+        return this._clients.find( soc => soc.token === token );
     }
     removeSocket( token: string ): boolean {
-        const index: number = this.socket.findIndex( ( soc: ISowSocketInfo ) => {
+        const index: number = this._clients.findIndex( ( soc: ISowSocketInfo ) => {
             return soc.token === token;
         } );
         if ( index < 0 ) return false;
-        this.socket.splice( index, 1 );
+        this._clients.splice( index, 1 );
         return true;
     }
     sendMsg( token: string, method: string, data?: any ): boolean {
@@ -233,7 +241,7 @@ class SowSocketServer implements ISowSocketServer {
                     socketInfo.hash = Encryption.toMd5( socket.request.session.loginId );
                     socketInfo.roleId = socket.request.session.roleId;
                 }
-                this.socket.push( socketInfo );
+                this._clients.push( socketInfo );
                 return socketInfo;
             } )();
             socket.on( 'disconnect', ( ...args: any[] ): void => {

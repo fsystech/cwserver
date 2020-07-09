@@ -44,31 +44,37 @@ exports.wsClient = wsClient;
 class SowSocketServer {
     constructor(server, wsClientInfo) {
         this.implimented = false;
-        this.socket = [];
+        this._clients = [];
         this.connected = false;
         this._server = server;
         this._wsClients = wsClientInfo;
     }
+    get clients() {
+        return this._clients;
+    }
     isActiveSocket(token) {
-        return this.socket.some(soc => soc.token === token);
+        return this._clients.some(soc => soc.token === token);
     }
     getOwners(group) {
-        return group ? this.socket.filter(soc => soc.isOwner === true && soc.group === group) : this.socket.filter(soc => soc.isOwner === true);
+        return group ? this._clients.filter(soc => soc.isOwner === true && soc.group === group) : this._clients.filter(soc => soc.isOwner === true);
     }
     findByHash(hash) {
-        return this.socket.filter(soc => soc.hash === hash);
+        return this._clients.filter(soc => soc.hash === hash);
     }
     findByLogin(loginId) {
-        return this.socket.filter(soc => soc.loginId === loginId);
+        return this._clients.filter(soc => soc.loginId === loginId);
     }
-    findeByRoleId(roleId) {
-        return this.socket.filter(soc => soc.roleId === roleId);
+    findByRoleId(roleId) {
+        return this._clients.filter(soc => soc.roleId === roleId);
     }
-    toList(sockets) {
+    findByToken(token) {
+        return this._clients.filter(soc => soc.token === token);
+    }
+    toList(clients) {
         const list = [];
-        if (sockets.length === 0)
+        if (clients.length === 0)
             return list;
-        sockets.forEach(a => {
+        clients.forEach(a => {
             list.push({
                 token: a.token, hash: a.hash, loginId: a.loginId
             });
@@ -76,24 +82,24 @@ class SowSocketServer {
         return list;
     }
     getClientByExceptHash(exceptHash, group) {
-        return !group ? this.socket.filter(soc => soc.hash !== exceptHash) : this.socket.filter(soc => soc.hash !== exceptHash && soc.group === group);
+        return !group ? this._clients.filter(soc => soc.hash !== exceptHash) : this._clients.filter(soc => soc.hash !== exceptHash && soc.group === group);
     }
     getClientByExceptLogin(exceptLoginId, group) {
-        return !group ? this.socket.filter(soc => soc.loginId !== exceptLoginId) : this.socket.filter(soc => soc.loginId !== exceptLoginId && soc.group === group);
+        return !group ? this._clients.filter(soc => soc.loginId !== exceptLoginId) : this._clients.filter(soc => soc.loginId !== exceptLoginId && soc.group === group);
     }
     getClientByExceptToken(token, group) {
-        return !group ? this.socket.filter(soc => soc.token !== token) : this.socket.filter(soc => soc.token !== token && soc.group === group);
+        return !group ? this._clients.filter(soc => soc.token !== token) : this._clients.filter(soc => soc.token !== token && soc.group === group);
     }
     getSocket(token) {
-        return this.socket.find(soc => soc.token === token);
+        return this._clients.find(soc => soc.token === token);
     }
     removeSocket(token) {
-        const index = this.socket.findIndex((soc) => {
+        const index = this._clients.findIndex((soc) => {
             return soc.token === token;
         });
         if (index < 0)
             return false;
-        this.socket.splice(index, 1);
+        this._clients.splice(index, 1);
         return true;
     }
     sendMsg(token, method, data) {
@@ -146,7 +152,7 @@ class SowSocketServer {
                     socketInfo.hash = sow_encryption_1.Encryption.toMd5(socket.request.session.loginId);
                     socketInfo.roleId = socket.request.session.roleId;
                 }
-                this.socket.push(socketInfo);
+                this._clients.push(socketInfo);
                 return socketInfo;
             })();
             socket.on('disconnect', (...args) => {

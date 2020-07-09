@@ -26,7 +26,9 @@ clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: I
                 expect( wsServer.toList( wsServer.getClientByExceptHash( me.hash || "no_hash" ) ).length ).toBeGreaterThan( 0 );
                 expect( wsServer.getClientByExceptLogin( me.loginId || "un_authorized" ).length ).toBeGreaterThan( 0 );
             }
-            expect( wsServer.findeByRoleId( 'Admin' ).length ).toBeGreaterThanOrEqual( 0 );
+            expect( wsServer.clients.length ).toBeGreaterThan( 0 );
+            expect( wsServer.findByRoleId( 'Admin' ).length ).toBeGreaterThanOrEqual( 0 );
+            expect( wsServer.findByToken( 'xxx' ).length ).toBeGreaterThanOrEqual( 0 );
             expect( wsServer.getClientByExceptHash( me.hash || "no_hash", me.group || "no_group" ).length ).toEqual( 0 );
             expect( wsServer.getClientByExceptLogin( me.loginId || "un_authorized", me.group || "no_group" ).length ).toEqual( 0 );
             expect( wsServer.getClientByExceptToken( me.token, me.group || "no_group" ).length ).toEqual( 0 );

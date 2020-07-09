@@ -63,11 +63,13 @@ export interface ISowSocketInfo {
     sendMsg(method: string, data: any): void;
 }
 export interface ISowSocketServer {
+    readonly clients: ISowSocketInfo[];
     isActiveSocket(token: string): boolean;
     getOwners(group?: string): ISowSocketInfo[];
     findByHash(hash: string): ISowSocketInfo[];
     findByLogin(loginId: string): ISowSocketInfo[];
-    findeByRoleId(roleId: string): ISowSocketInfo[];
+    findByRoleId(roleId: string): ISowSocketInfo[];
+    findByToken(token: string): ISowSocketInfo[];
     toList(sockets: ISowSocketInfo[]): {
         [x: string]: any;
     }[];
