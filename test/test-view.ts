@@ -59,6 +59,7 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	ws.create( io, app.httpServer );
 	expect( ws.create( io, app.httpServer ) ).toEqual( false );
 	expect( ws.isConnectd ).toEqual( true );
+	expect( ws.wsServer ).toBeDefined();
 	controller.get( '/ws-server-event', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 		const event = ws.wsEvent;
 		expect( event ).toBeInstanceOf( Object );

@@ -61,6 +61,9 @@ class SowSocketServer {
     findByLogin(loginId) {
         return this.socket.filter(soc => soc.loginId === loginId);
     }
+    findeByRoleId(roleId) {
+        return this.socket.filter(soc => soc.roleId === roleId);
+    }
     toList(sockets) {
         const list = [];
         if (sockets.length === 0)
@@ -127,17 +130,22 @@ class SowSocketServer {
                 const socketInfo = {
                     token: sow_util_1.Util.guid(),
                     loginId: socket.request.session.loginId,
-                    hash: socket.request.session.isAuthenticated ? sow_encryption_1.Encryption.toMd5(socket.request.session.loginId) : void 0,
+                    hash: void 0,
                     socketId: socket.id,
                     isAuthenticated: socket.request.session.isAuthenticated,
                     isOwner: false,
                     group: void 0,
                     isReconnectd: false,
+                    roleId: "_INVALID_",
                     getSocket: () => { return socket; },
                     sendMsg: (method, data) => {
                         return socket.emit(method, data), void 0;
                     },
                 };
+                if (socket.request.session.isAuthenticated) {
+                    socketInfo.hash = sow_encryption_1.Encryption.toMd5(socket.request.session.loginId);
+                    socketInfo.roleId = socket.request.session.roleId;
+                }
                 this.socket.push(socketInfo);
                 return socketInfo;
             })();
@@ -170,6 +178,9 @@ function socketInitilizer(server, wsClientInfo) {
     let _wsEvent = void 0;
     const _ws = new SowSocketServer(server, wsClientInfo);
     return {
+        get wsServer() {
+            return _ws;
+        },
         get isConnectd() {
             return _ws.implimented;
         },

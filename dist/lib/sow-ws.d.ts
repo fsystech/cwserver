@@ -58,6 +58,7 @@ export interface ISowSocketInfo {
     isAuthenticated: boolean;
     isReconnectd: boolean;
     group?: string;
+    roleId: string;
     getSocket(): IOSocket;
     sendMsg(method: string, data: any): void;
 }
@@ -66,6 +67,7 @@ export interface ISowSocketServer {
     getOwners(group?: string): ISowSocketInfo[];
     findByHash(hash: string): ISowSocketInfo[];
     findByLogin(loginId: string): ISowSocketInfo[];
+    findeByRoleId(roleId: string): ISowSocketInfo[];
     toList(sockets: ISowSocketInfo[]): {
         [x: string]: any;
     }[];
@@ -88,10 +90,11 @@ export declare function wsClient(): IWsClientInfo;
  * ws.create( require( "socket.io" ), app.httpServer );
  */
 export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
-    isConnectd: boolean;
-    wsEvent: {
+    readonly isConnectd: boolean;
+    readonly wsEvent: {
         [x: string]: any;
     } | void;
-    create: (ioserver: any, httpServer: Server) => boolean;
+    readonly create: (ioserver: any, httpServer: Server) => boolean;
+    readonly wsServer: ISowSocketServer;
 };
 export {};

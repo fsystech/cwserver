@@ -26,6 +26,7 @@ clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: I
                 expect( wsServer.toList( wsServer.getClientByExceptHash( me.hash || "no_hash" ) ).length ).toBeGreaterThan( 0 );
                 expect( wsServer.getClientByExceptLogin( me.loginId || "un_authorized" ).length ).toBeGreaterThan( 0 );
             }
+            expect( wsServer.findeByRoleId( 'Admin' ).length ).toBeGreaterThanOrEqual( 0 );
             expect( wsServer.getClientByExceptHash( me.hash || "no_hash", me.group || "no_group" ).length ).toEqual( 0 );
             expect( wsServer.getClientByExceptLogin( me.loginId || "un_authorized", me.group || "no_group" ).length ).toEqual( 0 );
             expect( wsServer.getClientByExceptToken( me.token, me.group || "no_group" ).length ).toEqual( 0 );
@@ -54,16 +55,16 @@ clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: I
     } : _client;
 } );
 clientInfo.on( "connected", ( me: ISowSocketInfo, wsServer: ISowSocketServer ) => {
-     const method = me.isReconnectd ? "on-re-connected-user" : "on-connect-user";
-     wsServer.getClientByExceptToken( me.token ).forEach( conn => {
+    const method = me.isReconnectd ? "on-re-connected-user" : "on-connect-user";
+    wsServer.getClientByExceptToken( me.token ).forEach( conn => {
         conn.sendMsg( method, {
             token: me.token, hash: me.hash, loginId: me.loginId
         } );
-     } );
-     // Here connect any user
-     me.sendMsg( me.isReconnectd ? "on-re-connected" : "on-connected", {
+    } );
+    // Here connect any user
+    me.sendMsg( me.isReconnectd ? "on-re-connected" : "on-connected", {
         token: me.token, hash: me.hash, loginId: me.loginId
-     } );
+    } );
 } );
 clientInfo.on( "disConnected", ( me: ISowSocketInfo, wsServer: ISowSocketServer ) => {
     // Here disconnect any user
@@ -71,7 +72,7 @@ clientInfo.on( "disConnected", ( me: ISowSocketInfo, wsServer: ISowSocketServer 
         conn.sendMsg( "on-disconnected-user", {
             token: me.token, hash: me.hash, loginId: me.loginId
         } );
-     } );
+    } );
 } );
 const error1: IWsClientInfo = wsClient();
 error1.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: ISowSocketServer, server: ISowServer ) => {

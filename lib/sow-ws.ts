@@ -65,6 +65,7 @@ export interface ISowSocketInfo {
     isAuthenticated: boolean;
     isReconnectd: boolean;
     group?: string;
+    roleId: string;
     getSocket(): IOSocket;
     sendMsg( method: string, data: any ): void;
 }
@@ -73,6 +74,7 @@ export interface ISowSocketServer {
     getOwners( group?: string ): ISowSocketInfo[];
     findByHash( hash: string ): ISowSocketInfo[];
     findByLogin( loginId: string ): ISowSocketInfo[];
+    findeByRoleId( roleId: string ): ISowSocketInfo[];
     toList( sockets: ISowSocketInfo[] ): { [x: string]: any; }[];
     getClientByExceptHash( exceptHash: string, group?: string ): ISowSocketInfo[];
     getClientByExceptLogin( exceptLoginId: string, group?: string ): ISowSocketInfo[];
@@ -136,6 +138,9 @@ class SowSocketServer implements ISowSocketServer {
     }
     findByLogin( loginId: string ): ISowSocketInfo[] {
         return this.socket.filter( soc => soc.loginId === loginId );
+    }
+    findeByRoleId( roleId: string ): ISowSocketInfo[] {
+        return this.socket.filter( soc => soc.roleId === roleId );
     }
     toList( sockets: ISowSocketInfo[] ): { [x: string]: any; }[] {
         const list: { [x: string]: any; }[] = [];
@@ -208,20 +213,26 @@ class SowSocketServer implements ISowSocketServer {
             this.connected = socket.connected;
         } ).on( 'connection', ( socket: IOSocket ): void => {
             const _me: ISowSocketInfo = ( (): ISowSocketInfo => {
+
                 const socketInfo: ISowSocketInfo = {
                     token: Util.guid(),
                     loginId: socket.request.session.loginId,
-                    hash: socket.request.session.isAuthenticated ? Encryption.toMd5( socket.request.session.loginId ) : void 0,
+                    hash: void 0,
                     socketId: socket.id,
                     isAuthenticated: socket.request.session.isAuthenticated,
                     isOwner: false,
                     group: void 0,
                     isReconnectd: false,
+                    roleId: "_INVALID_",
                     getSocket: (): IOSocket => { return socket; },
                     sendMsg: ( method: string, data: any ): void => {
                         return socket.emit( method, data ), void 0;
                     },
                 };
+                if ( socket.request.session.isAuthenticated ) {
+                    socketInfo.hash = Encryption.toMd5( socket.request.session.loginId );
+                    socketInfo.roleId = socket.request.session.roleId;
+                }
                 this.socket.push( socketInfo );
                 return socketInfo;
             } )();
@@ -245,9 +256,10 @@ class SowSocketServer implements ISowSocketServer {
  * ws.create( require( "socket.io" ), app.httpServer );
  */
 export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
-    isConnectd: boolean;
-    wsEvent: { [x: string]: any; } | void;
-    create: ( ioserver: any, httpServer: Server ) => boolean;
+    readonly isConnectd: boolean;
+    readonly wsEvent: { [x: string]: any; } | void;
+    readonly create: ( ioserver: any, httpServer: Server ) => boolean;
+    readonly wsServer: ISowSocketServer;
 } {
     if ( typeof ( wsClientInfo.client ) !== "function" ) {
         throw new Error( "`getClient` event did not registered..." );
@@ -258,6 +270,9 @@ export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInf
     let _wsEvent: { [x: string]: any; } | void = void 0;
     const _ws: SowSocketServer = new SowSocketServer( server, wsClientInfo );
     return {
+        get wsServer() {
+            return _ws;
+        },
         get isConnectd(): boolean {
             return _ws.implimented;
         },
