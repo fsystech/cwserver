@@ -362,18 +362,21 @@ class Response extends http_1.ServerResponse {
         sCookie.push(createCookie(name, val, options));
         return this.setHeader('Set-Cookie', sCookie), this;
     }
+    sendIfError(err) {
+        if (!this.isAlive)
+            return true;
+        if (!err || !sow_util_1.Util.isError(err))
+            return false;
+        this.status(500, {
+            'Content-Type': _mimeType.getMimeType('text')
+        }).end(`Runtime Error: ${err.message}`);
+        return true;
+    }
     json(body, compress, next) {
         const buffer = Buffer.from(JSON.stringify(body), "utf-8");
         if (typeof (compress) === 'boolean' && compress === true) {
             return _zlib.gzip(buffer, (error, buff) => {
-                if (this.isAlive) {
-                    if (error) {
-                        if (next)
-                            return next(error);
-                        return this.status(500, {
-                            'Content-Type': _mimeType.getMimeType('text')
-                        }).end(`Runtime Error: ${error.message}`);
-                    }
+                if (!this.sendIfError(error)) {
                     return this.asJSON(200, buff.length, true).end(buff);
                 }
             });
@@ -382,7 +385,6 @@ class Response extends http_1.ServerResponse {
     }
     dispose() {
         delete this._method;
-        delete this._isAlive;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
             this.removeAllListeners();
             this.destroy();

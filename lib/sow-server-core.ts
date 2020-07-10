@@ -63,6 +63,7 @@ export interface IResponse extends ServerResponse {
     render( ctx: IContext, path: string, status?: IResInfo ): void;
     type( extension: string ): IResponse;
     noCache(): IResponse;
+    sendIfError( err?: any ): boolean;
     send( chunk?: Buffer | string | number | boolean | { [key: string]: any } ): void;
     dispose(): void;
 }
@@ -386,17 +387,19 @@ class Response extends ServerResponse implements IResponse {
         sCookie.push( createCookie( name, val, options ) );
         return this.setHeader( 'Set-Cookie', sCookie ), this;
     }
+    public sendIfError( err?: any ): boolean {
+        if ( !this.isAlive ) return true;
+        if ( !err || !Util.isError( err ) ) return false;
+        this.status( 500, {
+            'Content-Type': _mimeType.getMimeType( 'text' )
+        } ).end( `Runtime Error: ${err.message}` );
+        return true;
+    }
     public json( body: NodeJS.Dict<any>, compress?: boolean, next?: ( error: Error | null ) => void ): void {
         const buffer: Buffer = Buffer.from( JSON.stringify( body ), "utf-8" );
         if ( typeof ( compress ) === 'boolean' && compress === true ) {
             return _zlib.gzip( buffer, ( error: Error | null, buff: Buffer ) => {
-                if ( this.isAlive ) {
-                    if ( error ) {
-                        if ( next ) return next( error );
-                        return this.status( 500, {
-                            'Content-Type': _mimeType.getMimeType( 'text' )
-                        } ).end( `Runtime Error: ${error.message}` );
-                    }
+                if ( !this.sendIfError( error ) ) {
                     return this.asJSON( 200, buff.length, true ).end( buff );
                 }
             } );
@@ -405,7 +408,6 @@ class Response extends ServerResponse implements IResponse {
     }
     public dispose(): void {
         delete this._method;
-        delete this._isAlive;
         if ( this.cleanSocket || process.env.TASK_TYPE === 'TEST' ) {
             this.removeAllListeners();
             this.destroy();

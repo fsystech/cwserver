@@ -51,6 +51,7 @@ export interface IResponse extends ServerResponse {
     render(ctx: IContext, path: string, status?: IResInfo): void;
     type(extension: string): IResponse;
     noCache(): IResponse;
+    sendIfError(err?: any): boolean;
     send(chunk?: Buffer | string | number | boolean | {
         [key: string]: any;
     }): void;

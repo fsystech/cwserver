@@ -1151,7 +1151,7 @@ describe( "cwserver-post", () => {
             .post( `http://localhost:${appUtility.port}/post` )
             .send( JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) )
             .set( 'Content-Type', 'application/json' )
-            .set('User-Agent', "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.68 Mobile Safari/537.36 Edg/84.0.522.28")
+            .set( 'User-Agent', "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.68 Mobile Safari/537.36 Edg/84.0.522.28" )
             .end( ( err, res ) => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
@@ -1163,7 +1163,7 @@ describe( "cwserver-post", () => {
     it( 'send post request unknown content type application/jsons', ( done: Mocha.Done ): void => {
         getAgent()
             .post( `http://localhost:${appUtility.port}/post?task=ERROR` )
-            .set('User-Agent', "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1 Edg/84.0.4147.68")
+            .set( 'User-Agent', "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1 Edg/84.0.4147.68" )
             .send( JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) )
             .set( 'Content-Type', 'application/jsons' )
             .end( ( err, res ) => {
@@ -1419,6 +1419,15 @@ describe( "cwserver-gzip-response", () => {
                 expect( err ).not.toBeInstanceOf( Error );
                 expect( res.status ).toBe( 200 );
                 expect( res.header["content-encoding"] ).toBe( "gzip" );
+                done();
+            } );
+    } );
+    it( 'response should be pass error', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/test-response-error` )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 500 );
                 done();
             } );
     } );
@@ -1809,7 +1818,7 @@ describe( "cwserver-utility", () => {
         expect( shouldBeError( () => {
             appUtility.server.addMimeType( "text", "text/plain" );
         } ) ).toBeInstanceOf( Error );
-        expect(appUtility.server.addMimeType( "tmpl", "text/plain" )).not.toBeInstanceOf(Error);
+        expect( appUtility.server.addMimeType( "tmpl", "text/plain" ) ).not.toBeInstanceOf( Error );
         expect( shouldBeError( () => {
             assert( false, "test" );
         } ) ).toBeInstanceOf( Error );
@@ -1864,10 +1873,10 @@ describe( "cwserver-utility", () => {
         expect( HttpStatus.fromPath( "result", 200 ) ).toEqual( 200 );
         expect( HttpStatus.fromPath( "/result", 200 ) ).toEqual( 200 );
         expect( HttpStatus.getResInfo( "/result", 0 ).isValid ).toEqual( false );
-        expect(HttpStatus.isErrorFileName("404")).toBeTruthy();
-        expect(HttpStatus.isErrorFileName("404_test")).toBeFalsy();
-        expect(HttpStatus.isErrorFileName("201")).toBeFalsy();
-        expect(HttpStatus.isErrorFileName("9077")).toBeFalsy();
+        expect( HttpStatus.isErrorFileName( "404" ) ).toBeTruthy();
+        expect( HttpStatus.isErrorFileName( "404_test" ) ).toBeFalsy();
+        expect( HttpStatus.isErrorFileName( "201" ) ).toBeFalsy();
+        expect( HttpStatus.isErrorFileName( "9077" ) ).toBeFalsy();
         expect( HttpStatus.isValidCode( 45510 ) ).toEqual( false );
         expect( HttpStatus.statusCode ).toBeInstanceOf( Object );
         expect( ToNumber( null ) ).toEqual( 0 );
@@ -2195,7 +2204,7 @@ describe( "cwserver-utility", () => {
                 Util.extend( appUtility.server.config.errorPage, oldError );
                 expect( appUtility.server.getErrorPath( 500, true ) ).toBeDefined();
                 oldError = Util.clone( appUtility.server.errorPage );
-                for(const prop in appUtility.server.errorPage){
+                for ( const prop in appUtility.server.errorPage ) {
                     delete appUtility.server.errorPage[prop];
                 }
                 expect( appUtility.server.getErrorPath( 500, true ) ).toBeUndefined();

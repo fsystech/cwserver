@@ -450,6 +450,14 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 				} );
 			}
 		} )
+		.get( '/test-response-error', ( ctx: IContext, requestParam?: IRequestParam ): void => {
+			expect( ctx.res.sendIfError( "NOT-ERROR" ) ).toBeFalsy();
+			expect( ctx.res.sendIfError( new Error( "test-response-error" ) ) ).toBeTruthy();
+			const res: IResponse = ctx.res;
+			setImmediate( () => {
+				expect( res.sendIfError( new Error( "test-response-error" ) ) ).toBeTruthy();
+			}, 0 );
+		} )
 		.get( '/controller-error', ( ctx: IContext, requestParam?: IRequestParam ): void => {
 			throw new Error( "runtime-error" );
 		} )

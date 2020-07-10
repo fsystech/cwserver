@@ -805,11 +805,7 @@ function initilizeServer(appRoot, wwwName) {
         _controller.sort();
         _app.on("error", (req, res, err) => {
             if (res.isAlive) {
-                const context = _process.createContext(req, res, (cerr) => {
-                    if (res.isAlive) {
-                        res.status(500).send("Unable to catch error reason.");
-                    }
-                });
+                const context = _process.createContext(req, res, res.sendIfError.bind(res));
                 if (!err) {
                     return context.transferRequest(404);
                 }
@@ -825,11 +821,14 @@ function initilizeServer(appRoot, wwwName) {
         });
         _app.use((req, res, next) => {
             const _context = _process.createContext(req, res, next);
-            if (_server.config.hiddenDirectory.some((a) => req.path.indexOf(a) > -1)) {
+            const reqPath = req.path;
+            if (_server.config.hiddenDirectory.some((a) => {
+                return reqPath.substring(0, a.length) === a;
+            })) {
                 _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
                 return _server.transferRequest(_context, 404);
             }
-            if (req.path.indexOf('$root') > -1 || req.path.indexOf('$public') > -1) {
+            if (reqPath.indexOf('$root') > -1 || reqPath.indexOf('$public') > -1) {
                 _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
                 return _server.transferRequest(_context, 404);
             }
