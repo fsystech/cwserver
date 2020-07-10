@@ -9,11 +9,11 @@ import * as _path from 'path';
 import { pipeline } from 'stream';
 import destroy = require( 'destroy' );
 import { isExists } from './sow-fsw';
-const _isPlainObject = ( obj: any ): obj is { [x: string]: any; } => {
+function _isPlainObject( obj: any ): obj is { [x: string]: any; } {
     if ( obj === null || obj === undefined ) return false;
     return typeof ( obj ) === 'object' && Object.prototype.toString.call( obj ) === "[object Object]";
 }
-const _extend = ( destination: any, source: any ): { [x: string]: any; } => {
+function _extend( destination: any, source: any ): any {
     if ( !_isPlainObject( destination ) || !_isPlainObject( source ) )
         throw new TypeError( `Invalid arguments defined. Arguments should be Object instance. destination type ${typeof ( destination )} and source type ${typeof ( source )}` );
     for ( const property in source ) {
@@ -26,7 +26,7 @@ const _extend = ( destination: any, source: any ): { [x: string]: any; } => {
     }
     return destination;
 }
-const _deepExtend = ( destination: any, source: any ): { [x: string]: any; } => {
+function _deepExtend( destination: any, source: any ): any {
     if ( typeof ( source ) === "function" ) source = source();
     if ( !_isPlainObject( destination ) || !_isPlainObject( source ) )
         throw new TypeError( `Invalid arguments defined. Arguments should be Object instance. destination type ${typeof ( destination )} and source type ${typeof ( source )}` );
@@ -73,12 +73,12 @@ export class Util {
             return v.toString( 16 );
         } );
     }
-    public static extend( destination: any, source: any, deep?: boolean ): { [x: string]: any; } {
+    public static extend<T>( destination: T, source: any, deep?: boolean ): T {
         if ( deep === true )
             return _deepExtend( destination, source );
         return _extend( destination, source );
     }
-    public static clone( source: { [x: string]: any; } ) {
+    public static clone<T>( source: T ): T {
         return _extend( {}, source );
     }
     /** Checks whether the specified value is an object. true if the value is an object; false otherwise. */
@@ -98,20 +98,24 @@ export class Util {
         if ( this.isError( obj ) ) throw obj;
     }
     public static pipeOutputStream( absPath: string, ctx: IContext ): void {
-        const statusCode: number = ctx.res.statusCode;
-        const openenedFile: _fs.ReadStream = _fs.createReadStream( absPath );
-        return pipeline( openenedFile, ctx.res, ( err: NodeJS.ErrnoException | null ) => {
-            destroy( openenedFile );
-            ctx.next( statusCode );
-        } ), void 0;
+        return ctx.handleError( null, () => {
+            const statusCode: number = ctx.res.statusCode;
+            const openenedFile: _fs.ReadStream = _fs.createReadStream( absPath );
+            return pipeline( openenedFile, ctx.res, ( err: NodeJS.ErrnoException | null ) => {
+                destroy( openenedFile );
+                ctx.next( statusCode );
+            } ), void 0;
+        } );
     }
     public static sendResponse(
         ctx: IContext, reqPath: string, contentType?: string
     ): void {
         return isExists( reqPath, ( exists: boolean, url: string ): void => {
-            if ( !exists ) return ctx.next( 404, true );
-            ctx.res.status( 200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' } );
-            return this.pipeOutputStream( url, ctx );
+            return ctx.handleError( null, () => {
+                if ( !exists ) return ctx.next( 404, true );
+                ctx.res.status( 200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' } );
+                return this.pipeOutputStream( url, ctx );
+            } );
         } );
     }
     public static getExtension( reqPath: string ): string | void {

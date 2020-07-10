@@ -25,12 +25,12 @@ const _path = __importStar(require("path"));
 const stream_1 = require("stream");
 const destroy = require("destroy");
 const sow_fsw_1 = require("./sow-fsw");
-const _isPlainObject = (obj) => {
+function _isPlainObject(obj) {
     if (obj === null || obj === undefined)
         return false;
     return typeof (obj) === 'object' && Object.prototype.toString.call(obj) === "[object Object]";
-};
-const _extend = (destination, source) => {
+}
+function _extend(destination, source) {
     if (!_isPlainObject(destination) || !_isPlainObject(source))
         throw new TypeError(`Invalid arguments defined. Arguments should be Object instance. destination type ${typeof (destination)} and source type ${typeof (source)}`);
     for (const property in source) {
@@ -44,8 +44,8 @@ const _extend = (destination, source) => {
         }
     }
     return destination;
-};
-const _deepExtend = (destination, source) => {
+}
+function _deepExtend(destination, source) {
     if (typeof (source) === "function")
         source = source();
     if (!_isPlainObject(destination) || !_isPlainObject(source))
@@ -65,7 +65,7 @@ const _deepExtend = (destination, source) => {
         destination[property] = source[property];
     }
     return destination;
-};
+}
 function assert(condition, expr) {
     const condType = typeof (condition);
     if (condType === "string") {
@@ -124,19 +124,23 @@ class Util {
             throw obj;
     }
     static pipeOutputStream(absPath, ctx) {
-        const statusCode = ctx.res.statusCode;
-        const openenedFile = _fs.createReadStream(absPath);
-        return stream_1.pipeline(openenedFile, ctx.res, (err) => {
-            destroy(openenedFile);
-            ctx.next(statusCode);
-        }), void 0;
+        return ctx.handleError(null, () => {
+            const statusCode = ctx.res.statusCode;
+            const openenedFile = _fs.createReadStream(absPath);
+            return stream_1.pipeline(openenedFile, ctx.res, (err) => {
+                destroy(openenedFile);
+                ctx.next(statusCode);
+            }), void 0;
+        });
     }
     static sendResponse(ctx, reqPath, contentType) {
         return sow_fsw_1.isExists(reqPath, (exists, url) => {
-            if (!exists)
-                return ctx.next(404, true);
-            ctx.res.status(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
-            return this.pipeOutputStream(url, ctx);
+            return ctx.handleError(null, () => {
+                if (!exists)
+                    return ctx.next(404, true);
+                ctx.res.status(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
+                return this.pipeOutputStream(url, ctx);
+            });
         });
     }
     static getExtension(reqPath) {

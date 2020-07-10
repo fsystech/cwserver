@@ -4,14 +4,8 @@ export declare function getLibRoot(): string;
 export declare function generateRandomString(num: number): string;
 export declare class Util {
     static guid(): string;
-    static extend(destination: any, source: any, deep?: boolean): {
-        [x: string]: any;
-    };
-    static clone(source: {
-        [x: string]: any;
-    }): {
-        [x: string]: any;
-    };
+    static extend<T>(destination: T, source: any, deep?: boolean): T;
+    static clone<T>(source: T): T;
     /** Checks whether the specified value is an object. true if the value is an object; false otherwise. */
     static isPlainObject(obj?: any): obj is {
         [x: string]: any;
