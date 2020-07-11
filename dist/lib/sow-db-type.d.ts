@@ -1,4 +1,3 @@
-/// <reference types="node" />
 export interface FieldDef {
     name: string;
     tableID: number;
@@ -23,7 +22,7 @@ export interface QueryResult<R extends QueryResultRow = any> extends QueryResult
 export declare type IoResult = {
     ret_val: number;
     ret_msg: string;
-    ret_data_table?: NodeJS.Dict<string>;
+    ret_data_table?: any;
 };
 export declare type QResult<R> = {
     isError: boolean;

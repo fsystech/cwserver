@@ -26,8 +26,9 @@ export interface QueryResult<R extends QueryResultRow = any> extends QueryResult
     rows: R[];
 }
 export type IoResult = {
-    ret_val: number; ret_msg: string;
-    ret_data_table?: NodeJS.Dict<string>;
+    ret_val: number;
+    ret_msg: string;
+    ret_data_table?: any;
 }
 export type QResult<R> = {
     isError: boolean; err?: Error; res?: QueryResult<R>;
