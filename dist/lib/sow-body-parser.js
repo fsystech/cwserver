@@ -185,8 +185,6 @@ class MultipartDataReader extends events_1.EventEmitter {
                                 continue;
                             }
                             fieldName = extractBetween(part, "name=\"", "\"");
-                            fieldName += "=";
-                            body.push(fieldName);
                             continue;
                         }
                         if (key === "content-type") {
@@ -199,7 +197,7 @@ class MultipartDataReader extends events_1.EventEmitter {
                 return partStream.on("data", (chunk) => {
                     body.push(chunk);
                 }).on("end", () => {
-                    this.emit("field", body.data);
+                    this.emit("field", fieldName, body.data.toString());
                     body.dispose();
                     this.emit("end");
                 }), void 0;
@@ -234,9 +232,9 @@ class DataParser {
         this._errors = [];
         this._files = [];
         this._body = new sow_static_1.BufferArray();
-        this._buffNd = Buffer.from("&");
         this._readers = [];
         this._tempDir = tempDir;
+        this._multipartBody = {};
     }
     get files() {
         return this._files;
@@ -248,18 +246,24 @@ class DataParser {
         this._body.push(buff);
     }
     getRawData(encoding) {
-        return this._body.toString(encoding);
+        let data = this._body.toString(encoding);
+        if (Object.keys(this._multipartBody).length > 0) {
+            for (const prop in this._multipartBody) {
+                data += '&' + prop + '=' + this._multipartBody[prop];
+            }
+        }
+        return data;
+    }
+    getMultipartBody() {
+        return this._multipartBody;
     }
     onPart(partStream, next) {
         const reader = new MultipartDataReader();
         reader.on("file", (file) => {
             return this._files.push(file), void 0;
         });
-        reader.on("field", (data) => {
-            if (this._body.length > 0) {
-                this.onRawData(this._buffNd);
-            }
-            return this.onRawData(data);
+        reader.on("field", (key, data) => {
+            this._multipartBody[key] = encodeURIComponent(data);
         });
         reader.on("end", (err) => {
             if (err) {
@@ -286,6 +290,7 @@ class DataParser {
         dispose(this._files);
         this._body.dispose();
         delete this._body;
+        delete this._multipartBody;
         if (this._errors)
             delete this._errors;
     }
@@ -444,6 +449,7 @@ class BodyParser {
         decodeBodyBuffer(this._parser.body, (k, v) => {
             outObj[k] = v;
         });
+        sow_util_1.Util.extend(outObj, this._parser.getMultipartBody());
         return outObj;
     }
     getData() {

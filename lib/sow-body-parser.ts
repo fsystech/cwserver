@@ -45,7 +45,7 @@ export interface IPostedFileInfo extends IDispose {
 interface IMultipartDataReader extends IDispose {
     readonly forceExit: boolean;
     read( partStream: Dicer.PartStream, tempDir: string ): void;
-    on( ev: "field", handler: ( buff: Buffer ) => void ): IMultipartDataReader;
+    on( ev: "field", handler: ( key: string, buff: string ) => void ): IMultipartDataReader;
     on( ev: "file", handler: ( file: IPostedFileInfo ) => void ): IMultipartDataReader;
     on( ev: "end", handler: ( err?: Error ) => void ): IMultipartDataReader;
 }
@@ -240,8 +240,6 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
                                 continue;
                             }
                             fieldName = extractBetween( part, "name=\"", "\"" );
-                            fieldName += "=";
-                            body.push( fieldName );
                             continue;
                         }
                         if ( key === "content-type" ) {
@@ -254,7 +252,7 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
                 return partStream.on( "data", ( chunk: string | Buffer ): void => {
                     body.push( chunk );
                 } ).on( "end", () => {
-                    this.emit( "field", body.data );
+                    this.emit( "field", fieldName, body.data.toString() );
                     body.dispose();
                     this.emit( "end" );
                 } ), void 0;
@@ -291,14 +289,15 @@ interface IDataParser extends IDispose {
         next: ( forceExit: boolean ) => void
     ): void;
     getError(): string | void;
+    getMultipartBody(): { [id: string]: string };
 }
 class DataParser implements IDataParser {
     private _files: IPostedFileInfo[];
     private _body: IBufferArray;
+    private _multipartBody: { [id: string]: string };
     private _errors: ( Error | NodeJS.ErrnoException )[];
     private _tempDir: string;
     private _readers: IMultipartDataReader[];
-    private _buffNd: Buffer;
     public get files(): IPostedFileInfo[] {
         return this._files;
     }
@@ -309,14 +308,24 @@ class DataParser implements IDataParser {
         tempDir: string
     ) {
         this._errors = []; this._files = [];
-        this._body = new BufferArray(); this._buffNd = Buffer.from( "&" );
+        this._body = new BufferArray();
         this._readers = []; this._tempDir = tempDir;
+        this._multipartBody = {};
     }
     public onRawData( buff: Buffer | string ): void {
         this._body.push( buff );
     }
-    public getRawData( encoding?: BufferEncoding): string {
-        return this._body.toString( encoding );
+    public getRawData( encoding?: BufferEncoding ): string {
+        let data = this._body.toString( encoding );
+        if ( Object.keys( this._multipartBody ).length > 0 ) {
+            for ( const prop in this._multipartBody ) {
+                data += '&' + prop + '=' + this._multipartBody[prop];
+            }
+        }
+        return data;
+    }
+    public getMultipartBody(): { [id: string]: string } {
+        return this._multipartBody;
     }
     public onPart( partStream: Dicer.PartStream,
         next: ( forceExit: boolean ) => void
@@ -325,11 +334,8 @@ class DataParser implements IDataParser {
         reader.on( "file", ( file: IPostedFileInfo ): void => {
             return this._files.push( file ), void 0;
         } );
-        reader.on( "field", ( data: Buffer ): void => {
-            if ( this._body.length > 0 ) {
-                this.onRawData( this._buffNd );
-            }
-            return this.onRawData( data );
+        reader.on( "field", ( key: string, data: string ): void => {
+            this._multipartBody[key] = encodeURIComponent( data );
         } );
         reader.on( "end", ( err?: Error ): void => {
             if ( err ) {
@@ -356,6 +362,7 @@ class DataParser implements IDataParser {
         dispose( this._files );
         this._body.dispose();
         delete this._body;
+        delete this._multipartBody;
         if ( this._errors )
             delete this._errors;
     }
@@ -519,6 +526,7 @@ class BodyParser implements IBodyParser {
         decodeBodyBuffer( this._parser.body, ( k: string, v: string ): void => {
             outObj[k] = v;
         } );
+        Util.extend( outObj, this._parser.getMultipartBody() );
         return outObj;
     }
     public getData(): string {
@@ -545,7 +553,7 @@ class BodyParser implements IBodyParser {
     private skipPart( partStream: Dicer.PartStream ): void {
         partStream.resume();
     }
-    private onPart( onReadEnd: ( err?: Error ) => void ): ( partStream: Dicer.PartStream )=>void {
+    private onPart( onReadEnd: ( err?: Error ) => void ): ( partStream: Dicer.PartStream ) => void {
         return ( partStream: Dicer.PartStream ): void => {
             this._part.push( 1 );
             this._parser.onPart( partStream, ( forceExit: boolean ): void => {
