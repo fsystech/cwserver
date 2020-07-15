@@ -708,7 +708,7 @@ describe( "cwserver-template-engine", () => {
         }
         const spublic: string = appUtility.server.getPublic();
         tasks.push( () => {
-            TemplateCore.run( ctx, spublic, `#extends /template/readme.htmls\r\n<impl-placeholder id>\r\nNO\r\n</impl-placeholder>`, ( params: CompilerResult ): void => {
+            TemplateCore.run( ctx, spublic, `#extends /template/readme.htmls\r\n<impl-placeholder id>\r\nNO\r\n\n</impl-placeholder>`, ( params: CompilerResult ): void => {
                 return forward();
             } );
         } );

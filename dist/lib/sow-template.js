@@ -295,13 +295,12 @@ class TemplateParser {
             let body = "";
             let parentTemplate = "";
             const startTag = /<placeholder[^>]*>/gi;
-            const rnRegx = /\r\n/gi;
             let len = templats.length;
             try {
                 do {
                     len--;
                     if (count === 0) {
-                        parentTemplate = templats[len].replace(rnRegx, "8_r_n_gx_8");
+                        parentTemplate = templats[len].replace(/\r\n/gi, "8_r_n_gx_8").replace(/\n/gi, "8_n_gx_8");
                         body += parentTemplate;
                         count++;
                         continue;
@@ -310,10 +309,10 @@ class TemplateParser {
                     if (match === null || (match && match.length === 0)) {
                         throw new Error("Invalid master template... No placeholder tag found....");
                     }
-                    parentTemplate = templats[len].replace(rnRegx, "8_r_n_gx_8");
+                    parentTemplate = templats[len].replace(/\r\n/gi, "8_r_n_gx_8").replace(/\n/gi, "8_n_gx_8");
                     body = this.margeTemplate(match, parentTemplate, body);
                 } while (len > 0);
-                return next(body.replace(/8_r_n_gx_8/gi, "\r\n"));
+                return next(body.replace(/8_r_n_gx_8/gi, "\r\n").replace(/8_n_gx_8/gi, "\n"));
             }
             catch (e) {
                 return ctx.transferError(e);
@@ -511,7 +510,7 @@ class TemplateLink {
                     return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
                         return ctx.handleError(result.err, () => {
                             _tw.cache[key] = result.sendBox || result.str;
-                            return next(result.sendBox || result.str);
+                            return next(_tw.cache[key]);
                         });
                     });
                 });
