@@ -55,6 +55,9 @@ class SowSocketServer {
     isActiveSocket(token) {
         return this._clients.some(soc => soc.token === token);
     }
+    exists(hash) {
+        return this._clients.some(soc => soc.hash === hash);
+    }
     getOwners(group) {
         return group ? this._clients.filter(soc => soc.isOwner === true && soc.group === group) : this._clients.filter(soc => soc.isOwner === true);
     }
@@ -143,7 +146,7 @@ class SowSocketServer {
                     group: void 0,
                     isReconnectd: false,
                     roleId: "_INVALID_",
-                    getSocket: () => { return socket; },
+                    get socket() { return socket; },
                     sendMsg: (method, data) => {
                         return socket.emit(method, data), void 0;
                     },

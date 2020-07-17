@@ -59,13 +59,14 @@ export interface ISowSocketInfo {
     isReconnectd: boolean;
     group?: string;
     roleId: string;
-    getSocket(): IOSocket;
+    readonly socket: IOSocket;
     sendMsg(method: string, data: any): void;
 }
 export interface ISowSocketServer {
     readonly clients: ISowSocketInfo[];
     isActiveSocket(token: string): boolean;
     getOwners(group?: string): ISowSocketInfo[];
+    exists(hash: string): boolean;
     findByHash(hash: string): ISowSocketInfo[];
     findByLogin(loginId: string): ISowSocketInfo[];
     findByRoleId(roleId: string): ISowSocketInfo[];

@@ -10,17 +10,16 @@ clientInfo.on( "beforeInitiateConnection", ( session: ISession, socket: IOSocket
 clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: ISowSocketServer, server: ISowServer ) => {
     const _client = {
         'test-msg': ( data: any ): void => {
-            expect( me.getSocket() ).toBeDefined();
+            expect( me.socket ).toBeDefined();
             expect( wsServer.isActiveSocket( me.token ) ).toEqual( true );
+            expect( wsServer.exists( me.hash || "no_hash"  ) ).toEqual( true );
             expect( wsServer.getOwners( me.group || "no_group" ).length ).toEqual( 0 );
             expect( wsServer.getOwners().length ).toEqual( 0 );
             expect( wsServer.findByHash( me.hash || "no_hash" ).length ).toEqual( me.isAuthenticated ? 1 : 0 );
-
             expect( wsServer.findByLogin( me.loginId || "un_authorized" ).length ).toEqual( me.isAuthenticated ? 1 : 0 );
             expect( wsServer.toList( [] ).length ).toEqual( 0 );
             if ( me.isAuthenticated ) {
                 expect( wsServer.toList( wsServer.getClientByExceptHash( me.hash || "no_hash" ) ).length ).toEqual( 0 );
-                expect( wsServer.toList( wsServer.findByHash( me.hash || "no_hash" ) ).length ).toBeGreaterThan( 0 );
                 expect( wsServer.getClientByExceptLogin( me.loginId || "un_authorized" ).length ).toEqual( 0 );
             } else {
                 expect( wsServer.toList( wsServer.getClientByExceptHash( me.hash || "no_hash" ) ).length ).toBeGreaterThan( 0 );
@@ -45,7 +44,7 @@ clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: I
             wsServer.sendMsg( me.token, "on-test-msg", data );
             const socket = wsServer.getSocket( me.token );
             if ( socket ) {
-                socket.getSocket().emit( "disconnect" );
+                socket.socket.emit( "disconnect" );
             }
             expect( wsServer.removeSocket( me.token ) ).toBeFalsy();
             return void 0;

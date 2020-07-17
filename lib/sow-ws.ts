@@ -66,13 +66,14 @@ export interface ISowSocketInfo {
     isReconnectd: boolean;
     group?: string;
     roleId: string;
-    getSocket(): IOSocket;
+    readonly socket: IOSocket;
     sendMsg( method: string, data: any ): void;
 }
 export interface ISowSocketServer {
     readonly clients: ISowSocketInfo[];
     isActiveSocket( token: string ): boolean;
     getOwners( group?: string ): ISowSocketInfo[];
+    exists( hash: string ): boolean;
     findByHash( hash: string ): ISowSocketInfo[];
     findByLogin( loginId: string ): ISowSocketInfo[];
     findByRoleId( roleId: string ): ISowSocketInfo[];
@@ -134,6 +135,9 @@ class SowSocketServer implements ISowSocketServer {
     }
     isActiveSocket( token: string ): boolean {
         return this._clients.some( soc => soc.token === token );
+    }
+    exists( hash: string ): boolean {
+        return this._clients.some( soc => soc.hash === hash );
     }
     getOwners( group?: string ): ISowSocketInfo[] {
         return group ? this._clients.filter( soc => soc.isOwner === true && soc.group === group ) : this._clients.filter( soc => soc.isOwner === true );
@@ -221,7 +225,6 @@ class SowSocketServer implements ISowSocketServer {
             this.connected = socket.connected;
         } ).on( 'connection', ( socket: IOSocket ): void => {
             const _me: ISowSocketInfo = ( (): ISowSocketInfo => {
-
                 const socketInfo: ISowSocketInfo = {
                     token: Util.guid(),
                     loginId: socket.request.session.loginId,
@@ -232,7 +235,7 @@ class SowSocketServer implements ISowSocketServer {
                     group: void 0,
                     isReconnectd: false,
                     roleId: "_INVALID_",
-                    getSocket: (): IOSocket => { return socket; },
+                    get socket() { return socket; },
                     sendMsg: ( method: string, data: any ): void => {
                         return socket.emit( method, data ), void 0;
                     },
