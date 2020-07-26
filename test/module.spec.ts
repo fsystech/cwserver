@@ -351,6 +351,17 @@ describe( "cwserver-router", () => {
                 done();
             } );
     } );
+    it( 'pass `x-requested-with:XMLHttpRequest`', ( done: Mocha.Done ): void => {
+        getAgent()
+            .get( `http://localhost:${appUtility.port}/post` )
+            .query( JSON.stringify( { name: 'rajibs', occupation: 'kutukutu' } ) )
+            .set( 'x-requested-with', 'XMLHttpRequest' )
+            .end( ( err, res ) => {
+                expect( err ).toBeInstanceOf( Error );
+                expect( res.status ).toBe( 404 );
+                done();
+            } );
+    } );
 } );
 describe( "cwserver-view", () => {
     it( 'register view', ( done: Mocha.Done ): void => {

@@ -764,6 +764,11 @@ ${appRoot}\\www_public
             if ( !status.isErrorCode && typeof ( path ) !== "string" ) {
                 throw new Error( "Path should be string..." );
             }
+            if ( status.isErrorCode ) {
+                if ( ctx.req.get( 'x-requested-with' ) === 'XMLHttpRequest' ) {
+                    return ctx.res.status( status.code ).type( "text" ).noCache().send( `${ctx.req.method} : ${ctx.req.path} ${status.description}\n${ctx.error}` );
+                }
+            }
             let nextPath: string | void;
             let tryServer: boolean = false;
             if ( status.isErrorCode ) {
