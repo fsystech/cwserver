@@ -270,6 +270,7 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
                 return this.exit( "Content type not found in requested file...." );
             }
         } );
+        return void 0;
     }
     public dispose() {
         if ( this._isDisposed ) return;

@@ -8,7 +8,7 @@ import {
 } from '../lib/sow-router';
 import {
 	IApplication, IRequest, IResponse, NextFunction,
-	parseCookie, parseUrl, getClientIpFromHeader, escapePath
+	parseCookie, parseUrl, getClientIp, escapePath
 } from '../lib/sow-server-core';
 import { IController } from '../lib/sow-controller';
 import {
@@ -44,9 +44,9 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	} ).use( "/app-error", ( req: IRequest, res: IResponse, next: NextFunction ) => {
 		expect( req.session ).toBeInstanceOf( Object );
 		expect( parseUrl().pathname ).toBeNull();
-		expect( getClientIpFromHeader( req.headers ) ).toBeDefined();
+		expect( getClientIp( req ) ).toBeDefined();
 		req.headers['x-forwarded-for'] = "127.0.0.1,127.0.0.5";
-		expect( getClientIpFromHeader( req.headers ) ).toEqual( '127.0.0.1' );
+		expect( getClientIp( req ) ).toEqual( '127.0.0.1' );
 		throw new Error( "Application should be fire Error event" );
 	} ).prerequisites( ( req: IRequest, res: IResponse, next: NextFunction ): void => {
 		expect( req.session ).toBeInstanceOf( Object );
@@ -123,6 +123,10 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 	const tempDir: string = server.mapPath( "/upload/temp/" );
 	fsw.mkdirSync( tempDir );
 	controller.post( '/post-test-data', ( ctx: IContext ) => {
+		console.log( `IsLocal=>${ctx.req.isLocal}` );
+		console.log( `IsLocal=>${ctx.req.ip}` );
+		expect( ctx.req.isLocal ).toBeTruthy();
+		expect( ctx.req.isLocal ).toBeTruthy();
 		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
 		try {
 			parser.parse( ( err ) => {

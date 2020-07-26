@@ -6,7 +6,7 @@
 // 2:40 PM 5/7/2020
 import './sow-global';
 import {
-    createServer, OutgoingHttpHeaders, IncomingHttpHeaders,
+    createServer, OutgoingHttpHeaders,
     Server, IncomingMessage, ServerResponse
 } from 'http';
 import { EventEmitter } from 'events';
@@ -42,6 +42,7 @@ export interface IRequest extends IncomingMessage {
     readonly query: ParsedUrlQuery;
     readonly ip: string;
     readonly isMobile: boolean;
+    readonly isLocal: boolean;
     cleanSocket: boolean;
     path: string;
     session: ISession;
@@ -151,9 +152,21 @@ function getCommonHeader( contentType: string, contentLength?: number, isGzip?: 
     }
     return header;
 }
-export function getClientIpFromHeader( headers: IncomingHttpHeaders ): string {
-    const res: string = toString( headers['x-forwarded-for'] );
-    return res.split( ',' )[0];
+function parseIp( ip: string ): string | void {
+    if ( ip.includes( "::ffff:" ) ) {
+        ip = ip.split( ':' ).reverse()[0];
+    }
+    return ip;
+}
+export function getClientIp( req: IRequest ): string {
+    const res = req.headers['x-forwarded-for'];
+    let ip: string | void;
+    if ( res && typeof ( res ) === 'string' ) {
+        ip = parseIp( res.split( ',' )[0] );
+        if ( ip ) return ip;
+    }
+    ip = parseIp( toString( req.socket.remoteAddress ) );
+    return toString( ip );
 }
 export function parseUrl( url?: string ): UrlWithParsedQuery {
     if ( url ) {
@@ -172,6 +185,7 @@ class Request extends IncomingMessage implements IRequest {
     private _id: string | undefined;
     private _cleanSocket: boolean | undefined;
     private _isMobile: boolean | undefined;
+    private _isLocal: boolean | undefined;
     public get isMobile() {
         if ( this._isMobile !== undefined ) return this._isMobile;
         const userAgent: string = toString( this.get( 'user-agent' ) );
@@ -201,6 +215,11 @@ class Request extends IncomingMessage implements IRequest {
     public set session( val: ISession ) {
         this._session = val;
     }
+    public get isLocal() {
+        if ( this._isLocal !== undefined ) return this._isLocal;
+        this._isLocal = this.ip === '::1' || this.ip === '127.0.0.1';
+        return this._isLocal;
+    }
     public get path(): string {
         if ( this._path !== undefined ) return this._path;
         this._path = decodeURIComponent( escapePath( this.q.pathname ) );
@@ -211,7 +230,7 @@ class Request extends IncomingMessage implements IRequest {
     }
     public get ip(): string {
         if ( this._ip !== undefined ) return this._ip;
-        this._ip = toString( this.socket.remoteAddress );
+        this._ip = getClientIp( this );
         return this._ip;
     }
     public get id(): string {
@@ -234,6 +253,7 @@ class Request extends IncomingMessage implements IRequest {
         delete this._path;
         delete this._ip;
         delete this._cookies;
+        delete this._isLocal;
         if ( this.cleanSocket || process.env.TASK_TYPE === 'TEST' ) {
             this.removeAllListeners();
             this.destroy();
