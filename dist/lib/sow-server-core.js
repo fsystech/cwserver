@@ -22,7 +22,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.App = exports.parseUrl = exports.getClientIpFromHeader = exports.escapePath = exports.parseCookie = void 0;
+exports.App = exports.parseUrl = exports.getClientIp = exports.escapePath = exports.parseCookie = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -123,11 +123,24 @@ function getCommonHeader(contentType, contentLength, isGzip) {
     }
     return header;
 }
-function getClientIpFromHeader(headers) {
-    const res = sow_static_1.toString(headers['x-forwarded-for']);
-    return res.split(',')[0];
+function parseIp(ip) {
+    if (ip.includes("::ffff:")) {
+        ip = ip.split(':').reverse()[0];
+    }
+    return ip;
 }
-exports.getClientIpFromHeader = getClientIpFromHeader;
+function getClientIp(req) {
+    const res = req.headers['x-forwarded-for'];
+    let ip;
+    if (res && typeof (res) === 'string') {
+        ip = parseIp(res.split(',')[0]);
+        if (ip)
+            return ip;
+    }
+    ip = parseIp(sow_static_1.toString(req.socket.remoteAddress));
+    return sow_static_1.toString(ip);
+}
+exports.getClientIp = getClientIp;
 function parseUrl(url) {
     if (url) {
         return url_1.default.parse(url, true);
@@ -171,6 +184,12 @@ class Request extends http_1.IncomingMessage {
     set session(val) {
         this._session = val;
     }
+    get isLocal() {
+        if (this._isLocal !== undefined)
+            return this._isLocal;
+        this._isLocal = this.ip === '::1' || this.ip === '127.0.0.1';
+        return this._isLocal;
+    }
     get path() {
         if (this._path !== undefined)
             return this._path;
@@ -183,7 +202,7 @@ class Request extends http_1.IncomingMessage {
     get ip() {
         if (this._ip !== undefined)
             return this._ip;
-        this._ip = sow_static_1.toString(this.socket.remoteAddress);
+        this._ip = getClientIp(this);
         return this._ip;
     }
     get id() {
@@ -207,6 +226,7 @@ class Request extends http_1.IncomingMessage {
         delete this._path;
         delete this._ip;
         delete this._cookies;
+        delete this._isLocal;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
             this.removeAllListeners();
             this.destroy();

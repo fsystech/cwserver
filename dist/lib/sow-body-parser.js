@@ -216,6 +216,7 @@ class MultipartDataReader extends events_1.EventEmitter {
                 return this.exit("Content type not found in requested file....");
             }
         });
+        return void 0;
     }
     dispose() {
         if (this._isDisposed)

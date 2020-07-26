@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import './sow-global';
-import { OutgoingHttpHeaders, IncomingHttpHeaders, Server, IncomingMessage, ServerResponse } from 'http';
+import { OutgoingHttpHeaders, Server, IncomingMessage, ServerResponse } from 'http';
 import { IRequestParam } from './sow-router';
 import { ISession, IResInfo } from './sow-static';
 import { IContext } from './sow-server';
@@ -30,6 +30,7 @@ export interface IRequest extends IncomingMessage {
     readonly query: ParsedUrlQuery;
     readonly ip: string;
     readonly isMobile: boolean;
+    readonly isLocal: boolean;
     cleanSocket: boolean;
     path: string;
     session: ISession;
@@ -75,7 +76,7 @@ export declare function parseCookie(cook: undefined | string[] | string | {
     [x: string]: any;
 }): NodeJS.Dict<string>;
 export declare function escapePath(unsafe?: string | null): string;
-export declare function getClientIpFromHeader(headers: IncomingHttpHeaders): string;
+export declare function getClientIp(req: IRequest): string;
 export declare function parseUrl(url?: string): UrlWithParsedQuery;
 export declare function App(): IApplication;
 export {};
