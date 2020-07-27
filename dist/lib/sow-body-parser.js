@@ -85,6 +85,10 @@ class PostedFileInfo {
         this._isDisposed = false;
         this._tempFile = tempFile;
     }
+    changePath(path) {
+        this._tempFile = path;
+        this._isMoved = true;
+    }
     getTempPath() {
         return this._tempFile;
     }
@@ -165,6 +169,9 @@ class MultipartDataReader extends events_1.EventEmitter {
         this._forceExit = true;
         this.emit("end", new Error(reason));
     }
+    skipFile(fileInfo) {
+        return false;
+    }
     read(partStream, tempDir) {
         let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false;
         const body = new sow_static_1.BufferArray();
@@ -205,12 +212,20 @@ class MultipartDataReader extends events_1.EventEmitter {
             // no more needed body
             body.dispose();
             if (contentType.length > 0) {
-                const tempFile = _path.resolve(`${tempDir}/${sow_util_1.Util.guid()}.temp`);
-                this._writeStream = stream_1.pipeline(partStream, _fs.createWriteStream(tempFile, { 'flags': 'a' }), (err) => {
-                    this.destroy();
-                    this.emit("end", err);
-                });
-                this.emit("file", new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), tempFile));
+                const fileInfo = new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), _path.resolve(`${tempDir}/${sow_util_1.Util.guid()}.temp`));
+                if (this.skipFile(fileInfo)) {
+                    partStream.resume();
+                    this.emit("end");
+                    return;
+                }
+                const tempFile = fileInfo.getTempPath();
+                if (tempFile) {
+                    this._writeStream = stream_1.pipeline(partStream, _fs.createWriteStream(tempFile, { 'flags': 'a' }), (err) => {
+                        this.destroy();
+                        this.emit("end", err);
+                    });
+                    this.emit("file", fileInfo);
+                }
             }
             else {
                 return this.exit("Content type not found in requested file....");
@@ -258,8 +273,11 @@ class DataParser {
     getMultipartBody() {
         return this._multipartBody;
     }
-    onPart(partStream, next) {
+    onPart(partStream, next, skipFile) {
         const reader = new MultipartDataReader();
+        if (skipFile) {
+            reader.skipFile = skipFile;
+        }
         reader.on("file", (file) => {
             return this._files.push(file), void 0;
         });
@@ -496,7 +514,7 @@ class BodyParser {
                     this._part.shift();
                 }
                 return this.tryFinish(onReadEnd);
-            });
+            }, this.skipFile);
         };
     }
     finalEvent(ev, onReadEnd) {

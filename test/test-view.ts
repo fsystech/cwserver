@@ -238,6 +238,20 @@ global.sow.server.on( "register-view", ( app: IApplication, controller: IControl
 			return server.transferRequest( ctx, 500 );
 		}
 		// throw new Error( "Should not here..." );
+	} ).post( '/upload-skip', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
+		const parser: IBodyParser = getBodyParser( ctx.req, tempDir );
+		parser.skipFile = ( fileInfo ) => {
+			const skip = fileInfo.getFileName().indexOf( "index.ts" ) > -1;
+			if ( !skip ) {
+				fileInfo.changePath( path.resolve( `${tempDir}/${fileInfo.getFileName()}` ) );
+			}
+			return skip;
+		}
+		await parser.parseSync();
+		const data: UploadFileInfo[] = parser.getUploadFileInfo();
+		parser.dispose();
+		ctx.res.json( data );
+		ctx.next( 200 );
 	} ).post( '/upload-test', async ( ctx: IContext, requestParam?: IRequestParam ): Promise<void> => {
 		try {
 			const parser: IBodyParser = getBodyParser( ctx.req, tempDir );

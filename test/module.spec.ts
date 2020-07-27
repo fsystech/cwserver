@@ -1244,6 +1244,22 @@ describe( "cwserver-post", () => {
     } );
 } );
 describe( "cwserver-multipart-body-parser", () => {
+    it( 'multipart-file-skip-test', function ( done: Mocha.Done ) {
+        this.timeout( 5000 );
+        const req: request.SuperAgentRequest = getAgent()
+            .post( `http://localhost:${appUtility.port}/upload-skip` );
+        const readStream1 = fs.createReadStream( path.resolve( `./schema.json` ) );
+        const readStream2 = fs.createReadStream( path.resolve( `./index.ts` ) );
+        req.field( 'post-file', readStream1 )
+            .field( 'post-file_2', readStream2 );
+        req.end( ( err, res ) => {
+            readStream1.close(); readStream2.close();
+            expect( err ).not.toBeInstanceOf( Error );
+            expect( res.status ).toBe( 200 );
+            toBeApplicationJson( res.header["content-type"] );
+            done();
+        } );
+    } );
     const processReq = ( done: Mocha.Done, saveto?: string, reqPath?: string ): void => {
         let fileName = "";
         let filePath = "";

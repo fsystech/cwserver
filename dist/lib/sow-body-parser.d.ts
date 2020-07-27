@@ -15,6 +15,7 @@ export declare type FileInfo = {
     contentType: string;
 };
 export interface IPostedFileInfo extends IDispose {
+    changePath(path: string): void;
     getContentDisposition(): string;
     getName(): string;
     getFileName(): string;
@@ -28,6 +29,8 @@ export interface IPostedFileInfo extends IDispose {
     clear(): void;
 }
 export interface IBodyParser extends IDispose {
+    /** If you return true, this file will be skip */
+    skipFile?: (fileInfo: IPostedFileInfo) => boolean;
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
@@ -65,6 +68,7 @@ declare class BodyParser implements IBodyParser {
     private _part;
     private _multipartParser?;
     private _maxBuffLength;
+    skipFile?: (fileInfo: IPostedFileInfo) => boolean;
     constructor(req: IRequest, tempDir?: string);
     setMaxBuffLength(length: number): IBodyParser;
     isUrlEncoded(): boolean;

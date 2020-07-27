@@ -30,6 +30,7 @@ export type FileInfo = {
     contentType: string;
 }
 export interface IPostedFileInfo extends IDispose {
+    changePath( path: string ): void;
     getContentDisposition(): string;
     getName(): string;
     getFileName(): string;
@@ -44,12 +45,15 @@ export interface IPostedFileInfo extends IDispose {
 }
 interface IMultipartDataReader extends IDispose {
     readonly forceExit: boolean;
+    skipFile( fileInfo: IPostedFileInfo ): boolean;
     read( partStream: Dicer.PartStream, tempDir: string ): void;
     on( ev: "field", handler: ( key: string, buff: string ) => void ): IMultipartDataReader;
     on( ev: "file", handler: ( file: IPostedFileInfo ) => void ): IMultipartDataReader;
     on( ev: "end", handler: ( err?: Error ) => void ): IMultipartDataReader;
 }
 export interface IBodyParser extends IDispose {
+    /** If you return true, this file will be skip */
+    skipFile?: ( fileInfo: IPostedFileInfo ) => boolean;
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
@@ -135,6 +139,10 @@ class PostedFileInfo implements IPostedFileInfo {
         this._isMoved = false; this._isDisposed = false;
         this._tempFile = tempFile;
     }
+    public changePath( path: string ): void {
+        this._tempFile = path;
+        this._isMoved = true;
+    }
     public getTempPath(): string | undefined {
         return this._tempFile;
     }
@@ -217,6 +225,9 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
         this._isDisposed = false;
         this._forceExit = false;
     }
+    public skipFile( fileInfo: IPostedFileInfo ): boolean {
+        return false;
+    }
     public read( partStream: Dicer.PartStream, tempDir: string ) {
         let
             fieldName: string = "", fileName: string = "",
@@ -260,12 +271,20 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
             // no more needed body
             body.dispose();
             if ( contentType.length > 0 ) {
-                const tempFile: string = _path.resolve( `${tempDir}/${Util.guid()}.temp` );
-                this._writeStream = pipeline( partStream, _fs.createWriteStream( tempFile, { 'flags': 'a' } ), ( err: NodeJS.ErrnoException | null ) => {
-                    this.destroy();
-                    this.emit( "end", err );
-                } );
-                this.emit( "file", new PostedFileInfo( disposition, fieldName.replace( /"/gi, "" ), fileName.replace( /"/gi, "" ), contentType.replace( /"/gi, "" ), tempFile ) );
+                const fileInfo = new PostedFileInfo( disposition, fieldName.replace( /"/gi, "" ), fileName.replace( /"/gi, "" ), contentType.replace( /"/gi, "" ), _path.resolve( `${tempDir}/${Util.guid()}.temp` ) );
+                if ( this.skipFile( fileInfo ) ) {
+                    partStream.resume();
+                    this.emit( "end" );
+                    return;
+                }
+                const tempFile: string | void = fileInfo.getTempPath();
+                if ( tempFile ) {
+                    this._writeStream = pipeline( partStream, _fs.createWriteStream( tempFile, { 'flags': 'a' } ), ( err: NodeJS.ErrnoException | null ) => {
+                        this.destroy();
+                        this.emit( "end", err );
+                    } );
+                    this.emit( "file", fileInfo );
+                }
             } else {
                 return this.exit( "Content type not found in requested file...." );
             }
@@ -286,8 +305,10 @@ interface IDataParser extends IDispose {
     readonly body: Buffer;
     onRawData( buff: Buffer | string ): void;
     getRawData( encoding?: BufferEncoding ): string;
-    onPart( partStream: Dicer.PartStream,
-        next: ( forceExit: boolean ) => void
+    onPart(
+        partStream: Dicer.PartStream,
+        next: ( forceExit: boolean ) => void,
+        skipFile?: ( fileInfo: IPostedFileInfo ) => boolean
     ): void;
     getError(): string | void;
     getMultipartBody(): { [id: string]: string };
@@ -328,10 +349,15 @@ class DataParser implements IDataParser {
     public getMultipartBody(): { [id: string]: string } {
         return this._multipartBody;
     }
-    public onPart( partStream: Dicer.PartStream,
-        next: ( forceExit: boolean ) => void
+    public onPart(
+        partStream: Dicer.PartStream,
+        next: ( forceExit: boolean ) => void,
+        skipFile?: ( fileInfo: IPostedFileInfo ) => boolean
     ): void {
         const reader: IMultipartDataReader = new MultipartDataReader();
+        if ( skipFile ) {
+            reader.skipFile = skipFile;
+        }
         reader.on( "file", ( file: IPostedFileInfo ): void => {
             return this._files.push( file ), void 0;
         } );
@@ -406,6 +432,7 @@ class BodyParser implements IBodyParser {
     private _part: number[];
     private _multipartParser?: Dicer;
     private _maxBuffLength: number;
+    public skipFile?: ( fileInfo: IPostedFileInfo) => boolean;
     constructor(
         req: IRequest,
         tempDir?: string
@@ -569,7 +596,7 @@ class BodyParser implements IBodyParser {
                     this._part.shift();
                 }
                 return this.tryFinish( onReadEnd );
-            } );
+            }, this.skipFile );
         }
     }
     private finalEvent( ev: "close" | "error", onReadEnd: ( err?: Error ) => void ): ( err?: Error ) => void {
