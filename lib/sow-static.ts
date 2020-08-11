@@ -8,7 +8,7 @@ export interface ISession {
     isAuthenticated: boolean;
     loginId: string;
     roleId: string;
-    userData?: void
+    userData?: any;
 }
 export interface IResInfo {
     code: number;
