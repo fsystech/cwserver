@@ -61,7 +61,13 @@ export interface IServerEncryption {
 export interface IDatabaseConfig {
     module: string;
     path: string;
-    dbConn: { database: string, password: string };
+    dbConn: {
+        database: string;
+        password: string;
+        host?: string;
+        port?: number;
+        user?: string;
+    };
 }
 export interface IServerConfig {
     [key: string]: any;
