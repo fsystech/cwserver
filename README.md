@@ -1,7 +1,6 @@
 [![Cwserver Logo][cwserver-logo]][cwserver-url]
 
 [![Linux Build][travis-image]][travis-url]
-[![Windows Build][appveyor-image]][appveyor-url]
 [![npm version][npm-version-image]][npm-version-url]
 [![NPM Downloads][downloads-image]][downloads-url]
 [![Language grade: JavaScript][language-garde-image]][language-garde-url]
