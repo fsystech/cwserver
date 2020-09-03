@@ -46,4 +46,6 @@ Object.defineProperty(exports, "socketInitilizer", { enumerable: true, get: func
 Object.defineProperty(exports, "wsClient", { enumerable: true, get: function () { return sow_ws_1.wsClient; } });
 var sow_project_template_1 = require("./lib/sow-project-template");
 Object.defineProperty(exports, "createProjectTemplate", { enumerable: true, get: function () { return sow_project_template_1.createProjectTemplate; } });
+var sow_server_core_1 = require("./lib/sow-server-core");
+Object.defineProperty(exports, "App", { enumerable: true, get: function () { return sow_server_core_1.App; } });
 //# sourceMappingURL=index.js.map
