@@ -116,6 +116,8 @@ describe("cwserver-core", () => {
         this.timeout(5000);
         const capp = cwserver.App();
         expect(capp).toBeDefined();
+        expect(new cwserver.Session()).toBeInstanceOf(cwserver.Session);
+        expect(cwserver.parseCookie("cook=125;")).toBeDefined();
         const root: string = path.resolve(`${appRoot}/ewww`);
         const filePath: string = path.resolve(root + "/config/app.config.json");
         fs.writeFile(filePath, "INVALID_FILE", (err: NodeJS.ErrnoException | null) => {

@@ -48,4 +48,7 @@ var sow_project_template_1 = require("./lib/sow-project-template");
 Object.defineProperty(exports, "createProjectTemplate", { enumerable: true, get: function () { return sow_project_template_1.createProjectTemplate; } });
 var sow_server_core_1 = require("./lib/sow-server-core");
 Object.defineProperty(exports, "App", { enumerable: true, get: function () { return sow_server_core_1.App; } });
+Object.defineProperty(exports, "parseCookie", { enumerable: true, get: function () { return sow_server_core_1.parseCookie; } });
+var sow_static_1 = require("./lib/sow-static");
+Object.defineProperty(exports, "Session", { enumerable: true, get: function () { return sow_static_1.Session; } });
 //# sourceMappingURL=index.js.map
