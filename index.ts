@@ -15,7 +15,7 @@ export { Streamer } from './lib/sow-web-streamer';
 export { socketInitilizer, wsClient } from './lib/sow-ws';
 export { createProjectTemplate } from './lib/sow-project-template';
 export { IContext, ISowServer } from './lib/sow-server';
-export { IApplication, IRequest, IResponse } from './lib/sow-server-core';
+export { App, IApplication, IRequest, IResponse } from './lib/sow-server-core';
 export { IRequestParam } from './lib/sow-router';
 export { IController } from './lib/sow-controller';
 export { ISession } from './lib/sow-static';
