@@ -21,8 +21,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.App = exports.parseUrl = exports.getClientIp = exports.escapePath = exports.parseCookie = void 0;
+exports.App = exports.parseUrl = exports.getClientIp = exports.escapePath = exports.parseCookie = exports.readAppVersion = exports.appVersion = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -37,9 +38,31 @@ const sow_static_1 = require("./sow-static");
 const sow_http_status_1 = require("./sow-http-status");
 const sow_template_1 = require("./sow-template");
 const sow_util_1 = require("./sow-util");
+const fs_1 = require("fs");
+const path_1 = require("path");
 const url_1 = __importDefault(require("url"));
 const _zlib = __importStar(require("zlib"));
 const _mimeType = __importStar(require("./sow-http-mime-types"));
+_a = (() => {
+    const _readAppVersion = () => {
+        const libRoot = sow_util_1.getLibRoot();
+        const absPath = path_1.resolve(`${libRoot}/package.json`);
+        sow_util_1.assert(fs_1.existsSync(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
+        const data = fs_1.readFileSync(absPath, "utf-8");
+        return JSON.parse(data).version;
+    };
+    const _appVersion = (() => {
+        return _readAppVersion();
+    })();
+    return {
+        get appVersion() {
+            return _appVersion;
+        },
+        get readAppVersion() {
+            return _readAppVersion;
+        }
+    };
+})(), exports.appVersion = _a.appVersion, exports.readAppVersion = _a.readAppVersion;
 const getCook = (cooks) => {
     const cookies = {};
     cooks.forEach((value) => {
@@ -419,6 +442,9 @@ class Application extends events_1.EventEmitter {
         this._prerequisitesHandler = [];
         this._isRunning = false;
     }
+    get version() {
+        return exports.appVersion;
+    }
     get httpServer() {
         return this._httpServer;
     }
@@ -436,8 +462,8 @@ class Application extends events_1.EventEmitter {
     _shutdown() {
         let resolveTerminating;
         let rejectTerminating;
-        const promise = new Promise((resolve, reject) => {
-            resolveTerminating = resolve;
+        const promise = new Promise((presolve, reject) => {
+            resolveTerminating = presolve;
             rejectTerminating = reject;
         });
         if (!this._isRunning) {
@@ -543,10 +569,16 @@ class Application extends events_1.EventEmitter {
         }), this;
     }
 }
+function setAppHeader(res) {
+    res.setHeader('server', 'SOW Frontend');
+    res.setHeader('x-app-version', exports.appVersion);
+    res.setHeader('x-powered-by', 'safeonline.world');
+}
 function App() {
     const app = new Application(http_1.createServer((request, response) => {
         const req = Object.setPrototypeOf(request, Request.prototype);
         const res = Object.setPrototypeOf(response, Response.prototype);
+        setAppHeader(res);
         if (req.method)
             res.method = req.method;
         res.on('close', (...args) => {

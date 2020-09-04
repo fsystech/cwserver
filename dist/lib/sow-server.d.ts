@@ -121,7 +121,6 @@ export interface ISowServer {
     initilize(): void;
     implimentConfig(config: NodeJS.Dict<any>): void;
     setDefaultProtectionHeader(res: IResponse): void;
-    setHeader(res: IResponse): void;
     parseSession(cook: undefined | string[] | string | {
         [x: string]: any;
     }): ISession;
@@ -148,7 +147,7 @@ export interface ISowServer {
     on(ev: 'shutdown', handler: () => void): void;
 }
 export declare type IViewHandler = (app: IApplication, controller: IController, server: ISowServer) => void;
-export declare const disposeContext: (ctx: IContext) => void, removeContext: (id: string) => void, getContext: (server: ISowServer, req: IRequest, res: IResponse) => IContext, getMyContext: (id: string) => IContext | undefined, appVersion: string, readAppVersion: () => string;
+export declare const disposeContext: (ctx: IContext) => void, removeContext: (id: string) => void, getContext: (server: ISowServer, req: IRequest, res: IResponse) => IContext, getMyContext: (id: string) => IContext | undefined;
 export declare class ServerEncryption implements IServerEncryption {
     private cryptoInfo;
     constructor(inf: ICryptoInfo);
@@ -285,7 +284,6 @@ export declare class SowServer implements ISowServer {
     copyright(): string;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
     setDefaultProtectionHeader(res: IResponse): void;
-    setHeader(res: IResponse): void;
     parseSession(cook: undefined | string[] | string | {
         [x: string]: any;
     }): ISession;

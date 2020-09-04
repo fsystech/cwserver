@@ -20,7 +20,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initilizeServer = exports.SowServer = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.readAppVersion = exports.appVersion = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
+exports.initilizeServer = exports.SowServer = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -42,24 +42,8 @@ const sow_logger_1 = require("./sow-logger");
 // -------------------------------------------------------
 _a = (() => {
     const _curContext = {};
-    const _readAppVersion = () => {
-        const libRoot = sow_util_1.getLibRoot();
-        const absPath = _path.resolve(`${libRoot}/package.json`);
-        sow_util_1.assert(_fs.existsSync(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
-        const data = _fs.readFileSync(absPath, "utf-8");
-        return JSON.parse(data).version;
-    };
-    const _appVersion = (() => {
-        return _readAppVersion();
-    })();
     return {
-        get appVersion() {
-            return _appVersion;
-        },
-        get readAppVersion() {
-            return _readAppVersion;
-        },
-        disposeContext: (ctx) => {
+        disposeContext(ctx) {
             const reqId = ctx.dispose();
             if (reqId) {
                 if (_curContext[reqId]) {
@@ -68,20 +52,20 @@ _a = (() => {
             }
             return void 0;
         },
-        getMyContext: (id) => {
+        getMyContext(id) {
             const ctx = _curContext[id];
             if (!ctx)
                 return;
             return ctx;
         },
-        removeContext: (id) => {
+        removeContext(id) {
             const ctx = _curContext[id];
             if (!ctx)
                 return;
             exports.disposeContext(ctx);
             return void 0;
         },
-        getContext: (server, req, res) => {
+        getContext(server, req, res) {
             if (_curContext[req.id])
                 return _curContext[req.id];
             const context = new Context(server, req, res);
@@ -89,7 +73,7 @@ _a = (() => {
             return context;
         }
     };
-})(), exports.disposeContext = _a.disposeContext, exports.removeContext = _a.removeContext, exports.getContext = _a.getContext, exports.getMyContext = _a.getMyContext, exports.appVersion = _a.appVersion, exports.readAppVersion = _a.readAppVersion;
+})(), exports.disposeContext = _a.disposeContext, exports.removeContext = _a.removeContext, exports.getContext = _a.getContext, exports.getMyContext = _a.getMyContext;
 function isDefined(a) {
     return a !== null && a !== undefined;
 }
@@ -383,7 +367,7 @@ ${appRoot}\\www_public
         return;
     }
     get version() {
-        return exports.appVersion;
+        return sow_server_core_1.appVersion;
     }
     get config() {
         return this._config;
@@ -516,17 +500,12 @@ ${appRoot}\\www_public
         res.setHeader('x-content-type-options', 'nosniff');
         res.setHeader('x-frame-options', 'sameorigin');
         if (this.config.hostInfo.hostName && this.config.hostInfo.hostName.length > 0) {
-            res.setHeader('expect-ct', `max-age=0, report-uri="https://${this.config.hostInfo.hostName}/report/?ct=browser&version=${exports.appVersion}`);
+            res.setHeader('expect-ct', `max-age=0, report-uri="https://${this.config.hostInfo.hostName}/report/?ct=browser&version=${sow_server_core_1.appVersion}`);
         }
         res.setHeader('feature-policy', "magnetometer 'none'");
         if (this.config.hostInfo.frameAncestors) {
             res.setHeader('content-security-policy', `frame-ancestors ${this.config.hostInfo.frameAncestors}`);
         }
-    }
-    setHeader(res) {
-        res.setHeader('server', 'SOW Frontend');
-        res.setHeader('x-app-version', this.version);
-        res.setHeader('x-powered-by', 'safeonline.world');
     }
     parseSession(cook) {
         if (!this.config.session.cookie || this.config.session.cookie.length === 0)
@@ -821,7 +800,6 @@ function initilizeServer(appRoot, wwwName) {
         });
         _app.prerequisites((req, res, next) => {
             req.session = _server.parseSession(req.cookies);
-            _server.setHeader(res);
             return next();
         });
         _app.use((req, res, next) => {

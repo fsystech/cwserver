@@ -59,6 +59,7 @@ export interface IResponse extends ServerResponse {
     dispose(): void;
 }
 export interface IApplication {
+    readonly version: string;
     readonly httpServer: Server;
     readonly isRunning: boolean;
     clearHandler(): void;
@@ -72,6 +73,7 @@ export interface IApplication {
     on(ev: 'shutdown', handler: () => void): IApplication;
     listen(handle: any, listeningListener?: () => void): IApplication;
 }
+export declare const appVersion: string, readAppVersion: () => string;
 export declare function parseCookie(cook: undefined | string[] | string | {
     [x: string]: any;
 }): NodeJS.Dict<string>;

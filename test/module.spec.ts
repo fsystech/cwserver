@@ -16,13 +16,12 @@ import { HttpStatus } from "../lib/sow-http-status";
 import * as cwserver from '../index';
 import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/sow-static';
 import {
-    IAppUtility, IContext,
-    readAppVersion
+    IAppUtility, IContext
 } from '../lib/sow-server';
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
 } from '../lib/sow-router';
-import { IApplication } from '../lib/sow-server-core';
+import { IApplication, readAppVersion } from '../lib/sow-server-core';
 import { assert, Util } from '../lib/sow-util';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
 import { TemplateCore, templateNext, CompilerResult } from '../lib/sow-template';
@@ -116,6 +115,7 @@ describe("cwserver-core", () => {
         this.timeout(5000);
         const capp = cwserver.App();
         expect(capp).toBeDefined();
+        expect(capp.version).toBeDefined();
         expect(new cwserver.Session()).toBeInstanceOf(cwserver.Session);
         expect(cwserver.parseCookie("cook=125;")).toBeDefined();
         const root: string = path.resolve(`${appRoot}/ewww`);
