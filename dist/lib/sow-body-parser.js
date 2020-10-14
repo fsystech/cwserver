@@ -143,6 +143,7 @@ class PostedFileInfo {
             if (_fs.existsSync(this._tempFile))
                 _fs.unlinkSync(this._tempFile);
         }
+        // @ts-ignore
         delete this._fileInfo;
         delete this._tempFile;
     }
@@ -240,6 +241,7 @@ class MultipartDataReader extends events_1.EventEmitter {
         this.removeAllListeners();
         this.destroy();
         delete this._writeStream;
+        // @ts-ignore
         delete this._forceExit;
     }
 }
@@ -308,10 +310,14 @@ class DataParser {
         dispose(this._readers);
         dispose(this._files);
         this._body.dispose();
+        // @ts-ignore
         delete this._body;
+        // @ts-ignore
         delete this._multipartBody;
-        if (this._errors)
+        if (this._errors) {
+            // @ts-ignore
             delete this._errors;
+        }
     }
 }
 function decode(str) {
@@ -570,6 +576,7 @@ class BodyParser {
         this._isDisposed = true;
         if (this._isReadEnd) {
             this._parser.dispose();
+            // @ts-ignore
             delete this._parser;
         }
         if (this._multipartParser) {
@@ -577,8 +584,10 @@ class BodyParser {
             destroy(this._multipartParser);
             delete this._multipartParser;
         }
+        // @ts-ignore
         delete this._req;
         delete this._part;
+        // @ts-ignore
         delete this._contentType;
         delete this._contentLength;
     }

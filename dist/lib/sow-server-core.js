@@ -76,7 +76,7 @@ const getCook = (cooks) => {
 function parseCookie(cook) {
     if (!cook)
         return {};
-    if (cook instanceof Array)
+    if (Array.isArray(cook))
         return getCook(cook);
     if (cook instanceof Object)
         return cook;
@@ -257,6 +257,7 @@ class Request extends http_1.IncomingMessage {
     }
 }
 class Response extends http_1.ServerResponse {
+    // @ts-ignore
     get statusCode() {
         return this._statusCode === undefined ? 0 : this._statusCode;
     }
@@ -314,7 +315,7 @@ class Response extends http_1.ServerResponse {
     get(name) {
         const val = this.getHeader(name);
         if (val) {
-            if (val instanceof Array) {
+            if (Array.isArray(val)) {
                 return JSON.stringify(val);
             }
             return sow_static_1.toString(val);
@@ -396,7 +397,7 @@ class Response extends http_1.ServerResponse {
     }
     cookie(name, val, options) {
         let sCookie = this.getHeader('Set-Cookie');
-        if (sCookie instanceof Array) {
+        if (Array.isArray(sCookie)) {
             this.removeHeader('Set-Cookie');
         }
         else {

@@ -56,10 +56,9 @@ class Encryption {
     static updateCryptoKeyIV(key) {
         const res = new CryptoInfo();
         res.oldKey = key;
-        res.md5 = void 0;
-        res.md5 = this.toMd5(res.oldKey);
-        res.key = crypto_js_1.default.lib.WordArray.create(res.md5);
-        res.iv = crypto_js_1.default.lib.WordArray.create(res.oldKey);
+        res.md5 = this.toMd5(key);
+        res.key = crypto_js_1.default.enc.Hex.parse(res.md5);
+        res.iv = crypto_js_1.default.enc.Hex.parse(this.utf8ToHex(res.oldKey));
         return res;
     }
     ;
@@ -71,14 +70,18 @@ class Encryption {
     static decrypt(encryptedText, inf) {
         if (!inf.key)
             throw new Error("Invalid iv and key....");
-        const dec = crypto_js_1.default.AES.decrypt({
-            iv: inf.iv,
-            salt: "",
-            ciphertext: crypto_js_1.default.enc.Base64.parse(encryptedText)
-        }, inf.key, {
-            iv: inf.iv
-        });
-        return crypto_js_1.default.enc.Utf8.stringify(dec);
+        try {
+            const dec = crypto_js_1.default.AES.decrypt(crypto_js_1.default.lib.CipherParams.create({
+                iv: inf.iv,
+                ciphertext: crypto_js_1.default.enc.Base64.parse(encryptedText)
+            }), inf.key, {
+                iv: inf.iv
+            });
+            return crypto_js_1.default.enc.Utf8.stringify(dec);
+        }
+        catch (_a) {
+            return "";
+        }
     }
     static encryptToHex(plainText, inf) {
         const encryptedText = this.encrypt(plainText, inf);

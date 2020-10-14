@@ -33,6 +33,7 @@
     "ignore": [
       "**/*.test.ts",
       "**/*.spec.ts",
+      "**/*.fs-async.ts",
       ".git",
       "node_modules"
     ],

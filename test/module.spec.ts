@@ -1842,7 +1842,7 @@ describe("cwserver-utility", () => {
             return {};
         }
     })();
-    it("test-app-utility", function (done: Mocha.Done): void {
+    it("test-app-utility", function (done: Mocha.Done) {
         this.timeout(5000);
         expect(shouldBeError(() => {
             appUtility.server.addMimeType("text", "text/plain");
@@ -2593,6 +2593,61 @@ describe("cwserver-fsw", () => {
                 }, handleError);
             }, handleError);
         });
+    });
+    it("test-fsw-async", function (done) {
+        this.timeout(5000);
+        async function task() {
+            let unlinkFileName: string | undefined;
+            for await (const p of await cwserver.fswa.getFilesAsync(logDir)) {
+                if (!p) continue;
+                break;
+            }
+            for await (const p of await cwserver.fswa.getFilesAsync(appUtility.server.mapPath("/web/"), true)) {
+                if (!p) continue;
+                if (unlinkFileName) continue;
+                unlinkFileName = p;
+            }
+            expect(unlinkFileName).toBeDefined();
+            try {
+                await cwserver.fswa.opendirAsync("/testpx/");
+            } catch (ex) {
+                expect(ex).toBeDefined();
+            }
+            try {
+                await cwserver.fswa.unlinkAsync("/testpx/");
+            } catch (ex) {
+                expect(ex).toBeDefined();
+            }
+            const tPath = path.resolve('./_test/');
+            await cwserver.fswa.mkdirAsync(handleError, tPath, "");
+            if (unlinkFileName) {
+                expect(await cwserver.fswa.existsAsync(unlinkFileName)).toBeTruthy();
+                try {
+                    await cwserver.fswa.existsAsync(`x/zz/`);
+                } catch (ex) {
+                    expect(ex).toBeDefined();
+                }
+                const testFileLog = path.resolve(`${tPath}/test_file.log`);
+                await cwserver.fswa.moveFileAsync(unlinkFileName, testFileLog);
+                await cwserver.fswa.moveFileAsync(testFileLog, unlinkFileName);
+                try {
+                    await cwserver.fswa.moveFileAsync(testFileLog, unlinkFileName);
+                } catch (ex) {
+                    expect(ex).toBeDefined();
+                }
+                await cwserver.fswa.unlinkAsync(unlinkFileName);
+                await cwserver.fswa.writeFileAsync(unlinkFileName, "TEST_PART");
+                try {
+                    await cwserver.fswa.writeFileAsync(path.resolve(`${tPath}/test_file.log/web_file_no_file_test`), "TEST_PART");
+                } catch (ex) {
+                    expect(ex).toBeDefined();
+                }
+
+            }
+            //appUtility.server.mapPath("/web/large.bin")
+            done();
+        }
+        task();
     });
 });
 describe("finalization", () => {

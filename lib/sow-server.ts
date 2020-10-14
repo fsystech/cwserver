@@ -372,9 +372,13 @@ export class Context implements IContext {
         this._isDisposed = true;
         delete this._next;
         const id: string = this._req.id;
+        // @ts-ignore
         delete this._server; delete this.path;
+        // @ts-ignore
         this._res.dispose(); delete this._res;
+        // @ts-ignore
         this._req.dispose(); delete this._req;
+        // @ts-ignore
         delete this.extension; delete this.root;
         delete this.servedFrom; delete this.error;
         return id;
@@ -678,14 +682,9 @@ ${appRoot}\\www_public
     }
     setDefaultProtectionHeader(res: IResponse): void {
         res.setHeader('x-timestamp', Date.now());
-        res.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
         res.setHeader('x-xss-protection', '1; mode=block');
         res.setHeader('x-content-type-options', 'nosniff');
         res.setHeader('x-frame-options', 'sameorigin');
-        if (this.config.hostInfo.hostName && this.config.hostInfo.hostName.length > 0) {
-            res.setHeader('expect-ct', `max-age=0, report-uri="https://${this.config.hostInfo.hostName}/report/?ct=browser&version=${appVersion}`);
-        }
-        res.setHeader('feature-policy', "magnetometer 'none'");
         if (this.config.hostInfo.frameAncestors) {
             res.setHeader('content-security-policy', `frame-ancestors ${this.config.hostInfo.frameAncestors}`);
         }

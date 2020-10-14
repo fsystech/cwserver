@@ -121,7 +121,7 @@ export function parseCookie(
     cook: undefined | string[] | string | { [x: string]: any; }
 ): NodeJS.Dict<string> {
     if (!cook) return {};
-    if (cook instanceof Array) return getCook(cook);
+    if (Array.isArray(cook)) return getCook(cook);
     if (cook instanceof Object) return cook;
     return getCook(cook.split(';'));
 }
@@ -291,6 +291,7 @@ class Response extends ServerResponse implements IResponse {
     private _method: string | undefined;
     private _cleanSocket: boolean | undefined;
     private _statusCode: number | undefined;
+    // @ts-ignore
     public get statusCode() {
         return this._statusCode === undefined ? 0 : this._statusCode;
     }
@@ -345,7 +346,7 @@ class Response extends ServerResponse implements IResponse {
     public get(name: string): string | void {
         const val: number | string | string[] | undefined = this.getHeader(name);
         if (val) {
-            if (val instanceof Array) {
+            if (Array.isArray(val)) {
                 return JSON.stringify(val);
             }
             return toString(val);
@@ -425,7 +426,7 @@ class Response extends ServerResponse implements IResponse {
     }
     public cookie(name: string, val: string, options: CookieOptions): IResponse {
         let sCookie: number | string | string[] | undefined = this.getHeader('Set-Cookie');
-        if (sCookie instanceof Array) {
+        if (Array.isArray(sCookie)) {
             this.removeHeader('Set-Cookie');
         } else {
             sCookie = [];
