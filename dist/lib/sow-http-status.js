@@ -2,63 +2,72 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HttpStatus = void 0;
 const sow_static_1 = require("./sow-static");
+// Copy from https://github.com/nodejs/node/blob/master/lib/_http_server.js
 const HttpStatusCode = {
-    continue: 100,
-    switchingprotocols: 101,
-    ok: 200,
-    created: 201,
-    accepted: 202,
-    nonauthoritativeinformation: 203,
-    nocontent: 204,
-    resetcontent: 205,
-    partialcontent: 206,
-    multiplechoices: 300,
-    ambiguous: 300,
-    movedpermanently: 301,
-    moved: 301,
-    found: 302,
-    redirect: 302,
-    seeother: 303,
-    redirectmethod: 303,
-    notmodified: 304,
-    useproxy: 305,
-    unused: 306,
-    temporaryredirect: 307,
-    redirectkeepverb: 307,
-    badrequest: 400,
-    unauthorized: 401,
-    paymentrequired: 402,
-    forbidden: 403,
-    notfound: 404,
-    methodnotallowed: 405,
-    notacceptable: 406,
-    proxyauthenticationrequired: 407,
-    requesttimeout: 408,
-    conflict: 409,
-    gone: 410,
-    lengthrequired: 411,
-    preconditionfailed: 412,
-    requestentitytoolarge: 413,
-    requesturitoolong: 414,
-    unsupportedmediatype: 415,
-    requestedrangenotsatisfiable: 416,
-    expectationfailed: 417,
-    upgraderequired: 426,
-    internalservererror: 500,
-    notimplemented: 501,
-    badgateway: 502,
-    serviceunavailable: 503,
-    gatewaytimeout: 504,
-    httpversionnotsupported: 505
+    100: 'Continue',
+    101: 'Switching Protocols',
+    102: 'Processing',
+    103: 'Early Hints',
+    200: 'OK',
+    201: 'Created',
+    202: 'Accepted',
+    203: 'Non-Authoritative Information',
+    204: 'No Content',
+    205: 'Reset Content',
+    206: 'Partial Content',
+    207: 'Multi-Status',
+    208: 'Already Reported',
+    226: 'IM Used',
+    300: 'Multiple Choices',
+    301: 'Moved Permanently',
+    302: 'Found',
+    303: 'See Other',
+    304: 'Not Modified',
+    305: 'Use Proxy',
+    307: 'Temporary Redirect',
+    308: 'Permanent Redirect',
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    402: 'Payment Required',
+    403: 'Forbidden',
+    404: 'Not Found',
+    405: 'Method Not Allowed',
+    406: 'Not Acceptable',
+    407: 'Proxy Authentication Required',
+    408: 'Request Timeout',
+    409: 'Conflict',
+    410: 'Gone',
+    411: 'Length Required',
+    412: 'Precondition Failed',
+    413: 'Payload Too Large',
+    414: 'URI Too Long',
+    415: 'Unsupported Media Type',
+    416: 'Range Not Satisfiable',
+    417: 'Expectation Failed',
+    418: 'I\'m a Teapot',
+    421: 'Misdirected Request',
+    422: 'Unprocessable Entity',
+    423: 'Locked',
+    424: 'Failed Dependency',
+    425: 'Too Early',
+    426: 'Upgrade Required',
+    428: 'Precondition Required',
+    429: 'Too Many Requests',
+    431: 'Request Header Fields Too Large',
+    451: 'Unavailable For Legal Reasons',
+    500: 'Internal Server Error',
+    501: 'Not Implemented',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+    504: 'Gateway Timeout',
+    505: 'HTTP Version Not Supported',
+    506: 'Variant Also Negotiates',
+    507: 'Insufficient Storage',
+    508: 'Loop Detected',
+    509: 'Bandwidth Limit Exceeded',
+    510: 'Not Extended',
+    511: 'Network Authentication Required' // RFC 6585 6
 };
-const ReverseHttpStatusCode = (() => {
-    const rhsc = {};
-    for (const [key, value] of Object.entries(HttpStatusCode)) {
-        if (value)
-            rhsc[value] = key;
-    }
-    return rhsc;
-})();
 const _group = {
     "1": {
         type: "Informational",
@@ -84,7 +93,7 @@ const _group = {
 class HttpStatus {
     static get statusCode() { return HttpStatusCode; }
     static getDescription(statusCode) {
-        const desc = ReverseHttpStatusCode[statusCode];
+        const desc = HttpStatusCode[statusCode];
         if (desc)
             return desc;
         throw new Error(`Invalid ==> ${statusCode}...`);
@@ -105,11 +114,10 @@ class HttpStatus {
         statusCode = sow_static_1.ToNumber(code);
         if (statusCode === 0)
             return outStatusCode;
-        // if ( this.isValidCode( statusCode ) ) return outStatusCode;
         return statusCode;
     }
     static isValidCode(statusCode) {
-        return ReverseHttpStatusCode[statusCode] ? true : false;
+        return HttpStatusCode[statusCode] ? true : false;
     }
     static getResInfo(path, code) {
         code = sow_static_1.ToNumber(code);
@@ -130,7 +138,6 @@ class HttpStatus {
             out.description = this.getDescription(out.code);
             out.isInternalErrorCode = out.code === 500;
         }
-        // console.log( out );
         return out;
     }
     static isErrorFileName(name) {
