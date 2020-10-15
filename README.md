@@ -28,6 +28,25 @@ The aim of the project is to create an easy to use, lightweight, ```Complete Web
   - ```Easy way to bind with IIS/NGINX```
 
 Install ```cwserver``` by this command ```npm i cwserver```<br/>
+How to use ```cwserver``` core ```IApplication```?<br/>
+```
+const { App } = require('cwserver');
+const app = App();
+const port = 8080;
+app.on("request-begain", (req) => {
+    console.log(`${req.method} ${req.path}`);
+});
+app.on("response-end", (req, res) => {
+    console.log(`Send ${res.statusCode} ${req.path}`);
+});
+app.use((req, res, next) => {
+    res.status(200).send("Hello World...");
+});
+app.listen(port, () => {
+    console.log(`Listing port => ${port}`);
+});
+```
+Or you may use full application by following:<br/>
 Create ```createProjectTemplate.js``` as following
 ```
 const { createProjectTemplate } = require( 'cwserver' );

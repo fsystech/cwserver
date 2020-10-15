@@ -505,6 +505,12 @@ ${appRoot}\\www_public
         if (this.config.hostInfo.frameAncestors) {
             res.setHeader('content-security-policy', `frame-ancestors ${this.config.hostInfo.frameAncestors}`);
         }
+        if (this.config.session.isSecure) {
+            res.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
+            if (this.config.hostInfo.hostName && this.config.hostInfo.hostName.length > 0) {
+                res.setHeader('expect-ct', `max-age=0, report-uri="https://${this.config.hostInfo.hostName}/report/?ct=browser&version=${sow_server_core_1.appVersion}`);
+            }
+        }
     }
     parseSession(cook) {
         if (!this.config.session.cookie || this.config.session.cookie.length === 0)

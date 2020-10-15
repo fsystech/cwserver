@@ -516,6 +516,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 
 });
 global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+	
 	{
 		const enc = server.encryption.encrypt("Hello World..");
 		expect(enc.length).toBeGreaterThan(0);
@@ -555,7 +556,9 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			expect(ctx.req.get('cookie')).toBeDefined();
 			expect(ctx.res.get('server')).toEqual("SOW Frontend");
 			expect(ctx.res.isAlive).toBeTruthy();
+			server.config.session.isSecure = true;
 			server.setDefaultProtectionHeader(ctx.res);
+			server.config.session.isSecure = false;
 			expect(shouldBeError(() => {
 				server.transferRequest(ctx, 200);
 			})).toBeInstanceOf(Error);

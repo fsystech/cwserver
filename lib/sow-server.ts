@@ -674,11 +674,11 @@ ${appRoot}\\www_public
         return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
-        const _context = getContext(this, req, res);
-        _context.path = req.path; _context.root = _context.path;
-        _context.next = next;
-        _context.extension = Util.getExtension(_context.path) || "";
-        return _context;
+        const context = getContext(this, req, res);
+        context.path = req.path; context.root = context.path;
+        context.next = next;
+        context.extension = Util.getExtension(context.path) || "";
+        return context;
     }
     setDefaultProtectionHeader(res: IResponse): void {
         res.setHeader('x-timestamp', Date.now());
@@ -687,6 +687,12 @@ ${appRoot}\\www_public
         res.setHeader('x-frame-options', 'sameorigin');
         if (this.config.hostInfo.frameAncestors) {
             res.setHeader('content-security-policy', `frame-ancestors ${this.config.hostInfo.frameAncestors}`);
+        }
+        if (this.config.session.isSecure) {
+            res.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
+            if (this.config.hostInfo.hostName && this.config.hostInfo.hostName.length > 0) {
+                res.setHeader('expect-ct', `max-age=0, report-uri="https://${this.config.hostInfo.hostName}/report/?ct=browser&version=${appVersion}`);
+            }
         }
     }
     parseSession(cook: undefined | string[] | string | { [x: string]: any; }): ISession {
@@ -978,22 +984,22 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             return next();
         });
         _app.use((req: IRequest, res: IResponse, next: NextFunction) => {
-            const _context = _process.createContext(req, res, next);
+            const context = _process.createContext(req, res, next);
             const reqPath: string = req.path;
             if (_server.config.hiddenDirectory.some((a) => {
                 return reqPath.substring(0, a.length) === a;
             })) {
                 _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
-                return _server.transferRequest(_context, 404);
+                return _server.transferRequest(context, 404);
             }
             if (reqPath.indexOf('$root') > -1 || reqPath.indexOf('$public') > -1) {
                 _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
-                return _server.transferRequest(_context, 404);
+                return _server.transferRequest(context, 404);
             }
             try {
-                return _controller.processAny(_context);
+                return _controller.processAny(context);
             } catch (ex) {
-                return _server.transferRequest(_server.addError(_context, ex), 500);
+                return _server.transferRequest(_server.addError(context, ex), 500);
             }
         });
         return _app;
