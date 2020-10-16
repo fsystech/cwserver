@@ -109,6 +109,7 @@ export interface IServerConfig {
         compression: boolean;
         minCompressionSize: number;
         fileCache: false;
+        tempPath: string;
     };
     cacheHeader: {
         maxAge: number;
@@ -122,6 +123,7 @@ export interface IServerConfig {
         fileCache: boolean;
         route: string;
         compress: boolean;
+        tempPath: string;
     };
 }
 export interface ISowServer {
@@ -416,6 +418,7 @@ export class ServerConfig implements IServerConfig {
         compression: boolean;
         minCompressionSize: number;
         fileCache: false;
+        tempPath: string;
     };
     cacheHeader: {
         maxAge: number;
@@ -429,6 +432,7 @@ export class ServerConfig implements IServerConfig {
         fileCache: boolean;
         route: string;
         compress: boolean;
+        tempPath: string;
     };
     template: {
         cache: boolean;
@@ -471,7 +475,8 @@ export class ServerConfig implements IServerConfig {
         this.staticFile = {
             compression: true,
             minCompressionSize: 1024 * 5,
-            fileCache: false
+            fileCache: false,
+            tempPath: "/web/temp/cache/"
         };
         this.cacheHeader = {
             maxAge: parseMaxAge("30D"), // 30Day
@@ -483,7 +488,8 @@ export class ServerConfig implements IServerConfig {
             enable: true,
             fileCache: true,
             route: "/app/api/bundle/",
-            compress: true
+            compress: true,
+            tempPath: "/web/temp/"
         };
     }
 }
@@ -576,6 +582,8 @@ ${appRoot}\\www_public
         this.on = Object.create(null);
         this.addVirtualDir = Object.create(null);
         this.virtualInfo = Object.create(null);
+        this.config.bundler.tempPath = this.mapPath(this.config.bundler.tempPath);
+        this.config.staticFile.tempPath = this.mapPath(this.config.staticFile.tempPath);
         return;
     }
     on: (ev: "shutdown", handler: () => void) => void;

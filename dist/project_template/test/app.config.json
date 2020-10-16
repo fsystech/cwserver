@@ -15,7 +15,8 @@
   "staticFile": {
     "fileCache": true,
     "compression": true,
-    "minCompressionSize": 0
+    "minCompressionSize": 0,
+    "tempPath": "/web/temp/cache/"
   },
   "cacheHeader": {
     "maxAge": "7d",
@@ -47,7 +48,8 @@
     "enable": true,
     "fileCache": true,
     "route": "/app/api/bundle/",
-    "compress": true
+    "compress": true,
+    "tempPath": "/web/temp/"
   },
   "views": [ "$root/$public/lib/view/test.js" ],
   "hiddenDirectory": [ "/lib/", "/config/", "/template/", "/web/" ],

@@ -8,14 +8,18 @@
   "template": {
     "cache": true,
     "cacheType": "FILE",
-    "ext": ["html", "jsx"]
+    "ext": [
+      "html",
+      "jsx"
+    ]
   },
   "encryptionKey": "aaa$a",
   "socketPath": "",
   "staticFile": {
     "fileCache": true,
     "compression": true,
-    "minCompressionSize": 0
+    "minCompressionSize": 0,
+    "tempPath": "/web/temp/cache/"
   },
   "cacheHeader": {
     "maxAge": "7d",
@@ -41,15 +45,26 @@
     "htm"
   ],
   "defaultExt": ".html",
-  "defaultDoc": [ "index", "default" ],
+  "defaultDoc": [
+    "index",
+    "default"
+  ],
   "bundler": {
     "enable": true,
     "fileCache": true,
     "route": "/app/api/bundle/",
-    "compress": true
+    "compress": true,
+    "tempPath": "/web/temp/"
   },
-  "views": [ "$root/$public/lib/view/main.js" ],
-  "hiddenDirectory": [ "/lib/", "/config/", "/template/", "/web/" ],
+  "views": [
+    "$root/$public/lib/view/main.js"
+  ],
+  "hiddenDirectory": [
+    "/lib/",
+    "/config/",
+    "/template/",
+    "/web/"
+  ],
   "hostInfo": {
     "origin": [],
     "root": "www",

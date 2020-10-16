@@ -312,7 +312,6 @@ class DataParser {
         this._body.dispose();
         // @ts-ignore
         delete this._body;
-        // @ts-ignore
         delete this._multipartBody;
         if (this._errors) {
             // @ts-ignore

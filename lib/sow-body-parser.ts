@@ -391,9 +391,7 @@ class DataParser implements IDataParser {
         dispose(this._files);
         this._body.dispose();
         // @ts-ignore
-        delete this._body;
-        // @ts-ignore
-        delete this._multipartBody;
+        delete this._body; delete this._multipartBody;
         if (this._errors) {
             // @ts-ignore
             delete this._errors;

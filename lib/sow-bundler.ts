@@ -67,8 +67,8 @@ This "Combiner" contains the following files:\n`;
         ctEnum: ContentType,
         cacheKey: string
     ): string {
-        const dir = ctx.server.mapPath( `/web/temp/` );
-        let path = `${dir}\\${cacheKey.replace( /[/\\?%*:|"<>]/g, "" )}_${Encryption.toMd5( str )}`;
+        // const dir = ctx.server.mapPath( `/web/temp/` );
+        let path = `${ctx.server.config.bundler.tempPath}\\${cacheKey.replace( /[/\\?%*:|"<>]/g, "" )}_${Encryption.toMd5( str )}`;
         if ( ctEnum === ContentType.JS ) {
             path = `${path}.js.cache`
         } else {
@@ -109,20 +109,17 @@ This "Combiner" contains the following files:\n`;
                 } else {
                     absolute = server.formatPath( name, true );
                 }
-                return _fs.exists( absolute, ( exists: boolean ): void => {
-                    if ( !exists ) return next( [], new Error( `No file found\r\nPath:${absolute}\r\nName:${name}` ) );
-                    return _fs.stat( absolute, ( err: NodeJS.ErrnoException | null, stat: _fs.Stats ) => {
-                        Util.throwIfError( err );
-                        const changeTime = stat.mtime.getTime();
-                        result.push( {
-                            name: name.replace( /\$.+?\//gi, "/" ),
-                            absolute,
-                            changeTime,
-                            isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
-                            isOwn
-                        } );
-                        return forword();
+                return _fs.stat( absolute, ( err: NodeJS.ErrnoException | null, stat: _fs.Stats ) => {
+                    if ( err ) return next( [], new Error( `No file found\r\nPath:${absolute}\r\nName:${name}` ) );
+                    const changeTime = stat.mtime.getTime();
+                    result.push( {
+                        name: name.replace( /\$.+?\//gi, "/" ),
+                        absolute,
+                        changeTime,
+                        isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
+                        isOwn
                     } );
+                    return forword();
                 } );
             } catch ( e ) {
                 return next( [], e );
@@ -230,8 +227,8 @@ This "Combiner" contains the following files:\n`;
         const cachpath: string = this.getCachePath( ctx, desc.toString(), cte, cacheKey.toString() );
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
         return fsw.stat( cachpath, ( serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats ): void => {
-            const existsCachFile: boolean = stat ? true : false;
-            return ctx.handleError( serr, () => {
+            const existsCachFile: boolean = serr ? false : true;
+            return ctx.handleError( null, () => {
                 let lastChangeTime: number = 0;
                 let cfileSize: number = 0;
                 if ( existsCachFile && stat ) {
@@ -327,7 +324,7 @@ This "Combiner" contains the following files:\n`;
                     } );
                 } );
             } );
-        }, ctx.handleError.bind( ctx ) );
+        } );
     }
 }
 // tslint:disable-next-line: variable-name

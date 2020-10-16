@@ -91,6 +91,7 @@ export interface IServerConfig {
         compression: boolean;
         minCompressionSize: number;
         fileCache: false;
+        tempPath: string;
     };
     cacheHeader: {
         maxAge: number;
@@ -104,6 +105,7 @@ export interface IServerConfig {
         fileCache: boolean;
         route: string;
         compress: boolean;
+        tempPath: string;
     };
 }
 export interface ISowServer {
@@ -224,6 +226,7 @@ export declare class ServerConfig implements IServerConfig {
         compression: boolean;
         minCompressionSize: number;
         fileCache: false;
+        tempPath: string;
     };
     cacheHeader: {
         maxAge: number;
@@ -237,6 +240,7 @@ export declare class ServerConfig implements IServerConfig {
         fileCache: boolean;
         route: string;
         compress: boolean;
+        tempPath: string;
     };
     template: {
         cache: boolean;

@@ -206,6 +206,7 @@ class ScriptParser {
         return;
     }
     dispose() {
+        // @ts-ignore
         delete this.tag;
         delete this._cmnt;
     }
@@ -272,7 +273,7 @@ class TemplateParser {
             }
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
-            return _fs.exists(abspath, (exists) => {
+            return fsw.isExists(abspath, (exists) => {
                 if (!exists) {
                     return ctx.transferError(new Error(`Template ${path} not found...`));
                 }

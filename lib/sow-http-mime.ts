@@ -9,7 +9,6 @@ import * as _path from 'path';
 import * as _zlib from 'zlib';
 import { pipeline } from 'stream';
 import destroy = require( 'destroy' );
-import * as fsw from './sow-fsw';
 import * as _mimeType from './sow-http-mime-types';
 import { IContext } from './sow-server';
 import { SowHttpCache, IChangeHeader } from './sow-http-cache';
@@ -44,8 +43,11 @@ function createGzip(): _zlib.Gzip {
 }
 class MimeHandler {
     static getCachePath( ctx: IContext ): string {
-        const dir: string = ctx.server.mapPath( `/web/temp/cache/` );
-        const path: string = `${dir}\\${Encryption.toMd5( ctx.path )}`;
+        // const dir: string = ctx.server.mapPath( `/web/temp/cache/` );
+        // const path: string = `${dir}\\${Encryption.toMd5( ctx.path )}`;
+        // console.log(`DIR: ${dir}`);
+        // console.log(`Temp File: ${ctx.server.config.staticFile.tempPath}`);
+        const path: string = `${ctx.server.config.staticFile.tempPath}\\${Encryption.toMd5( ctx.path )}`;
         return _path.resolve( `${path}.${ctx.extension}.cache` );
     }
     static servedFromServerFileCache(
@@ -54,9 +56,9 @@ class MimeHandler {
     ): void {
         const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader( ctx.req.headers );
         const cachePath: string = this.getCachePath( ctx );
-        return fsw.stat( cachePath, ( serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats ): void => {
-            const existsCachFile: boolean = stat ? true : false;
-            return ctx.handleError( serr, () => {
+        return _fs.stat( cachePath, ( serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats ): void => {
+            const existsCachFile: boolean = serr ? false : true;
+            return ctx.handleError( null, () => {
                 let lastChangeTime: number = 0, cfileSize: number = 0;
                 if ( existsCachFile && stat ) {
                     cfileSize = stat.size;
@@ -113,7 +115,7 @@ class MimeHandler {
                     } );
                 } );
             } );
-        }, ctx.handleError.bind( ctx ) );
+        } );
     }
     static servedNoChache(
         ctx: IContext, absPath: string,
@@ -170,7 +172,8 @@ class MimeHandler {
         return Util.pipeOutputStream( absPath, ctx );
     }
     static _render(
-        ctx: IContext, mimeType: string, absPath: string
+        ctx: IContext, mimeType: string, absPath: string,
+        stat: _fs.Stats
     ): void {
         ctx.req.socket.setNoDelay( true );
         if ( ctx.path.indexOf( 'favicon.ico' ) > -1 ) {
@@ -183,50 +186,40 @@ class MimeHandler {
             ctx.res.status( 200, { 'Content-Type': mimeType } );
             return Util.pipeOutputStream( absPath, ctx );
         }
-        return _fs.stat( absPath, ( serr: NodeJS.ErrnoException | null, stat: _fs.Stats ) => {
-            return ctx.handleError( serr, () => {
-                if ( ctx.server.config.liveStream.indexOf( ctx.extension ) > -1 ) {
-                    return Streamer.stream( ctx, absPath, mimeType, stat );
-                }
-                let noCache: boolean = false;
-                const taskDeff: ITaskDeff | undefined = TaskDeff.find( a => a.ext === ctx.extension );
-                let isGzip: boolean = ( !ctx.server.config.staticFile.compression ? false : SowHttpCache.isAcceptedEncoding( ctx.req.headers, "gzip" ) );
-                if ( isGzip ) {
-                    if ( ctx.server.config.staticFile.minCompressionSize > 0 && stat.size < ctx.server.config.staticFile.minCompressionSize ) {
-                        isGzip = false;
-                    }
-                }
-                if ( taskDeff ) {
-                    noCache = taskDeff.cache === false;
-                    if ( isGzip ) {
-                        isGzip = taskDeff.gzip;
-                    }
-                }
-                if ( noCache === true ) {
-                    return this.servedNoChache( ctx, absPath, mimeType, isGzip, stat.size );
-                }
-                if ( ctx.server.config.noCache.indexOf( ctx.extension ) > -1 ) {
-                    return this.servedNoChache( ctx, absPath, mimeType, isGzip, stat.size );
-                }
-                if ( !isGzip || ( ctx.server.config.staticFile.fileCache === false ) ) {
-                    return this.servedFromFile( ctx, absPath, mimeType, isGzip, stat );
-                }
-                return this.servedFromServerFileCache( ctx, absPath, mimeType, stat );
-            } );
-        } );
+        if ( ctx.server.config.liveStream.indexOf( ctx.extension ) > -1 ) {
+            return Streamer.stream( ctx, absPath, mimeType, stat );
+        }
+        let noCache: boolean = false;
+        const taskDeff: ITaskDeff | undefined = TaskDeff.find( a => a.ext === ctx.extension );
+        let isGzip: boolean = ( !ctx.server.config.staticFile.compression ? false : SowHttpCache.isAcceptedEncoding( ctx.req.headers, "gzip" ) );
+        if ( isGzip ) {
+            if ( ctx.server.config.staticFile.minCompressionSize > 0 && stat.size < ctx.server.config.staticFile.minCompressionSize ) {
+                isGzip = false;
+            }
+        }
+        if ( taskDeff ) {
+            noCache = taskDeff.cache === false;
+            if ( isGzip ) {
+                isGzip = taskDeff.gzip;
+            }
+        }
+        if ( noCache === true || ctx.server.config.noCache.indexOf( ctx.extension ) > -1 ) {
+            return this.servedNoChache( ctx, absPath, mimeType, isGzip, stat.size );
+        }
+        if ( !isGzip || ( ctx.server.config.staticFile.fileCache === false ) ) {
+            return this.servedFromFile( ctx, absPath, mimeType, isGzip, stat );
+        }
+        return this.servedFromServerFileCache( ctx, absPath, mimeType, stat );
     }
     static render(
         ctx: IContext, mimeType: string,
-        maybeDir?: string, checkFile?: boolean
+        maybeDir?: string
     ): void {
         const absPath: string = typeof ( maybeDir ) === "string" && maybeDir ? _path.resolve( `${maybeDir}/${ctx.path}` ) : ctx.server.mapPath( ctx.path );
-        if ( typeof ( checkFile ) === "boolean" && checkFile === true ) {
-            return _fs.exists( absPath, ( exists: boolean ): void => {
-                if ( !exists ) return ctx.next( 404, true );
-                return this._render( ctx, mimeType, absPath );
-            } );
-        }
-        return this._render( ctx, mimeType, absPath );
+        return _fs.stat( absPath, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
+            if ( err ) return ctx.next( 404, true );
+            return this._render( ctx, mimeType, absPath, stats );
+        } );
     }
 }
 export class HttpMimeHandler implements IHttpMimeHandler {
@@ -236,11 +229,11 @@ export class HttpMimeHandler implements IHttpMimeHandler {
     isValidExtension( extension: string ): boolean {
         return _mimeType.isValidExtension( extension );
     }
-    render( ctx: IContext, maybeDir?: string, checkFile?: boolean ): void {
+    render( ctx: IContext, maybeDir?: string): void {
         if ( !_mimeType.isValidExtension( ctx.extension ) ) {
             return ctx.transferRequest( 404 );
         }
-        return MimeHandler.render( ctx, _mimeType.getMimeType( ctx.extension ), maybeDir, checkFile );
+        return MimeHandler.render( ctx, _mimeType.getMimeType( ctx.extension ), maybeDir );
     }
 }
 // 11:38 PM 5/4/2020

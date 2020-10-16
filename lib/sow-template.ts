@@ -223,8 +223,8 @@ class ScriptParser implements IScriptParser {
         return;
     }
     public dispose() {
-        delete this.tag;
-        delete this._cmnt;
+        // @ts-ignore
+        delete this.tag; delete this._cmnt;
     }
 }
 class TemplateParser {
@@ -298,7 +298,7 @@ class TemplateParser {
             }
             const path = found.replace( /#extends/gi, "" ).replace( /\r\n/gi, "" ).trim();
             const abspath = _path.resolve( `${appRoot}${path}` );
-            return _fs.exists( abspath, ( exists: boolean ): void => {
+            return fsw.isExists( abspath, ( exists: boolean ): void => {
                 if ( !exists ) {
                     return ctx.transferError( new Error( `Template ${path} not found...` ) );
                 }

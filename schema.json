@@ -7,7 +7,9 @@
     "Author": {
       "type": "string",
       "minLength": 1,
-      "required": [ "Safe Online World Ltd." ],
+      "required": [
+        "Safe Online World Ltd."
+      ],
       "const": "Safe Online World Ltd.",
       "default": "Safe Online World Ltd.",
       "description": "cwserver Author Name"
@@ -34,7 +36,10 @@
       "type": "boolean",
       "minLength": 1,
       "default": true,
-      "enum": [ true, false ],
+      "enum": [
+        true,
+        false
+      ],
       "description": "If  isDebug true then all process information will be dump in both of console and app log file "
     },
     "template": {
@@ -44,21 +49,27 @@
       "default": {
         "cache": true,
         "cacheType": "FILE",
-        "ext": [ ]
+        "ext": []
       },
       "properties": {
         "cache": {
           "type": "boolean",
           "minLength": 1,
           "default": true,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "if templateCache true, than if any template file has changed, than, it will be recompailed. Else, run from server cached file or memmory."
         },
         "cacheType": {
           "type": "string",
           "minLength": 1,
           "default": "FILE",
-          "enum": [ "FILE", "MEM" ],
+          "enum": [
+            "FILE",
+            "MEM"
+          ],
           "description": "You can set template cache mood FILE | MEM. It will be effect while template.cache is true"
         },
         "ext": {
@@ -87,7 +98,8 @@
       "default": {
         "fileCache": true,
         "compression": true,
-        "minCompressionSize": 0
+        "minCompressionSize": 0,
+        "tempPath": "/web/temp/cache/"
       },
       "description": "Static file config",
       "properties": {
@@ -95,14 +107,20 @@
           "type": "boolean",
           "minLength": 1,
           "default": true,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "Effected if compression is true; If fileCache true, then static file served from gzip cached file"
         },
         "compression": {
           "type": "boolean",
           "minLength": 1,
           "default": true,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "Static file compression is true then compress static file with zlib"
         },
         "minCompressionSize": {
@@ -110,6 +128,12 @@
           "minLength": 1,
           "default": 0,
           "description": "If minCompressionSize = 0 then all static file will be compress or compress > minCompressionSize"
+        },
+        "tempPath": {
+          "type": "string",
+          "minLength": 1,
+          "default": "/web/temp/cache/",
+          "description": "Static cache file directory"
         }
       }
     },
@@ -132,7 +156,10 @@
           "type": "boolean",
           "minLength": 1,
           "default": true,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "If serverRevalidate true then before served from browser cache, browser should be revalidate from server"
         }
       }
@@ -149,7 +176,10 @@
     "defaultDoc": {
       "type": "array",
       "minLength": 1,
-      "default": [ "index", "default" ],
+      "default": [
+        "index",
+        "default"
+      ],
       "items": {
         "type": "string"
       },
@@ -197,7 +227,10 @@
           "type": "boolean",
           "minLength": 1,
           "default": false,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "Session cookie send for secure connections"
         }
       }
@@ -205,7 +238,17 @@
     "mimeType": {
       "type": "array",
       "minLength": 0,
-      "default": [ "css", "js", "png", "gif", "ico", "map", "mp3", "mp4", "pdf" ],
+      "default": [
+        "css",
+        "js",
+        "png",
+        "gif",
+        "ico",
+        "map",
+        "mp3",
+        "mp4",
+        "pdf"
+      ],
       "items": {
         "type": "string"
       },
@@ -225,21 +268,28 @@
         "enable": true,
         "fileCache": true,
         "route": "/app/api/bundle/",
-        "compress": true
+        "compress": true,
+        "tempPath": "/web/temp/"
       },
       "properties": {
         "enable": {
           "type": "boolean",
           "minLength": 1,
           "default": true,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "If enable then you can use _server.createBundle"
         },
         "fileCache": {
           "type": "boolean",
           "minLength": 1,
           "default": true,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "If file chache, then served form server file cache, If any bundled file were not modified"
         },
         "route": {
@@ -252,8 +302,17 @@
           "type": "boolean",
           "minLength": 1,
           "default": true,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "If bundler support compress.\r\nIf change this from previous state,\r\nplease clean $public\\web\\temp\\ folder"
+        },
+        "tempPath": {
+          "type": "string",
+          "minLength": 1,
+          "default": "/web/temp/",
+          "description": "Bundle cache file directory"
         }
       }
     },
@@ -326,7 +385,10 @@
           "type": "boolean",
           "minLength": 1,
           "default": true,
-          "enum": [ true, false ],
+          "enum": [
+            true,
+            false
+          ],
           "description": "Is supported TLS (Transport Layer Security)"
         },
         "cert": {

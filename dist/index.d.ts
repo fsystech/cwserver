@@ -5,7 +5,6 @@ export { ConsoleColor } from './lib/sow-logger';
 export { getBodyParser, PayloadParser } from './lib/sow-body-parser';
 export { Util } from './lib/sow-util';
 export * as fsw from './lib/sow-fsw';
-export * as fswa from './lib/sow-fs-async';
 export { Streamer } from './lib/sow-web-streamer';
 export { socketInitilizer, wsClient } from './lib/sow-ws';
 export { createProjectTemplate } from './lib/sow-project-template';

@@ -61,8 +61,10 @@ class Controller {
         return this._httpMimeHandler;
     }
     reset() {
+        // @ts-ignore
         delete routeTable.get;
         delete routeTable.post;
+        // @ts-ignore
         delete routeTable.any;
         delete routeTable.router;
         routeTable.get = {};

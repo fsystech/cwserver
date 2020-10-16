@@ -7,5 +7,5 @@ export interface IHttpMimeHandler {
 export declare class HttpMimeHandler implements IHttpMimeHandler {
     getMimeType(extension: string): string;
     isValidExtension(extension: string): boolean;
-    render(ctx: IContext, maybeDir?: string, checkFile?: boolean): void;
+    render(ctx: IContext, maybeDir?: string): void;
 }

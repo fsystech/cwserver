@@ -298,7 +298,8 @@ class ServerConfig {
         this.staticFile = {
             compression: true,
             minCompressionSize: 1024 * 5,
-            fileCache: false
+            fileCache: false,
+            tempPath: "/web/temp/cache/"
         };
         this.cacheHeader = {
             maxAge: parseMaxAge("30D"),
@@ -310,7 +311,8 @@ class ServerConfig {
             enable: true,
             fileCache: true,
             route: "/app/api/bundle/",
-            compress: true
+            compress: true,
+            tempPath: "/web/temp/"
         };
     }
 }
@@ -368,6 +370,8 @@ ${appRoot}\\www_public
         this.on = Object.create(null);
         this.addVirtualDir = Object.create(null);
         this.virtualInfo = Object.create(null);
+        this.config.bundler.tempPath = this.mapPath(this.config.bundler.tempPath);
+        this.config.staticFile.tempPath = this.mapPath(this.config.staticFile.tempPath);
         return;
     }
     get version() {

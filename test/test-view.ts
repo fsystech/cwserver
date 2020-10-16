@@ -35,6 +35,7 @@ export function shouldBeError(next: () => void, printerr?: boolean): Error | voi
 };
 expect(toString(1)).toEqual("1");
 global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+	fsw.mkdirSync(server.config.staticFile.tempPath, "");
 	expect(parseCookie(["test"])).toBeInstanceOf(Object);
 	expect(parseCookie({})).toBeInstanceOf(Object);
 	app.use("/app-pass-error-to-next", (req: IRequest, res: IResponse, next: NextFunction) => {
@@ -76,7 +77,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 	server.addVirtualDir("/vtest", vDir, (ctx: IContext): void => {
 		if (!mimeHandler.isValidExtension(ctx.extension)) return ctx.next(404);
 		mimeHandler.getMimeType(ctx.extension);
-		return mimeHandler.render(ctx, vDir, true);
+		return mimeHandler.render(ctx, vDir);
 	});
 	expect(shouldBeError(() => {
 		server.addVirtualDir("/vtest", vDir);
@@ -107,7 +108,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		return ctx.next(404);
 	});
 	server.addVirtualDir("/static-file", streamDir, (ctx: IContext, requestParam?: IRequestParam): void => {
-		return mimeHandler.render(ctx, streamDir, true);
+		return mimeHandler.render(ctx, streamDir);
 	});
 	expect(shouldBeError(() => {
 		server.addVirtualDir("/static-file/*", streamDir);
@@ -516,7 +517,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 
 });
 global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
-	
+
 	{
 		const enc = server.encryption.encrypt("Hello World..");
 		expect(enc.length).toBeGreaterThan(0);

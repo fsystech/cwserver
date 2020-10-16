@@ -39,7 +39,6 @@ Object.defineProperty(exports, "PayloadParser", { enumerable: true, get: functio
 var sow_util_1 = require("./lib/sow-util");
 Object.defineProperty(exports, "Util", { enumerable: true, get: function () { return sow_util_1.Util; } });
 exports.fsw = __importStar(require("./lib/sow-fsw"));
-exports.fswa = __importStar(require("./lib/sow-fs-async"));
 var sow_web_streamer_1 = require("./lib/sow-web-streamer");
 Object.defineProperty(exports, "Streamer", { enumerable: true, get: function () { return sow_web_streamer_1.Streamer; } });
 var sow_ws_1 = require("./lib/sow-ws");

@@ -58,10 +58,10 @@ export class Controller implements IController {
         this._httpMimeHandler = new HttpMimeHandler();
     }
     reset(): void {
-        delete routeTable.get;
-        delete routeTable.post;
-        delete routeTable.any;
-        delete routeTable.router;
+        // @ts-ignore
+        delete routeTable.get; delete routeTable.post;
+        // @ts-ignore
+        delete routeTable.any; delete routeTable.router;
         routeTable.get = {};
         routeTable.post = {};
         routeTable.any = {};

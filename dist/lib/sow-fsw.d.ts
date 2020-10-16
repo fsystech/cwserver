@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import * as _fs from 'fs';
 import { ErrorHandler } from './sow-static';
-export declare function stat(path: string, next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void, errHandler: ErrorHandler): void;
+export declare function stat(path: string, next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void): void;
 export declare function moveFile(src: string, dest: string, next: (err: NodeJS.ErrnoException | null) => void, force?: boolean): void;
 /** compairFile a stat.mtime > b stat.mtime */
 export declare function compairFile(a: string, b: string, next: (err: NodeJS.ErrnoException | null, changed: boolean) => void, errHandler: ErrorHandler): void;
@@ -19,3 +19,18 @@ export declare function copyFile(src: string, dest: string, next: (err: NodeJS.E
 export declare function copyFileSync(src: string, dest: string): void;
 export declare function copyDir(src: string, dest: string, next: (err: NodeJS.ErrnoException | null) => void, errHandler: ErrorHandler): void;
 export declare function copyDirSync(src: string, dest: string): void;
+/** Async */
+/** opendir async */
+export declare function opendirAsync(absolute: string): Promise<_fs.Dir>;
+/** Get all file(s) async from given directory */
+export declare function getFilesAsync(dir: string, recursive?: boolean): AsyncGenerator<string>;
+/** unlink Async */
+export declare function unlinkAsync(absolute: string): Promise<void>;
+/** WriteFile Async */
+export declare function writeFileAsync(absolute: string, data: string | Buffer): Promise<void>;
+/** Make Dir Async */
+export declare function mkdirAsync(errHandler: ErrorHandler, rootDir: string, targetDir: string): Promise<any>;
+/** Check File or Dir is exists */
+export declare function existsAsync(path: string): Promise<boolean>;
+/** Move file async */
+export declare function moveFileAsync(src: string, dest: string): Promise<any>;
