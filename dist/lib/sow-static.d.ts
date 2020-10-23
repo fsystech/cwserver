@@ -30,7 +30,7 @@ export declare class BufferArray implements IBufferArray {
     get data(): Buffer;
     get length(): number;
     constructor();
-    private isDisposed;
+    private shouldNotDisposed;
     push(buff: Buffer | string): number;
     clear(): void;
     toString(encoding?: BufferEncoding): string;

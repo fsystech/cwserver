@@ -164,7 +164,12 @@ class Logger {
         else {
             this._write(msg);
             if (color) {
-                msg = `${color}${msg}`;
+                if (typeof (color) === "function") {
+                    msg = color(msg);
+                }
+                else {
+                    msg = `${color}${msg}`;
+                }
             }
             console.log(`${ConsoleColor.FgMagenta}cwserver ${msg}`);
         }
@@ -181,7 +186,7 @@ class Logger {
     info(msg) {
         if (!this._isDebug)
             return this;
-        return this._log(void 0, ConsoleColor.Yellow(msg));
+        return this._log(ConsoleColor.Yellow, msg);
     }
     success(msg) {
         if (!this._isDebug)

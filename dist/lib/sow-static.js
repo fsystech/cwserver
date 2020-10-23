@@ -8,19 +8,19 @@ class BufferArray {
         this._length = 0;
     }
     get data() {
-        this.isDisposed();
+        this.shouldNotDisposed();
         return Buffer.concat(this._data, this.length);
     }
     get length() {
-        this.isDisposed();
+        this.shouldNotDisposed();
         return this._length;
     }
-    isDisposed() {
+    shouldNotDisposed() {
         if (this._isDisposed)
             throw new Error("This `BufferArray` instance already disposed.");
     }
     push(buff) {
-        this.isDisposed();
+        this.shouldNotDisposed();
         if (Buffer.isBuffer(buff)) {
             this._length += buff.length;
             this._data.push(buff);
@@ -32,7 +32,7 @@ class BufferArray {
         return nBuff.length;
     }
     clear() {
-        this.isDisposed();
+        this.shouldNotDisposed();
         this._data.length = 0;
         this._length = 0;
     }
@@ -43,6 +43,7 @@ class BufferArray {
         if (!this._isDisposed) {
             this._isDisposed = true;
             this._data.length = 0;
+            // @ts-ignore
             delete this._data;
             delete this._length;
         }

@@ -7,11 +7,11 @@ class SowGlobalServer {
         this._isInitilized = false;
     }
     emit(ev, app, controller, server) {
+        this._isInitilized = true;
         this._evt.forEach(handler => {
             return handler(app, controller, server);
         });
         this._evt.length = 0;
-        this._isInitilized = true;
     }
     on(ev, next) {
         if (this._isInitilized) {

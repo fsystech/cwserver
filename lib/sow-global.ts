@@ -22,11 +22,11 @@ class SowGlobalServer implements ISowGlobalServer {
         this._isInitilized = false;
     }
     public emit( ev: "register-view", app: IApplication, controller: IController, server: ISowServer ): void {
+        this._isInitilized = true;
         this._evt.forEach( handler => {
             return handler( app, controller, server );
         } );
         this._evt.length = 0;
-        this._isInitilized = true;
     }
     public on( ev: "register-view", next: ( app: IApplication, controller: IController, server: ISowServer ) => void ): void {
         if ( this._isInitilized ) {
