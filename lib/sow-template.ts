@@ -287,7 +287,10 @@ class TemplateParser {
     ): void {
         const templats: string[] = [];
         const forword = (): void => {
-            const match: RegExpExecArray | null = /#extends([\s\S]+?)\r\n/gi.exec( str );
+            let match: RegExpExecArray | null = /#extends([\s\S]+?)\r\n/gi.exec( str );
+            if (!match) {
+                match = /#extends([\s\S]+?)\n/gi.exec(str);
+            }
             if ( !match ) {
                 templats.push( str );
                 return next( templats );
@@ -296,13 +299,14 @@ class TemplateParser {
             if ( !found || ( found && found.trim().length === 0 ) ) {
                 return ctx.transferError( new Error( "Invalid template format..." ) );
             }
-            const path = found.replace( /#extends/gi, "" ).replace( /\r\n/gi, "" ).trim();
+            const path = found.replace( /#extends/gi, "" ).replace( /\r\n/gi, "" ).replace(/\n/gi, "").trim();
             const abspath = _path.resolve( `${appRoot}${path}` );
+            const matchStr = match[0];
             return fsw.isExists( abspath, ( exists: boolean ): void => {
                 if ( !exists ) {
                     return ctx.transferError( new Error( `Template ${path} not found...` ) );
                 }
-                templats.push( str.replace( match[0], "" ) );
+                templats.push( str.replace( matchStr, "" ) );
                 return _fs.readFile( abspath, "utf8", ( err: NodeJS.ErrnoException | null, data: string ): void => {
                     return ctx.handleError( err, () => {
                         str = data.replace( /^\uFEFF/, '' );
