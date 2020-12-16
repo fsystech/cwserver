@@ -43,8 +43,10 @@ clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: I
             }
             wsServer.sendMsg( me.token, "on-test-msg", data );
             const socket = wsServer.getSocket( me.token );
+            // @ts-ignore
+            clientInfo.emit("disConnecteds", me, wsServer);
             if ( socket ) {
-                socket.socket.emit( "disconnect" );
+                socket.socket.disconnect(true);
             }
             expect( wsServer.removeSocket( me.token ) ).toBeFalsy();
             return void 0;

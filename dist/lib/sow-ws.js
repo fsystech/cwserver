@@ -159,9 +159,11 @@ class SowSocketServer {
                 return socketInfo;
             })();
             socket.on('disconnect', (...args) => {
-                if (this.removeSocket(_me.token)) {
-                    this._wsClients.emit("disConnected", _me, this);
-                }
+                /*if ( this.removeSocket( _me.token ) ) {
+                    this._wsClients.emit( "disConnected", _me, this );
+                }*/
+                this.removeSocket(_me.token);
+                this._wsClients.emit("disConnected", _me, this);
                 return void 0;
             });
             const client = this._wsClients.client(_me, socket.request.session, this, this._server);

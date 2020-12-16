@@ -131,9 +131,11 @@ class Controller {
                 return ctx.next(404);
             const path = ctx.server.mapPath(`/${ctx.req.path}${name}${ctx.server.config.defaultExt}`);
             return fsw.isExists(path, (exists, url) => {
-                if (exists)
-                    return ctx.res.render(ctx, url);
-                return forword();
+                return ctx.handleError(null, () => {
+                    if (exists)
+                        return ctx.res.render(ctx, url);
+                    return forword();
+                });
             });
         };
         return forword();
@@ -153,9 +155,11 @@ class Controller {
             }
             const path = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
             return fsw.isExists(path, (exists, url) => {
-                if (exists)
-                    return ctx.res.render(ctx, url);
-                return ctx.next(404);
+                return ctx.handleError(null, () => {
+                    if (exists)
+                        return ctx.res.render(ctx, url);
+                    return ctx.next(404);
+                });
             });
         }
         if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {

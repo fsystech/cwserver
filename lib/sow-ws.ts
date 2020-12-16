@@ -248,9 +248,11 @@ class SowSocketServer implements ISowSocketServer {
                 return socketInfo;
             } )();
             socket.on( 'disconnect', ( ...args: any[] ): void => {
-                if ( this.removeSocket( _me.token ) ) {
+                /*if ( this.removeSocket( _me.token ) ) {
                     this._wsClients.emit( "disConnected", _me, this );
-                }
+                }*/
+                this.removeSocket( _me.token );
+                this._wsClients.emit( "disConnected", _me, this );
                 return void 0;
             } );
             const client = this._wsClients.client( _me, socket.request.session, this, this._server );
