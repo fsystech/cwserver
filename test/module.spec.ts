@@ -1353,12 +1353,13 @@ describe("cwserver-multipart-body-parser", () => {
         const leargeFile: string = appUtility.server.mapPath("/web/learge.txt");
         const writer: fs.WriteStream = fs.createWriteStream(leargeFile);
         let size: number = 0;
+        const buff: Buffer = Buffer.from("This is normal line\n".repeat(5));
         function write(wdone: () => void) {
             function swrite() {
                 while (true) {
-                    const buff: Buffer = Buffer.from("This is normal line\n".repeat(5));
                     size += buff.byteLength;
                     const ok: boolean = writer.write(buff);
+                    //console.log(`Buff->${size}`);
                     if (size >= (16400 + 200)) {
                         return wdone();
                     }
@@ -2652,7 +2653,8 @@ describe("cwserver-fsw", () => {
     });
 });
 describe("finalization", () => {
-    it("shutdown-application", (done: Mocha.Done): void => {
+    it("shutdown-application", function (done: Mocha.Done): void {
+        this.timeout(5000);
         (async () => {
             await app.shutdown();
             done();
@@ -2668,6 +2670,6 @@ describe("finalization", () => {
             fsw.rmdir(appRoot, () => {
                 done();
             }, handleError);
-        }, 300);
+        }, 10);
     });
 });
