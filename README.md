@@ -358,5 +358,5 @@ run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
 [david-dev-url]: https://david-dm.org/safeonlineworld/cwserver?type=dev
 [david-dep-image]: https://img.shields.io/david/safeonlineworld/cwserver
 [david-dep-url]: https://david-dm.org/safeonlineworld/cwserver
-[cwserver-logo]: https://i.imgur.com/ePQ32xo.png
+[cwserver-logo]: https://i.imgur.com/OSbUHaJ.png
 [cwserver-url]: http://cwserver.safeonline.world/
