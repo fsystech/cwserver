@@ -1374,7 +1374,7 @@ describe("cwserver-multipart-body-parser", () => {
                 return swrite();
             }
             writer.on("close", () => {
-                console.log("close..fire..done");
+                console.log("writer.on->close..fire..done");
                 const readStream = fs.createReadStream(leargeFile);
                 getAgent()
                     .post(`http://localhost:${appUtility.port}/upload-test`)
@@ -1392,7 +1392,7 @@ describe("cwserver-multipart-body-parser", () => {
                         done();
                     });
             });
-            write(() => { console.log("here..done"); });
+            write(() => { console.log("write..done"); });
         });
     });
     it('test multipart post file abort test', function (done: Mocha.Done): void {
