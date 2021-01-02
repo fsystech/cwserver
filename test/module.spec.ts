@@ -1352,27 +1352,29 @@ describe("cwserver-multipart-body-parser", () => {
         this.timeout(5000 * 10);
         const leargeFile: string = appUtility.server.mapPath("/web/learge.txt");
         const writer: fs.WriteStream = fs.createWriteStream(leargeFile);
-        let size: number = 0;
-        const buff: Buffer = Buffer.from("This is normal line\n".repeat(5));
-        function write(wdone: () => void) {
-            function swrite() {
-                while (true) {
-                    size += buff.byteLength;
-                    const ok: boolean = writer.write(buff);
-                    //console.log(`Buff->${size}`);
-                    if (size >= (16400 + 200)) {
-                        return wdone();
-                    }
-                    if (!ok) {
-                        writer.once("drain", swrite);
-                        break;
+        writer.on("open", (fd) => {
+            let size: number = 0;
+            const buff: Buffer = Buffer.from("This is normal line\n".repeat(5));
+            function write(wdone: () => void) {
+                function swrite() {
+                    while (true) {
+                        size += buff.byteLength;
+                        const ok: boolean = writer.write(buff);
+                        //console.log(`Buff->${size}`);
+                        if (size >= (16400 + 200)) {
+                            writer.end('Goodbye\n');
+                            return wdone();
+                        }
+                        if (!ok) {
+                            writer.once("drain", swrite);
+                            break;
+                        }
                     }
                 }
+                return swrite();
             }
-            return swrite();
-        }
-        write(() => {
-            writer.end(() => {
+            writer.on("close", () => {
+                console.log("close..fire..done");
                 const readStream = fs.createReadStream(leargeFile);
                 getAgent()
                     .post(`http://localhost:${appUtility.port}/upload-test`)
@@ -1390,6 +1392,7 @@ describe("cwserver-multipart-body-parser", () => {
                         done();
                     });
             });
+            write(() => { console.log("here..done"); });
         });
     });
     it('test multipart post file abort test', function (done: Mocha.Done): void {
