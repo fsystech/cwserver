@@ -272,10 +272,9 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			const data: UploadFileInfo[] = parser.getUploadFileInfo();
 			parser.saveAsSync(downloadDir);
 			parser.dispose();
-			ctx.res.json(data.shift() || {});
-			ctx.next(200);
+			ctx.res.status(200).json(data.shift() || {});
 		} catch (e) {
-			throw e;
+			ctx.transferError(e);
 		}
 	}).post('/upload-non-bolock', (ctx: IContext, requestParam?: IRequestParam): void => {
 		if (ctx.res.isAlive) {

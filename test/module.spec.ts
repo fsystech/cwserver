@@ -27,6 +27,8 @@ import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-sche
 import { TemplateCore, templateNext, CompilerResult } from '../lib/sow-template';
 import { shouldBeError } from "./test-view";
 import { Logger, LogTime } from '../lib/sow-logger';
+import { promisify } from 'util';
+const sleep = promisify(setTimeout);
 let app: IApplication;
 const appRoot = process.env.SCRIPT === "TS" ? path.join(path.resolve(__dirname, '..'), "/dist/test/") : __dirname;
 const projectRoot = 'test_web';
@@ -1315,37 +1317,41 @@ describe("cwserver-multipart-body-parser", () => {
     });
     it('invalid multipart posted file', function (done: Mocha.Done): void {
         this.timeout(5000 * 10);
-        const tempz: string = appUtility.server.mapPath("/web/.tempz");
+        const tempz: string = appUtility.server.mapPath(`/web/${Math.floor((0x999 + Math.random()) * 0x10000000)}.tempz`);
         fs.writeFile(tempz, Buffer.from("This is normal line\n".repeat(5)), (err: NodeJS.ErrnoException | null): void => {
-            const readStream = fs.createReadStream(tempz);
-            const req: request.SuperAgentRequest = getAgent()
-                .post(`http://localhost:${appUtility.port}/upload-invalid-file`)
-                .attach('post-file', readStream, {
-                    contentType: " ",
-                    filename: "temp"
+            setTimeout(() => {
+                const readStream = fs.createReadStream(tempz);
+                const req: request.SuperAgentRequest = getAgent()
+                    .post(`http://localhost:${appUtility.port}/upload-invalid-file`)
+                    .attach('post-file', readStream, {
+                        contentType: " ",
+                        filename: "temp"
+                    });
+                req.end((rerr, res) => {
+                    readStream.close();
+                    expect(rerr).toBeInstanceOf(Error);
+                    done();
                 });
-            req.end((rerr, res) => {
-                readStream.close();
-                expect(rerr).toBeInstanceOf(Error);
-                done();
-            });
+            }, 100);
         });
     });
     it('invalid multipart posted file name', function (done: Mocha.Done): void {
         this.timeout(5000 * 10);
-        const tempz: string = appUtility.server.mapPath("/web/.tempz");
+        const tempz: string = appUtility.server.mapPath(`/web/${Math.floor((0x999 + Math.random()) * 0x10000000)}.tempz`);
         fs.writeFile(tempz, Buffer.from("This is normal line\n".repeat(5)), (err: NodeJS.ErrnoException | null): void => {
-            const readStream = fs.createReadStream(tempz);
-            const req: request.SuperAgentRequest = getAgent()
-                .post(`http://localhost:${appUtility.port}/upload-invalid-file`)
-                .attach('post-file', readStream, {
-                    filename: " "
+            setTimeout(() => {
+                const readStream = fs.createReadStream(tempz);
+                const req: request.SuperAgentRequest = getAgent()
+                    .post(`http://localhost:${appUtility.port}/upload-invalid-file`)
+                    .attach('post-file', readStream, {
+                        filename: " "
+                    });
+                req.end((rerr, res) => {
+                    readStream.close();
+                    expect(rerr).toBeInstanceOf(Error);
+                    done();
                 });
-            req.end((rerr, res) => {
-                readStream.close();
-                expect(rerr).toBeInstanceOf(Error);
-                done();
-            });
+            }, 100);
         });
     });
     it('test multipart post file', function (done: Mocha.Done): void {
@@ -1375,22 +1381,24 @@ describe("cwserver-multipart-body-parser", () => {
             }
             writer.on("close", () => {
                 console.log("writer.on->close..fire..done");
-                const readStream = fs.createReadStream(leargeFile);
-                getAgent()
-                    .post(`http://localhost:${appUtility.port}/upload-test`)
-                    .field('post-file', readStream)
-                    .end((err, res) => {
-                        readStream.close();
-                        if (err) {
-                            console.log(err);
-                        }
-                        expect(err).not.toBeInstanceOf(Error);
-                        expect(res.status).toBe(200);
-                        toBeApplicationJson(res.header["content-type"]);
-                        expect(res.body).toBeInstanceOf(Object);
-                        expect(res.body.name).toBe("post-file");
-                        done();
-                    });
+                setTimeout(() => {
+                    const readStream = fs.createReadStream(leargeFile);
+                    getAgent()
+                        .post(`http://localhost:${appUtility.port}/upload-test`)
+                        .field('post-file', readStream)
+                        .end((err, res) => {
+                            readStream.close();
+                            if (err) {
+                                console.log(err);
+                            }
+                            expect(err).not.toBeInstanceOf(Error);
+                            expect(res.status).toBe(200);
+                            toBeApplicationJson(res.header["content-type"]);
+                            expect(res.body).toBeInstanceOf(Object);
+                            expect(res.body.name).toBe("post-file");
+                            done();
+                        });
+                }, 100);
             });
             write(() => { console.log("write..done"); });
         });
@@ -2633,16 +2641,21 @@ describe("cwserver-fsw", () => {
                     expect(ex).toBeDefined();
                 }
                 const testFileLog = path.resolve(`${tPath}/test_file.log`);
-                await fsw.moveFileAsync(unlinkFileName, testFileLog);
-                await fsw.moveFileAsync(testFileLog, unlinkFileName);
                 try {
+                    await sleep(100);
+                    await fsw.moveFileAsync(unlinkFileName, testFileLog);
+                    await sleep(100);
+                    await fsw.moveFileAsync(testFileLog, unlinkFileName);
                     await fsw.moveFileAsync(testFileLog, unlinkFileName);
                 } catch (ex) {
                     expect(ex).toBeDefined();
                 }
-                await fsw.unlinkAsync(unlinkFileName);
-                await fsw.writeFileAsync(unlinkFileName, "TEST_PART");
+
                 try {
+                    await sleep(100);
+                    await fsw.unlinkAsync(unlinkFileName);
+                    await sleep(100);
+                    await fsw.writeFileAsync(unlinkFileName, "TEST_PART");
                     await fsw.writeFileAsync(path.resolve(`${tPath}/test_file.log/web_file_no_file_test`), "TEST_PART");
                 } catch (ex) {
                     expect(ex).toBeDefined();
