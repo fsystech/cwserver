@@ -112,7 +112,7 @@ export class Logger implements ILogger {
         this._fd = _fs.openSync(path, 'a');
         this._canWrite = true;
         if (exists === false) {
-            this.writeToStream(`Log Genarte On ${LogTime.getTime(this._tz)}\r\n-------------------------------------------------------------------\r\n`);
+            this.writeToStream(`Log Genarte On ${LogTime.getTime(this._tz)}\r\n${'-'.repeat(67)}\r\n`);
         } else {
             this.newLine();
         }
@@ -136,7 +136,7 @@ export class Logger implements ILogger {
         return this.flush(), void 0;
     }
     public newLine(): void {
-        return this.writeToStream('-------------------------------------------------------------------\r\n');
+        return this.writeToStream(`${'-'.repeat(67)}\r\n`);
     }
     private _write(buffer: any): void {
         if (typeof (buffer) !== "string")
