@@ -171,7 +171,7 @@ class Logger {
                     msg = `${color}${msg}`;
                 }
             }
-            console.log(`${ConsoleColor.FgMagenta}cwserver ${msg}`);
+            console.log(`${ConsoleColor.FgMagenta}cwserver ${msg}${ConsoleColor.Reset}`);
         }
         return this;
     }

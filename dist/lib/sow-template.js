@@ -340,7 +340,7 @@ class TemplateCore {
         try {
             const sendbox = `${sow_util_1.generateRandomString(30)}_thisNext`;
             global.sow.templateCtx[sendbox] = templateNext;
-            const script = new _vm.Script(`sow.templateCtx.${sendbox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.server.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};`);
+            const script = new _vm.Script(`sow.templateCtx.${sendbox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.addError(ctx, ex);\nreturn ctx.next(500);\n}\n};`);
             script.runInContext(_vm.createContext(global));
             const func = global.sow.templateCtx[sendbox];
             delete global.sow.templateCtx[sendbox];

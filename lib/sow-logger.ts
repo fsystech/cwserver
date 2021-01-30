@@ -156,7 +156,7 @@ export class Logger implements ILogger {
                     msg = `${color}${msg}`;
                 }
             }
-            console.log(`${ConsoleColor.FgMagenta}cwserver ${msg}`);
+            console.log(`${ConsoleColor.FgMagenta}cwserver ${msg}${ConsoleColor.Reset}`);
         }
         return this;
     }

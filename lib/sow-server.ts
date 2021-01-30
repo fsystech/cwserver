@@ -45,6 +45,7 @@ export interface IContext {
     redirect(url: string, force?: boolean): IContext;
     transferRequest(toPath: string | number): void;
     write(chunk: Buffer | string | number | boolean | { [key: string]: any }): void;
+    addError(err: NodeJS.ErrnoException | Error): void;
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
     setSession(loginId: string, roleId: string, userData: any): IContext;
@@ -323,6 +324,11 @@ export class Context implements IContext {
         this.error = void 0; this.path = ""; this.root = "";
         this._res = res; this._req = req; this._server = server;
         this.extension = ""; this.errorPage = ""; this.errorCode = 0;
+    }
+    addError(err: NodeJS.ErrnoException | Error): void {
+        if (!this._isDisposed) {
+            this._server.addError(this, err)
+        }
     }
     transferError(err: NodeJS.ErrnoException | Error): void {
         if (!this._isDisposed) {
@@ -955,7 +961,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             } else {
                 _app.use(route, (req: IRequest, res: IResponse, next: NextFunction) => {
                     _processHandler(req, res, next, (ctx: IContext): void => {
-                        _server.log.success(`Send ${200} ${route}${req.path}`).reset();
+                        _server.log.success(`Send ${200} ${route}${req.path}`);
                         return evt(ctx);
                     });
                 }, true);
@@ -997,11 +1003,11 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             if (_server.config.hiddenDirectory.some((a) => {
                 return reqPath.substring(0, a.length) === a;
             })) {
-                _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
+                _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`);
                 return _server.transferRequest(context, 404);
             }
             if (reqPath.indexOf('$root') > -1 || reqPath.indexOf('$public') > -1) {
-                _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
+                _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`);
                 return _server.transferRequest(context, 404);
             }
             try {

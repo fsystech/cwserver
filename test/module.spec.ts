@@ -2292,6 +2292,7 @@ describe("cwserver-utility", () => {
         logger.dispose(); logger.dispose();
         logger = new Logger(logDir, void 0, "+6", void 0, false);
         logger.write("test");
+        logger.reset();
         logger.dispose();
         logger = new Logger(void 0, void 0, "+6", false);
         logger.write(cwserver.ConsoleColor.Cyan("User Interactive"));

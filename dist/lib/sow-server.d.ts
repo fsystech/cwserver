@@ -27,6 +27,7 @@ export interface IContext {
     write(chunk: Buffer | string | number | boolean | {
         [key: string]: any;
     }): void;
+    addError(err: NodeJS.ErrnoException | Error): void;
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
     setSession(loginId: string, roleId: string, userData: any): IContext;
@@ -181,6 +182,7 @@ export declare class Context implements IContext {
     get next(): CtxNext;
     set next(val: CtxNext);
     constructor(server: ISowServer, req: IRequest, res: IResponse);
+    addError(err: NodeJS.ErrnoException | Error): void;
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
     redirect(url: string, force?: boolean): IContext;

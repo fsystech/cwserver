@@ -491,9 +491,14 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			ctx.res.send = () => {
 				return void 0;
 			}
+			ctx.addError(new Error("Error Test"));
 			server.addError(ctx, new Error("__INVALID___"));
+			// @ts-ignore
+			ctx.next(undefined, "NOP");
+			ctx.next(undefined, true);
 			expect(server.passError(ctx)).toBeTruthy();
 			disposeContext(ctx);
+			ctx.addError(new Error("Error Test"));
 			disposeContext(ctx);
 			removeContext("12");
 			getMyContext("12");
@@ -502,6 +507,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			return ctx.res.json({ reqPath: ctx.path, servedFrom: "/task/:id/*", q: requestParam });
 		})
 		.get('/test-c/:id', (ctx: IContext, requestParam?: IRequestParam): void => {
+			ctx.addError(new Error("Error Test"));
 			return ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-c/:id", q: requestParam });
 		})
 		.get('/dist/*', (ctx: IContext, requestParam?: IRequestParam): void => {

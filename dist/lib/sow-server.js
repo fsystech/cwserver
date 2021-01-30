@@ -192,6 +192,11 @@ class Context {
     set next(val) {
         this._next = val;
     }
+    addError(err) {
+        if (!this._isDisposed) {
+            this._server.addError(this, err);
+        }
+    }
     transferError(err) {
         if (!this._isDisposed) {
             this._server.addError(this, err);
@@ -775,7 +780,7 @@ function initilizeServer(appRoot, wwwName) {
             else {
                 _app.use(route, (req, res, next) => {
                     _processHandler(req, res, next, (ctx) => {
-                        _server.log.success(`Send ${200} ${route}${req.path}`).reset();
+                        _server.log.success(`Send ${200} ${route}${req.path}`);
                         return evt(ctx);
                     });
                 }, true);
@@ -817,11 +822,11 @@ function initilizeServer(appRoot, wwwName) {
             if (_server.config.hiddenDirectory.some((a) => {
                 return reqPath.substring(0, a.length) === a;
             })) {
-                _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
+                _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`);
                 return _server.transferRequest(context, 404);
             }
             if (reqPath.indexOf('$root') > -1 || reqPath.indexOf('$public') > -1) {
-                _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`).reset();
+                _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`);
                 return _server.transferRequest(context, 404);
             }
             try {
