@@ -34,16 +34,16 @@ export type QResult<R> = {
     isError: boolean; err?: Error; res?: QueryResult<R>;
 }
 export interface ISowDatabaseType {
-    [id: string]: ( ...args: any[] ) => any;
+    [id: string]: (...args: any[]) => any;
     getConn(): any;
-    executeIo( sp: string, ctx: string, formObj: string,
-        next: ( resp: IoResult ) => void
+    executeIo(sp: string, ctx: string, formObj: string,
+        next: (resp: IoResult) => void
     ): void;
-    executeIoAsync( sp: string, ctx: string, formObj: string ): Promise<IoResult>;
+    executeIoAsync(sp: string, ctx: string, formObj: string): Promise<IoResult>;
     query<R extends QueryResultRow = any>(
         queryText: string,
         values: any[],
-        callback: ( result: QResult<R> ) => void
+        callback: (result: QResult<R>) => void
     ): void;
     queryAsync<R extends QueryResultRow = any>(
         queryText: string,

@@ -980,6 +980,28 @@ describe("cwserver-bundler", () => {
                 done();
             });
     });
+    it('css file bundler test gzip (server file cache)', (done: Mocha.Done): void => {
+        appUtility.server.config.bundler.fileCache = true;
+        appUtility.server.config.bundler.compress = true;
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
+            .query({
+                g: appUtility.server.createBundle(`
+                       static/css/test-1.css,
+                       static/css/test-2.css|__owner__`
+                ),
+                ck: "bundle_test_css", ct: "text/css", rc: "Y"
+            })
+            .end((err, res) => {
+                expect(err).not.toBeInstanceOf(Error);
+                expect(res.status).toBe(200);
+                expect(res.header["content-type"]).toBe("text/css");
+                expect(res.header["content-encoding"]).toBe("gzip");
+                expect(res.header.etag).not.toBeUndefined();
+                expect(res.header["last-modified"]).not.toBeUndefined();
+                done();
+            });
+    });
     it('js file bundler not gizp response (server cache)', (done: Mocha.Done): void => {
         appUtility.server.config.bundler.compress = false;
         appUtility.server.config.bundler.fileCache = true;
@@ -2291,7 +2313,7 @@ describe("cwserver-utility", () => {
         logger.reset();
         logger.dispose(); logger.dispose();
         logger = new Logger(logDir, void 0, "+6", void 0, false);
-        logger.write("test");
+        logger.write("test\r\n ");
         logger.reset();
         logger.dispose();
         logger = new Logger(void 0, void 0, "+6", false);
@@ -2299,6 +2321,7 @@ describe("cwserver-utility", () => {
         logger.dispose();
         appUtility.server.log.dispose();
         logger = new Logger(logDir, projectRoot, "+6", true, true, 100);
+        logger.write("No way");
         expect(logger.flush()).toEqual(true);
         expect(logger.flush()).toEqual(false);
         logger.log({});
@@ -2679,14 +2702,14 @@ describe("finalization", () => {
     });
     it("remove-garbage", function (done: Mocha.Done): void {
         this.timeout(5000);
+        expect(fsw.mkdirSync(logDir, "/test")).not.toBeInstanceOf(Error);
         setTimeout(() => {
-            expect(fsw.mkdirSync(logDir, "/test")).not.toBeInstanceOf(Error);
             if (fs.existsSync(logDir)) {
                 fsw.rmdirSync(logDir);
             }
             fsw.rmdir(appRoot, () => {
                 done();
             }, handleError);
-        }, 10);
+        }, 1000);
     });
 });

@@ -35,6 +35,7 @@ export interface IRequest extends IncomingMessage {
     path: string;
     session: ISession;
     get(name: string): string | void;
+    setSocketNoDelay(noDelay?: boolean): void;
     dispose(): void;
 }
 export interface IResponse extends ServerResponse {

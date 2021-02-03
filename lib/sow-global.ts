@@ -9,10 +9,10 @@ import { IController } from './sow-controller';
 import { ISowServer } from './sow-server';
 import { loadMimeType, IMimeType } from './sow-http-mime-types';
 import { SendBox } from './sow-template';
-type IViewRegister = ( app: IApplication, controller: IController, server: ISowServer ) => void;
+type IViewRegister = (app: IApplication, controller: IController, server: ISowServer) => void;
 interface ISowGlobalServer {
-    on( ev: "register-view", next: IViewRegister ): void;
-    emit( ev: "register-view", app: IApplication, controller: IController, server: ISowServer ): void;
+    on(ev: "register-view", next: IViewRegister): void;
+    emit(ev: "register-view", app: IApplication, controller: IController, server: ISowServer): void;
 }
 class SowGlobalServer implements ISowGlobalServer {
     private _evt: IViewRegister[];
@@ -21,18 +21,18 @@ class SowGlobalServer implements ISowGlobalServer {
         this._evt = [];
         this._isInitilized = false;
     }
-    public emit( ev: "register-view", app: IApplication, controller: IController, server: ISowServer ): void {
+    public emit(ev: "register-view", app: IApplication, controller: IController, server: ISowServer): void {
         this._isInitilized = true;
-        this._evt.forEach( handler => {
-            return handler( app, controller, server );
-        } );
+        this._evt.forEach(handler => {
+            return handler(app, controller, server);
+        });
         this._evt.length = 0;
     }
-    public on( ev: "register-view", next: ( app: IApplication, controller: IController, server: ISowServer ) => void ): void {
-        if ( this._isInitilized ) {
-            throw new Error( "After initilize view, you should not register new veiw." );
+    public on(ev: "register-view", next: (app: IApplication, controller: IController, server: ISowServer) => void): void {
+        if (this._isInitilized) {
+            throw new Error("After initilize view, you should not register new veiw.");
         }
-        this._evt.push( next );
+        this._evt.push(next);
     }
 }
 interface ISowGlobal {
@@ -69,6 +69,6 @@ declare global {
         }
     }
 }
-if ( !global.sow ) {
+if (!global.sow) {
     global.sow = new SowGlobal();
 }

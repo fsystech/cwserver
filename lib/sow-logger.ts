@@ -77,6 +77,9 @@ export class ConsoleColor {
     public static BgCyan: string = '\x1b[46m';
     public static BgWhite: string = '\x1b[47m';
 }
+function isString(a: any): a is string {
+    return typeof (a) === "string";
+}
 export class Logger implements ILogger {
     private _userInteractive: boolean;
     private _isDebug: boolean;
@@ -112,7 +115,7 @@ export class Logger implements ILogger {
         this._fd = _fs.openSync(path, 'a');
         this._canWrite = true;
         if (exists === false) {
-            this.writeToStream(`Log Genarte On ${LogTime.getTime(this._tz)}\r\n${'-'.repeat(67)}\r\n`);
+            this.writeToStream(`Log Genarte On ${LogTime.getTime(this._tz)}\r\n${'-'.repeat(100)}\r\n`);
         } else {
             this.newLine();
         }
@@ -130,18 +133,20 @@ export class Logger implements ILogger {
     public writeToStream(str: string): void {
         if (this._canWrite === false) return void 0;
         this._blockSize += this._buff.push(str);
-        if (this._blockSize < this._maxBlockSize) {
-            return void 0;
-        }
+        if (this._blockSize < this._maxBlockSize) return void 0;
         return this.flush(), void 0;
     }
     public newLine(): void {
-        return this.writeToStream(`${'-'.repeat(67)}\r\n`);
+        return this.writeToStream(`${'-'.repeat(100)}\r\n`);
     }
     private _write(buffer: any): void {
-        if (typeof (buffer) !== "string")
-            buffer = String(buffer);
-        return this.writeToStream(`${LogTime.getTime(this._tz)}\t${buffer.replace(/\t/gi, "")}\r\n`);
+        const str: string = !isString(buffer) ? buffer.toString() : buffer;
+        str.split("\r\n").forEach((line) => {
+            if (line && line.trim().length > 0) {
+                this.writeToStream(`${LogTime.getTime(this._tz)}\t${line.replace(/\t/gi, "")}\r\n`);
+            }
+        });
+        return void 0;
     }
     private _log(color?: string | ((str: string) => string), msg?: any): ILogger {
         if (!this._isDebug && !this._userInteractive) return this._write(msg), this;

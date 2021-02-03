@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -92,6 +92,9 @@ ConsoleColor.BgBlue = '\x1b[44m';
 ConsoleColor.BgMagenta = '\x1b[45m';
 ConsoleColor.BgCyan = '\x1b[46m';
 ConsoleColor.BgWhite = '\x1b[47m';
+function isString(a) {
+    return typeof (a) === "string";
+}
 class Logger {
     constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
         this._blockSize = 0;
@@ -121,7 +124,7 @@ class Logger {
         this._fd = _fs.openSync(path, 'a');
         this._canWrite = true;
         if (exists === false) {
-            this.writeToStream(`Log Genarte On ${LogTime.getTime(this._tz)}\r\n${'-'.repeat(67)}\r\n`);
+            this.writeToStream(`Log Genarte On ${LogTime.getTime(this._tz)}\r\n${'-'.repeat(100)}\r\n`);
         }
         else {
             this.newLine();
@@ -142,18 +145,21 @@ class Logger {
         if (this._canWrite === false)
             return void 0;
         this._blockSize += this._buff.push(str);
-        if (this._blockSize < this._maxBlockSize) {
+        if (this._blockSize < this._maxBlockSize)
             return void 0;
-        }
         return this.flush(), void 0;
     }
     newLine() {
-        return this.writeToStream(`${'-'.repeat(67)}\r\n`);
+        return this.writeToStream(`${'-'.repeat(100)}\r\n`);
     }
     _write(buffer) {
-        if (typeof (buffer) !== "string")
-            buffer = String(buffer);
-        return this.writeToStream(`${LogTime.getTime(this._tz)}\t${buffer.replace(/\t/gi, "")}\r\n`);
+        const str = !isString(buffer) ? buffer.toString() : buffer;
+        str.split("\r\n").forEach((line) => {
+            if (line && line.trim().length > 0) {
+                this.writeToStream(`${LogTime.getTime(this._tz)}\t${line.replace(/\t/gi, "")}\r\n`);
+            }
+        });
+        return void 0;
     }
     _log(color, msg) {
         if (!this._isDebug && !this._userInteractive)

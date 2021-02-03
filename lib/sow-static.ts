@@ -27,9 +27,9 @@ export interface IDispose {
 export interface IBufferArray extends IDispose {
     readonly data: Buffer;
     readonly length: number;
-    push( buff: Buffer | string ): number;
+    push(buff: Buffer | string): number;
     clear(): void;
-    toString( encoding?: BufferEncoding ): string;
+    toString(encoding?: BufferEncoding): string;
 }
 export class BufferArray implements IBufferArray {
     private _data: Buffer[];
@@ -37,7 +37,7 @@ export class BufferArray implements IBufferArray {
     private _isDisposed: boolean;
     public get data(): Buffer {
         this.shouldNotDisposed();
-        return Buffer.concat( this._data, this.length );
+        return Buffer.concat(this._data, this.length);
     }
     public get length(): number {
         this.shouldNotDisposed();
@@ -48,19 +48,19 @@ export class BufferArray implements IBufferArray {
         this._length = 0;
     }
     private shouldNotDisposed(): void {
-        if ( this._isDisposed )
-            throw new Error( "This `BufferArray` instance already disposed." );
+        if (this._isDisposed)
+            throw new Error("This `BufferArray` instance already disposed.");
     }
-    public push( buff: Buffer | string ): number {
+    public push(buff: Buffer | string): number {
         this.shouldNotDisposed();
-        if ( Buffer.isBuffer( buff ) ) {
+        if (Buffer.isBuffer(buff)) {
             this._length += buff.length;
-            this._data.push( buff );
+            this._data.push(buff);
             return buff.length;
         }
-        const nBuff: Buffer = Buffer.from( buff );
+        const nBuff: Buffer = Buffer.from(buff);
         this._length += nBuff.length;
-        this._data.push( nBuff );
+        this._data.push(nBuff);
         return nBuff.length;
     }
     public clear(): void {
@@ -68,11 +68,11 @@ export class BufferArray implements IBufferArray {
         this._data.length = 0;
         this._length = 0;
     }
-    public toString( encoding?: BufferEncoding ): string {
-        return this.data.toString( encoding );
+    public toString(encoding?: BufferEncoding): string {
+        return this.data.toString(encoding);
     }
     public dispose(): void {
-        if ( !this._isDisposed ) {
+        if (!this._isDisposed) {
             this._isDisposed = true;
             this._data.length = 0;
             // @ts-ignore
@@ -106,15 +106,15 @@ export class ResInfo implements IResInfo {
         this.description = "Ok";
     };
 }
-export function toString( val: any ): string {
-    if ( !val ) return "";
-    return typeof ( val ) === "string" ? val : String( val );
+export function toString(val: any): string {
+    if (!val) return "";
+    return typeof (val) === "string" ? val : String(val);
 }
-export function ToNumber( obj: any ): number {
-    if ( !obj ) return 0;
-    if ( typeof ( obj ) === "number" ) return obj;
-    if ( isNaN( obj ) ) return 0;
-    return parseFloat( obj );
+export function ToNumber(obj: any): number {
+    if (!obj) return 0;
+    if (typeof (obj) === "number") return obj;
+    if (isNaN(obj)) return 0;
+    return parseFloat(obj);
 }
 const _map: {
     month: { [key: number]: string },
@@ -144,29 +144,29 @@ const _map: {
         6: "Sat"
     }
 };
-const dfo = ( t: number ): string => {
+const dfo = (t: number): string => {
     t = t === 0 ? 1 : t;
     return _map.day[t];
 };
-const dfon = ( t: number ): any => {
+const dfon = (t: number): any => {
     t = t === 0 ? 1 : t;
     return t <= 9 ? "0" + t : t;
 };
-const dfm = ( t: number ): string => {
+const dfm = (t: number): string => {
     t += 1;
     return _map.month[t];
 };
-export function ToResponseTime( timestamp?: number | Date ): string {
+export function ToResponseTime(timestamp?: number | Date): string {
     // Thu, 01 May 2020 23:34:07 GMT
     let date: Date;
-    if ( timestamp ) {
-        if ( typeof ( timestamp ) === "number" ) {
-            date = new Date( timestamp );
+    if (timestamp) {
+        if (typeof (timestamp) === "number") {
+            date = new Date(timestamp);
         } else {
             date = timestamp;
         }
     } else {
         date = new Date();
     }
-    return `${dfo( date.getDay() )}, ${dfon( date.getDate() )} ${dfm( date.getMonth() )} ${date.getFullYear()} ${dfon( date.getHours() )}:${dfon( date.getMinutes() )}:${dfon( date.getSeconds() )} GMT`;
+    return `${dfo(date.getDay())}, ${dfon(date.getDate())} ${dfm(date.getMonth())} ${date.getFullYear()} ${dfon(date.getHours())}:${dfon(date.getMinutes())}:${dfon(date.getSeconds())} GMT`;
 }

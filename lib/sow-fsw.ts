@@ -360,7 +360,7 @@ export async function writeFileAsync(absolute: string, data: string | Buffer): P
 export async function mkdirAsync(errHandler: ErrorHandler, rootDir: string, targetDir: string): Promise<any> {
     return new Promise((resolve, reject) => {
         mkdir(rootDir, targetDir, (err) => {
-            return resolve();
+            return resolve(true);
         }, errHandler);
     });
 }
@@ -377,7 +377,7 @@ export async function moveFileAsync(src: string, dest: string): Promise<any> {
     return new Promise((resolve, reject) => {
         return moveFile(src, dest, (err) => {
             if (err) return reject(err);
-            resolve();
+            resolve(true);
         }, true);
     });
 }

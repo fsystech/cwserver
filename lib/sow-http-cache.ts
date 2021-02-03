@@ -13,20 +13,20 @@ export type IChangeHeader = {
 };
 export class SowHttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
-    public static getIfModifiedSinceUTCTime( headers: IncomingHttpHeaders ): number | void {
+    public static getIfModifiedSinceUTCTime(headers: IncomingHttpHeaders): number | void {
         const ifModifiedSinceHeaderText: string | string[] | undefined = headers["If-Modified-Since"] || headers["if-modified-since"];
-        if ( ifModifiedSinceHeaderText ) {
-            const date: Date = new Date( ifModifiedSinceHeaderText.toString() );
-            if ( date.toString().indexOf( "Invalid" ) > -1 ) return void 0;
+        if (ifModifiedSinceHeaderText) {
+            const date: Date = new Date(ifModifiedSinceHeaderText.toString());
+            if (date.toString().indexOf("Invalid") > -1) return void 0;
             return date.getTime();
         }
         return void 0;
     }
     /** Gets the {sinceModify, etag} from given header {If-None-Match, If-Modified-Since}. */
-    public static getChangedHeader( headers: IncomingHttpHeaders ): IChangeHeader {
+    public static getChangedHeader(headers: IncomingHttpHeaders): IChangeHeader {
         const tag: string | string[] | undefined = headers["If-None-Match"] || headers["if-none-match"] || headers.ETag || headers.etag;
         return {
-            sinceModify: this.getIfModifiedSinceUTCTime( headers ),
+            sinceModify: this.getIfModifiedSinceUTCTime(headers),
             etag: tag ? tag.toString() : void 0
         };
     }
@@ -42,27 +42,27 @@ export class SowHttpCache {
             serverRevalidate: boolean;
         }
     ): void {
-        if ( obj.lastChangeTime ) {
-            res.setHeader( 'last-modified', ToResponseTime( obj.lastChangeTime ) );
-            res.setHeader( 'expires', ToResponseTime( cacheHeader.maxAge + Date.now() ) );
+        if (obj.lastChangeTime) {
+            res.setHeader('last-modified', ToResponseTime(obj.lastChangeTime));
+            res.setHeader('expires', ToResponseTime(cacheHeader.maxAge + Date.now()));
         }
-        if ( obj.etag ) {
-            res.setHeader( 'ETag', obj.etag );
+        if (obj.etag) {
+            res.setHeader('ETag', obj.etag);
         }
-        if ( cacheHeader.serverRevalidate ) {
-            res.setHeader( 'cache-control', 'no-cache, must-revalidate, immutable' );
-            res.setHeader( 'x-server-revalidate', 'true' );
+        if (cacheHeader.serverRevalidate) {
+            res.setHeader('cache-control', 'no-cache, must-revalidate, immutable');
+            res.setHeader('x-server-revalidate', 'true');
         } else {
-            res.setHeader( 'cache-control', `max-age=${cacheHeader.maxAge + Date.now()}, public, immutable` );
+            res.setHeader('cache-control', `max-age=${cacheHeader.maxAge + Date.now()}, public, immutable`);
         }
     }
     /** Create and Gets {etag} (timestamp ^ fsize). */
-    public static getEtag( timestamp: number, fsize: number ): string {
-        return `W/${( timestamp ^ fsize )}`;
+    public static getEtag(timestamp: number, fsize: number): string {
+        return `W/${(timestamp ^ fsize)}`;
     }
-    public static isAcceptedEncoding( headers: IncomingHttpHeaders, name: string ): boolean {
+    public static isAcceptedEncoding(headers: IncomingHttpHeaders, name: string): boolean {
         const acceptEncoding = headers['accept-encoding'];
-        if( !acceptEncoding ) return false;
-        return acceptEncoding.indexOf( name ) > -1;
+        if (!acceptEncoding) return false;
+        return acceptEncoding.indexOf(name) > -1;
     }
 }

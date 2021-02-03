@@ -49,6 +49,7 @@ export interface IRequest extends IncomingMessage {
     path: string;
     session: ISession;
     get(name: string): string | void;
+    setSocketNoDelay(noDelay?: boolean): void;
     dispose(): void;
 }
 export interface IResponse extends ServerResponse {
@@ -271,6 +272,11 @@ class Request extends IncomingMessage implements IRequest {
         const val: number | string | string[] | undefined = this.headers[name];
         if (val !== undefined) {
             return String(val);
+        }
+    }
+    public setSocketNoDelay(noDelay?: boolean) {
+        if (this.socket) {
+            this.socket.setNoDelay(noDelay);
         }
     }
     dispose(): void {

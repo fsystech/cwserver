@@ -488,6 +488,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			expect(server.passError(ctx)).toBeFalsy();
 			ctx.res.status(200, { 'cache-control': void 0 });
 			ctx.res.status(200).json({ reqPath: ctx.path, servedFrom: "/test-any/*", q: requestParam });
+			ctx.req.setSocketNoDelay(true);
 			ctx.res.send = () => {
 				return void 0;
 			}

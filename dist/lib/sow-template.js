@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -216,27 +216,27 @@ class TemplateParser {
         if (/#attach/gi.test(str) === false)
             return next(str);
         const match = str.match(/#attach([\s\S]+?)\r\n/gi);
-        if (match) {
-            const forword = () => {
-                const orgMatch = match.shift();
-                if (!orgMatch)
-                    return next(str);
-                const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
-                const abspath = _path.resolve(`${appRoot}${path}`);
-                return fsw.isExists(abspath, (exists, url) => {
-                    if (!exists) {
-                        return ctx.transferError(new Error(`Attachement ${path} not found...`));
-                    }
-                    return _fs.readFile(url, "utf8", (err, data) => {
-                        return ctx.handleError(err, () => {
-                            str = str.replace(orgMatch, data);
-                            return forword();
-                        });
+        if (!match)
+            return next(str);
+        const forword = () => {
+            const orgMatch = match.shift();
+            if (!orgMatch)
+                return next(str);
+            const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
+            const abspath = _path.resolve(`${appRoot}${path}`);
+            return fsw.isExists(abspath, (exists, url) => {
+                if (!exists) {
+                    return ctx.transferError(new Error(`Attachement ${path} not found...`));
+                }
+                return _fs.readFile(url, "utf8", (err, data) => {
+                    return ctx.handleError(err, () => {
+                        str = str.replace(orgMatch, data);
+                        return forword();
                     });
                 });
-            };
-            return forword();
-        }
+            });
+        };
+        return forword();
     }
     static margeTemplate(match, template, body) {
         for (const key of match) {

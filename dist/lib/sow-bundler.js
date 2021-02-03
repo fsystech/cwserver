@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -213,7 +213,7 @@ This "Combiner" contains the following files:\n`;
                     return ctx.res.end(), ctx.next(304);
                 }
                 return this.readBuffer(ctx, files, server.copyright(), (buffer) => {
-                    ctx.req.socket.setNoDelay(true);
+                    ctx.req.setSocketNoDelay(true);
                     if (isGzip === false || !server.config.bundler.compress) {
                         ctx.res.status(200, {
                             'Content-Type': this.getResContentType(cte),
