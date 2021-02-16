@@ -227,13 +227,27 @@ class ScriptParser implements IScriptParser {
         delete this.tag; delete this._cmnt;
     }
 }
+function ExportAttachMatch(str: string): RegExpMatchArray | null {
+    let match: RegExpMatchArray | null = str.match(/#attach([\s\S]+?)\r\n/gi);
+    if (!match) {
+        match = str.match(/#attach([\s\S]+?)\n/gi);
+    }
+    return match;
+}
+function ExportExtendMatch(str: string): RegExpExecArray | null {
+    let match: RegExpExecArray | null =/#extends([\s\S]+?)\r\n/gi.exec(str);
+    if (!match) {
+        match = /#extends([\s\S]+?)\n/gi.exec(str);
+    }
+    return match;
+}
 class TemplateParser {
     private static implimentAttachment(
         ctx: IContext, appRoot: string, str: string,
         next: (str: string) => void
     ): void {
         if (/#attach/gi.test(str) === false) return next(str);
-        const match: RegExpMatchArray | null = str.match(/#attach([\s\S]+?)\r\n/gi);
+        const match: RegExpMatchArray | null = ExportAttachMatch(str);
         if (!match) return next(str);
         const forword = (): void => {
             const orgMatch: string | undefined = match.shift();
@@ -286,10 +300,7 @@ class TemplateParser {
     ): void {
         const templats: string[] = [];
         const forword = (): void => {
-            let match: RegExpExecArray | null = /#extends([\s\S]+?)\r\n/gi.exec(str);
-            if (!match) {
-                match = /#extends([\s\S]+?)\n/gi.exec(str);
-            }
+            const match: RegExpExecArray | null = ExportExtendMatch(str);
             if (!match) {
                 templats.push(str);
                 return next(templats);

@@ -211,11 +211,25 @@ class ScriptParser {
         delete this._cmnt;
     }
 }
+function ExportAttachMatch(str) {
+    let match = str.match(/#attach([\s\S]+?)\r\n/gi);
+    if (!match) {
+        match = str.match(/#attach([\s\S]+?)\n/gi);
+    }
+    return match;
+}
+function ExportExtendMatch(str) {
+    let match = /#extends([\s\S]+?)\r\n/gi.exec(str);
+    if (!match) {
+        match = /#extends([\s\S]+?)\n/gi.exec(str);
+    }
+    return match;
+}
 class TemplateParser {
     static implimentAttachment(ctx, appRoot, str, next) {
         if (/#attach/gi.test(str) === false)
             return next(str);
-        const match = str.match(/#attach([\s\S]+?)\r\n/gi);
+        const match = ExportAttachMatch(str);
         if (!match)
             return next(str);
         const forword = () => {
@@ -262,10 +276,7 @@ class TemplateParser {
     static prepareTemplate(ctx, appRoot, str, next) {
         const templats = [];
         const forword = () => {
-            let match = /#extends([\s\S]+?)\r\n/gi.exec(str);
-            if (!match) {
-                match = /#extends([\s\S]+?)\n/gi.exec(str);
-            }
+            const match = ExportExtendMatch(str);
             if (!match) {
                 templats.push(str);
                 return next(templats);

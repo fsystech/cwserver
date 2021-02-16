@@ -729,7 +729,13 @@ describe("cwserver-template-engine", () => {
             });
         });
         tasks.push(() => {
-            TemplateCore.run(ctx, spublic, `#attach /template/readme.html\r\n`, (params: CompilerResult): void => {
+            TemplateCore.run(ctx, spublic, `#attach /template/readme.html\r\n#attach /template/readme.html\n`, (params: CompilerResult): void => {
+                expect(params.str).toBeDefined();
+                return forward();
+            });
+        });
+        tasks.push(() => {
+            TemplateCore.run(ctx, spublic, `#attach invalid_attach`, (params: CompilerResult): void => {
                 expect(params.str).toBeDefined();
                 return forward();
             });
