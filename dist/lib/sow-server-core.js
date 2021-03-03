@@ -596,6 +596,7 @@ function App() {
             app.handleRequest(req, res);
         }
         catch (e) {
+            // Caught while prerequisites error happens
             app.emit('error', req, res, e);
         }
     }));
