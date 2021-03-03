@@ -21,7 +21,7 @@ import {
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
 } from '../lib/sow-router';
-import { IApplication, readAppVersion } from '../lib/sow-server-core';
+import { IApplication, readAppVersion, App, IRequest, IResponse, NextFunction } from '../lib/sow-server-core';
 import { assert, Util } from '../lib/sow-util';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
 import { TemplateCore, templateNext, CompilerResult } from '../lib/sow-template';
@@ -204,6 +204,29 @@ describe("cwserver-core", () => {
         app.shutdown((err) => {
             expect(err).toBeInstanceOf(Error);
             done();
+        });
+    });
+    it('cwserver handle app root error', function (done) {
+        this.timeout(5000);
+        const xapp: IApplication = App();
+        xapp.use("/throw-error", (req: IRequest, res: IResponse) => {
+            throw new Error("No way...");
+        }).prerequisites((req: IRequest, res: IResponse, next: NextFunction) => {
+            throw new Error("prerequisites No way...");
+        }).on("error", async (req: IRequest, res: IResponse, err: any) => {
+            if (res.isAlive) {
+                res.status(200).type("text").send((err instanceof Error) ? err.message : `Error occured ${err}`);
+            }
+            await xapp.shutdown();
+            console.log("Error handle done...");
+            expect(err).toBeInstanceOf(Error);
+            console.log(err.message);
+            done();
+        }).listen(8088, () => {
+            agent.get(`http://localhost:8088/throw-error`)
+                .end((err, res) => {
+                    console.log("No way");
+                });
         });
     });
     it("throw application already listen", (done: Mocha.Done): void => {

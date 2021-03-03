@@ -217,8 +217,10 @@ class MimeHandler {
     ): void {
         const absPath: string = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
         return _fs.stat(absPath, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
-            if (err) return ctx.next(404, true);
-            return this._render(ctx, mimeType, absPath, stats);
+            return ctx.handleError(null, () => {
+                if (err) return ctx.next(404, true);
+                return this._render(ctx, mimeType, absPath, stats);
+            });
         });
     }
 }

@@ -614,15 +614,20 @@ export function App(): IApplication {
     const app: Application = new Application(createServer((request: IncomingMessage, response: ServerResponse) => {
         const req: IRequest = Object.setPrototypeOf(request, Request.prototype);
         const res: Response = Object.setPrototypeOf(response, Response.prototype);
-        setAppHeader(res);
-        if (req.method)
-            res.method = req.method;
-        res.on('close', (...args: any[]): void => {
-            res.isAlive = false;
-            app.emit('response-end', req, res);
-        });
-        app.emit('request-begain', req);
-        app.handleRequest(req, res);
+        try {
+            setAppHeader(res);
+            if (req.method)
+                res.method = req.method;
+            res.on('close', (...args: any[]): void => {
+                res.isAlive = false;
+                app.emit('response-end', req, res);
+            });
+            app.emit('request-begain', req);
+            app.handleRequest(req, res);
+        } catch (e) {
+            // Caught while prerequisites error happens
+            app.emit('error', req, res, e);
+        }
     }));
     return app;
 }

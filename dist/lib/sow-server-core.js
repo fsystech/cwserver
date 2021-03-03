@@ -584,15 +584,20 @@ function App() {
     const app = new Application(http_1.createServer((request, response) => {
         const req = Object.setPrototypeOf(request, Request.prototype);
         const res = Object.setPrototypeOf(response, Response.prototype);
-        setAppHeader(res);
-        if (req.method)
-            res.method = req.method;
-        res.on('close', (...args) => {
-            res.isAlive = false;
-            app.emit('response-end', req, res);
-        });
-        app.emit('request-begain', req);
-        app.handleRequest(req, res);
+        try {
+            setAppHeader(res);
+            if (req.method)
+                res.method = req.method;
+            res.on('close', (...args) => {
+                res.isAlive = false;
+                app.emit('response-end', req, res);
+            });
+            app.emit('request-begain', req);
+            app.handleRequest(req, res);
+        }
+        catch (e) {
+            app.emit('error', req, res, e);
+        }
     }));
     return app;
 }
