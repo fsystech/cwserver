@@ -349,18 +349,18 @@ class TemplateCore {
             return next({ str: "", err: new Error("No script found to compile....") });
         }
         try {
-            const sendbox = `${sow_util_1.generateRandomString(30)}_thisNext`;
-            global.sow.templateCtx[sendbox] = templateNext;
+            const sandBox = `${sow_util_1.generateRandomString(30)}_thisNext`;
+            global.sow.templateCtx[sandBox] = templateNext;
             // bug fix by rajib chy and abd on 8:16 PM 3/23/2021
             // Error: ctx.addError(ctx, ex) argument error
-            const script = new _vm.Script(`sow.templateCtx.${sendbox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n};`);
+            const script = new _vm.Script(`sow.templateCtx.${sandBox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n};`);
             script.runInContext(_vm.createContext(global));
-            const func = global.sow.templateCtx[sendbox];
-            delete global.sow.templateCtx[sendbox];
+            const func = global.sow.templateCtx[sandBox];
+            delete global.sow.templateCtx[sandBox];
             return next({
                 str,
                 isScript: true,
-                sendBox: func
+                sandBox: func
             });
         }
         catch (e) {
@@ -498,10 +498,10 @@ class TemplateLink {
                 return ctx.handleError(err, () => {
                     return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
                         return ctx.handleError(result.err, () => {
-                            if (result.sendBox) {
+                            if (result.sandBox) {
                                 try {
-                                    result.sendBox(ctx, this.processResponse(status), false);
-                                    delete result.sendBox;
+                                    result.sandBox(ctx, this.processResponse(status), false);
+                                    delete result.sandBox;
                                     return void 0;
                                 }
                                 catch (e) {
@@ -527,7 +527,7 @@ class TemplateLink {
                 return ctx.handleError(err, () => {
                     return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
                         return ctx.handleError(result.err, () => {
-                            _tw.cache[key] = result.sendBox || result.str;
+                            _tw.cache[key] = result.sandBox || result.str;
                             return next(_tw.cache[key]);
                         });
                     });
@@ -553,7 +553,7 @@ class TemplateLink {
                             return ctx.handleError(result.err, () => {
                                 return _fs.writeFile(cachePath, result.str, (werr) => {
                                     return ctx.handleError(werr, () => {
-                                        return next(result.sendBox || result.str);
+                                        return next(result.sandBox || result.str);
                                     });
                                 });
                             });
@@ -566,7 +566,7 @@ class TemplateLink {
                     if (TemplateCore.isScriptTemplate(data)) {
                         return TemplateCore.compile(data, (result) => {
                             return ctx.handleError(result.err, () => {
-                                return next(result.sendBox || result.str);
+                                return next(result.sandBox || result.str);
                             });
                         });
                     }

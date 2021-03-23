@@ -1,17 +1,17 @@
 /// <reference types="node" />
 import { IResInfo } from './sow-static';
 import { IContext } from './sow-server';
-declare type SendBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
-export declare type SendBox = (ctx: IContext, next: SendBoxNext, isCompressed?: boolean) => void;
+declare type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
+export declare type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => void;
 export declare type CompilerResult = {
     str: string;
     isScript?: boolean;
     isTemplate?: boolean;
-    sendBox?: SendBox;
+    sandBox?: SandBox;
     err?: NodeJS.ErrnoException | Error | null;
 };
 declare type TemplateNextFunc = (params: CompilerResult) => void;
-export declare function templateNext(ctx: IContext, next: SendBoxNext, isCompressed?: boolean): void;
+export declare function templateNext(ctx: IContext, next: SandBoxNext, isCompressed?: boolean): void;
 export declare class TemplateCore {
     static compile(str: string | undefined, next: TemplateNextFunc): void;
     private static parseScript;

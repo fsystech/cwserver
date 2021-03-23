@@ -8,7 +8,7 @@ import { IApplication } from './sow-server-core';
 import { IController } from './sow-controller';
 import { ISowServer } from './sow-server';
 import { loadMimeType, IMimeType } from './sow-http-mime-types';
-import { SendBox } from './sow-template';
+import { SandBox } from './sow-template';
 type IViewRegister = (app: IApplication, controller: IController, server: ISowServer) => void;
 interface ISowGlobalServer {
     on(ev: "register-view", next: IViewRegister): void;
@@ -39,13 +39,13 @@ interface ISowGlobal {
     isInitilized: boolean;
     readonly HttpMime: IMimeType<string>;
     readonly server: ISowGlobalServer;
-    readonly templateCtx: NodeJS.Dict<SendBox>;
+    readonly templateCtx: NodeJS.Dict<SandBox>;
 }
 class SowGlobal implements ISowGlobal {
     public isInitilized: boolean;
     _server: ISowGlobalServer;
     _HttpMime: IMimeType<string>;
-    _templateCtx: NodeJS.Dict<SendBox>;
+    _templateCtx: NodeJS.Dict<SandBox>;
     public get templateCtx() {
         return this._templateCtx;
     }

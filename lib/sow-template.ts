@@ -12,8 +12,8 @@ import { IResInfo, IDispose } from './sow-static';
 import { IContext } from './sow-server';
 import * as fsw from './sow-fsw';
 import { generateRandomString } from './sow-util';
-type SendBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
-export type SendBox = (ctx: IContext, next: SendBoxNext, isCompressed?: boolean) => void;
+type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
+export type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => void;
 interface IScriptTag {
     readonly lre: RegExp;
     readonly rre: RegExp;
@@ -40,12 +40,12 @@ interface IScriptParser extends IDispose {
 }
 export type CompilerResult = {
     str: string; isScript?: boolean; isTemplate?: boolean;
-    sendBox?: SendBox,
+    sandBox?: SandBox,
     err?: NodeJS.ErrnoException | Error | null
 };
 type TemplateNextFunc = (params: CompilerResult) => void;
 export function templateNext(
-    ctx: IContext, next: SendBoxNext, isCompressed?: boolean
+    ctx: IContext, next: SandBoxNext, isCompressed?: boolean
 ): void {
     throw new Error("Method not implemented.");
 }
@@ -235,7 +235,7 @@ function ExportAttachMatch(str: string): RegExpMatchArray | null {
     return match;
 }
 function ExportExtendMatch(str: string): RegExpExecArray | null {
-    let match: RegExpExecArray | null =/#extends([\s\S]+?)\r\n/gi.exec(str);
+    let match: RegExpExecArray | null = /#extends([\s\S]+?)\r\n/gi.exec(str);
     if (!match) {
         match = /#extends([\s\S]+?)\n/gi.exec(str);
     }
@@ -379,18 +379,18 @@ export class TemplateCore {
             return next({ str: "", err: new Error("No script found to compile....") });
         }
         try {
-            const sendbox: string = `${generateRandomString(30)}_thisNext`;
-            global.sow.templateCtx[sendbox] = templateNext;
+            const sandBox: string = `${generateRandomString(30)}_thisNext`;
+            global.sow.templateCtx[sandBox] = templateNext;
             // bug fix by rajib chy and abd on 8:16 PM 3/23/2021
             // Error: ctx.addError(ctx, ex) argument error
-            const script: _vm.Script = new _vm.Script(`sow.templateCtx.${sendbox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n};`);
+            const script: _vm.Script = new _vm.Script(`sow.templateCtx.${sandBox} = async function( ctx, next, isCompressed ){\nlet __RSP = "";\nctx.write = function( str ) { __RSP += str; }\ntry{\n ${str}\nreturn next( ctx, __RSP, isCompressed ), __RSP = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n};`);
             script.runInContext(_vm.createContext(global));
-            const func: SendBox | undefined = global.sow.templateCtx[sendbox];
-            delete global.sow.templateCtx[sendbox];
+            const func: SandBox | undefined = global.sow.templateCtx[sandBox];
+            delete global.sow.templateCtx[sandBox];
             return next({
                 str,
                 isScript: true,
-                sendBox: func
+                sandBox: func
             });
         } catch (e) {
             return next({ str, err: e });
@@ -505,7 +505,7 @@ function canReadFileCache(ctx: IContext, filePath: string, cachePath: string, ne
     });
 }
 class TemplateLink {
-    private static processResponse(status: IResInfo): SendBoxNext {
+    private static processResponse(status: IResInfo): SandBoxNext {
         return (ctx: IContext, body: string, isCompressed?: boolean): void => {
             if (isCompressed && isCompressed === true) {
                 return _zlib.gzip(Buffer.from(body), (error: Error | null, buff: Buffer) => {
@@ -531,10 +531,10 @@ class TemplateLink {
                 return ctx.handleError(err, (): void => {
                     return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
                         return ctx.handleError(result.err, () => {
-                            if (result.sendBox) {
+                            if (result.sandBox) {
                                 try {
-                                    result.sendBox(ctx, this.processResponse(status), false);
-                                    delete result.sendBox;
+                                    result.sandBox(ctx, this.processResponse(status), false);
+                                    delete result.sandBox;
                                     return void 0;
                                 } catch (e) {
                                     return ctx.transferError(e);
@@ -551,7 +551,7 @@ class TemplateLink {
         ctx: IContext,
         path: string,
         status: IResInfo,
-        next: (func: SendBox | string) => void
+        next: (func: SandBox | string) => void
     ): void {
         const key = path.replace(/\//gi, "_").replace(/\./gi, "_");
         const cache = _tw.cache[key];
@@ -562,7 +562,7 @@ class TemplateLink {
                 return ctx.handleError(err, (): void => {
                     return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
                         return ctx.handleError(result.err, () => {
-                            _tw.cache[key] = result.sendBox || result.str;
+                            _tw.cache[key] = result.sandBox || result.str;
                             return next(_tw.cache[key]);
                         });
                     });
@@ -571,7 +571,7 @@ class TemplateLink {
         });
     }
     public static tryMemCache(ctx: IContext, path: string, status: IResInfo): void {
-        return this._tryMemCache(ctx, path, status, (func: SendBox | string): void => {
+        return this._tryMemCache(ctx, path, status, (func: SandBox | string): void => {
             if (typeof (func) === "function") {
                 return func(ctx, this.processResponse(status));
             }
@@ -581,7 +581,7 @@ class TemplateLink {
     private static _tryFileCacheOrLive(
         ctx: IContext,
         filePath: string,
-        next: (func: SendBox | string) => void
+        next: (func: SandBox | string) => void
     ): void {
         const cachePath = `${filePath}.cach`;
         return canReadFileCache(ctx, filePath, cachePath, (readCache: boolean): void => {
@@ -592,7 +592,7 @@ class TemplateLink {
                             return ctx.handleError(result.err, () => {
                                 return _fs.writeFile(cachePath, result.str, (werr: NodeJS.ErrnoException | null) => {
                                     return ctx.handleError(werr, () => {
-                                        return next(result.sendBox || result.str);
+                                        return next(result.sandBox || result.str);
                                     });
                                 });
                             });
@@ -605,7 +605,7 @@ class TemplateLink {
                     if (TemplateCore.isScriptTemplate(data)) {
                         return TemplateCore.compile(data, (result: CompilerResult): void => {
                             return ctx.handleError(result.err, () => {
-                                return next(result.sendBox || result.str);
+                                return next(result.sandBox || result.str);
                             });
                         });
                     }
@@ -619,7 +619,7 @@ class TemplateLink {
     ): void {
         return fsw.isExists(path, (exists: boolean, filePath: string) => {
             if (!exists) return ctx.next(404);
-            return this._tryFileCacheOrLive(ctx, filePath, (func: string | SendBox) => {
+            return this._tryFileCacheOrLive(ctx, filePath, (func: string | SandBox) => {
                 if (typeof (func) === "function") {
                     try {
                         return func(ctx, this.processResponse(status));
