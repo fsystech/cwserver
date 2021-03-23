@@ -649,6 +649,7 @@ ${appRoot}\\www_public
             ctx.error += " " + ex;
         }
         else {
+            ctx.error += "\r\n" + ex.message;
             ctx.error += "\r\n" + ex.stack;
         }
         ctx.error = ctx.error

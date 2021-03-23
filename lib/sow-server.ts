@@ -829,6 +829,7 @@ ${appRoot}\\www_public
         if (typeof (ex) === "string") {
             ctx.error += " " + ex;
         } else {
+            ctx.error += "\r\n" + ex.message;
             ctx.error += "\r\n" + ex.stack;
         }
         ctx.error = ctx.error
