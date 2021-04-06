@@ -89,6 +89,21 @@ function generateRandomString(num) {
     return result;
 }
 exports.generateRandomString = generateRandomString;
+class JSONW {
+    static parse(text, reviver) {
+        if (typeof (text) !== "string")
+            return text;
+        try {
+            return JSON.parse(text, reviver);
+        }
+        catch (_a) {
+            return undefined;
+        }
+    }
+    static stringify(value, replacer, space) {
+        return JSON.stringify(value, replacer, space);
+    }
+}
 class Util {
     static guid() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -152,4 +167,5 @@ class Util {
     }
 }
 exports.Util = Util;
+Util.JSON = JSONW;
 //# sourceMappingURL=sow-util.js.map

@@ -1907,7 +1907,9 @@ describe("cwserver-utility", () => {
         }
     })();
     it("test-app-utility", function (done: Mocha.Done) {
-        this.timeout(5000);
+        expect(Util.JSON.stringify("{}")).toBeDefined();
+        expect(Util.JSON.parse({})).toBeDefined();
+        expect(Util.JSON.parse('{INVALID_JSON}')).toBeUndefined();
         expect(shouldBeError(() => {
             appUtility.server.addMimeType("text", "text/plain");
         })).toBeInstanceOf(Error);

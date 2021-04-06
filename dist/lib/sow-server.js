@@ -533,12 +533,12 @@ ${appRoot}\\www_public
         if (!str) {
             return session;
         }
-        sow_util_1.Util.extend(session, JSON.parse(str));
+        sow_util_1.Util.extend(session, sow_util_1.Util.JSON.parse(str));
         session.isAuthenticated = true;
         return session;
     }
     setSession(ctx, loginId, roleId, userData) {
-        return ctx.res.cookie(this.config.session.cookie, sow_encryption_1.Encryption.encryptToHex(JSON.stringify({
+        return ctx.res.cookie(this.config.session.cookie, sow_encryption_1.Encryption.encryptToHex(sow_util_1.Util.JSON.stringify({
             loginId, roleId, userData
         }), this.config.session.key), {
             maxAge: this.config.session.maxAge,

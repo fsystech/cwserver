@@ -720,14 +720,14 @@ ${appRoot}\\www_public
         if (!str) {
             return session;
         }
-        Util.extend(session, JSON.parse(str));
+        Util.extend(session, Util.JSON.parse(str));
         session.isAuthenticated = true;
         return session;
     }
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
         return ctx.res.cookie(
             this.config.session.cookie,
-            Encryption.encryptToHex(JSON.stringify({
+            Encryption.encryptToHex(Util.JSON.stringify({
                 loginId, roleId, userData
             }), this.config.session.key), {
             maxAge: this.config.session.maxAge,

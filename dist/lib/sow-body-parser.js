@@ -467,7 +467,7 @@ class BodyParser {
     getJson() {
         this.isValidRequest();
         if (this._contentTypeEnum === ContentType.APP_JSON) {
-            return JSON.parse(this._parser.getRawData());
+            return sow_util_1.Util.JSON.parse(this._parser.getRawData());
         }
         const outObj = {};
         decodeBodyBuffer(this._parser.body, (k, v) => {

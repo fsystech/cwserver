@@ -49,7 +49,7 @@ _a = (() => {
         const absPath = path_1.resolve(`${libRoot}/package.json`);
         sow_util_1.assert(fs_1.existsSync(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
         const data = fs_1.readFileSync(absPath, "utf-8");
-        return JSON.parse(data).version;
+        return sow_util_1.Util.JSON.parse(data).version;
     };
     const _appVersion = (() => {
         return _readAppVersion();
@@ -321,7 +321,7 @@ class Response extends http_1.ServerResponse {
         const val = this.getHeader(name);
         if (val) {
             if (Array.isArray(val)) {
-                return JSON.stringify(val);
+                return sow_util_1.Util.JSON.stringify(val);
             }
             return sow_static_1.toString(val);
         }
@@ -366,7 +366,7 @@ class Response extends http_1.ServerResponse {
                 }
                 else {
                     this.type("json");
-                    chunk = JSON.stringify(chunk);
+                    chunk = sow_util_1.Util.JSON.stringify(chunk);
                 }
                 break;
         }
@@ -422,7 +422,7 @@ class Response extends http_1.ServerResponse {
         return true;
     }
     json(body, compress, next) {
-        const buffer = Buffer.from(JSON.stringify(body), "utf-8");
+        const buffer = Buffer.from(sow_util_1.Util.JSON.stringify(body), "utf-8");
         if (typeof (compress) === 'boolean' && compress === true) {
             return _zlib.gzip(buffer, (error, buff) => {
                 if (!this.sendIfError(error)) {

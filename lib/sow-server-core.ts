@@ -94,7 +94,7 @@ export const {
         const absPath: string = resolve(`${libRoot}/package.json`);
         assert(existsSync(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
         const data: string = readFileSync(absPath, "utf-8");
-        return JSON.parse(data).version;
+        return Util.JSON.parse(data).version;
     }
     const _appVersion: string = ((): string => {
         return _readAppVersion();
@@ -353,7 +353,7 @@ class Response extends ServerResponse implements IResponse {
         const val: number | string | string[] | undefined = this.getHeader(name);
         if (val) {
             if (Array.isArray(val)) {
-                return JSON.stringify(val);
+                return Util.JSON.stringify(val);
             }
             return toString(val);
         }
@@ -397,7 +397,7 @@ class Response extends ServerResponse implements IResponse {
                     }
                 } else {
                     this.type("json");
-                    chunk = JSON.stringify(chunk);
+                    chunk = Util.JSON.stringify(chunk);
                 }
                 break;
         }
@@ -449,7 +449,7 @@ class Response extends ServerResponse implements IResponse {
         return true;
     }
     public json(body: NodeJS.Dict<any>, compress?: boolean, next?: (error: Error | null) => void): void {
-        const buffer: Buffer = Buffer.from(JSON.stringify(body), "utf-8");
+        const buffer: Buffer = Buffer.from(Util.JSON.stringify(body), "utf-8");
         if (typeof (compress) === 'boolean' && compress === true) {
             return _zlib.gzip(buffer, (error: Error | null, buff: Buffer) => {
                 if (!this.sendIfError(error)) {

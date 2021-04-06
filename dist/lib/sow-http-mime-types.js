@@ -34,7 +34,7 @@ function loadMimeType() {
     const libRoot = sow_util_1.getLibRoot();
     const absPath = _path.resolve(`${libRoot}/mime-types.json`);
     sow_util_1.assert(_fs.existsSync(absPath), `No mime-type found in ${libRoot}\nPlease re-install cwserver`);
-    const data = JSON.parse(_fs.readFileSync(absPath, "utf-8"));
+    const data = sow_util_1.Util.JSON.parse(_fs.readFileSync(absPath, "utf-8"));
     return {
         add: (extension, val) => {
             if (data[extension])

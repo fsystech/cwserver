@@ -552,7 +552,7 @@ class BodyParser implements IBodyParser {
     public getJson(): NodeJS.Dict<any> {
         this.isValidRequest();
         if (this._contentTypeEnum === ContentType.APP_JSON) {
-            return JSON.parse(this._parser.getRawData());
+            return Util.JSON.parse(this._parser.getRawData());
         }
         const outObj: NodeJS.Dict<string> = {};
         decodeBodyBuffer(this._parser.body, (k: string, v: string): void => {
