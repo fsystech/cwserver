@@ -356,12 +356,22 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 					},
 					path: "/index.html"
 				}), Object.create({
+					headersSent: false,
 					id: "1010", dispose() {
 						// Nothing to do
 					}
 				}), () => {
 					// Nothing to do
 				});
+				const _transferError = mCtx.transferError;
+				mCtx.transferError = (err) => {
+					console.log(`Handle error-> ${err.message}`);
+					// nothing to do
+				}
+				mCtx.handleError(null, () => {
+					throw new Error("test exception...");
+				});
+				mCtx.transferError = _transferError;
 				removeContext("10101");
 				getMyContext("10101");
 				removeContext("1010");

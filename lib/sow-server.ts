@@ -341,7 +341,11 @@ export class Context implements IContext {
             if (Util.isError(err)) {
                 return this.transferError(err);
             }
-            return next();
+            try {
+                return next();
+            } catch (e) {
+                return this.transferError(e);
+            }
         }
         // Nothing to do, context destroyed or response header already been sent
     }

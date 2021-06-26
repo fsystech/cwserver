@@ -37,7 +37,5 @@ class SowGlobal {
         return this._HttpMime;
     }
 }
-if (!global.sow) {
-    global.sow = new SowGlobal();
-}
+global.sow = new SowGlobal();
 //# sourceMappingURL=sow-global.js.map

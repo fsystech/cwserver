@@ -69,6 +69,4 @@ declare global {
         }
     }
 }
-if (!global.sow) {
-    global.sow = new SowGlobal();
-}
+global.sow = new SowGlobal();
