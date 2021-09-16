@@ -111,7 +111,7 @@ class HttpStatus {
             return outStatusCode;
         const code = file.substring(0, index);
         // check is valid server status code here...
-        statusCode = sow_static_1.ToNumber(code);
+        statusCode = (0, sow_static_1.ToNumber)(code);
         if (statusCode === 0)
             return outStatusCode;
         return statusCode;
@@ -120,7 +120,7 @@ class HttpStatus {
         return HttpStatusCode[statusCode] ? true : false;
     }
     static getResInfo(path, code) {
-        code = sow_static_1.ToNumber(code);
+        code = (0, sow_static_1.ToNumber)(code);
         const out = new sow_static_1.ResInfo();
         out.code = typeof (path) === "number" ? path : this.fromPath(path, code);
         out.isValid = false;
@@ -146,7 +146,7 @@ class HttpStatus {
         const inf = _group[name.charAt(0)];
         if (!inf || (inf && inf.error === false))
             return false;
-        const statusCode = sow_static_1.ToNumber(name);
+        const statusCode = (0, sow_static_1.ToNumber)(name);
         return this.isValidCode(statusCode);
     }
     static isErrorCode(code) {

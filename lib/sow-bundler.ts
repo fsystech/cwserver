@@ -121,7 +121,7 @@ This "Combiner" contains the following files:\n`;
                     });
                     return forword();
                 });
-            } catch (e) {
+            } catch (e: any) {
                 return next([], e);
             }
         };

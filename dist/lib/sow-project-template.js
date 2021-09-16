@@ -36,7 +36,7 @@ function createProjectTemplate(settings) {
     if (isTest === false) {
         console.log(sow_logger_1.ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}`);
     }
-    const templateRoot = _path.resolve(`${sow_util_1.getLibRoot()}/dist/project_template`);
+    const templateRoot = _path.resolve(`${(0, sow_util_1.getLibRoot)()}/dist/project_template`);
     if (!_fs.existsSync(templateRoot))
         throw new Error(`Project template not found in ${templateRoot}\r\nPlease uninstall and install again 'cwserver'`);
     const appRoot = _path.resolve(settings.appRoot);

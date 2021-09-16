@@ -12,6 +12,8 @@ import { IResInfo, IDispose } from './sow-static';
 import { IContext } from './sow-server';
 import * as fsw from './sow-fsw';
 import { generateRandomString } from './sow-util';
+import { platform } from 'os';
+const _isWin: boolean = platform() === "win32";
 type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
 export type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => void;
 interface IScriptTag {
@@ -227,10 +229,25 @@ class ScriptParser implements IScriptParser {
         delete this.tag; delete this._cmnt;
     }
 }
+// function ExportAttachMatch(str: string): RegExpMatchArray | null {
+//     let match: RegExpMatchArray | null = str.match(/#attach([\s\S]+?)\r\n/gi);
+//     if (!match) {
+//         match = str.match(/#attach([\s\S]+?)\n/gi);
+//     }
+//     return match;
+// }
 function ExportAttachMatch(str: string): RegExpMatchArray | null {
-    let match: RegExpMatchArray | null = str.match(/#attach([\s\S]+?)\r\n/gi);
-    if (!match) {
+    let match = null;
+    if (_isWin) {
+        match = str.match(/#attach([\s\S]+?)\r\n/gi);
+        if (!match) {
+            match = str.match(/#attach([\s\S]+?)\n/gi);
+        }
+    } else {
         match = str.match(/#attach([\s\S]+?)\n/gi);
+        if (!match) {
+            match = str.match(/#attach([\s\S]+?)\r\n/gi);
+        }
     }
     return match;
 }
@@ -288,7 +305,7 @@ class TemplateParser {
                 return implStr;
             });
             body = body.replace(new RegExp(`<placeholder id="${tmplId}">.+?<\/placeholder>`, "gi"), () => {
-                return implStr;
+                return implStr || "";
             });
         }
         return body;
@@ -354,7 +371,7 @@ class TemplateParser {
                     body = this.margeTemplate(match, parentTemplate, body);
                 } while (len > 0);
                 return next(body.replace(/8_r_n_gx_8/gi, "\r\n").replace(/8_n_gx_8/gi, "\n"));
-            } catch (e) {
+            } catch (e: any) {
                 return ctx.transferError(e);
             }
         });
@@ -392,7 +409,7 @@ export class TemplateCore {
                 isScript: true,
                 sandBox: func
             });
-        } catch (e) {
+        } catch (e: any) {
             return next({ str, err: e });
         }
     }
@@ -536,7 +553,7 @@ class TemplateLink {
                                     result.sandBox(ctx, this.processResponse(status), false);
                                     delete result.sandBox;
                                     return void 0;
-                                } catch (e) {
+                                } catch (e: any) {
                                     return ctx.transferError(e);
                                 }
                             }
@@ -623,7 +640,7 @@ class TemplateLink {
                 if (typeof (func) === "function") {
                     try {
                         return func(ctx, this.processResponse(status));
-                    } catch (e) {
+                    } catch (e: any) {
                         return ctx.transferError(e);
                     }
                 }

@@ -23,7 +23,7 @@ class Streamer {
             const start = parseInt(partialstart, 10);
             const end = partialend ? parseInt(partialend, 10) : total - 1;
             const chunksize = (end - start) + 1;
-            openenedFile = fs_1.createReadStream(absPath, {
+            openenedFile = (0, fs_1.createReadStream)(absPath, {
                 start, end
             });
             statusCode = 206;
@@ -35,13 +35,13 @@ class Streamer {
             });
         }
         else {
-            openenedFile = fs_1.createReadStream(absPath);
+            openenedFile = (0, fs_1.createReadStream)(absPath);
             ctx.res.status(statusCode, {
                 'Content-Length': total,
                 'Content-Type': mimeType
             });
         }
-        return stream_1.pipeline(openenedFile, ctx.res, (err) => {
+        return (0, stream_1.pipeline)(openenedFile, ctx.res, (err) => {
             destroy(openenedFile);
             ctx.next(statusCode, false);
         }), void 0;

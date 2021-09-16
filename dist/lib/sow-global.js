@@ -24,7 +24,7 @@ class SowGlobal {
     constructor() {
         this._server = new SowGlobalServer();
         this.isInitilized = false;
-        this._HttpMime = sow_http_mime_types_1.loadMimeType();
+        this._HttpMime = (0, sow_http_mime_types_1.loadMimeType)();
         this._templateCtx = {};
     }
     get templateCtx() {

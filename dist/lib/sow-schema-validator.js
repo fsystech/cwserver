@@ -139,15 +139,15 @@ function schemaValidate(dataPath, schemaProperties, configProperties, additional
 exports.schemaValidate = schemaValidate;
 class Schema {
     static Validate(config) {
-        const parent = sow_util_1.getLibRoot();
+        const parent = (0, sow_util_1.getLibRoot)();
         const absPath = _path.resolve(`${parent}/schema.json`);
         const schema = readSchemaAsync(absPath);
         const schemaRoot = _supportSchema[schema.$schema];
-        sow_util_1.assert(schemaRoot, 'Invalid schema file defined.\nPlease re-install cwserver.');
+        (0, sow_util_1.assert)(schemaRoot, 'Invalid schema file defined.\nPlease re-install cwserver.');
         if (!sow_util_1.Util.isPlainObject(config)) {
             throw new Error(`Invalid config file defined.\nConfig file should be ${schema.type}.`);
         }
-        sow_util_1.assert(config.$schema, `No schema defined in config file.\nConfig file should be use $schema:${schema.$schema}`);
+        (0, sow_util_1.assert)(config.$schema, `No schema defined in config file.\nConfig file should be use $schema:${schema.$schema}`);
         delete config.$schema;
         if (config.$comment) {
             delete config.$comment;

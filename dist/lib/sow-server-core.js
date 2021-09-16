@@ -45,10 +45,10 @@ const _zlib = __importStar(require("zlib"));
 const _mimeType = __importStar(require("./sow-http-mime-types"));
 _a = (() => {
     const _readAppVersion = () => {
-        const libRoot = sow_util_1.getLibRoot();
-        const absPath = path_1.resolve(`${libRoot}/package.json`);
-        sow_util_1.assert(fs_1.existsSync(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
-        const data = fs_1.readFileSync(absPath, "utf-8");
+        const libRoot = (0, sow_util_1.getLibRoot)();
+        const absPath = (0, path_1.resolve)(`${libRoot}/package.json`);
+        (0, sow_util_1.assert)((0, fs_1.existsSync)(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
+        const data = (0, fs_1.readFileSync)(absPath, "utf-8");
         return sow_util_1.Util.JSON.parse(data).version;
     };
     const _appVersion = (() => {
@@ -106,9 +106,9 @@ function createCookie(name, val, options) {
         str += ';Path=/';
     }
     if (options.expires && !options.maxAge)
-        str += `;Expires=${sow_static_1.ToResponseTime(options.expires)}`;
+        str += `;Expires=${(0, sow_static_1.ToResponseTime)(options.expires)}`;
     if (options.maxAge && !options.expires)
-        str += `;Expires=${sow_static_1.ToResponseTime(Date.now() + options.maxAge)}`;
+        str += `;Expires=${(0, sow_static_1.ToResponseTime)(Date.now() + options.maxAge)}`;
     if (options.secure)
         str += '; Secure';
     if (options.httpOnly)
@@ -160,8 +160,8 @@ function getClientIp(req) {
         if (ip)
             return ip;
     }
-    ip = parseIp(sow_static_1.toString(req.socket.remoteAddress));
-    return sow_static_1.toString(ip);
+    ip = parseIp((0, sow_static_1.toString)(req.socket.remoteAddress));
+    return (0, sow_static_1.toString)(ip);
 }
 exports.getClientIp = getClientIp;
 function parseUrl(url) {
@@ -177,7 +177,7 @@ class Request extends http_1.IncomingMessage {
     get isMobile() {
         if (this._isMobile !== undefined)
             return this._isMobile;
-        const userAgent = sow_static_1.toString(this.get('user-agent'));
+        const userAgent = (0, sow_static_1.toString)(this.get('user-agent'));
         this._isMobile = /mobile/gi.test(userAgent);
         return this._isMobile;
     }
@@ -289,7 +289,7 @@ class Response extends http_1.ServerResponse {
         this._isAlive = val;
     }
     get method() {
-        return sow_static_1.toString(this._method);
+        return (0, sow_static_1.toString)(this._method);
     }
     set method(val) {
         this._method = val;
@@ -323,7 +323,7 @@ class Response extends http_1.ServerResponse {
             if (Array.isArray(val)) {
                 return sow_util_1.Util.JSON.stringify(val);
             }
-            return sow_static_1.toString(val);
+            return (0, sow_static_1.toString)(val);
         }
     }
     set(field, value) {
@@ -502,7 +502,7 @@ class Application extends events_1.EventEmitter {
                 return inf.handler.call(this, req, res, _next);
             if (isRouted)
                 return _next();
-            const routeInfo = sow_router_1.getRouteInfo(req.path, handlers, 'ANY');
+            const routeInfo = (0, sow_router_1.getRouteInfo)(req.path, handlers, 'ANY');
             isRouted = true;
             if (routeInfo) {
                 if (routeInfo.layer.routeMatcher) {
@@ -558,7 +558,7 @@ class Application extends events_1.EventEmitter {
             return this._appHandler.push({
                 route,
                 handler: args[1],
-                routeMatcher: sow_router_1.getRouteMatcher(route, isVirtual),
+                routeMatcher: (0, sow_router_1.getRouteMatcher)(route, isVirtual),
                 pathArray: [], method: 'ANY'
             }), this;
         }
@@ -581,7 +581,7 @@ function setAppHeader(res) {
     res.setHeader('x-powered-by', 'safeonline.world');
 }
 function App() {
-    const app = new Application(http_1.createServer((request, response) => {
+    const app = new Application((0, http_1.createServer)((request, response) => {
         const req = Object.setPrototypeOf(request, Request.prototype);
         const res = Object.setPrototypeOf(response, Response.prototype);
         try {

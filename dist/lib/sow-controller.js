@@ -41,7 +41,7 @@ const routeTable = {
 const fireHandler = (ctx) => {
     if (routeTable.router.length === 0)
         return false;
-    const routeInfo = sow_router_1.getRouteInfo(ctx.path, routeTable.router, ctx.req.method || "GET");
+    const routeInfo = (0, sow_router_1.getRouteInfo)(ctx.path, routeTable.router, ctx.req.method || "GET");
     if (!routeInfo) {
         return false;
     }
@@ -83,7 +83,7 @@ class Controller {
                 handler: next,
                 route,
                 pathArray: route.split("/"),
-                routeMatcher: sow_router_1.getRouteMatcher(route)
+                routeMatcher: (0, sow_router_1.getRouteMatcher)(route)
             });
         }
         return routeTable.get[route] = next, this;
@@ -99,7 +99,7 @@ class Controller {
                 handler: next,
                 route,
                 pathArray: route.split("/"),
-                routeMatcher: sow_router_1.getRouteMatcher(route)
+                routeMatcher: (0, sow_router_1.getRouteMatcher)(route)
             });
         }
         return routeTable.post[route] = next, this;
@@ -117,7 +117,7 @@ class Controller {
                 handler: next,
                 route,
                 pathArray: route.split("/"),
-                routeMatcher: sow_router_1.getRouteMatcher(route)
+                routeMatcher: (0, sow_router_1.getRouteMatcher)(route)
             });
         }
         return routeTable.any[route] = next, this;
@@ -151,7 +151,7 @@ class Controller {
             if (ctx.server.config.defaultDoc.indexOf(fileName) > -1)
                 return ctx.next(404);
             if (sow_http_status_1.HttpStatus.isErrorFileName(fileName /*401*/)) {
-                return ctx.transferRequest(sow_static_1.ToNumber(fileName));
+                return ctx.transferRequest((0, sow_static_1.ToNumber)(fileName));
             }
             const path = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
             return fsw.isExists(path, (exists, url) => {

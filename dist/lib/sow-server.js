@@ -62,7 +62,7 @@ _a = (() => {
             const ctx = _curContext[id];
             if (!ctx)
                 return;
-            exports.disposeContext(ctx);
+            (0, exports.disposeContext)(ctx);
             return void 0;
         },
         getContext(server, req, res) {
@@ -361,7 +361,7 @@ ${appRoot}\\www_public
         if (this.public !== config.hostInfo.root) {
             throw new Error(`Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
         }
-        const libRoot = sow_util_1.getLibRoot();
+        const libRoot = (0, sow_util_1.getLibRoot)();
         this._errorPage = {
             "404": _path.resolve(`${libRoot}/dist/error_page/404.html`),
             "401": _path.resolve(`${libRoot}/dist/error_page/401.html`),
@@ -504,7 +504,7 @@ ${appRoot}\\www_public
         return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext(req, res, next) {
-        const context = exports.getContext(this, req, res);
+        const context = (0, exports.getContext)(this, req, res);
         context.path = req.path;
         context.root = context.path;
         context.next = next;
@@ -530,7 +530,7 @@ ${appRoot}\\www_public
         if (!this.config.session.cookie || this.config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new sow_static_2.Session();
-        const cookies = sow_server_core_1.parseCookie(cook);
+        const cookies = (0, sow_server_core_1.parseCookie)(cook);
         const value = cookies[this.config.session.cookie];
         if (!value)
             return session;
@@ -718,7 +718,7 @@ function initilizeServer(appRoot, wwwName) {
     };
     const _controller = new sow_controller_1.Controller();
     function initilize() {
-        const _app = sow_server_core_1.App();
+        const _app = (0, sow_server_core_1.App)();
         _server.on = (ev, handler) => {
             _app.on(ev, handler);
         };
@@ -729,7 +729,7 @@ function initilizeServer(appRoot, wwwName) {
         }
         _app.on("response-end", (req, res) => {
             if (_server.config.isDebug) {
-                const ctx = exports.getMyContext(req.id);
+                const ctx = (0, exports.getMyContext)(req.id);
                 if (ctx && !ctx.isDisposed) {
                     if (res.statusCode && sow_http_status_1.HttpStatus.isErrorCode(res.statusCode)) {
                         _server.log.error(`Send ${res.statusCode} ${ctx.path}`);
@@ -739,7 +739,7 @@ function initilizeServer(appRoot, wwwName) {
                     }
                 }
             }
-            return exports.removeContext(req.id);
+            return (0, exports.removeContext)(req.id);
         });
         const _virtualDir = [];
         _server.virtualInfo = (route) => {
@@ -851,7 +851,7 @@ function initilizeServer(appRoot, wwwName) {
         get public() { return _server.public; },
         get port() { return _server.port; },
         get log() { return _server.log; },
-        get socketPath() { return sow_static_1.toString(_server.config.socketPath); },
+        get socketPath() { return (0, sow_static_1.toString)(_server.config.socketPath); },
         get server() { return _server; },
         get controller() { return _controller; }
     };

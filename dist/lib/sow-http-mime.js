@@ -108,7 +108,7 @@ class MimeHandler {
                 }
                 const rstream = _fs.createReadStream(absPath);
                 const wstream = _fs.createWriteStream(cachePath);
-                return stream_1.pipeline(rstream, createGzip(), wstream, (gzipErr) => {
+                return (0, stream_1.pipeline)(rstream, createGzip(), wstream, (gzipErr) => {
                     destroy(rstream);
                     destroy(wstream);
                     return ctx.handleError(gzipErr, () => {
@@ -139,7 +139,7 @@ class MimeHandler {
                 'Content-Encoding': 'gzip'
             });
             const rstream = _fs.createReadStream(absPath);
-            return stream_1.pipeline(rstream, createGzip(), ctx.res, (gzipErr) => {
+            return (0, stream_1.pipeline)(rstream, createGzip(), ctx.res, (gzipErr) => {
                 destroy(rstream);
             }), void 0;
         }
@@ -165,7 +165,7 @@ class MimeHandler {
         if (ctx.server.config.staticFile.compression && isGzip) {
             ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
             const rstream = _fs.createReadStream(absPath);
-            return stream_1.pipeline(rstream, createGzip(), ctx.res, (gzipErr) => {
+            return (0, stream_1.pipeline)(rstream, createGzip(), ctx.res, (gzipErr) => {
                 destroy(rstream);
             }), void 0;
         }

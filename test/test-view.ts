@@ -28,7 +28,7 @@ const mimeHandler = new HttpMimeHandler();
 export function shouldBeError(next: () => void, printerr?: boolean): Error | void {
 	try {
 		next();
-	} catch (e) {
+	} catch (e: any) {
 		if (printerr === true) console.log(e);
 		return e;
 	}
@@ -204,7 +204,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		try {
 			await parser.readDataAsync();
 			ctx.res.status(200).json(parser.getUploadFileInfo());
-		} catch (e) {
+		} catch (e: any) {
 			parser.dispose();
 			ctx.transferError(e);
 		}
@@ -214,7 +214,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		try {
 			parser.setMaxBuffLength(1024 * 1024 * 20);
 			await parser.parseSync();
-		} catch (e) {
+		} catch (e: any) {
 			err = e;
 		}
 		parser.dispose();
@@ -231,7 +231,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		let err: Error | undefined;
 		try {
 			await parser.parseSync();
-		} catch (e) {
+		} catch (e: any) {
 			err = e;
 		}
 		parser.dispose();
@@ -273,7 +273,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			parser.saveAsSync(downloadDir);
 			parser.dispose();
 			ctx.res.status(200).json(data.shift() || {});
-		} catch (e) {
+		} catch (e: any) {
 			ctx.transferError(e);
 		}
 	}).post('/upload-non-bolock', (ctx: IContext, requestParam?: IRequestParam): void => {

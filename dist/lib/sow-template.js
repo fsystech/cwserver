@@ -32,6 +32,8 @@ const _path = __importStar(require("path"));
 const sow_http_status_1 = require("./sow-http-status");
 const fsw = __importStar(require("./sow-fsw"));
 const sow_util_1 = require("./sow-util");
+const os_1 = require("os");
+const _isWin = (0, os_1.platform)() === "win32";
 function templateNext(ctx, next, isCompressed) {
     throw new Error("Method not implemented.");
 }
@@ -211,10 +213,26 @@ class ScriptParser {
         delete this._cmnt;
     }
 }
+// function ExportAttachMatch(str: string): RegExpMatchArray | null {
+//     let match: RegExpMatchArray | null = str.match(/#attach([\s\S]+?)\r\n/gi);
+//     if (!match) {
+//         match = str.match(/#attach([\s\S]+?)\n/gi);
+//     }
+//     return match;
+// }
 function ExportAttachMatch(str) {
-    let match = str.match(/#attach([\s\S]+?)\r\n/gi);
-    if (!match) {
+    let match = null;
+    if (_isWin) {
+        match = str.match(/#attach([\s\S]+?)\r\n/gi);
+        if (!match) {
+            match = str.match(/#attach([\s\S]+?)\n/gi);
+        }
+    }
+    else {
         match = str.match(/#attach([\s\S]+?)\n/gi);
+        if (!match) {
+            match = str.match(/#attach([\s\S]+?)\r\n/gi);
+        }
     }
     return match;
 }
@@ -268,7 +286,7 @@ class TemplateParser {
                 return implStr;
             });
             body = body.replace(new RegExp(`<placeholder id="${tmplId}">.+?<\/placeholder>`, "gi"), () => {
-                return implStr;
+                return implStr || "";
             });
         }
         return body;
@@ -349,7 +367,7 @@ class TemplateCore {
             return next({ str: "", err: new Error("No script found to compile....") });
         }
         try {
-            const sandBox = `${sow_util_1.generateRandomString(30)}_thisNext`;
+            const sandBox = `${(0, sow_util_1.generateRandomString)(30)}_thisNext`;
             global.sow.templateCtx[sandBox] = templateNext;
             // bug fix by rajib chy and abd on 8:16 PM 3/23/2021
             // Error: ctx.addError(ctx, ex) argument error

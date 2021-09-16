@@ -221,7 +221,7 @@ class MultipartDataReader extends events_1.EventEmitter {
                 }
                 const tempFile = fileInfo.getTempPath();
                 if (tempFile) {
-                    this._writeStream = stream_1.pipeline(partStream, _fs.createWriteStream(tempFile, { 'flags': 'a' }), (err) => {
+                    this._writeStream = (0, stream_1.pipeline)(partStream, _fs.createWriteStream(tempFile, { 'flags': 'a' }), (err) => {
                         this.destroy();
                         this.emit("end", err);
                     });
@@ -355,8 +355,8 @@ class BodyParser {
         this._isDisposed = false;
         this._part = [];
         this._maxBuffLength = MaxBuffLength;
-        this._contentType = sow_static_1.toString(req.get("content-type"));
-        this._contentLength = sow_static_1.ToNumber(req.get("content-length"));
+        this._contentType = (0, sow_static_1.toString)(req.get("content-type"));
+        this._contentLength = (0, sow_static_1.ToNumber)(req.get("content-length"));
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
         }
@@ -596,12 +596,12 @@ class BodyParser {
 }
 /** @deprecated since v2.0.3 - use `getBodyParser` instead. */
 exports.PayloadParser = (() => {
-    return { PayloadParser: util_1.deprecate(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
+    return { PayloadParser: (0, util_1.deprecate)(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
 })().PayloadParser;
-BodyParser.prototype.clear = util_1.deprecate(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
-BodyParser.prototype.readData = util_1.deprecate(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
-BodyParser.prototype.readDataAsync = util_1.deprecate(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
-PostedFileInfo.prototype.clear = util_1.deprecate(PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');
+BodyParser.prototype.clear = (0, util_1.deprecate)(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
+BodyParser.prototype.readData = (0, util_1.deprecate)(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
+BodyParser.prototype.readDataAsync = (0, util_1.deprecate)(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
+PostedFileInfo.prototype.clear = (0, util_1.deprecate)(PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');
 function getBodyParser(req, tempDir) {
     return new BodyParser(req, tempDir);
 }

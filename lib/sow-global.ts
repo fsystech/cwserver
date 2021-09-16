@@ -70,3 +70,4 @@ declare global {
     }
 }
 global.sow = new SowGlobal();
+declare var sow: SowGlobal;

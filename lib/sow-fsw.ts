@@ -79,7 +79,7 @@ export function readJson<T>(
         return errHandler(err, () => {
             try {
                 return next(null, JSON.parse(data.toString("utf8").replace(/^\uFEFF/, '')));
-            } catch (e) {
+            } catch (e: any) {
                 return next(e);
             }
         });

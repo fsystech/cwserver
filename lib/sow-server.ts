@@ -343,7 +343,7 @@ export class Context implements IContext {
             }
             try {
                 return next();
-            } catch (e) {
+            } catch (e: any) {
                 return this.transferError(e);
             }
         }
@@ -1017,7 +1017,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             }
             try {
                 return _controller.processAny(context);
-            } catch (ex) {
+            } catch (ex: any) {
                 return _server.transferRequest(_server.addError(context, ex), 500);
             }
         });

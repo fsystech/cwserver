@@ -142,14 +142,14 @@ class Util {
         return ctx.handleError(null, () => {
             const statusCode = ctx.res.statusCode;
             const openenedFile = _fs.createReadStream(absPath);
-            return stream_1.pipeline(openenedFile, ctx.res, (err) => {
+            return (0, stream_1.pipeline)(openenedFile, ctx.res, (err) => {
                 destroy(openenedFile);
                 ctx.next(statusCode);
             }), void 0;
         });
     }
     static sendResponse(ctx, reqPath, contentType) {
-        return sow_fsw_1.isExists(reqPath, (exists, url) => {
+        return (0, sow_fsw_1.isExists)(reqPath, (exists, url) => {
             return ctx.handleError(null, () => {
                 if (!exists)
                     return ctx.next(404, true);
