@@ -22,4 +22,7 @@ declare global {
         }
     }
 }
+declare global {
+    var sow: ISowGlobal;
+}
 export {};
