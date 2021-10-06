@@ -8,7 +8,7 @@ export * as fsw from './lib/sow-fsw';
 export { Streamer } from './lib/sow-web-streamer';
 export { socketInitilizer, wsClient } from './lib/sow-ws';
 export { createProjectTemplate } from './lib/sow-project-template';
-export { IContext, ISowServer } from './lib/sow-server';
+export { IContext, ISowServer, SessionSecurity } from './lib/sow-server';
 export { App, IApplication, IRequest, IResponse, parseCookie } from './lib/sow-server-core';
 export { IRequestParam } from './lib/sow-router';
 export { IController } from './lib/sow-controller';

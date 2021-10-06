@@ -251,6 +251,12 @@ export declare class ServerConfig implements IServerConfig {
     };
     constructor();
 }
+export declare class SessionSecurity {
+    constructor();
+    private static getRemoteAddress;
+    static createSession(req: IRequest, sessionObj: NodeJS.Dict<any>): string;
+    static isValidSession(req: IRequest): void;
+}
 export declare class SowServer implements ISowServer {
     get version(): string;
     private _config;

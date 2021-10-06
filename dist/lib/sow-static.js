@@ -57,6 +57,7 @@ class Session {
         this.loginId = "";
         this.roleId = "";
         this.userData = void 0;
+        this.ipPart = void 0;
     }
     ;
 }

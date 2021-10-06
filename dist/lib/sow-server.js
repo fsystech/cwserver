@@ -20,7 +20,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initilizeServer = exports.SowServer = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
+exports.initilizeServer = exports.SowServer = exports.SessionSecurity = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -327,6 +327,29 @@ class ServerConfig {
     }
 }
 exports.ServerConfig = ServerConfig;
+// prevent session hijacking
+class SessionSecurity {
+    constructor() {
+        throw new Error("Invalid initilization...");
+    }
+    static getRemoteAddress(ip) {
+        return ip.substring(0, ip.lastIndexOf('.'));
+    }
+    static createSession(req, sessionObj) {
+        sessionObj.ipPart = this.getRemoteAddress(req.ip);
+        return sow_util_1.Util.JSON.stringify(sessionObj);
+    }
+    static isValidSession(req) {
+        if (!req.session.isAuthenticated)
+            return;
+        if (!req.session.ipPart || req.session.ipPart !== this.getRemoteAddress(req.ip)) {
+            // prevent session hijack
+            req.session.isAuthenticated = false;
+        }
+        return;
+    }
+}
+exports.SessionSecurity = SessionSecurity;
 class SowServer {
     constructor(appRoot, wwwName) {
         this._port = 0;
@@ -543,7 +566,7 @@ ${appRoot}\\www_public
         return session;
     }
     setSession(ctx, loginId, roleId, userData) {
-        return ctx.res.cookie(this.config.session.cookie, sow_encryption_1.Encryption.encryptToHex(sow_util_1.Util.JSON.stringify({
+        return ctx.res.cookie(this.config.session.cookie, sow_encryption_1.Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {
             loginId, roleId, userData
         }), this.config.session.key), {
             maxAge: this.config.session.maxAge,
@@ -820,6 +843,7 @@ function initilizeServer(appRoot, wwwName) {
         });
         _app.prerequisites((req, res, next) => {
             req.session = _server.parseSession(req.cookies);
+            SessionSecurity.isValidSession(req);
             return next();
         });
         _app.use((req, res, next) => {
