@@ -503,6 +503,27 @@ export class ServerConfig implements IServerConfig {
         };
     }
 }
+// prevent session hijacking
+export class SessionSecurity {
+    constructor() {
+        throw new Error("Invalid initilization...");
+    }
+    private static getRemoteAddress(ip: string): string {
+        return ip.substring(0, ip.lastIndexOf('.'));
+    }
+    public static createSession(req: IRequest, sessionObj: NodeJS.Dict<any>): string {
+        sessionObj.ipPart = this.getRemoteAddress(req.ip);
+        return Util.JSON.stringify(sessionObj);
+    }
+    public static isValidSession(req: IRequest): void {
+        if (!req.session.isAuthenticated) return;
+        if (!req.session.ipPart || req.session.ipPart !== this.getRemoteAddress(req.ip)) {
+            // prevent session hijack
+            req.session.isAuthenticated = false;
+        }
+        return;
+    }
+}
 export class SowServer implements ISowServer {
     public get version() {
         return appVersion;
@@ -731,7 +752,7 @@ ${appRoot}\\www_public
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
         return ctx.res.cookie(
             this.config.session.cookie,
-            Encryption.encryptToHex(Util.JSON.stringify({
+            Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {
                 loginId, roleId, userData
             }), this.config.session.key), {
             maxAge: this.config.session.maxAge,
@@ -1000,6 +1021,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         });
         _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
             req.session = _server.parseSession(req.cookies);
+            SessionSecurity.isValidSession(req);
             return next();
         });
         _app.use((req: IRequest, res: IResponse, next: NextFunction) => {

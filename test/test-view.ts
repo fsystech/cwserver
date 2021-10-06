@@ -19,7 +19,7 @@ import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
 	ISowServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
 	socketInitilizer, getBodyParser, PayloadParser,
-	HttpMimeHandler, Streamer, Encryption
+	HttpMimeHandler, Streamer, Encryption, SessionSecurity
 } from '../index';
 import { toString } from '../lib/sow-static';
 import { decodeBodyBuffer } from '../lib/sow-body-parser';
@@ -35,6 +35,7 @@ export function shouldBeError(next: () => void, printerr?: boolean): Error | voi
 };
 expect(toString(1)).toEqual("1");
 global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+	expect(shouldBeError(() => new SessionSecurity())).toBeInstanceOf(Error);
 	fsw.mkdirSync(server.config.staticFile.tempPath, "");
 	expect(parseCookie(["test"])).toBeInstanceOf(Object);
 	expect(parseCookie({})).toBeInstanceOf(Object);
@@ -603,11 +604,16 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		})
 		.get('/is-authenticate', (ctx: IContext, requestParam?: IRequestParam): void => {
 			if (!ctx.req.query.loginId) return ctx.next(401);
+			const olPart = ctx.req.session.ipPart;
+			ctx.req.session.ipPart = undefined;
+			SessionSecurity.isValidSession(ctx.req);
+			ctx.req.session.ipPart = olPart;
 			if (ctx.session.loginId !== ctx.req.query.loginId) return ctx.next(401);
 			ctx.res.json(ctx.session); return ctx.next(200);
 		})
 		.get('/signout', (ctx: IContext, requestParam?: IRequestParam): void => {
 			if (!ctx.session.isAuthenticated) {
+				console.log(ctx.session);
 				return ctx.next(401, true);
 			}
 			ctx.signOut().redirect("/", true).next(302, true);

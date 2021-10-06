@@ -9,6 +9,7 @@ export interface ISession {
     loginId: string;
     roleId: string;
     userData?: any;
+    ipPart?: string;
 }
 export interface IResInfo {
     code: number;
@@ -86,11 +87,13 @@ export class Session implements ISession {
     loginId: string;
     roleId: string;
     userData?: void;
+    ipPart?: string;
     constructor() {
         this.isAuthenticated = false;
         this.loginId = "";
         this.roleId = "";
         this.userData = void 0;
+        this.ipPart = void 0;
     };
 }
 export class ResInfo implements IResInfo {
