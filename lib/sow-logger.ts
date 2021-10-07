@@ -9,6 +9,7 @@ import * as _path from 'path';
 import { IDispose, IBufferArray, BufferArray } from './sow-static';
 import * as fsw from './sow-fsw';
 export interface ILogger extends IDispose {
+    isProduction: boolean;
     newLine(): any;
     write(msg: string, color?: string): ILogger;
     log(msg: string, color?: string): ILogger;
@@ -18,6 +19,7 @@ export interface ILogger extends IDispose {
     reset(): ILogger;
     writeToStream(str: string): void;
     flush(): boolean;
+    writeBuffer(msg: string): void;
 }
 export class LogTime {
     public static dfo(t: number): string {
@@ -46,39 +48,83 @@ export class LogTime {
         return `${date.getFullYear()}-${this.dfm(date.getMonth())}-${this.dfo(date.getDate())} ${this.dfo(date.getHours())}:${this.dfo(date.getMinutes())}:${this.dfo(date.getSeconds())}`;
     }
 }
+declare type IColor = string;
 export class ConsoleColor {
-    public static Cyan(str: string): string {
+    public static Cyan(str: string): IColor {
         return `\x1b[36m${str}\x1b[0m`;
     };
-    public static Yellow(str: string): string {
+    public static Yellow(str: string): IColor {
         return `\x1b[33m${str}\x1b[0m`;
     };
-    public static Reset: string = '\x1b[0m';
-    public static Bright: string = '\x1b[1m';
-    public static Dim: string = '\x1b[2m';
-    public static Underscore: string = '\x1b[4m';
-    public static Blink: string = '\x1b[5m';
-    public static Reverse: string = '\x1b[7m';
-    public static Hidden: string = '\x1b[8m';
-    public static FgBlack: string = '\x1b[30m';
-    public static FgRed: string = '\x1b[31m';
-    public static FgGreen: string = '\x1b[32m';
-    public static FgYellow: string = '\x1b[33m';
-    public static FgBlue: string = '\x1b[34m';
-    public static FgMagenta: string = '\x1b[35m';
-    public static FgCyan: string = '\x1b[36m';
-    public static FgWhite: string = '\x1b[37m';
-    public static BgBlack: string = '\x1b[40m';
-    public static BgRed: string = '\x1b[41m';
-    public static BgGreen: string = '\x1b[42m';
-    public static BgYellow: string = '\x1b[43m';
-    public static BgBlue: string = '\x1b[44m';
-    public static BgMagenta: string = '\x1b[45m';
-    public static BgCyan: string = '\x1b[46m';
-    public static BgWhite: string = '\x1b[47m';
+    public static Reset: IColor = '\x1b[0m';
+    public static Bright: IColor = '\x1b[1m';
+    public static Dim: IColor = '\x1b[2m';
+    public static Underscore: IColor = '\x1b[4m';
+    public static Blink: IColor = '\x1b[5m';
+    public static Reverse: IColor = '\x1b[7m';
+    public static Hidden: IColor = '\x1b[8m';
+    public static FgBlack: IColor = '\x1b[30m';
+    public static FgRed: IColor = '\x1b[31m';
+    public static FgGreen: IColor = '\x1b[32m';
+    public static FgYellow: IColor = '\x1b[33m';
+    public static FgBlue: IColor = '\x1b[34m';
+    public static FgMagenta: IColor = '\x1b[35m';
+    public static FgCyan: IColor = '\x1b[36m';
+    public static FgWhite: IColor = '\x1b[37m';
+    public static BgBlack: IColor = '\x1b[40m';
+    public static BgRed: IColor = '\x1b[41m';
+    public static BgGreen: IColor = '\x1b[42m';
+    public static BgYellow: IColor = '\x1b[43m';
+    public static BgBlue: IColor = '\x1b[44m';
+    public static BgMagenta: IColor = '\x1b[45m';
+    public static BgCyan: IColor = '\x1b[46m';
+    public static BgWhite: IColor = '\x1b[47m';
 }
 function isString(a: any): a is string {
     return typeof (a) === "string";
+}
+export class ShadowLogger implements ILogger {
+    private _isProduction: boolean;
+    public get isProduction() {
+        return this._isProduction;
+    }
+    constructor() {
+        this._isProduction = true;
+    }
+    writeBuffer(msg: string): void {
+        return;
+    }
+    newLine() {
+        return;
+    }
+    write(msg: string, color?: IColor): ILogger {
+        return this;
+    }
+    log(msg: string, color?: IColor): ILogger {
+        return this;
+    }
+    info(msg: string): ILogger {
+        return this;
+    }
+    success(msg: string): ILogger {
+        return this;
+    }
+    error(msg: string): ILogger {
+        return this;
+    }
+    reset(): ILogger {
+        return this;
+    }
+    writeToStream(str: string): void {
+        return;
+    }
+    flush(): boolean {
+        return true;
+    }
+    dispose(): void {
+        return;
+    }
+
 }
 export class Logger implements ILogger {
     private _userInteractive: boolean;
@@ -89,12 +135,16 @@ export class Logger implements ILogger {
     private _blockSize: number = 0;
     private _maxBlockSize: number = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
     private _fd: number = -1;
+    private _isProduction: boolean;
+    public get isProduction() {
+        return this._isProduction;
+    }
     constructor(
         dir?: string, name?: string,
         tz?: string, userInteractive?: boolean,
         isDebug?: boolean, maxBlockSize?: number
     ) {
-        this._buff = new BufferArray();
+        this._buff = new BufferArray(); this._isProduction = false;
         this._userInteractive = typeof (userInteractive) !== "boolean" ? true : userInteractive;
         this._isDebug = typeof (isDebug) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false; this._tz = "+6";
@@ -148,6 +198,9 @@ export class Logger implements ILogger {
         });
         return void 0;
     }
+    public writeBuffer(buffer: string): void {
+        return this._write(Buffer.from(buffer));
+    }
     private _log(color?: string | ((str: string) => string), msg?: any): ILogger {
         if (!this._isDebug && !this._userInteractive) return this._write(msg), this;
         if (!this._userInteractive) {
@@ -165,10 +218,10 @@ export class Logger implements ILogger {
         }
         return this;
     }
-    public write(msg: any, color?: string): ILogger {
+    public write(msg: any, color?: IColor): ILogger {
         return this._log(color, msg);
     }
-    public log(msg: any, color?: string): ILogger {
+    public log(msg: any, color?: IColor): ILogger {
         if (!this._isDebug) return this;
         return this._log(color, msg);
     }

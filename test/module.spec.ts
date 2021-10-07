@@ -26,7 +26,7 @@ import { assert, Util } from '../lib/sow-util';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
 import { TemplateCore, templateNext, CompilerResult } from '../lib/sow-template';
 import { shouldBeError } from "./test-view";
-import { Logger, LogTime } from '../lib/sow-logger';
+import { Logger, LogTime, ShadowLogger } from '../lib/sow-logger';
 import { promisify } from 'util';
 const sleep = promisify(setTimeout);
 let app: IApplication;
@@ -1907,6 +1907,11 @@ describe("cwserver-utility", () => {
         }
     })();
     it("test-app-utility", function (done: Mocha.Done) {
+        const slogger = new ShadowLogger();
+        slogger.newLine()
+        slogger.reset().writeToStream("");
+        slogger.writeBuffer("Buffer Test...");
+        slogger.flush();
         expect(Util.JSON.stringify("{}")).toBeDefined();
         expect(Util.JSON.parse({})).toBeDefined();
         expect(Util.JSON.parse('{INVALID_JSON}')).toBeUndefined();
@@ -1958,6 +1963,13 @@ describe("cwserver-utility", () => {
                 appUtility.server.implimentConfig(newConfig);
             })).toBeInstanceOf(Error);
             appUtility.server.config.hostInfo.port = oldPort;
+            appUtility.server.config.isDebug = false;
+            appUtility.server.createLogger();
+            appUtility.server.config.isDebug = true;
+            delete process.env.IISNODE_VERSION;
+            appUtility.server.createLogger();
+            delete process.env.PORT;
+            appUtility.server.createLogger();
         })();
         expect(shouldBeError(() => {
             HttpStatus.isErrorCode("adz");
@@ -2279,6 +2291,7 @@ describe("cwserver-utility", () => {
                         key: "session",
                         maxAge: void 0
                     };
+                    newConfig.isDebug = false;
                     appUtility.server.implimentConfig(newConfig);
                 } catch (e) {
                     appUtility.server.config.session = oldSession;
@@ -2351,7 +2364,7 @@ describe("cwserver-utility", () => {
         logger.write(cwserver.ConsoleColor.Cyan("User Interactive"));
         logger.dispose();
         appUtility.server.log.dispose();
-        logger = new Logger(logDir, projectRoot, "+6", true, true, 100);
+        logger = new Logger(logDir, projectRoot, "+6", false, false, 100);
         logger.write("No way");
         expect(logger.flush()).toEqual(true);
         expect(logger.flush()).toEqual(false);
@@ -2365,6 +2378,17 @@ describe("cwserver-utility", () => {
         logger.dispose();
         expect(LogTime.dfo(0)).toEqual("01");
         expect(LogTime.dfm(11)).toEqual("12");
+        expect(LogTime.dfm(8)).toEqual("09");
+        logger = new Logger(path.resolve('./log/n-log/'), 'test-logger');
+        logger.newLine(); logger.dispose();
+        logger = new Logger(path.resolve('./log/n-log/'), 'test-logger', undefined, false, true);
+        logger.info("Test-info").newLine();
+        logger.success("Success message..");
+        logger.error("Error message..");
+        logger.log(Buffer.from("Test buffer..."));
+        logger.writeBuffer("Buffer Test...");
+        // logger = new Logger(path.resolve('./log/n-log/'), 'test-logger');
+        logger.dispose();
         done();
     });
 });

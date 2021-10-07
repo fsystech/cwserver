@@ -504,11 +504,14 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 				return void 0;
 			}
 			ctx.addError(new Error("Error Test"));
+			expect(server.passError(ctx)).toBeTruthy();
+			server.config.isDebug = false;
 			server.addError(ctx, new Error("__INVALID___"));
 			// @ts-ignore
 			ctx.next(undefined, "NOP");
 			ctx.next(undefined, true);
-			expect(server.passError(ctx)).toBeTruthy();
+			server.config.isDebug = true;
+			// expect(server.passError(ctx)).toBeTruthy();
 			disposeContext(ctx);
 			ctx.addError(new Error("Error Test"));
 			disposeContext(ctx);

@@ -352,7 +352,9 @@ class SessionSecurity {
 exports.SessionSecurity = SessionSecurity;
 class SowServer {
     constructor(appRoot, wwwName) {
+        this._isInitilized = false;
         this._port = 0;
+        this._log = Object.create(null);
         if (!wwwName) {
             if (process.env.IISNODE_VERSION) {
                 throw new Error(`
@@ -395,9 +397,8 @@ ${appRoot}\\www_public
         this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
         this.publicregx = new RegExp(`${this.public}/`, "gi");
         this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/express/`, "gi");
-        this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
+        this.userInteractive = false;
         this.initilize();
-        this._log = new sow_logger_1.Logger(`./log/`, this.public, void 0, this.userInteractive, this.config.isDebug);
         this._encryption = new ServerEncryption(this.config.encryptionKey);
         fsw.mkdirSync(this.getPublic(), "/web/temp/cache/");
         this.on = Object.create(null);
@@ -405,10 +406,14 @@ ${appRoot}\\www_public
         this.virtualInfo = Object.create(null);
         this.config.bundler.tempPath = this.mapPath(this.config.bundler.tempPath);
         this.config.staticFile.tempPath = this.mapPath(this.config.staticFile.tempPath);
+        this.createLogger();
         return;
     }
     get version() {
         return sow_server_core_1.appVersion;
+    }
+    get isInitilized() {
+        return this._isInitilized;
     }
     get config() {
         return this._config;
@@ -443,6 +448,9 @@ ${appRoot}\\www_public
     getPublicDirName() {
         return this.public;
     }
+    init() {
+        this._isInitilized = true;
+    }
     implimentConfig(config) {
         if (!config.encryptionKey)
             throw new Error("Security risk... encryption key required....");
@@ -472,6 +480,18 @@ ${appRoot}\\www_public
             throw new Error("cacheHeader information required...");
         }
         this.config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
+    }
+    createLogger() {
+        this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
+        if (typeof (this._log.dispose) === "function") {
+            this._log.dispose();
+        }
+        if (this._config.isDebug) {
+            this._log = new sow_logger_1.ShadowLogger();
+        }
+        else {
+            this._log = new sow_logger_1.Logger(`./log/`, this.public, void 0, this.userInteractive, this.config.isDebug);
+        }
     }
     initilize() {
         if (isDefined(this.config.database)) {
@@ -575,8 +595,10 @@ ${appRoot}\\www_public
         }), true;
     }
     passError(ctx) {
-        if (!ctx.error) {
+        if (!ctx.error)
             return false;
+        if (!ctx.server.config.isDebug) {
+            return ctx.res.status(500).send("Internal error occured. Please try again."), true;
         }
         const msg = `<pre>${this.escape(ctx.error.replace(/<pre[^>]*>/gi, "").replace(/\\/gi, '/').replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
         return ctx.res.status(500).send(msg), true;
@@ -673,6 +695,8 @@ ${appRoot}\\www_public
         else {
             ctx.error += `\r\n\r\nNext Error occured in ${ctx.path}`;
         }
+        if (!ctx.server.config.isDebug)
+            return ctx;
         if (typeof (ex) === "string") {
             ctx.error += " " + ex;
         }
@@ -741,6 +765,9 @@ function initilizeServer(appRoot, wwwName) {
     };
     const _controller = new sow_controller_1.Controller();
     function initilize() {
+        if (_server.isInitilized) {
+            throw new Error("Server already initilized...");
+        }
         const _app = (0, sow_server_core_1.App)();
         _server.on = (ev, handler) => {
             _app.on(ev, handler);
@@ -824,9 +851,7 @@ function initilizeServer(appRoot, wwwName) {
             Bundler.Init(_app, _controller, _server);
         }
         if (_server.config.views) {
-            _server.config.views.forEach((a, _index, _array) => {
-                require(a);
-            });
+            _server.config.views.forEach((a, _index, _array) => require(a));
         }
         global.sow.server.emit("register-view", _app, _controller, _server);
         _controller.sort();
@@ -866,6 +891,7 @@ function initilizeServer(appRoot, wwwName) {
                 return _server.transferRequest(_server.addError(context, ex), 500);
             }
         });
+        _server.init();
         return _app;
     }
     ;
