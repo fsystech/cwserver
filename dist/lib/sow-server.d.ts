@@ -120,7 +120,6 @@ export interface ISowServer {
     readonly db: NodeJS.Dict<ISowDatabaseType>;
     readonly port: string | number;
     copyright(): string;
-    createLogger(): void;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
     initilize(): void;
     implimentConfig(config: NodeJS.Dict<any>): void;
@@ -260,8 +259,6 @@ export declare class SessionSecurity {
 }
 export declare class SowServer implements ISowServer {
     get version(): string;
-    private _isInitilized;
-    get isInitilized(): boolean;
     private _config;
     private _public;
     private _log;
@@ -294,9 +291,7 @@ export declare class SowServer implements ISowServer {
     parseMaxAge(maxAge: any): number;
     getPublic(): string;
     getPublicDirName(): string;
-    init(): void;
     implimentConfig(config: NodeJS.Dict<any>): void;
-    createLogger(): void;
     initilize(): void;
     copyright(): string;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;

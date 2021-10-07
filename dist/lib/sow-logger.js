@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Logger = exports.ShadowLogger = exports.ConsoleColor = exports.LogTime = void 0;
+exports.Logger = exports.ConsoleColor = exports.LogTime = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -95,55 +95,12 @@ ConsoleColor.BgWhite = '\x1b[47m';
 function isString(a) {
     return typeof (a) === "string";
 }
-class ShadowLogger {
-    constructor() {
-        this._isProduction = true;
-    }
-    get isProduction() {
-        return this._isProduction;
-    }
-    writeBuffer(msg) {
-        return;
-    }
-    newLine() {
-        return;
-    }
-    write(msg, color) {
-        return this;
-    }
-    log(msg, color) {
-        return this;
-    }
-    info(msg) {
-        return this;
-    }
-    success(msg) {
-        return this;
-    }
-    error(msg) {
-        return this;
-    }
-    reset() {
-        return this;
-    }
-    writeToStream(str) {
-        return;
-    }
-    flush() {
-        return true;
-    }
-    dispose() {
-        return;
-    }
-}
-exports.ShadowLogger = ShadowLogger;
 class Logger {
     constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
         this._blockSize = 0;
         this._maxBlockSize = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
         this._fd = -1;
         this._buff = new sow_static_1.BufferArray();
-        this._isProduction = false;
         this._userInteractive = typeof (userInteractive) !== "boolean" ? true : userInteractive;
         this._isDebug = typeof (isDebug) !== "boolean" ? true : isDebug === true ? userInteractive === true : isDebug;
         this._canWrite = false;
@@ -172,9 +129,6 @@ class Logger {
         else {
             this.newLine();
         }
-    }
-    get isProduction() {
-        return this._isProduction;
     }
     flush() {
         if (this._fd < 0) {
@@ -206,9 +160,6 @@ class Logger {
             }
         });
         return void 0;
-    }
-    writeBuffer(buffer) {
-        return this._write(Buffer.from(buffer));
     }
     _log(color, msg) {
         if (!this._isDebug && !this._userInteractive)

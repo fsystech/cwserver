@@ -24,7 +24,7 @@ import { ISowDatabaseType } from './sow-db-type';
 import { Controller, IController } from './sow-controller';
 import { Encryption, ICryptoInfo } from "./sow-encryption";
 import { HttpStatus } from "./sow-http-status";
-import { Logger, ILogger, ShadowLogger } from "./sow-logger";
+import { Logger, ILogger } from "./sow-logger";
 export type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 // ----------------------------------------------------------
@@ -136,7 +136,6 @@ export interface ISowServer {
     readonly db: NodeJS.Dict<ISowDatabaseType>;
     readonly port: string | number;
     copyright(): string;
-    createLogger(): void;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
     initilize(): void;
     implimentConfig(config: NodeJS.Dict<any>): void;
@@ -529,10 +528,6 @@ export class SowServer implements ISowServer {
     public get version() {
         return appVersion;
     }
-    private _isInitilized: boolean = false;
-    public get isInitilized() {
-        return this._isInitilized;
-    }
     private _config: IServerConfig;
     private _public: string;
     private _log: ILogger;
@@ -567,7 +562,7 @@ export class SowServer implements ISowServer {
         return this._errorPage;
     }
     constructor(appRoot: string, wwwName?: string) {
-        this._port = 0; this._log = Object.create(null);
+        this._port = 0;
         if (!wwwName) {
             if (process.env.IISNODE_VERSION) {
                 throw new Error(`
@@ -610,8 +605,9 @@ ${appRoot}\\www_public
         this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
         this.publicregx = new RegExp(`${this.public}/`, "gi");
         this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/express/`, "gi");
-        this.userInteractive = false;
+        this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         this.initilize();
+        this._log = new Logger(`./log/`, this.public, void 0, this.userInteractive, this.config.isDebug);
         this._encryption = new ServerEncryption(this.config.encryptionKey);
         fsw.mkdirSync(this.getPublic(), "/web/temp/cache/");
         this.on = Object.create(null);
@@ -619,7 +615,6 @@ ${appRoot}\\www_public
         this.virtualInfo = Object.create(null);
         this.config.bundler.tempPath = this.mapPath(this.config.bundler.tempPath);
         this.config.staticFile.tempPath = this.mapPath(this.config.staticFile.tempPath);
-        this.createLogger();
         return;
     }
     on: (ev: "shutdown", handler: () => void) => void;
@@ -636,9 +631,6 @@ ${appRoot}\\www_public
     }
     getPublicDirName(): string {
         return this.public;
-    }
-    init() {
-        this._isInitilized = true;
     }
     implimentConfig(config: NodeJS.Dict<any>): void {
         if (!config.encryptionKey)
@@ -668,17 +660,6 @@ ${appRoot}\\www_public
             throw new Error("cacheHeader information required...");
         }
         this.config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
-    }
-    createLogger() {
-        this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
-        if (typeof (this._log.dispose) === "function") {
-            this._log.dispose();
-        }
-        if (this._config.isDebug) {
-            this._log = new ShadowLogger();
-        } else {
-            this._log = new Logger(`./log/`, this.public, void 0, this.userInteractive, this.config.isDebug);
-        }
     }
     initilize(): void {
         if (isDefined(this.config.database)) {
@@ -780,9 +761,8 @@ ${appRoot}\\www_public
         }), true;
     }
     passError(ctx: IContext): boolean {
-        if (!ctx.error) return false;
-        if (!ctx.server.config.isDebug) {
-            return ctx.res.status(500).send("Internal error occured. Please try again."), true;
+        if (!ctx.error) {
+            return false;
         }
         const msg: string = `<pre>${this.escape(ctx.error.replace(/<pre[^>]*>/gi, "").replace(/\\/gi, '/').replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
         return ctx.res.status(500).send(msg), true;
@@ -871,7 +851,6 @@ ${appRoot}\\www_public
         } else {
             ctx.error += `\r\n\r\nNext Error occured in ${ctx.path}`;
         }
-        if (!ctx.server.config.isDebug) return ctx;
         if (typeof (ex) === "string") {
             ctx.error += " " + ex;
         } else {
@@ -945,9 +924,6 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
     }
     const _controller: IController = new Controller();
     function initilize(): IApplication {
-        if (_server.isInitilized) {
-            throw new Error("Server already initilized...");
-        }
         const _app: IApplication = sowAppCore();
         _server.on = (ev: "shutdown", handler: () => void): void => {
             _app.on(ev, handler);
@@ -1026,7 +1002,9 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             Bundler.Init(_app, _controller, _server);
         }
         if (_server.config.views) {
-            _server.config.views.forEach((a: string, _index: number, _array: string[]) => require(a));
+            _server.config.views.forEach((a: string, _index: number, _array: string[]) => {
+                require(a);
+            });
         }
         global.sow.server.emit("register-view", _app, _controller, _server);
         _controller.sort();
@@ -1065,7 +1043,6 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 return _server.transferRequest(_server.addError(context, ex), 500);
             }
         });
-        _server.init();
         return _app;
     };
     global.sow.isInitilized = true;
