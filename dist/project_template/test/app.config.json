@@ -49,7 +49,8 @@
     "fileCache": true,
     "route": "/app/api/bundle/",
     "compress": true,
-    "tempPath": "/web/temp/"
+    "tempPath": "/web/temp/",
+    "reValidate": true
   },
   "views": [ "$root/$public/lib/view/test.js" ],
   "hiddenDirectory": [ "/lib/", "/config/", "/template/", "/web/" ],

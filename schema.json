@@ -269,7 +269,8 @@
         "fileCache": true,
         "route": "/app/api/bundle/",
         "compress": true,
-        "tempPath": "/web/temp/"
+        "tempPath": "/web/temp/",
+        "reValidate": true
       },
       "properties": {
         "enable": {
@@ -313,6 +314,16 @@
           "minLength": 1,
           "default": "/web/temp/",
           "description": "Bundle cache file directory"
+        },
+        "reValidate":{
+          "type": "boolean",
+          "minLength": 1,
+          "default": true,
+          "enum": [
+            true,
+            false
+          ],
+          "description": "If file chache mode and reValidate = false then `cwserver` will not verify is file changed"
         }
       }
     },

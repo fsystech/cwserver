@@ -1009,6 +1009,30 @@ describe("cwserver-bundler", () => {
                 done();
             });
     });
+    it('bundler revalidate when false (server file cache)', (done: Mocha.Done): void => {
+        appUtility.server.config.bundler.fileCache = true;
+        appUtility.server.config.bundler.compress = true;
+        appUtility.server.config.bundler.reValidate = false;
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/app/api/bundle/`)
+            .query({
+                g: appUtility.server.createBundle(`
+                       static/css/test-1.css,
+                       static/css/test-2.css|__owner__`
+                ),
+                ck: "bundle_test_css", ct: "text/css", rc: "Y"
+            })
+            .end((err, res) => {
+                appUtility.server.config.bundler.reValidate = true;
+                expect(err).not.toBeInstanceOf(Error);
+                expect(res.status).toBe(200);
+                expect(res.header["content-type"]).toBe("text/css");
+                expect(res.header["content-encoding"]).toBe("gzip");
+                expect(res.header.etag).not.toBeUndefined();
+                expect(res.header["last-modified"]).not.toBeUndefined();
+                done();
+            });
+    });
     it('css file bundler test gzip (server file cache)', (done: Mocha.Done): void => {
         appUtility.server.config.bundler.fileCache = true;
         appUtility.server.config.bundler.compress = true;

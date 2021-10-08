@@ -322,6 +322,7 @@ class ServerConfig {
             fileCache: true,
             route: "/app/api/bundle/",
             compress: true,
+            reValidate: true,
             tempPath: "/web/temp/"
         };
     }
@@ -333,7 +334,12 @@ class SessionSecurity {
         throw new Error("Invalid initilization...");
     }
     static getRemoteAddress(ip) {
-        return ip.substring(0, ip.lastIndexOf('.'));
+        let ipPart = ip.substring(0, ip.lastIndexOf('.'));
+        if (!ipPart || ipPart.length === 0) {
+            // assume local machine
+            ipPart = "127.0.0";
+        }
+        return ipPart;
     }
     static createSession(req, sessionObj) {
         sessionObj.ipPart = this.getRemoteAddress(req.ip);

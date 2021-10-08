@@ -89,8 +89,11 @@ This "Combiner" contains the following files:\n`;
         }
         return path;
     }
-    static getBundleInfo(server, str, lastChangeTime, next) {
+    static getBundleInfo(server, str, lastChangeTime, hasCacheFile, next) {
         const result = [];
+        if (hasCacheFile && !server.config.bundler.reValidate) {
+            return next(result, null);
+        }
         const lchangeTime = typeof (lastChangeTime) === "number" ? lastChangeTime : 0;
         const files = str.split(",");
         const forword = () => {
@@ -199,7 +202,7 @@ This "Combiner" contains the following files:\n`;
         if (!desc)
             return;
         const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
-        return this.getBundleInfo(server, desc.toString(), cngHander.sinceModify, (files, err) => {
+        return this.getBundleInfo(server, desc.toString(), cngHander.sinceModify, false, (files, err) => {
             return ctx.handleError(err, () => {
                 let hasChanged = true;
                 if (cngHander.sinceModify) {
@@ -250,7 +253,7 @@ This "Combiner" contains the following files:\n`;
                     cfileSize = stat.size;
                     lastChangeTime = stat.mtime.getTime();
                 }
-                return this.getBundleInfo(server, desc.toString(), lastChangeTime, (files, ierr) => {
+                return this.getBundleInfo(server, desc.toString(), lastChangeTime, existsCachFile, (files, ierr) => {
                     return ctx.handleError(ierr, () => {
                         let hasChanged = true;
                         if (existsCachFile) {

@@ -36,6 +36,7 @@ export function shouldBeError(next: () => void, printerr?: boolean): Error | voi
 expect(toString(1)).toEqual("1");
 global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
 	expect(shouldBeError(() => new SessionSecurity())).toBeInstanceOf(Error);
+	expect(SessionSecurity.getRemoteAddress("::1")).toEqual('127.0.0');
 	fsw.mkdirSync(server.config.staticFile.tempPath, "");
 	expect(parseCookie(["test"])).toBeInstanceOf(Object);
 	expect(parseCookie({})).toBeInstanceOf(Object);

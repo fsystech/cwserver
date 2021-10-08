@@ -107,6 +107,7 @@ export interface IServerConfig {
         route: string;
         compress: boolean;
         tempPath: string;
+        reValidate: boolean;
     };
 }
 export interface ISowServer {
@@ -244,6 +245,7 @@ export declare class ServerConfig implements IServerConfig {
         route: string;
         compress: boolean;
         tempPath: string;
+        reValidate: boolean;
     };
     template: {
         cache: boolean;
@@ -254,7 +256,7 @@ export declare class ServerConfig implements IServerConfig {
 }
 export declare class SessionSecurity {
     constructor();
-    private static getRemoteAddress;
+    static getRemoteAddress(ip: string): string;
     static createSession(req: IRequest, sessionObj: NodeJS.Dict<any>): string;
     static isValidSession(req: IRequest): void;
 }

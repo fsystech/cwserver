@@ -79,9 +79,13 @@ This "Combiner" contains the following files:\n`;
     static getBundleInfo(
         server: ISowServer, str: string,
         lastChangeTime: number | void,
+        hasCacheFile: boolean,
         next: (bundleInfo: BundlerFileInfo[], err: Error | null) => void
     ): void {
         const result: BundlerFileInfo[] = [];
+        if (hasCacheFile && !server.config.bundler.reValidate) {
+            return next(result, null);
+        }
         const lchangeTime: number = typeof (lastChangeTime) === "number" ? lastChangeTime : 0;
         const files: string[] = str.split(",");
         const forword = (): void => {
@@ -186,7 +190,7 @@ This "Combiner" contains the following files:\n`;
         const desc: string | void = this.decryptFilePath(server, ctx, str.toString());
         if (!desc) return;
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
-        return this.getBundleInfo(server, desc.toString(), cngHander.sinceModify, (files: BundlerFileInfo[], err: Error | null): void => {
+        return this.getBundleInfo(server, desc.toString(), cngHander.sinceModify, false, (files: BundlerFileInfo[], err: Error | null): void => {
             return ctx.handleError(err, () => {
                 let hasChanged: boolean = true;
                 if (cngHander.sinceModify) {
@@ -235,7 +239,7 @@ This "Combiner" contains the following files:\n`;
                     cfileSize = stat.size;
                     lastChangeTime = stat.mtime.getTime();
                 }
-                return this.getBundleInfo(server, desc.toString(), lastChangeTime, (files: BundlerFileInfo[], ierr: Error | null): void => {
+                return this.getBundleInfo(server, desc.toString(), lastChangeTime, existsCachFile, (files: BundlerFileInfo[], ierr: Error | null): void => {
                     return ctx.handleError(ierr, () => {
                         let hasChanged: boolean = true;
                         if (existsCachFile) {

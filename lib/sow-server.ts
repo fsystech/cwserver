@@ -125,6 +125,7 @@ export interface IServerConfig {
         route: string;
         compress: boolean;
         tempPath: string;
+        reValidate: boolean;
     };
 }
 export interface ISowServer {
@@ -444,6 +445,7 @@ export class ServerConfig implements IServerConfig {
         route: string;
         compress: boolean;
         tempPath: string;
+        reValidate: boolean;
     };
     template: {
         cache: boolean;
@@ -500,6 +502,7 @@ export class ServerConfig implements IServerConfig {
             fileCache: true,
             route: "/app/api/bundle/",
             compress: true,
+            reValidate: true,
             tempPath: "/web/temp/"
         };
     }
@@ -509,8 +512,13 @@ export class SessionSecurity {
     constructor() {
         throw new Error("Invalid initilization...");
     }
-    private static getRemoteAddress(ip: string): string {
-        return ip.substring(0, ip.lastIndexOf('.'));
+    public static getRemoteAddress(ip: string): string {
+        let ipPart: string = ip.substring(0, ip.lastIndexOf('.'));
+        if (!ipPart || ipPart.length === 0) {
+            // assume local machine
+            ipPart = "127.0.0";
+        }
+        return ipPart;
     }
     public static createSession(req: IRequest, sessionObj: NodeJS.Dict<any>): string {
         sessionObj.ipPart = this.getRemoteAddress(req.ip);
