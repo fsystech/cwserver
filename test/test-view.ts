@@ -486,7 +486,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			const res: IResponse = ctx.res;
 			setImmediate(() => {
 				expect(res.sendIfError(new Error("test-response-error"))).toBeTruthy();
-			}, 0);
+			});
 		})
 		.get('/controller-error', (ctx: IContext, requestParam?: IRequestParam): void => {
 			throw new Error("runtime-error");

@@ -475,7 +475,7 @@ class Application extends events_1.EventEmitter {
         if (!this._isRunning) {
             setImmediate(() => {
                 rejectTerminating(new Error('Server not running....'));
-            }, 0);
+            });
         }
         else {
             this._isRunning = false;

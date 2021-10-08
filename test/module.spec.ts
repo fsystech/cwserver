@@ -10,7 +10,7 @@ import expect from 'expect';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as request from 'superagent';
-import * as io from 'socket.io-client';
+import { io } from 'socket.io-client';
 import * as fsw from '../lib/sow-fsw';
 import { HttpStatus } from "../lib/sow-http-status";
 import * as cwserver from '../index';
@@ -1709,7 +1709,7 @@ describe("cwserver-socket-io-implementation", () => {
             });
     });
     it('should be send n receive data over socket-io', (done: Mocha.Done): void => {
-        const socket = io.connect(`http://localhost:${appUtility.port}`, {
+        const socket = io(`http://localhost:${appUtility.port}`, {
             reconnection: true, transportOptions: {
                 polling: {
                     extraHeaders: {

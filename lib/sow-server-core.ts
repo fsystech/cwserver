@@ -506,7 +506,7 @@ class Application extends EventEmitter implements IApplication {
         if (!this._isRunning) {
             setImmediate(() => {
                 rejectTerminating(new Error('Server not running....'));
-            }, 0);
+            });
         } else {
             this._isRunning = false;
             this._httpServer.close().once('close', () => resolveTerminating());
