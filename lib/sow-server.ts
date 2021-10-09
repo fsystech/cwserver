@@ -594,7 +594,7 @@ ${appRoot}\\www_public
         this._public = wwwName.toString();
         this._config = new ServerConfig();
         this._db = {};
-        const absPath: string = _path.resolve(`${this.root}/${this.public}/config/app.config.json`);
+        const absPath: string = _path.resolve(`${this.root}/${this._public}/config/app.config.json`);
         if (!_fs.existsSync(absPath)) {
             throw new Error(`No config file found in ${absPath}`);
         }
@@ -603,8 +603,8 @@ ${appRoot}\\www_public
             throw new Error(`Invalid config file defined.\r\nConfig: ${absPath}`);
         }
         Schema.Validate(config);
-        if (this.public !== config.hostInfo.root) {
-            throw new Error(`Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
+        if (this._public !== config.hostInfo.root) {
+            throw new Error(`Server ready for App Root: ${this._public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
         }
         const libRoot: string = getLibRoot();
         this._errorPage = {
@@ -612,20 +612,20 @@ ${appRoot}\\www_public
             "401": _path.resolve(`${libRoot}/dist/error_page/401.html`),
             "500": _path.resolve(`${libRoot}/dist/error_page/500.html`)
         };
-        Util.extend(this.config, config, true);
+        Util.extend(this._config, config, true);
         this.implimentConfig(config);
         this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
-        this.publicregx = new RegExp(`${this.public}/`, "gi");
+        this.publicregx = new RegExp(`${this._public}/`, "gi");
         this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
         this.userInteractive = false;
         this.initilize();
-        this._encryption = new ServerEncryption(this.config.encryptionKey);
+        this._encryption = new ServerEncryption(this._config.encryptionKey);
         fsw.mkdirSync(this.getPublic(), "/web/temp/cache/");
         this.on = Object.create(null);
         this.addVirtualDir = Object.create(null);
         this.virtualInfo = Object.create(null);
-        this.config.bundler.tempPath = this.mapPath(this.config.bundler.tempPath);
-        this.config.staticFile.tempPath = this.mapPath(this.config.staticFile.tempPath);
+        this._config.bundler.tempPath = this.mapPath(this._config.bundler.tempPath);
+        this._config.staticFile.tempPath = this.mapPath(this._config.staticFile.tempPath);
         this.createLogger();
         return;
     }
@@ -639,17 +639,17 @@ ${appRoot}\\www_public
         return parseMaxAge(maxAge);
     }
     getPublic(): string {
-        return `${this.root}/${this.public}`;
+        return `${this.root}/${this._public}`;
     }
     getPublicDirName(): string {
-        return this.public;
+        return this._public;
     }
     init() {
         this._isInitilized = true;
     }
     implimentConfig(config: NodeJS.Dict<any>): void {
-        if (typeof (this.config.bundler.reValidate) !== "boolean") {
-            this.config.bundler.reValidate = true;
+        if (typeof (this._config.bundler.reValidate) !== "boolean") {
+            this._config.bundler.reValidate = true;
         }
         if (!config.encryptionKey)
             throw new Error("Security risk... encryption key required....");
@@ -659,42 +659,42 @@ ${appRoot}\\www_public
         if (process.env.IISNODE_VERSION && process.env.PORT) {
             this._port = process.env.PORT;
         } else {
-            if (!this.config.hostInfo.port)
+            if (!this._config.hostInfo.port)
                 throw new Error('Listener port required...');
-            this._port = this.config.hostInfo.port;
+            this._port = this._config.hostInfo.port;
         }
-        this.config.encryptionKey = Encryption.updateCryptoKeyIV(config.encryptionKey);
-        if (this.config.session) {
-            if (!this.config.session.key)
+        this._config.encryptionKey = Encryption.updateCryptoKeyIV(config.encryptionKey);
+        if (this._config.session) {
+            if (!this._config.session.key)
                 throw new Error("Security risk... Session encryption key required....");
-            this.config.session.key = Encryption.updateCryptoKeyIV(config.session.key);
-            if (!this.config.session.maxAge)
+            this._config.session.key = Encryption.updateCryptoKeyIV(config.session.key);
+            if (!this._config.session.maxAge)
                 config.session.maxAge = "1d";
             if (typeof (config.session.maxAge) !== "string")
                 throw new Error(`Invalid maxAage format ${config.session.maxAge}. maxAge should "1d|1h|1m" formatted...`);
-            this.config.session.maxAge = parseMaxAge(config.session.maxAge);
+            this._config.session.maxAge = parseMaxAge(config.session.maxAge);
         }
-        if (!this.config.cacheHeader) {
+        if (!this._config.cacheHeader) {
             throw new Error("cacheHeader information required...");
         }
-        this.config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
+        this._config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
     }
     createLogger() {
         this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         if (typeof (this._log.dispose) === "function") {
             this._log.dispose();
         }
-        if (this._config.isDebug) {
+        if (!this._config.isDebug) {
             this._log = new ShadowLogger();
         } else {
-            this._log = new Logger(`./log/`, this.public, void 0, this.userInteractive, this.config.isDebug);
+            this._log = new Logger(`./log/`, this._public, void 0, this.userInteractive, this._config.isDebug);
         }
     }
     initilize(): void {
-        if (isDefined(this.config.database)) {
-            if (!Util.isArrayLike<IDatabaseConfig>(this.config.database))
+        if (isDefined(this._config.database)) {
+            if (!Util.isArrayLike<IDatabaseConfig>(this._config.database))
                 throw new Error("database cofig should be Array....");
-            this.config.database.forEach((conf: IDatabaseConfig): void => {
+            this._config.database.forEach((conf: IDatabaseConfig): void => {
                 if (!conf.module)
                     throw new Error("database module name requeired.");
                 if (this._db[conf.module])
@@ -705,37 +705,37 @@ ${appRoot}\\www_public
                 this._db[conf.module] = new (require(conf.path))(conf.dbConn)
             });
         }
-        if (!this.config.errorPage || (Util.isPlainObject(this.config.errorPage) && Object.keys(this.config.errorPage).length === 0)) {
-            if (!this.config.errorPage) this.config.errorPage = {};
-            for (const property in this.errorPage) {
-                if (!Object.hasOwnProperty.call(this.config.errorPage, property)) {
-                    this.config.errorPage[property] = this.errorPage[property];
+        if (!this._config.errorPage || (Util.isPlainObject(this._config.errorPage) && Object.keys(this._config.errorPage).length === 0)) {
+            if (!this._config.errorPage) this._config.errorPage = {};
+            for (const property in this._errorPage) {
+                if (!Object.hasOwnProperty.call(this._config.errorPage, property)) {
+                    this._config.errorPage[property] = this._errorPage[property];
                 }
             }
         } else {
-            if (Util.isPlainObject(this.config.errorPage) === false)
+            if (Util.isPlainObject(this._config.errorPage) === false)
                 throw new Error("errorPage property should be Object.");
-            for (const property in this.config.errorPage) {
-                if (Object.hasOwnProperty.call(this.config.errorPage, property)) {
-                    const path: string | undefined = this.config.errorPage[property];
+            for (const property in this._config.errorPage) {
+                if (Object.hasOwnProperty.call(this._config.errorPage, property)) {
+                    const path: string | undefined = this._config.errorPage[property];
                     if (path) {
                         const code: number = parseInt(property);
                         const statusCode: number = HttpStatus.fromPath(path, code);
                         if (!statusCode || statusCode !== code || !HttpStatus.isErrorCode(statusCode)) {
                             throw new Error(`Invalid Server/Client error page... ${path} and code ${code}}`);
                         }
-                        this.config.errorPage[property] = this.formatPath(path);
+                        this._config.errorPage[property] = this.formatPath(path);
                     }
                 }
             }
-            for (const property in this.errorPage) {
-                if (!Object.hasOwnProperty.call(this.config.errorPage, property)) {
-                    this.config.errorPage[property] = this.errorPage[property];
+            for (const property in this._errorPage) {
+                if (!Object.hasOwnProperty.call(this._config.errorPage, property)) {
+                    this._config.errorPage[property] = this._errorPage[property];
                 }
             }
         }
-        this.config.views.forEach((name: string, index: number) => {
-            this.config.views[index] = this.formatPath(name);
+        this._config.views.forEach((name: string, index: number) => {
+            this._config.views[index] = this.formatPath(name);
         });
     }
     copyright(): string {
@@ -753,24 +753,24 @@ ${appRoot}\\www_public
         res.setHeader('x-xss-protection', '1; mode=block');
         res.setHeader('x-content-type-options', 'nosniff');
         res.setHeader('x-frame-options', 'sameorigin');
-        if (this.config.hostInfo.frameAncestors) {
-            res.setHeader('content-security-policy', `frame-ancestors ${this.config.hostInfo.frameAncestors}`);
+        if (this._config.hostInfo.frameAncestors) {
+            res.setHeader('content-security-policy', `frame-ancestors ${this._config.hostInfo.frameAncestors}`);
         }
-        if (this.config.session.isSecure) {
+        if (this._config.session.isSecure) {
             res.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
-            if (this.config.hostInfo.hostName && this.config.hostInfo.hostName.length > 0) {
-                res.setHeader('expect-ct', `max-age=0, report-uri="https://${this.config.hostInfo.hostName}/report/?ct=browser&version=${appVersion}`);
+            if (this._config.hostInfo.hostName && this._config.hostInfo.hostName.length > 0) {
+                res.setHeader('expect-ct', `max-age=0, report-uri="https://${this._config.hostInfo.hostName}/report/?ct=browser&version=${appVersion}`);
             }
         }
     }
     parseSession(cook: undefined | string[] | string | { [x: string]: any; }): ISession {
-        if (!this.config.session.cookie || this.config.session.cookie.length === 0)
+        if (!this._config.session.cookie || this._config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new Session();
         const cookies: NodeJS.Dict<string> = cookieParser(cook);
-        const value: string | undefined = cookies[this.config.session.cookie];
+        const value: string | undefined = cookies[this._config.session.cookie];
         if (!value) return session;
-        const str: string = Encryption.decryptFromHex(value, this.config.session.key);
+        const str: string = Encryption.decryptFromHex(value, this._config.session.key);
         if (!str) {
             return session;
         }
@@ -780,13 +780,13 @@ ${appRoot}\\www_public
     }
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
         return ctx.res.cookie(
-            this.config.session.cookie,
+            this._config.session.cookie,
             Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {
                 loginId, roleId, userData
-            }), this.config.session.key), {
-            maxAge: this.config.session.maxAge,
+            }), this._config.session.key), {
+            maxAge: this._config.session.maxAge,
             httpOnly: true,
-            secure: this.config.session.isSecure
+            secure: this._config.session.isSecure
         }), true;
     }
     passError(ctx: IContext): boolean {
@@ -803,16 +803,16 @@ ${appRoot}\\www_public
         }
         const cstatusCode: string = String(statusCode);
         if (tryServer) {
-            if (this.errorPage[cstatusCode]) {
-                return this.errorPage[cstatusCode];
+            if (this._errorPage[cstatusCode]) {
+                return this._errorPage[cstatusCode];
             }
             return void 0;
         }
-        if (this.config.errorPage[cstatusCode]) {
-            return this.config.errorPage[cstatusCode];
+        if (this._config.errorPage[cstatusCode]) {
+            return this._config.errorPage[cstatusCode];
         }
-        if (this.errorPage[cstatusCode]) {
-            return this.errorPage[cstatusCode];
+        if (this._errorPage[cstatusCode]) {
+            return this._errorPage[cstatusCode];
         }
         throw new Error(`No error page found in app.config.json->errorPage[${cstatusCode}]`);
     }
@@ -860,14 +860,14 @@ ${appRoot}\\www_public
         }
     }
     mapPath(path: string): string {
-        return _path.resolve(`${this.root}/${this.public}/${path}`);
+        return _path.resolve(`${this.root}/${this._public}/${path}`);
     }
     pathToUrl(path: string): string {
         if (!Util.getExtension(path)) return path;
-        let index: number = path.indexOf(this.public);
+        let index: number = path.indexOf(this._public);
         if (index === 0) return path;
         if (index > 0) {
-            path = path.substring(path.indexOf(this.public) + this.public.length);
+            path = path.substring(path.indexOf(this._public) + this._public.length);
         } else {
             path = path.replace(this.rootregx, "/$root");
         }
@@ -909,7 +909,7 @@ ${appRoot}\\www_public
     }
     createBundle(str: string): string {
         if (!str) throw new Error("No string found to create bundle...")
-        return Encryption.encryptUri(str, this.config.encryptionKey);
+        return Encryption.encryptUri(str, this._config.encryptionKey);
     }
     addMimeType(extension: string, val: string): void {
         return global.sow.HttpMime.add(extension, val);
