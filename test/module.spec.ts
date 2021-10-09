@@ -1978,11 +1978,13 @@ describe("cwserver-utility", () => {
             expect(appUtility.server.pathToUrl(`${projectRoot}/test.png`)).toBeDefined();
             const oldPort: string | number = appUtility.server.config.hostInfo.port;
             appUtility.server.config.hostInfo.port = 0;
+            delete appUtility.server.config.bundler.reValidate;
             const newConfig: { [x: string]: any; } = appUtility.server.config;
             expect(shouldBeError(() => {
                 appUtility.server.implimentConfig(newConfig);
             })).toBeInstanceOf(Error);
             process.env.PORT = "8080";
+            appUtility.server.config.bundler.reValidate = true;
             expect(shouldBeError(() => {
                 appUtility.server.implimentConfig(newConfig);
             })).toBeInstanceOf(Error);

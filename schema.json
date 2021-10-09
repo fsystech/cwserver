@@ -317,13 +317,13 @@
         },
         "reValidate":{
           "type": "boolean",
-          "minLength": 1,
+          "minLength": 0,
           "default": true,
           "enum": [
             true,
             false
           ],
-          "description": "If file chache mode and reValidate = false then `cwserver` will not verify is file changed"
+          "description": "If file chache mode and reValidate = false then `cwserver` will not check is file changed ?"
         }
       }
     },

@@ -388,7 +388,6 @@ ${appRoot}\\www_public
             throw new Error(`Invalid config file defined.\r\nConfig: ${absPath}`);
         }
         sow_schema_validator_1.Schema.Validate(config);
-        // if ( config.hasOwnProperty( "Author" ) ) throw _Error( "You should not set Author property..." );
         if (this.public !== config.hostInfo.root) {
             throw new Error(`Server ready for App Root: ${this.public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
         }
@@ -402,7 +401,7 @@ ${appRoot}\\www_public
         this.implimentConfig(config);
         this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
         this.publicregx = new RegExp(`${this.public}/`, "gi");
-        this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/express/`, "gi");
+        this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
         this.userInteractive = false;
         this.initilize();
         this._encryption = new ServerEncryption(this.config.encryptionKey);
@@ -458,6 +457,9 @@ ${appRoot}\\www_public
         this._isInitilized = true;
     }
     implimentConfig(config) {
+        if (typeof (this.config.bundler.reValidate) !== "boolean") {
+            this.config.bundler.reValidate = true;
+        }
         if (!config.encryptionKey)
             throw new Error("Security risk... encryption key required....");
         if (!sow_util_1.Util.isArrayLike(config.hiddenDirectory)) {

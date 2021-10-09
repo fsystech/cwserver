@@ -107,7 +107,7 @@ export interface IServerConfig {
         route: string;
         compress: boolean;
         tempPath: string;
-        reValidate: boolean;
+        reValidate?: boolean;
     };
 }
 export interface ISowServer {
@@ -245,7 +245,7 @@ export declare class ServerConfig implements IServerConfig {
         route: string;
         compress: boolean;
         tempPath: string;
-        reValidate: boolean;
+        reValidate?: boolean;
     };
     template: {
         cache: boolean;
