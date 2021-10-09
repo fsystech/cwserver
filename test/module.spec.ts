@@ -1932,10 +1932,11 @@ describe("cwserver-utility", () => {
     })();
     it("test-app-utility", function (done: Mocha.Done) {
         const slogger = new ShadowLogger();
-        slogger.newLine()
+        slogger.newLine();
+        expect(slogger.isProduction).toBeTruthy();
         slogger.reset().writeToStream("");
         slogger.writeBuffer("Buffer Test...");
-        slogger.flush();
+        slogger.write("hello").log("").info("").success("").error("").flush();
         expect(Util.JSON.stringify("{}")).toBeDefined();
         expect(Util.JSON.parse({})).toBeDefined();
         expect(Util.JSON.parse('{INVALID_JSON}')).toBeUndefined();
@@ -2373,6 +2374,7 @@ describe("cwserver-utility", () => {
         appUtility.server.log.info("log-info-test");
         appUtility.server.log.dispose();
         let logger = new Logger();
+        expect(logger.isProduction).toBeFalsy();
         logger.log("log-test");
         logger.info("log-test");
         logger.success("log-test");
