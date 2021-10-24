@@ -7,6 +7,8 @@ export interface IController {
     post(route: string, next: AppHandler): IController;
     processAny(ctx: IContext): void;
     reset(): void;
+    /** The given `arguments` will be skip */
+    delete(...args: string[]): void;
     remove(path: string): boolean;
     sort(): void;
 }
@@ -15,6 +17,7 @@ export declare class Controller implements IController {
     get httpMimeHandler(): IHttpMimeHandler;
     constructor();
     reset(): void;
+    delete(...args: string[]): void;
     get(route: string, next: AppHandler): IController;
     post(route: string, next: AppHandler): IController;
     any(route: string, next: AppHandler): IController;

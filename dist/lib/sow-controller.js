@@ -53,6 +53,13 @@ const getFileName = (path) => {
         return void 0;
     return path.substring(index + 1);
 };
+const _deleteRouter = (skip, router) => {
+    for (const prop in router) {
+        if (skip.some(a => prop.indexOf(a) > -1))
+            continue;
+        delete router[prop];
+    }
+};
 class Controller {
     constructor() {
         this._httpMimeHandler = new sow_http_mime_1.HttpMimeHandler();
@@ -71,6 +78,19 @@ class Controller {
         routeTable.post = {};
         routeTable.any = {};
         routeTable.router = [];
+    }
+    delete(...args) {
+        if (args.length === 0)
+            return this.reset();
+        _deleteRouter(args, routeTable.get);
+        _deleteRouter(args, routeTable.post);
+        _deleteRouter(args, routeTable.any);
+        return routeTable.router = routeTable.router.filter((a) => {
+            if (args.some(skp => a.route.indexOf(skp) > -1))
+                return true;
+            console.log(a.route);
+            return false;
+        }), void 0;
     }
     get(route, next) {
         if (routeTable.get[route])

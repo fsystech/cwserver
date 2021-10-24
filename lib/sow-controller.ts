@@ -21,6 +21,8 @@ export interface IController {
     post(route: string, next: AppHandler): IController;
     processAny(ctx: IContext): void;
     reset(): void;
+    /** The given `arguments` will be skip */
+    delete(...args: string[]): void;
     remove(path: string): boolean;
     sort(): void;
 }
@@ -49,6 +51,12 @@ const getFileName = (path: string): string | void => {
     if (index < 0) return void 0;
     return path.substring(index + 1);
 };
+const _deleteRouter = (skip: string[], router: { [x: string]: AppHandler }) => {
+    for (const prop in router) {
+        if (skip.some(a => prop.indexOf(a) > -1)) continue;
+        delete router[prop];
+    }
+}
 export class Controller implements IController {
     private _httpMimeHandler: IHttpMimeHandler;
     public get httpMimeHandler() {
@@ -66,6 +74,17 @@ export class Controller implements IController {
         routeTable.post = {};
         routeTable.any = {};
         routeTable.router = [];
+    }
+    public delete(...args: string[]): void {
+        if (args.length === 0) return this.reset();
+        _deleteRouter(args, routeTable.get);
+        _deleteRouter(args, routeTable.post);
+        _deleteRouter(args, routeTable.any);
+        return routeTable.router = routeTable.router.filter((a) => {
+            if (args.some(skp => a.route.indexOf(skp) > -1)) return true;
+            console.log(a.route);
+            return false;
+        }), void 0;
     }
     public get(route: string, next: AppHandler): IController {
         if (routeTable.get[route])

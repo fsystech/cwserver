@@ -1892,7 +1892,8 @@ describe("cwserver-controller-reset", () => {
     it('should-be-reset-controller', (done: Mocha.Done): void => {
         expect(appUtility.controller.remove('/authenticate')).toEqual(true);
         expect(appUtility.controller.remove('/post')).toEqual(true);
-        appUtility.controller.reset();
+        appUtility.controller.delete('/post-async/');
+        appUtility.controller.delete();
         done();
     });
     it('should-be-controller-error', (done: Mocha.Done): void => {

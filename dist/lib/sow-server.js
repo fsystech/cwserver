@@ -608,7 +608,7 @@ ${appRoot}\\www_public
         if (!ctx.server.config.isDebug) {
             return ctx.res.status(500).send("Internal error occured. Please try again."), true;
         }
-        const msg = `<pre>${this.escape(ctx.error.replace(/<pre[^>]*>/gi, "").replace(/\\/gi, '/').replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
+        const msg = `<pre>${this.escape(ctx.error.replace(/<pre[^>]*>/gi, "").replace(/\\/gi, "/").replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
         return ctx.res.status(500).send(msg), true;
     }
     getErrorPath(statusCode, tryServer) {
