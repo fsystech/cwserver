@@ -51,13 +51,15 @@ function dispose(data) {
 const incomingContentType = {
     URL_ENCODE: "application/x-www-form-urlencoded",
     APP_JSON: "application/json",
-    MULTIPART: "multipart/form-data"
+    MULTIPART: "multipart/form-data",
+    RAW_TEXT: "text/plain"
 };
 var ContentType;
 (function (ContentType) {
     ContentType[ContentType["URL_ENCODE"] = 1] = "URL_ENCODE";
     ContentType[ContentType["APP_JSON"] = 2] = "APP_JSON";
     ContentType[ContentType["MULTIPART"] = 3] = "MULTIPART";
+    ContentType[ContentType["RAW_TEXT"] = 4] = "RAW_TEXT";
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
 })(ContentType || (ContentType = {}));
 function extractBetween(data, separator1, separator2) {
@@ -360,11 +362,14 @@ class BodyParser {
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
         }
-        else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1 && this._contentType === incomingContentType.URL_ENCODE) {
+        else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1) {
             this._contentTypeEnum = ContentType.URL_ENCODE;
         }
-        else if (this._contentType.indexOf(incomingContentType.APP_JSON) > -1 && this._contentType === incomingContentType.APP_JSON) {
+        else if (this._contentType.indexOf(incomingContentType.APP_JSON) > -1) {
             this._contentTypeEnum = ContentType.APP_JSON;
+        }
+        else if (this._contentType.indexOf(incomingContentType.RAW_TEXT) > -1) {
+            this._contentTypeEnum = ContentType.RAW_TEXT;
         }
         else {
             this._contentTypeEnum = ContentType.UNKNOWN;
@@ -469,6 +474,9 @@ class BodyParser {
         if (this._contentTypeEnum === ContentType.APP_JSON) {
             return sow_util_1.Util.JSON.parse(this._parser.getRawData());
         }
+        if (this._contentTypeEnum === ContentType.RAW_TEXT) {
+            throw new Error("Raw Text data found. It's can not transform to json.");
+        }
         const outObj = {};
         decodeBodyBuffer(this._parser.body, (k, v) => {
             outObj[k] = v;
@@ -537,12 +545,16 @@ class BodyParser {
     parse(onReadEnd) {
         if (!this.isValidRequest())
             return onReadEnd(new Error("Invalid request defiend...."));
-        if (this._contentTypeEnum === ContentType.APP_JSON || this._contentTypeEnum === ContentType.URL_ENCODE) {
+        if (this._contentTypeEnum === ContentType.APP_JSON ||
+            this._contentTypeEnum === ContentType.URL_ENCODE ||
+            this._contentTypeEnum === ContentType.RAW_TEXT) {
             if (this._contentLength > this._maxBuffLength) {
                 return onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`));
             }
         }
-        if (this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON) {
+        if (this._contentTypeEnum === ContentType.URL_ENCODE ||
+            this._contentTypeEnum === ContentType.APP_JSON ||
+            this._contentTypeEnum === ContentType.RAW_TEXT) {
             this._req.on("data", (chunk) => {
                 this._parser.onRawData(chunk);
             });

@@ -90,15 +90,18 @@ const incomingContentType: {
     URL_ENCODE: string;
     APP_JSON: string;
     MULTIPART: string;
+    RAW_TEXT: string;
 } = {
     URL_ENCODE: "application/x-www-form-urlencoded",
     APP_JSON: "application/json",
-    MULTIPART: "multipart/form-data"
+    MULTIPART: "multipart/form-data",
+    RAW_TEXT: "text/plain"
 }
 enum ContentType {
     URL_ENCODE = 1,
     APP_JSON = 2,
     MULTIPART = 3,
+    RAW_TEXT = 4,
     UNKNOWN = -1
 }
 function extractBetween(
@@ -446,10 +449,12 @@ class BodyParser implements IBodyParser {
         this._contentLength = ToNumber(req.get("content-length"));
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
-        } else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1 && this._contentType === incomingContentType.URL_ENCODE) {
+        } else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1) {
             this._contentTypeEnum = ContentType.URL_ENCODE;
-        } else if (this._contentType.indexOf(incomingContentType.APP_JSON) > -1 && this._contentType === incomingContentType.APP_JSON) {
+        } else if (this._contentType.indexOf(incomingContentType.APP_JSON) > -1) {
             this._contentTypeEnum = ContentType.APP_JSON;
+        } else if (this._contentType.indexOf(incomingContentType.RAW_TEXT) > -1) {
+            this._contentTypeEnum = ContentType.RAW_TEXT;
         } else {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
@@ -554,6 +559,9 @@ class BodyParser implements IBodyParser {
         if (this._contentTypeEnum === ContentType.APP_JSON) {
             return Util.JSON.parse(this._parser.getRawData());
         }
+        if (this._contentTypeEnum === ContentType.RAW_TEXT) {
+            throw new Error("Raw Text data found. It's can not transform to json.");
+        }
         const outObj: NodeJS.Dict<string> = {};
         decodeBodyBuffer(this._parser.body, (k: string, v: string): void => {
             outObj[k] = v;
@@ -617,12 +625,20 @@ class BodyParser implements IBodyParser {
     public parse(onReadEnd: (err?: Error) => void): void {
         if (!this.isValidRequest())
             return onReadEnd(new Error("Invalid request defiend...."));
-        if (this._contentTypeEnum === ContentType.APP_JSON || this._contentTypeEnum === ContentType.URL_ENCODE) {
+        if (
+            this._contentTypeEnum === ContentType.APP_JSON ||
+            this._contentTypeEnum === ContentType.URL_ENCODE ||
+            this._contentTypeEnum === ContentType.RAW_TEXT
+        ) {
             if (this._contentLength > this._maxBuffLength) {
                 return onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`));
             }
         }
-        if (this._contentTypeEnum === ContentType.URL_ENCODE || this._contentTypeEnum === ContentType.APP_JSON) {
+        if (
+            this._contentTypeEnum === ContentType.URL_ENCODE ||
+            this._contentTypeEnum === ContentType.APP_JSON ||
+            this._contentTypeEnum === ContentType.RAW_TEXT
+        ) {
             this._req.on("data", (chunk: any): void => {
                 this._parser.onRawData(chunk);
             });
