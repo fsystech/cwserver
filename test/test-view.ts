@@ -141,6 +141,25 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			console.log(e);
 			ctx.res.json({});
 		}
+	}).post('/post-text-data', (ctx: IContext) => {
+		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
+		try {
+			parser.parse((err) => {
+				try {
+					parser.getJson();
+				} catch (pe) {
+					console.log(pe);
+				}
+				const text = parser.getData();
+				parser.dispose();
+				ctx.res.json({
+					length: text.length
+				});
+			});
+		} catch (e) {
+			console.log(e);
+			ctx.res.json({});
+		}
 	}).post('/post', async (ctx: IContext, requestParam?: IRequestParam) => {
 		const task: string | void = typeof (ctx.req.query.task) === "string" ? ctx.req.query.task.toString() : void 0;
 		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);

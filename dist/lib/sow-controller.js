@@ -88,7 +88,6 @@ class Controller {
         return routeTable.router = routeTable.router.filter((a) => {
             if (args.some(skp => a.route.indexOf(skp) > -1))
                 return true;
-            console.log(a.route);
             return false;
         }), void 0;
     }
