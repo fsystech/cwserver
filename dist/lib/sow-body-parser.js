@@ -399,6 +399,9 @@ class BodyParser {
     isMultipart() {
         return this._contentTypeEnum === ContentType.MULTIPART;
     }
+    isRawData() {
+        return this._contentTypeEnum === ContentType.RAW_TEXT;
+    }
     isValidRequest() {
         return this._contentLength > 0 && this._contentTypeEnum !== ContentType.UNKNOWN;
     }

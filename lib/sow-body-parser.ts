@@ -57,6 +57,7 @@ export interface IBodyParser extends IDispose {
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
+    isRawData(): boolean;
     isValidRequest(): boolean;
     saveAsSync(absPath: string): void;
     /**
@@ -481,6 +482,9 @@ class BodyParser implements IBodyParser {
     }
     public isMultipart(): boolean {
         return this._contentTypeEnum === ContentType.MULTIPART;
+    }
+    public isRawData(): boolean {
+        return this._contentTypeEnum === ContentType.RAW_TEXT;
     }
     public isValidRequest(): boolean {
         return this._contentLength > 0 && this._contentTypeEnum !== ContentType.UNKNOWN;

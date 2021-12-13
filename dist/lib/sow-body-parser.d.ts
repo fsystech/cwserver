@@ -34,6 +34,7 @@ export interface IBodyParser extends IDispose {
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
+    isRawData(): boolean;
     isValidRequest(): boolean;
     saveAsSync(absPath: string): void;
     /**
@@ -74,6 +75,7 @@ declare class BodyParser implements IBodyParser {
     isUrlEncoded(): boolean;
     isAppJson(): boolean;
     isMultipart(): boolean;
+    isRawData(): boolean;
     isValidRequest(): boolean;
     private validate;
     saveAsSync(outdir: string): void;

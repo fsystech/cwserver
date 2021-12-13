@@ -144,6 +144,9 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 	}).post('/post-text-data', (ctx: IContext) => {
 		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
 		try {
+			if (!parser.isRawData()) {
+				throw new Error("Invalid conent type found");
+			}
 			parser.parse((err) => {
 				try {
 					parser.getJson();
