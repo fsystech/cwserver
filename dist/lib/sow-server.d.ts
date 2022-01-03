@@ -124,6 +124,7 @@ export interface ISowServer {
     createLogger(): void;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
     initilize(): void;
+    getAppConfigName(): string;
     implimentConfig(config: NodeJS.Dict<any>): void;
     setDefaultProtectionHeader(res: IResponse): void;
     parseSession(cook: undefined | string[] | string | {
@@ -292,6 +293,7 @@ export declare class SowServer implements ISowServer {
         route: string;
         root: string;
     } | void;
+    getAppConfigName(): string;
     getRoot(): string;
     parseMaxAge(maxAge: any): number;
     getPublic(): string;

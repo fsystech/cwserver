@@ -379,7 +379,7 @@ ${appRoot}\\www_public
         this._public = wwwName.toString();
         this._config = new ServerConfig();
         this._db = {};
-        const absPath = _path.resolve(`${this.root}/${this._public}/config/app.config.json`);
+        const absPath = _path.resolve(`${this.root}/${this._public}/config/${this.getAppConfigName()}`);
         if (!_fs.existsSync(absPath)) {
             throw new Error(`No config file found in ${absPath}`);
         }
@@ -440,6 +440,12 @@ ${appRoot}\\www_public
     }
     get errorPage() {
         return this._errorPage;
+    }
+    getAppConfigName() {
+        if (process.env.APP_CONFIG_NAME) {
+            return process.env.APP_CONFIG_NAME;
+        }
+        return "app.config.json";
     }
     getRoot() {
         return this.root;
