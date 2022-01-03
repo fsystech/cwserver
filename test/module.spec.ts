@@ -176,6 +176,10 @@ describe("cwserver-core", () => {
         appUtility = cwserver.initilizeServer(appRoot, projectRoot);
         expect(appUtility.public).toEqual(projectRoot);
         console.log(`\t\t\tcwserver ${appUtility.server.version}`);
+        expect(appUtility.server.getAppConfigName()).toEqual("app.config.json");
+        process.env.APP_CONFIG_NAME = "trade.config.json";
+        expect(appUtility.server.getAppConfigName()).toEqual(process.env.APP_CONFIG_NAME);
+        process.env.APP_CONFIG_NAME = "app.config.json";
         done();
     });
     it("initilize server throw error (Server instance can initilize 1 time)", (done: Mocha.Done): void => {
@@ -187,6 +191,9 @@ describe("cwserver-core", () => {
     it("initilize application", function (done: Mocha.Done): void {
         this.timeout(5000);
         app = appUtility.init();
+        expect(shouldBeError(() => {
+            appUtility.init();
+        })).toBeInstanceOf(Error);
         done();
     });
     it("application listen", (done: Mocha.Done): void => {

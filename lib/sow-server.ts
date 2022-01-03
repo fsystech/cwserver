@@ -140,6 +140,7 @@ export interface ISowServer {
     createLogger(): void;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
     initilize(): void;
+    getAppConfigName(): string;
     implimentConfig(config: NodeJS.Dict<any>): void;
     setDefaultProtectionHeader(res: IResponse): void;
     parseSession(cook: undefined | string[] | string | { [x: string]: any; }): ISession;
@@ -594,7 +595,7 @@ ${appRoot}\\www_public
         this._public = wwwName.toString();
         this._config = new ServerConfig();
         this._db = {};
-        const absPath: string = _path.resolve(`${this.root}/${this._public}/config/app.config.json`);
+        const absPath: string = _path.resolve(`${this.root}/${this._public}/config/${this.getAppConfigName()}`);
         if (!_fs.existsSync(absPath)) {
             throw new Error(`No config file found in ${absPath}`);
         }
@@ -632,6 +633,12 @@ ${appRoot}\\www_public
     on: (ev: "shutdown", handler: () => void) => void;
     addVirtualDir: (route: string, root: string, evt?: (ctx: IContext) => void) => void;
     virtualInfo: (route: string) => { route: string; root: string; } | void;
+    getAppConfigName(): string {
+        if (process.env.APP_CONFIG_NAME) {
+            return process.env.APP_CONFIG_NAME;
+        }
+        return "app.config.json";
+    }
     getRoot(): string {
         return this.root;
     }

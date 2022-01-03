@@ -22,15 +22,21 @@
     "test:mocha": "mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts"
   },
   "keywords": [
-    "web",
-    "app",
-    "application",
+    "cwserver",
     "framework",
+    "web",
+    "http",
+    "rest",
+    "restful",
+    "router",
+    "app",
+    "api",
+    "application",
     "middleware",
     "template",
     "engine",
     "parser",
-    "cwserver"
+    "webserver"
   ],
   "devDependencies": {
     "@types/crypto-js": "^4.0.2",
