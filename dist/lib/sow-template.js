@@ -537,11 +537,11 @@ class TemplateLink {
             });
         });
     }
-    static _createCacheFile(str) {
-        return str.replace(/\//gi, "_").replace(/\./gi, "_");
+    static _getCacheMape(str) {
+        return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
     static _tryMemCache(ctx, path, status, next) {
-        const key = this._createCacheFile(path);
+        const key = this._getCacheMape(path);
         const cache = _tw.cache[key];
         if (cache)
             return next(cache);
@@ -625,7 +625,7 @@ class TemplateLink {
         return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
     }
     static tryFileCacheOrLive(ctx, path, status) {
-        const cacheKey = this._createCacheFile(path);
+        const cacheKey = this._getCacheMape(path);
         if (ctx.server.config.useFullOptimization) {
             if (_tw.cache[cacheKey]) {
                 ctx.res.setHeader('x-served-from', 'mem-cache');

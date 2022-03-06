@@ -564,8 +564,8 @@ class TemplateLink {
             });
         });
     }
-    private static _createCacheFile(str: string): string {
-        return str.replace(/\//gi, "_").replace(/\./gi, "_")
+    private static _getCacheMape(str: string): string {
+        return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
     private static _tryMemCache(
         ctx: IContext,
@@ -573,7 +573,7 @@ class TemplateLink {
         status: IResInfo,
         next: (func: SandBox | string) => void
     ): void {
-        const key = this._createCacheFile(path);
+        const key = this._getCacheMape(path);
         const cache = _tw.cache[key];
         if (cache) return next(cache);
         return fsw.isExists(path, (exists: boolean, url: string): void => {
@@ -661,7 +661,7 @@ class TemplateLink {
     public static tryFileCacheOrLive(
         ctx: IContext, path: string, status: IResInfo
     ): void {
-        const cacheKey: string = this._createCacheFile(path);
+        const cacheKey: string = this._getCacheMape(path);
         if (ctx.server.config.useFullOptimization) {
             if (_tw.cache[cacheKey]) {
                 ctx.res.setHeader('x-served-from', 'mem-cache');

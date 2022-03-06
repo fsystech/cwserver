@@ -256,6 +256,9 @@ This "Combiner" contains the following files:\n`;
             return ctx.res.end(dataInfo.bundleData), ctx.next(200);
         }
     }
+    private static _getCacheMape(str: string): string {
+        return str.replace(/\\/gi, "_").replace(/-/gi, "_");
+    }
     static createServerFileCache(server: ISowServer, ctx: IContext): void {
         const cacheKey = ctx.req.query.ck;
         const ct = ctx.req.query.ct;
@@ -269,8 +272,9 @@ This "Combiner" contains the following files:\n`;
         if (!desc) return;
         const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
         const cachpath: string = this.getCachePath(ctx, desc.toString(), cte, cacheKey.toString());
-        if (useFullOptimization && _mamCache[cachpath]) {
-            return this._sendFromMemCache(ctx, cte, _mamCache[cachpath]);
+        const memCacheKey = this._getCacheMape(cachpath);
+        if (useFullOptimization && _mamCache[memCacheKey]) {
+            return this._sendFromMemCache(ctx, cte, _mamCache[memCacheKey]);
         }
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
         return fsw.stat(cachpath, (serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats): void => {
@@ -336,7 +340,7 @@ This "Combiner" contains the following files:\n`;
                                                     'Content-Length': buffer.length
                                                 });
                                                 if (useFullOptimization) {
-                                                    _mamCache[cachpath] = {
+                                                    _mamCache[memCacheKey] = {
                                                         lastChangeTime,
                                                         cfileSize: cstat.size,
                                                         bundleData: buffer.data
@@ -367,7 +371,7 @@ This "Combiner" contains the following files:\n`;
                                                         'Content-Length': buff.length
                                                     });
                                                     if (useFullOptimization) {
-                                                        _mamCache[cachpath] = {
+                                                        _mamCache[memCacheKey] = {
                                                             lastChangeTime,
                                                             cfileSize: cstat.size,
                                                             bundleData: buff
