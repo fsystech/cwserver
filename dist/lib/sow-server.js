@@ -846,7 +846,7 @@ function initilizeServer(appRoot, wwwName) {
                 _app.use(route, (req, res, next) => {
                     _processHandler(req, res, next, (ctx) => {
                         if (_server.config.mimeType.indexOf(ctx.extension) > -1) {
-                            return _controller.httpMimeHandler.render(ctx, root, false);
+                            return _controller.httpMimeHandler.render(ctx, root);
                         }
                         return ctx.next(404);
                     });

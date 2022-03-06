@@ -191,7 +191,7 @@ export class Controller implements IController {
                 return ctx.res.render(ctx, ctx.server.mapPath(ctx.req.path));
             }
             if (ctx.server.config.mimeType.indexOf(ctx.extension) > -1) {
-                return this.httpMimeHandler.render(ctx, void 0, true);
+                return this.httpMimeHandler.render(ctx, void 0);
             }
             return ctx.next(404, true);
         }

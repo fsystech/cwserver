@@ -1024,7 +1024,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 _app.use(route, (req: IRequest, res: IResponse, next: NextFunction) => {
                     _processHandler(req, res, next, (ctx: IContext): void => {
                         if (_server.config.mimeType.indexOf(ctx.extension) > -1) {
-                            return _controller.httpMimeHandler.render(ctx, root, false);
+                            return _controller.httpMimeHandler.render(ctx, root);
                         }
                         return ctx.next(404);
                     });

@@ -16,7 +16,7 @@ import { Streamer } from './sow-web-streamer';
 import { Encryption } from './sow-encryption';
 import { Util } from './sow-util';
 export interface IHttpMimeHandler {
-    render(ctx: IContext, maybeDir?: string, checkFile?: boolean): void;
+    render(ctx: IContext, maybeDir?: string): void;
     getMimeType(extension: string): string;
     isValidExtension(extension: string): boolean;
 }

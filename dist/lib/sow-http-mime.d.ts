@@ -1,6 +1,6 @@
 import { IContext } from './sow-server';
 export interface IHttpMimeHandler {
-    render(ctx: IContext, maybeDir?: string, checkFile?: boolean): void;
+    render(ctx: IContext, maybeDir?: string): void;
     getMimeType(extension: string): string;
     isValidExtension(extension: string): boolean;
 }
