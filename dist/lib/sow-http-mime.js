@@ -127,6 +127,9 @@ class MimeHandler {
                         if (reqCacheHeader.etag === etag) {
                             sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                             ctx.res.status(304, { 'Content-Type': mimeType }).send();
+                            if (useFullOptimization && cachePath) {
+                                this._holdCache(cachePath, lastChangeTime, cfileSize);
+                            }
                             return ctx.next(304);
                         }
                         exit = true;
@@ -134,6 +137,9 @@ class MimeHandler {
                     if (reqCacheHeader.sinceModify && !exit) {
                         sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                         ctx.res.status(304, { 'Content-Type': mimeType }).send();
+                        if (useFullOptimization && cachePath) {
+                            this._holdCache(cachePath, lastChangeTime, cfileSize);
+                        }
                         return ctx.next(304);
                     }
                 }
@@ -147,7 +153,7 @@ class MimeHandler {
                         'Content-Encoding': 'gzip',
                         'x-served-from': 'cache-file'
                     });
-                    if (useFullOptimization) {
+                    if (useFullOptimization && cachePath) {
                         this._holdCache(cachePath, lastChangeTime, cfileSize);
                     }
                     return sow_util_1.Util.pipeOutputStream(cachePath, ctx);
@@ -166,7 +172,7 @@ class MimeHandler {
                                     etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cstat.size)
                                 }, ctx.server.config.cacheHeader);
                                 ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
-                                if (useFullOptimization) {
+                                if (useFullOptimization && cachePath) {
                                     this._holdCache(cachePath, lastChangeTime, cstat.size);
                                 }
                                 return sow_util_1.Util.pipeOutputStream(cachePath, ctx);
