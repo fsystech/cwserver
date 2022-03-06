@@ -226,6 +226,7 @@ This "Combiner" contains the following files:\n`;
     static _sendFromMemCache(ctx: IContext, cte: ContentType, dataInfo: MemCacheInfo): void {
         const etag: string | undefined = dataInfo.cfileSize !== 0 ? SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize) : void 0;
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
+        ctx.res.setHeader('x-served-from', 'mem-cache');
         if (cngHander.etag || cngHander.sinceModify) {
             let exit: boolean = false;
             if (etag && cngHander.etag) {
@@ -241,28 +242,27 @@ This "Combiner" contains the following files:\n`;
                 ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
                 return ctx.next(304);
             }
-            SowHttpCache.writeCacheHeader(ctx.res, {
-                lastChangeTime: dataInfo.lastChangeTime,
-                etag: SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
-            }, ctx.server.config.cacheHeader);
-            ctx.res.status(200, {
-                'Content-Type': this.getResContentType(cte),
-                'Content-Length': dataInfo.cfileSize,
-                'x-served-from': 'mem-cache'
-            });
-            if (ctx.server.config.bundler.compress) {
-                ctx.res.setHeader('Content-Encoding', 'gzip');
-            }
-            return ctx.res.end(dataInfo.bundleData), ctx.next(200);
         }
+        SowHttpCache.writeCacheHeader(ctx.res, {
+            lastChangeTime: dataInfo.lastChangeTime,
+            etag: SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
+        }, ctx.server.config.cacheHeader);
+        ctx.res.status(200, {
+            'Content-Type': this.getResContentType(cte),
+            'Content-Length': dataInfo.cfileSize
+        });
+        if (ctx.server.config.bundler.compress) {
+            ctx.res.setHeader('Content-Encoding', 'gzip');
+        }
+        return ctx.res.end(dataInfo.bundleData), ctx.next(200);
     }
     private static _getCacheMape(str: string): string {
         return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
-    static _holdCache(cachePath: string, lastChangeTime: number, size: number): void {
-        if (_mamCache[cachePath]) return;
+    static _holdCache(cacheKey: string, cachePath: string, lastChangeTime: number, size: number): void {
+        if (_mamCache[cacheKey]) return;
         setImmediate(() => {
-            _mamCache[cachePath] = {
+            _mamCache[cacheKey] = {
                 lastChangeTime,
                 cfileSize: size,
                 bundleData: _fs.readFileSync(cachePath)
@@ -333,7 +333,7 @@ This "Combiner" contains the following files:\n`;
                                 ctx.res.setHeader('Content-Encoding', 'gzip');
                             }
                             if (useFullOptimization) {
-                                this._holdCache(cachpath, lastChangeTime, cfileSize);
+                                this._holdCache(memCacheKey, cachpath, lastChangeTime, cfileSize);
                             }
                             return Util.pipeOutputStream(cachpath, ctx);
                         }

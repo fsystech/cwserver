@@ -67,6 +67,7 @@ class MimeHandler {
     static _sendFromMemCache(ctx, mimeType, dataInfo) {
         const reqCacheHeader = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
         const etag = sow_http_cache_1.SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
+        ctx.res.setHeader('x-served-from', 'mem-cache');
         if (reqCacheHeader.etag || reqCacheHeader.sinceModify) {
             let exit = false;
             if (reqCacheHeader.etag) {
@@ -89,8 +90,7 @@ class MimeHandler {
         }, ctx.server.config.cacheHeader);
         ctx.res.status(200, {
             'Content-Type': mimeType,
-            'Content-Encoding': 'gzip',
-            'x-served-from': 'mem-cache'
+            'Content-Encoding': 'gzip'
         });
         return ctx.res.end(dataInfo.gizipData), ctx.next(200);
     }
@@ -105,12 +105,8 @@ class MimeHandler {
             };
         });
     }
-    static servedFromServerFileCache(ctx, absPath, mimeType, fstat) {
-        const cachePath = this.getCachePath(ctx);
+    static servedFromServerFileCache(ctx, absPath, mimeType, fstat, cachePath) {
         const useFullOptimization = ctx.server.config.useFullOptimization;
-        if (useFullOptimization && _mamCache[cachePath]) {
-            return this._sendFromMemCache(ctx, mimeType, _mamCache[cachePath]);
-        }
         const reqCacheHeader = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
         return _fs.stat(cachePath, (serr, stat) => {
             const existsCachFile = serr ? false : true;
@@ -225,7 +221,7 @@ class MimeHandler {
         ctx.res.status(200, { 'Content-Type': mimeType });
         return sow_util_1.Util.pipeOutputStream(absPath, ctx);
     }
-    static _render(ctx, mimeType, absPath, stat) {
+    static _render(ctx, mimeType, absPath, stat, cachePath) {
         ctx.req.setSocketNoDelay(true);
         if (ctx.path.indexOf('favicon.ico') > -1) {
             sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
@@ -260,15 +256,22 @@ class MimeHandler {
         if (!isGzip || (ctx.server.config.staticFile.fileCache === false)) {
             return this.servedFromFile(ctx, absPath, mimeType, isGzip, stat);
         }
-        return this.servedFromServerFileCache(ctx, absPath, mimeType, stat);
+        return this.servedFromServerFileCache(ctx, absPath, mimeType, stat, cachePath);
     }
     static render(ctx, mimeType, maybeDir) {
+        const cachePath = ctx.server.config.staticFile.fileCache ? this.getCachePath(ctx) : undefined;
+        const useFullOptimization = ctx.server.config.useFullOptimization;
+        if (cachePath) {
+            if (useFullOptimization && _mamCache[cachePath]) {
+                return this._sendFromMemCache(ctx, mimeType, _mamCache[cachePath]);
+            }
+        }
         const absPath = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
         return _fs.stat(absPath, (err, stats) => {
             return ctx.handleError(null, () => {
                 if (err)
                     return ctx.next(404, true);
-                return this._render(ctx, mimeType, absPath, stats);
+                return this._render(ctx, mimeType, absPath, stats, cachePath || "");
             });
         });
     }

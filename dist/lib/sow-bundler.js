@@ -237,6 +237,7 @@ This "Combiner" contains the following files:\n`;
     static _sendFromMemCache(ctx, cte, dataInfo) {
         const etag = dataInfo.cfileSize !== 0 ? sow_http_cache_1.SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize) : void 0;
         const cngHander = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
+        ctx.res.setHeader('x-served-from', 'mem-cache');
         if (cngHander.etag || cngHander.sinceModify) {
             let exit = false;
             if (etag && cngHander.etag) {
@@ -252,29 +253,28 @@ This "Combiner" contains the following files:\n`;
                 ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
                 return ctx.next(304);
             }
-            sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
-                lastChangeTime: dataInfo.lastChangeTime,
-                etag: sow_http_cache_1.SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
-            }, ctx.server.config.cacheHeader);
-            ctx.res.status(200, {
-                'Content-Type': this.getResContentType(cte),
-                'Content-Length': dataInfo.cfileSize,
-                'x-served-from': 'mem-cache'
-            });
-            if (ctx.server.config.bundler.compress) {
-                ctx.res.setHeader('Content-Encoding', 'gzip');
-            }
-            return ctx.res.end(dataInfo.bundleData), ctx.next(200);
         }
+        sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
+            lastChangeTime: dataInfo.lastChangeTime,
+            etag: sow_http_cache_1.SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
+        }, ctx.server.config.cacheHeader);
+        ctx.res.status(200, {
+            'Content-Type': this.getResContentType(cte),
+            'Content-Length': dataInfo.cfileSize
+        });
+        if (ctx.server.config.bundler.compress) {
+            ctx.res.setHeader('Content-Encoding', 'gzip');
+        }
+        return ctx.res.end(dataInfo.bundleData), ctx.next(200);
     }
     static _getCacheMape(str) {
         return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
-    static _holdCache(cachePath, lastChangeTime, size) {
-        if (_mamCache[cachePath])
+    static _holdCache(cacheKey, cachePath, lastChangeTime, size) {
+        if (_mamCache[cacheKey])
             return;
         setImmediate(() => {
-            _mamCache[cachePath] = {
+            _mamCache[cacheKey] = {
                 lastChangeTime,
                 cfileSize: size,
                 bundleData: _fs.readFileSync(cachePath)
@@ -347,7 +347,7 @@ This "Combiner" contains the following files:\n`;
                                 ctx.res.setHeader('Content-Encoding', 'gzip');
                             }
                             if (useFullOptimization) {
-                                this._holdCache(cachpath, lastChangeTime, cfileSize);
+                                this._holdCache(memCacheKey, cachpath, lastChangeTime, cfileSize);
                             }
                             return sow_util_1.Util.pipeOutputStream(cachpath, ctx);
                         }

@@ -55,6 +55,7 @@ class MimeHandler {
     static _sendFromMemCache(ctx: IContext, mimeType: string, dataInfo: MemCacheInfo): void {
         const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
         const etag: string = SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
+        ctx.res.setHeader('x-served-from', 'mem-cache');
         if (reqCacheHeader.etag || reqCacheHeader.sinceModify) {
             let exit: boolean = false;
             if (reqCacheHeader.etag) {
@@ -77,8 +78,7 @@ class MimeHandler {
         }, ctx.server.config.cacheHeader);
         ctx.res.status(200, {
             'Content-Type': mimeType,
-            'Content-Encoding': 'gzip',
-            'x-served-from': 'mem-cache'
+            'Content-Encoding': 'gzip'
         });
         return ctx.res.end(dataInfo.gizipData), ctx.next(200);
     }
@@ -94,13 +94,9 @@ class MimeHandler {
     }
     static servedFromServerFileCache(
         ctx: IContext, absPath: string, mimeType: string,
-        fstat: _fs.Stats
+        fstat: _fs.Stats, cachePath: string
     ): void {
-        const cachePath: string = this.getCachePath(ctx);
         const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
-        if (useFullOptimization && _mamCache[cachePath]) {
-            return this._sendFromMemCache(ctx, mimeType, _mamCache[cachePath]);
-        }
         const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
         return _fs.stat(cachePath, (serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats): void => {
             const existsCachFile: boolean = serr ? false : true;
@@ -226,7 +222,7 @@ class MimeHandler {
     }
     static _render(
         ctx: IContext, mimeType: string, absPath: string,
-        stat: _fs.Stats
+        stat: _fs.Stats, cachePath: string
     ): void {
         ctx.req.setSocketNoDelay(true);
         if (ctx.path.indexOf('favicon.ico') > -1) {
@@ -262,17 +258,24 @@ class MimeHandler {
         if (!isGzip || (ctx.server.config.staticFile.fileCache === false)) {
             return this.servedFromFile(ctx, absPath, mimeType, isGzip, stat);
         }
-        return this.servedFromServerFileCache(ctx, absPath, mimeType, stat);
+        return this.servedFromServerFileCache(ctx, absPath, mimeType, stat, cachePath);
     }
     static render(
         ctx: IContext, mimeType: string,
         maybeDir?: string
     ): void {
+        const cachePath: string | void = ctx.server.config.staticFile.fileCache ? this.getCachePath(ctx) : undefined;
+        const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
+        if (cachePath) {
+            if (useFullOptimization && _mamCache[cachePath]) {
+                return this._sendFromMemCache(ctx, mimeType, _mamCache[cachePath]);
+            }
+        }
         const absPath: string = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
         return _fs.stat(absPath, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
             return ctx.handleError(null, () => {
                 if (err) return ctx.next(404, true);
-                return this._render(ctx, mimeType, absPath, stats);
+                return this._render(ctx, mimeType, absPath, stats, cachePath || "");
             });
         });
     }
