@@ -270,6 +270,17 @@ This "Combiner" contains the following files:\n`;
     static _getCacheMape(str) {
         return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
+    static _holdCache(cachePath, lastChangeTime, size) {
+        if (_mamCache[cachePath])
+            return;
+        setImmediate(() => {
+            _mamCache[cachePath] = {
+                lastChangeTime,
+                cfileSize: size,
+                bundleData: _fs.readFileSync(cachePath)
+            };
+        });
+    }
     static createServerFileCache(server, ctx) {
         const cacheKey = ctx.req.query.ck;
         const ct = ctx.req.query.ct;
@@ -334,6 +345,9 @@ This "Combiner" contains the following files:\n`;
                             });
                             if (server.config.bundler.compress) {
                                 ctx.res.setHeader('Content-Encoding', 'gzip');
+                            }
+                            if (useFullOptimization) {
+                                this._holdCache(cachpath, lastChangeTime, cfileSize);
                             }
                             return sow_util_1.Util.pipeOutputStream(cachpath, ctx);
                         }

@@ -141,6 +141,9 @@ class MimeHandler {
                         'Content-Encoding': 'gzip',
                         'x-served-from': 'cache-file'
                     });
+                    if (useFullOptimization) {
+                        this._holdCache(cachePath, lastChangeTime, cfileSize);
+                    }
                     return Util.pipeOutputStream(cachePath, ctx);
                 }
                 const rstream: _fs.ReadStream = _fs.createReadStream(absPath);
