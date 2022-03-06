@@ -21,6 +21,12 @@ enum ContentType {
     UNKNOWN = -1
 }
 type BundlerFileInfo = { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean };
+type MemCacheInfo = {
+    readonly cfileSize: number;
+    readonly bundleData: Buffer;
+    readonly lastChangeTime: number;
+};
+const _mamCache: { [x: string]: MemCacheInfo; } = {};
 const responseWriteGzip = (
     ctx: IContext, buff: IBufferArray,
     cte: ContentType
@@ -217,6 +223,39 @@ This "Combiner" contains the following files:\n`;
             });
         });
     }
+    static _sendFromMemCache(ctx: IContext, cte: ContentType, dataInfo: MemCacheInfo): void {
+        const etag: string | undefined = dataInfo.cfileSize !== 0 ? SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize) : void 0;
+        const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
+        if (cngHander.etag || cngHander.sinceModify) {
+            let exit: boolean = false;
+            if (etag && cngHander.etag) {
+                if (cngHander.etag === etag) {
+                    SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                    ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
+                    return ctx.next(304);
+                }
+                exit = true;
+            }
+            if (cngHander.sinceModify && !exit) {
+                SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
+                return ctx.next(304);
+            }
+            SowHttpCache.writeCacheHeader(ctx.res, {
+                lastChangeTime: dataInfo.lastChangeTime,
+                etag: SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
+            }, ctx.server.config.cacheHeader);
+            ctx.res.status(200, {
+                'Content-Type': this.getResContentType(cte),
+                'Content-Length': dataInfo.cfileSize,
+                'x-served-from': 'mem-cache'
+            });
+            if (ctx.server.config.bundler.compress) {
+                ctx.res.setHeader('Content-Encoding', 'gzip');
+            }
+            return ctx.res.end(dataInfo.bundleData), ctx.next(200);
+        }
+    }
     static createServerFileCache(server: ISowServer, ctx: IContext): void {
         const cacheKey = ctx.req.query.ck;
         const ct = ctx.req.query.ct;
@@ -228,7 +267,11 @@ This "Combiner" contains the following files:\n`;
         if (cte === ContentType.UNKNOWN) return ctx.next(404);
         const desc: string | void = this.decryptFilePath(server, ctx, str.toString());
         if (!desc) return;
+        const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
         const cachpath: string = this.getCachePath(ctx, desc.toString(), cte, cacheKey.toString());
+        if (useFullOptimization && _mamCache[cachpath]) {
+            return this._sendFromMemCache(ctx, cte, _mamCache[cachpath]);
+        }
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
         return fsw.stat(cachpath, (serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats): void => {
             const existsCachFile: boolean = serr ? false : true;
@@ -270,7 +313,7 @@ This "Combiner" contains the following files:\n`;
                             ctx.res.status(200, {
                                 'Content-Type': this.getResContentType(cte),
                                 'Content-Length': cfileSize,
-                                'x-served-from': 'cach-file'
+                                'x-served-from': 'file-cache'
                             });
                             if (server.config.bundler.compress) {
                                 ctx.res.setHeader('Content-Encoding', 'gzip');
@@ -292,6 +335,13 @@ This "Combiner" contains the following files:\n`;
                                                     'Content-Type': this.getResContentType(cte),
                                                     'Content-Length': buffer.length
                                                 });
+                                                if (useFullOptimization) {
+                                                    _mamCache[cachpath] = {
+                                                        lastChangeTime,
+                                                        cfileSize: cstat.size,
+                                                        bundleData: buffer.data
+                                                    };
+                                                }
                                                 ctx.res.end(buffer.data); buffer.dispose();
                                                 return ctx.next(200);
                                             });
@@ -316,6 +366,13 @@ This "Combiner" contains the following files:\n`;
                                                         'Content-Encoding': 'gzip',
                                                         'Content-Length': buff.length
                                                     });
+                                                    if (useFullOptimization) {
+                                                        _mamCache[cachpath] = {
+                                                            lastChangeTime,
+                                                            cfileSize: cstat.size,
+                                                            bundleData: buff
+                                                        };
+                                                    }
                                                     ctx.res.end(buff);
                                                     ctx.next(200);
                                                 });

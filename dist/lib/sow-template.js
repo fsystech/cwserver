@@ -563,12 +563,31 @@ class TemplateLink {
     }
     static _tryFileCacheOrLive(ctx, filePath, next) {
         const cachePath = `${filePath}.cach`;
+        const useFullOptimization = ctx.server.config.useFullOptimization;
+        if (useFullOptimization) {
+            if (_tw.cache[cachePath]) {
+                if (_tw.cache[cachePath].isScriptTemplate) {
+                    return TemplateCore.compile(_tw.cache[cachePath].data, (result) => {
+                        return ctx.handleError(result.err, () => {
+                            return next(result.sandBox || result.str);
+                        });
+                    });
+                }
+                return next(_tw.cache[cachePath].data);
+            }
+        }
         return canReadFileCache(ctx, filePath, cachePath, (readCache) => {
             if (!readCache) {
                 return _fs.readFile(filePath, "utf8", (err, data) => {
                     return ctx.handleError(err, () => {
                         return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
                             return ctx.handleError(result.err, () => {
+                                if (useFullOptimization) {
+                                    _tw.cache[cachePath] = {
+                                        data: result.str,
+                                        isScriptTemplate: result.isScript
+                                    };
+                                }
                                 return _fs.writeFile(cachePath, result.str, (werr) => {
                                     return ctx.handleError(werr, () => {
                                         return next(result.sandBox || result.str);

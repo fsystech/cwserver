@@ -51,7 +51,7 @@ export function templateNext(
 ): void {
     throw new Error("Method not implemented.");
 }
-const _tw: { [x: string]: any } = {
+const _tw: { cache: { [x: string]: any } } = {
     cache: {}
 }
 class ParserInfo implements IParserInfo {
@@ -600,13 +600,32 @@ class TemplateLink {
         filePath: string,
         next: (func: SandBox | string) => void
     ): void {
-        const cachePath = `${filePath}.cach`;
+        const cachePath: string = `${filePath}.cach`;
+        const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
+        if (useFullOptimization) {
+            if (_tw.cache[cachePath]) {
+                if (_tw.cache[cachePath].isScriptTemplate) {
+                    return TemplateCore.compile(_tw.cache[cachePath].data, (result: CompilerResult): void => {
+                        return ctx.handleError(result.err, () => {
+                            return next(result.sandBox || result.str);
+                        });
+                    });
+                }
+                return next(_tw.cache[cachePath].data);
+            }
+        }
         return canReadFileCache(ctx, filePath, cachePath, (readCache: boolean): void => {
             if (!readCache) {
                 return _fs.readFile(filePath, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
                     return ctx.handleError(err, (): void => {
                         return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
                             return ctx.handleError(result.err, () => {
+                                if (useFullOptimization) {
+                                    _tw.cache[cachePath] = {
+                                        data: result.str,
+                                        isScriptTemplate: result.isScript
+                                    };
+                                }
                                 return _fs.writeFile(cachePath, result.str, (werr: NodeJS.ErrnoException | null) => {
                                     return ctx.handleError(werr, () => {
                                         return next(result.sandBox || result.str);

@@ -20,6 +20,12 @@ export interface IHttpMimeHandler {
     getMimeType(extension: string): string;
     isValidExtension(extension: string): boolean;
 }
+type MemCacheInfo = {
+    readonly cfileSize: number;
+    readonly gizipData: Buffer;
+    readonly lastChangeTime: number;
+};
+const _mamCache: { [x: string]: MemCacheInfo; } = {};
 interface ITaskDeff {
     cache: boolean; ext: string; gzip: boolean
 }
@@ -43,19 +49,59 @@ function createGzip(): _zlib.Gzip {
 }
 class MimeHandler {
     static getCachePath(ctx: IContext): string {
-        // const dir: string = ctx.server.mapPath( `/web/temp/cache/` );
-        // const path: string = `${dir}\\${Encryption.toMd5( ctx.path )}`;
-        // console.log(`DIR: ${dir}`);
-        // console.log(`Temp File: ${ctx.server.config.staticFile.tempPath}`);
         const path: string = `${ctx.server.config.staticFile.tempPath}\\${Encryption.toMd5(ctx.path)}`;
         return _path.resolve(`${path}.${ctx.extension}.cache`);
+    }
+    static _sendFromMemCache(ctx: IContext, mimeType: string, dataInfo: MemCacheInfo): void {
+        const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
+        const etag: string = SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
+        if (reqCacheHeader.etag || reqCacheHeader.sinceModify) {
+            let exit: boolean = false;
+            if (reqCacheHeader.etag) {
+                if (reqCacheHeader.etag === etag) {
+                    SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                    ctx.res.status(304, { 'Content-Type': mimeType }).send();
+                    return ctx.next(304);
+                }
+                exit = true;
+            }
+            if (reqCacheHeader.sinceModify && !exit) {
+                SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                ctx.res.status(304, { 'Content-Type': mimeType }).send();
+                return ctx.next(304);
+            }
+        }
+        SowHttpCache.writeCacheHeader(ctx.res, {
+            lastChangeTime: dataInfo.lastChangeTime,
+            etag: SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
+        }, ctx.server.config.cacheHeader);
+        ctx.res.status(200, {
+            'Content-Type': mimeType,
+            'Content-Encoding': 'gzip',
+            'x-served-from': 'mem-cache'
+        });
+        return ctx.res.end(dataInfo.gizipData), ctx.next(200);
+    }
+    static _holdCache(cachePath: string, lastChangeTime: number, size: number): void {
+        if (_mamCache[cachePath]) return;
+        setImmediate(() => {
+            _mamCache[cachePath] = {
+                lastChangeTime,
+                cfileSize: size,
+                gizipData: _fs.readFileSync(cachePath)
+            };
+        });
     }
     static servedFromServerFileCache(
         ctx: IContext, absPath: string, mimeType: string,
         fstat: _fs.Stats
     ): void {
-        const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
         const cachePath: string = this.getCachePath(ctx);
+        const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
+        if (useFullOptimization && _mamCache[cachePath]) {
+            return this._sendFromMemCache(ctx, mimeType, _mamCache[cachePath]);
+        }
+        const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
         return _fs.stat(cachePath, (serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats): void => {
             const existsCachFile: boolean = serr ? false : true;
             return ctx.handleError(null, () => {
@@ -91,8 +137,9 @@ class MimeHandler {
                         etag: SowHttpCache.getEtag(lastChangeTime, cfileSize)
                     }, ctx.server.config.cacheHeader);
                     ctx.res.status(200, {
-                        'Content-Type': mimeType, 'Content-Encoding': 'gzip',
-                        'x-served-from': 'cach-file'
+                        'Content-Type': mimeType,
+                        'Content-Encoding': 'gzip',
+                        'x-served-from': 'cache-file'
                     });
                     return Util.pipeOutputStream(cachePath, ctx);
                 }
@@ -109,6 +156,9 @@ class MimeHandler {
                                     etag: SowHttpCache.getEtag(lastChangeTime, cstat.size)
                                 }, ctx.server.config.cacheHeader);
                                 ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
+                                if (useFullOptimization) {
+                                    this._holdCache(cachePath, lastChangeTime, cstat.size);
+                                }
                                 return Util.pipeOutputStream(cachePath, ctx);
                             });
                         });

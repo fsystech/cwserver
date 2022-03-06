@@ -40,8 +40,19 @@
         true,
         false
       ],
-      "description": "If  isDebug true then all process information will be dump in both of console and app log file "
+      "description": "If isDebug true then all process information will be dump in both of console and app log file "
     },
+    "useFullOptimization": {
+      "type": "boolean",
+      "minLength": 0,
+      "default": false,
+      "enum": [
+        true,
+        false
+      ],
+      "description": "If `useFullOptimization` true we will set highest priority to memory"
+    },
+    
     "template": {
       "type": "object",
       "description": "Template engine",

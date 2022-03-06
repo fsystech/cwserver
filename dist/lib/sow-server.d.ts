@@ -109,6 +109,8 @@ export interface IServerConfig {
         tempPath: string;
         reValidate?: boolean;
     };
+    /** If `useFullOptimization` true we will set highest priority to memory */
+    useFullOptimization: boolean;
 }
 export interface ISowServer {
     readonly version: string;
@@ -253,6 +255,7 @@ export declare class ServerConfig implements IServerConfig {
         cacheType: string;
         ext: string[];
     };
+    useFullOptimization: boolean;
     constructor();
 }
 export declare class SessionSecurity {

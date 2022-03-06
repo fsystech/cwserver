@@ -127,6 +127,8 @@ export interface IServerConfig {
         tempPath: string;
         reValidate?: boolean;
     };
+    /** If `useFullOptimization` true we will set highest priority to memory */
+    useFullOptimization: boolean;
 }
 export interface ISowServer {
     readonly version: string;
@@ -453,6 +455,7 @@ export class ServerConfig implements IServerConfig {
         cacheType: string;
         ext: string[];
     };
+    useFullOptimization: boolean;
     constructor() {
         this.Author = "Safe Online World Ltd.";
         this.appName = "Sow Server";
@@ -506,6 +509,7 @@ export class ServerConfig implements IServerConfig {
             reValidate: true,
             tempPath: "/web/temp/"
         };
+        this.useFullOptimization = false;
     }
 }
 // prevent session hijacking
