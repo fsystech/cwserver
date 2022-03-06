@@ -340,10 +340,10 @@ class Response extends http_1.ServerResponse {
             this.removeHeader('Content-Type');
             this.removeHeader('Content-Length');
             this.removeHeader('Transfer-Encoding');
-            return this.end();
+            return this.end(), void 0;
         }
         if (this.method === "HEAD") {
-            return this.end();
+            return this.end(), void 0;
         }
         switch (typeof (chunk)) {
             case 'undefined': throw new Error("Body required....");
@@ -381,7 +381,7 @@ class Response extends http_1.ServerResponse {
             len = chunk.length;
         }
         this.set('Content-Length', len);
-        return this.end(chunk);
+        return this.end(chunk), void 0;
     }
     asHTML(code, contentLength, isGzip) {
         return this.status(code, getCommonHeader(_mimeType.getMimeType("html"), contentLength, isGzip)), this;
@@ -398,7 +398,7 @@ class Response extends http_1.ServerResponse {
         }
         return this.status(this.statusCode, {
             'Location': url
-        }).end();
+        }).end(), void 0;
     }
     cookie(name, val, options) {
         let sCookie = this.getHeader('Set-Cookie');
@@ -428,9 +428,9 @@ class Response extends http_1.ServerResponse {
                 if (!this.sendIfError(error)) {
                     return this.asJSON(200, buff.length, true).end(buff);
                 }
-            });
+            }), void 0;
         }
-        return this.asJSON(200, buffer.length).end(buffer);
+        return this.asJSON(200, buffer.length).end(buffer), void 0;
     }
     dispose() {
         delete this._method;

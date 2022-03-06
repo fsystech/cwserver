@@ -372,10 +372,10 @@ class Response extends ServerResponse implements IResponse {
             this.removeHeader('Content-Type');
             this.removeHeader('Content-Length');
             this.removeHeader('Transfer-Encoding');
-            return this.end();
+            return this.end(), void 0;
         }
         if (this.method === "HEAD") {
-            return this.end();
+            return this.end(), void 0;
         }
         switch (typeof (chunk)) {
             case 'undefined': throw new Error("Body required....");
@@ -411,7 +411,7 @@ class Response extends ServerResponse implements IResponse {
             len = chunk.length;
         }
         this.set('Content-Length', len);
-        return this.end(chunk);
+        return this.end(chunk), void 0;
     }
     public asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse {
         return this.status(code, getCommonHeader(_mimeType.getMimeType("html"), contentLength, isGzip)), this;
@@ -428,7 +428,7 @@ class Response extends ServerResponse implements IResponse {
         }
         return this.status(this.statusCode, {
             'Location': url
-        }).end();
+        }).end(), void 0;
     }
     public cookie(name: string, val: string, options: CookieOptions): IResponse {
         let sCookie: number | string | string[] | undefined = this.getHeader('Set-Cookie');
@@ -455,9 +455,9 @@ class Response extends ServerResponse implements IResponse {
                 if (!this.sendIfError(error)) {
                     return this.asJSON(200, buff.length, true).end(buff);
                 }
-            });
+            }), void 0;
         }
-        return this.asJSON(200, buffer.length).end(buffer);
+        return this.asJSON(200, buffer.length).end(buffer), void 0;
     }
     public dispose(): void {
         delete this._method;
