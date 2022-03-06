@@ -564,13 +564,16 @@ class TemplateLink {
             });
         });
     }
+    private static _createCacheFile(str: string): string {
+        return str.replace(/\//gi, "_").replace(/\./gi, "_")
+    }
     private static _tryMemCache(
         ctx: IContext,
         path: string,
         status: IResInfo,
         next: (func: SandBox | string) => void
     ): void {
-        const key = path.replace(/\//gi, "_").replace(/\./gi, "_");
+        const key = this._createCacheFile(path);
         const cache = _tw.cache[key];
         if (cache) return next(cache);
         return fsw.isExists(path, (exists: boolean, url: string): void => {
@@ -597,23 +600,12 @@ class TemplateLink {
     }
     private static _tryFileCacheOrLive(
         ctx: IContext,
+        cacheKey: string,
         filePath: string,
         next: (func: SandBox | string) => void
     ): void {
         const cachePath: string = `${filePath}.cach`;
         const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
-        if (useFullOptimization) {
-            if (_tw.cache[cachePath]) {
-                if (_tw.cache[cachePath].isScriptTemplate) {
-                    return TemplateCore.compile(_tw.cache[cachePath].data, (result: CompilerResult): void => {
-                        return ctx.handleError(result.err, () => {
-                            return next(result.sandBox || result.str);
-                        });
-                    });
-                }
-                return next(_tw.cache[cachePath].data);
-            }
-        }
         return canReadFileCache(ctx, filePath, cachePath, (readCache: boolean): void => {
             if (!readCache) {
                 return _fs.readFile(filePath, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
@@ -621,7 +613,7 @@ class TemplateLink {
                         return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
                             return ctx.handleError(result.err, () => {
                                 if (useFullOptimization) {
-                                    _tw.cache[cachePath] = {
+                                    _tw.cache[cacheKey] = {
                                         data: result.str,
                                         isScriptTemplate: result.isScript
                                     };
@@ -638,7 +630,13 @@ class TemplateLink {
             }
             return _fs.readFile(cachePath, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
                 return ctx.handleError(err, (): void => {
-                    if (TemplateCore.isScriptTemplate(data)) {
+                    const isScript: boolean = TemplateCore.isScriptTemplate(data);
+                    if (useFullOptimization) {
+                        _tw.cache[cacheKey] = {
+                            data, isScriptTemplate: isScript
+                        };
+                    }
+                    if (isScript) {
                         return TemplateCore.compile(data, (result: CompilerResult): void => {
                             return ctx.handleError(result.err, () => {
                                 return next(result.sandBox || result.str);
@@ -650,21 +648,36 @@ class TemplateLink {
             });
         });
     }
+    private static _hadleCacheResponse(ctx: IContext, status: IResInfo, func: string | SandBox): void {
+        if (typeof (func) === "function") {
+            try {
+                return func(ctx, this.processResponse(status));
+            } catch (e: any) {
+                return ctx.transferError(e);
+            }
+        }
+        return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
+    }
     public static tryFileCacheOrLive(
         ctx: IContext, path: string, status: IResInfo
     ): void {
+        const cacheKey: string = this._createCacheFile(path);
+        if (ctx.server.config.useFullOptimization) {
+            if (_tw.cache[cacheKey]) {
+                ctx.res.setHeader('x-served-from', 'mem-cache');
+                if (_tw.cache[cacheKey].isScriptTemplate) {
+                    return TemplateCore.compile(_tw.cache[cacheKey].data, (result: CompilerResult): void => {
+                        return ctx.handleError(result.err, () => {
+                            return this._hadleCacheResponse(ctx, status, result.sandBox || result.str);
+                        });
+                    });
+                }
+                return this._hadleCacheResponse(ctx, status, _tw.cache[cacheKey].data);
+            }
+        }
         return fsw.isExists(path, (exists: boolean, filePath: string) => {
             if (!exists) return ctx.next(404);
-            return this._tryFileCacheOrLive(ctx, filePath, (func: string | SandBox) => {
-                if (typeof (func) === "function") {
-                    try {
-                        return func(ctx, this.processResponse(status));
-                    } catch (e: any) {
-                        return ctx.transferError(e);
-                    }
-                }
-                return ctx.res.type("html").noCache().status(status.code).end(func);
-            });
+            return this._tryFileCacheOrLive(ctx, cacheKey, filePath, (func: string | SandBox) => this._hadleCacheResponse(ctx, status, func));
         });
     }
 }

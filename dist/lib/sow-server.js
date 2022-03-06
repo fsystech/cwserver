@@ -329,7 +329,7 @@ class ServerConfig {
             reValidate: true,
             tempPath: "/web/temp/"
         };
-        this.useFullOptimization = false;
+        this.useFullOptimization = true;
     }
 }
 exports.ServerConfig = ServerConfig;

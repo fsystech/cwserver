@@ -537,8 +537,11 @@ class TemplateLink {
             });
         });
     }
+    static _createCacheFile(str) {
+        return str.replace(/\//gi, "_").replace(/\./gi, "_");
+    }
     static _tryMemCache(ctx, path, status, next) {
-        const key = path.replace(/\//gi, "_").replace(/\./gi, "_");
+        const key = this._createCacheFile(path);
         const cache = _tw.cache[key];
         if (cache)
             return next(cache);
@@ -565,21 +568,9 @@ class TemplateLink {
             return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
         });
     }
-    static _tryFileCacheOrLive(ctx, filePath, next) {
+    static _tryFileCacheOrLive(ctx, cacheKey, filePath, next) {
         const cachePath = `${filePath}.cach`;
         const useFullOptimization = ctx.server.config.useFullOptimization;
-        if (useFullOptimization) {
-            if (_tw.cache[cachePath]) {
-                if (_tw.cache[cachePath].isScriptTemplate) {
-                    return TemplateCore.compile(_tw.cache[cachePath].data, (result) => {
-                        return ctx.handleError(result.err, () => {
-                            return next(result.sandBox || result.str);
-                        });
-                    });
-                }
-                return next(_tw.cache[cachePath].data);
-            }
-        }
         return canReadFileCache(ctx, filePath, cachePath, (readCache) => {
             if (!readCache) {
                 return _fs.readFile(filePath, "utf8", (err, data) => {
@@ -587,7 +578,7 @@ class TemplateLink {
                         return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
                             return ctx.handleError(result.err, () => {
                                 if (useFullOptimization) {
-                                    _tw.cache[cachePath] = {
+                                    _tw.cache[cacheKey] = {
                                         data: result.str,
                                         isScriptTemplate: result.isScript
                                     };
@@ -604,7 +595,13 @@ class TemplateLink {
             }
             return _fs.readFile(cachePath, "utf8", (err, data) => {
                 return ctx.handleError(err, () => {
-                    if (TemplateCore.isScriptTemplate(data)) {
+                    const isScript = TemplateCore.isScriptTemplate(data);
+                    if (useFullOptimization) {
+                        _tw.cache[cacheKey] = {
+                            data, isScriptTemplate: isScript
+                        };
+                    }
+                    if (isScript) {
                         return TemplateCore.compile(data, (result) => {
                             return ctx.handleError(result.err, () => {
                                 return next(result.sandBox || result.str);
@@ -616,21 +613,36 @@ class TemplateLink {
             });
         });
     }
+    static _hadleCacheResponse(ctx, status, func) {
+        if (typeof (func) === "function") {
+            try {
+                return func(ctx, this.processResponse(status));
+            }
+            catch (e) {
+                return ctx.transferError(e);
+            }
+        }
+        return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
+    }
     static tryFileCacheOrLive(ctx, path, status) {
+        const cacheKey = this._createCacheFile(path);
+        if (ctx.server.config.useFullOptimization) {
+            if (_tw.cache[cacheKey]) {
+                ctx.res.setHeader('x-served-from', 'mem-cache');
+                if (_tw.cache[cacheKey].isScriptTemplate) {
+                    return TemplateCore.compile(_tw.cache[cacheKey].data, (result) => {
+                        return ctx.handleError(result.err, () => {
+                            return this._hadleCacheResponse(ctx, status, result.sandBox || result.str);
+                        });
+                    });
+                }
+                return this._hadleCacheResponse(ctx, status, _tw.cache[cacheKey].data);
+            }
+        }
         return fsw.isExists(path, (exists, filePath) => {
             if (!exists)
                 return ctx.next(404);
-            return this._tryFileCacheOrLive(ctx, filePath, (func) => {
-                if (typeof (func) === "function") {
-                    try {
-                        return func(ctx, this.processResponse(status));
-                    }
-                    catch (e) {
-                        return ctx.transferError(e);
-                    }
-                }
-                return ctx.res.type("html").noCache().status(status.code).end(func);
-            });
+            return this._tryFileCacheOrLive(ctx, cacheKey, filePath, (func) => this._hadleCacheResponse(ctx, status, func));
         });
     }
 }

@@ -509,7 +509,7 @@ export class ServerConfig implements IServerConfig {
             reValidate: true,
             tempPath: "/web/temp/"
         };
-        this.useFullOptimization = false;
+        this.useFullOptimization = true;
     }
 }
 // prevent session hijacking
