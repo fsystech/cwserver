@@ -592,7 +592,7 @@ class TemplateLink {
             if (typeof (func) === "function") {
                 return func(ctx, this.processResponse(status));
             }
-            return ctx.res.type("html").noCache().status(status.code).end(func);
+            return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
         });
     }
     private static _tryFileCacheOrLive(

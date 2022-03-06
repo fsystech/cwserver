@@ -451,8 +451,9 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 				ctx.transferRequest = treq;
 				(() => {
 					const oldEnd = ctx.res.end;
-					ctx.res.end = (...arg: any[]): void => {
+					ctx.res.end = function (...arg: any[]): IResponse {
 						expect(arg.length).toBeGreaterThanOrEqual(0);
+						return this;
 					}
 					ctx.res.status(204).send();
 					expect(shouldBeError(() => {

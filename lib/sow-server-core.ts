@@ -453,7 +453,7 @@ class Response extends ServerResponse implements IResponse {
         if (typeof (compress) === 'boolean' && compress === true) {
             return _zlib.gzip(buffer, (error: Error | null, buff: Buffer) => {
                 if (!this.sendIfError(error)) {
-                    return this.asJSON(200, buff.length, true).end(buff);
+                    this.asJSON(200, buff.length, true).end(buff);
                 }
             }), void 0;
         }
