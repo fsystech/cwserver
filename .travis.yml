@@ -3,7 +3,8 @@ os:
   - linux
 node_js:
   - '12'
-  - 'stable'
+  - '17'
+  #- 'stable'
 before_script:
   #- npm install nyc@latest --save-dev
   #- npm install mocha@latest --save-dev

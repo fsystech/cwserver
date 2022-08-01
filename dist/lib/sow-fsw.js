@@ -66,6 +66,8 @@ exports.moveFileAsync = exports.existsAsync = exports.mkdirAsync = exports.write
 // by rajib chy
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
+const _fsRmdir = typeof (_fs.rm) === "function" ? _fs.rm : _fs.rmdir;
+const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
 function stat(path, next) {
     return _fs.stat(path, (err, stats) => {
         if (err)
@@ -244,7 +246,7 @@ function rmdir(path, next, errHandler) {
                     const forward = () => {
                         const npath = files.shift();
                         if (!npath) {
-                            return _fs.rm(path, { recursive: true, force: true }, (rmerr) => {
+                            return _fsRmdir(path, { recursive: true, force: true }, (rmerr) => {
                                 return next(rmerr);
                             });
                         }
@@ -272,7 +274,7 @@ function rmdirSync(path) {
         _fs.readdirSync(path).forEach((nextItem) => {
             rmdirSync(_path.join(path, nextItem));
         });
-        _fs.rmSync(path, { recursive: true, force: true });
+        _fsRmdirSync(path, { recursive: true, force: true });
     }
     else {
         _fs.unlinkSync(path);

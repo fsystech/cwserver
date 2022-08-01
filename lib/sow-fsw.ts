@@ -8,6 +8,9 @@
 import * as _fs from 'fs';
 import * as _path from 'path';
 import { ErrorHandler } from './sow-static';
+const _fsRmdir = typeof (_fs.rm) === "function" ? _fs.rm : _fs.rmdir;
+const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
+
 export function stat(
     path: string,
     next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void
@@ -191,7 +194,7 @@ export function rmdir(
                     const forward = (): void => {
                         const npath: string | undefined = files.shift();
                         if (!npath) {
-                            return _fs.rm(path, { recursive: true, force: true }, (rmerr: NodeJS.ErrnoException | null): void => {
+                            return _fsRmdir(path, { recursive: true, force: true }, (rmerr: NodeJS.ErrnoException | null): void => {
                                 return next(rmerr);
                             });
                         }
@@ -219,7 +222,7 @@ export function rmdirSync(path: string): void {
                 _path.join(path, nextItem)
             );
         });
-        _fs.rmSync(path, { recursive: true, force: true });
+        _fsRmdirSync(path, { recursive: true, force: true });
     } else {
         _fs.unlinkSync(path);
     }
