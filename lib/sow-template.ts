@@ -3,6 +3,8 @@
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
+// 9:01 PM 5/2/2020
+// by rajib chy
 import * as _fs from 'fs';
 import * as _vm from 'vm';
 import * as _zlib from 'zlib';
@@ -13,6 +15,7 @@ import { IContext } from './sow-server';
 import * as fsw from './sow-fsw';
 import { generateRandomString } from './sow-util';
 import { platform } from 'os';
+import { FileInfoCacheHandler, IFileInfoCacheHandler } from './file-info';
 const _isWin: boolean = platform() === "win32";
 type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
 export type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => void;
@@ -258,6 +261,7 @@ function ExportExtendMatch(str: string): RegExpExecArray | null {
     }
     return match;
 }
+const _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
 class TemplateParser {
     private static implimentAttachment(
         ctx: IContext, appRoot: string, str: string,
@@ -271,7 +275,7 @@ class TemplateParser {
             if (!orgMatch) return next(str);
             const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
-            return fsw.isExists(abspath, (exists: boolean, url: string): void => {
+            return _fileInfo.exists(abspath, (exists: boolean, url: string): void => {
                 if (!exists) {
                     return ctx.transferError(new Error(`Attachement ${path} not found...`));
                 }
@@ -329,7 +333,7 @@ class TemplateParser {
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").replace(/\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
             const matchStr = match[0];
-            return fsw.isExists(abspath, (exists: boolean): void => {
+            return _fileInfo.exists(abspath, (exists: boolean): void => {
                 if (!exists) {
                     return ctx.transferError(new Error(`Template ${path} not found...`));
                 }
@@ -505,7 +509,7 @@ export class TemplateCore {
     }
 }
 function canReadFileCache(ctx: IContext, filePath: string, cachePath: string, next: (readCache: boolean) => void): void {
-    return fsw.isExists(cachePath, (exists: boolean): void => {
+    return _fileInfo.exists(cachePath, (exists: boolean): void => {
         if (!exists) return next(false);
         return fsw.compairFile(filePath, cachePath, (err: NodeJS.ErrnoException | null, changed: boolean) => {
             return ctx.handleError(err, () => {
@@ -542,7 +546,7 @@ class TemplateLink {
         }
     }
     public static tryLive(ctx: IContext, path: string, status: IResInfo): void {
-        return fsw.isExists(path, (exists: boolean, url: string): void => {
+        return _fileInfo.exists(path, (exists: boolean, url: string): void => {
             if (!exists) return ctx.next(404);
             return _fs.readFile(url, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
                 return ctx.handleError(err, (): void => {
@@ -576,7 +580,7 @@ class TemplateLink {
         const key = this._getCacheMape(path);
         const cache = _tw.cache[key];
         if (cache) return next(cache);
-        return fsw.isExists(path, (exists: boolean, url: string): void => {
+        return _fileInfo.exists(path, (exists: boolean, url: string): void => {
             if (!exists) return ctx.next(404);
             return _fs.readFile(url, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
                 return ctx.handleError(err, (): void => {
@@ -675,7 +679,7 @@ class TemplateLink {
                 return this._hadleCacheResponse(ctx, status, _tw.cache[cacheKey].data);
             }
         }
-        return fsw.isExists(path, (exists: boolean, filePath: string) => {
+        return _fileInfo.exists(path, (exists: boolean, filePath: string) => {
             if (!exists) return ctx.next(404);
             return this._tryFileCacheOrLive(ctx, cacheKey, filePath, (func: string | SandBox) => this._hadleCacheResponse(ctx, status, func));
         });

@@ -34,6 +34,7 @@ exports.App = exports.parseUrl = exports.getClientIp = exports.escapePath = expo
 * See the accompanying LICENSE file for terms.
 */
 // 2:40 PM 5/7/2020
+// by rajib chy
 require("./sow-global");
 const http_1 = require("http");
 const events_1 = require("events");
@@ -49,7 +50,7 @@ const _zlib = __importStar(require("zlib"));
 const _mimeType = __importStar(require("./sow-http-mime-types"));
 _a = (() => {
     const _readAppVersion = () => {
-        const libRoot = (0, sow_util_1.getLibRoot)();
+        const libRoot = (0, sow_util_1.getAppDir)();
         const absPath = (0, path_1.resolve)(`${libRoot}/package.json`);
         (0, sow_util_1.assert)((0, fs_1.existsSync)(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
         const data = (0, fs_1.readFileSync)(absPath, "utf-8");

@@ -30,6 +30,7 @@ exports.Schema = exports.schemaValidate = exports.fillUpType = void 0;
 * See the accompanying LICENSE file for terms.
 */
 // 1:20 AM 5/13/2020
+// by rajib chy
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_util_1 = require("./sow-util");
@@ -143,7 +144,7 @@ function schemaValidate(dataPath, schemaProperties, configProperties, additional
 exports.schemaValidate = schemaValidate;
 class Schema {
     static Validate(config) {
-        const parent = (0, sow_util_1.getLibRoot)();
+        const parent = (0, sow_util_1.getAppDir)();
         const absPath = _path.resolve(`${parent}/schema.json`);
         const schema = readSchemaAsync(absPath);
         const schemaRoot = _supportSchema[schema.$schema];

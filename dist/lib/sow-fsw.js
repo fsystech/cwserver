@@ -63,6 +63,7 @@ exports.moveFileAsync = exports.existsAsync = exports.mkdirAsync = exports.write
 * See the accompanying LICENSE file for terms.
 */
 // 5:17 PM 6/15/2020
+// by rajib chy
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 function stat(path, next) {
@@ -243,7 +244,7 @@ function rmdir(path, next, errHandler) {
                     const forward = () => {
                         const npath = files.shift();
                         if (!npath) {
-                            return _fs.rmdir(path, (rmerr) => {
+                            return _fs.rm(path, { recursive: true, force: true }, (rmerr) => {
                                 return next(rmerr);
                             });
                         }
@@ -271,7 +272,7 @@ function rmdirSync(path) {
         _fs.readdirSync(path).forEach((nextItem) => {
             rmdirSync(_path.join(path, nextItem));
         });
-        _fs.rmdirSync(path);
+        _fs.rmSync(path, { recursive: true, force: true });
     }
     else {
         _fs.unlinkSync(path);

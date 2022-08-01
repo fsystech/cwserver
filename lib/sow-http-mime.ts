@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 9:22 PM 5/4/2020
+// by rajib chy
 import * as _fs from 'fs';
 import * as _path from 'path';
 import * as _zlib from 'zlib';
@@ -15,6 +16,7 @@ import { SowHttpCache, IChangeHeader } from './sow-http-cache';
 import { Streamer } from './sow-web-streamer';
 import { Encryption } from './sow-encryption';
 import { Util } from './sow-util';
+import { FileInfoCacheHandler, IFileInfoCacheHandler, IFileDescription } from './file-info';
 export interface IHttpMimeHandler {
     render(ctx: IContext, maybeDir?: string): void;
     getMimeType(extension: string): string;
@@ -48,6 +50,7 @@ function createGzip(): _zlib.Gzip {
     return _zlib.createGzip({ level: _zlib.constants.Z_BEST_COMPRESSION });
 }
 class MimeHandler {
+    static _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
     static getCachePath(ctx: IContext): string {
         const path: string = `${ctx.server.config.staticFile.tempPath}\\${Encryption.toMd5(ctx.path)}`;
         return _path.resolve(`${path}.${ctx.extension}.cache`);
@@ -98,13 +101,13 @@ class MimeHandler {
     ): void {
         const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
         const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
-        return _fs.stat(cachePath, (serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats): void => {
-            const existsCachFile: boolean = serr ? false : true;
+        return this._fileInfo.stat(cachePath, (desc: IFileDescription): void => {
+            const existsCachFile: boolean = desc.exists;
             return ctx.handleError(null, () => {
                 let lastChangeTime: number = 0, cfileSize: number = 0;
-                if (existsCachFile && stat) {
-                    cfileSize = stat.size;
-                    lastChangeTime = stat.mtime.getTime();
+                if (existsCachFile && desc.stats) {
+                    cfileSize = desc.stats.size;
+                    lastChangeTime = desc.stats.mtime.getTime();
                 }
                 let hasChanged: boolean = true;
                 if (existsCachFile) {
@@ -153,20 +156,24 @@ class MimeHandler {
                 return pipeline(rstream, createGzip(), wstream, (gzipErr: NodeJS.ErrnoException | null) => {
                     destroy(rstream); destroy(wstream);
                     return ctx.handleError(gzipErr, (): void => {
-                        return _fs.stat(cachePath, (cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats) => {
-                            return ctx.handleError(cserr, (): void => {
-                                lastChangeTime = cstat.mtime.getTime();
+                        return this._fileInfo.stat(cachePath, (cdesc: IFileDescription) => {
+                            return ctx.handleError(null, (): void => {
+                                if (!cdesc.stats) {
+                                    ctx.next(404, true);
+                                    return;
+                                }
+                                lastChangeTime = cdesc.stats.mtime.getTime();
                                 SowHttpCache.writeCacheHeader(ctx.res, {
                                     lastChangeTime,
-                                    etag: SowHttpCache.getEtag(lastChangeTime, cstat.size)
+                                    etag: SowHttpCache.getEtag(lastChangeTime, cdesc.stats.size)
                                 }, ctx.server.config.cacheHeader);
                                 ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
                                 if (useFullOptimization && cachePath) {
-                                    this._holdCache(cachePath, lastChangeTime, cstat.size);
+                                    this._holdCache(cachePath, lastChangeTime, cdesc.stats.size);
                                 }
                                 return Util.pipeOutputStream(cachePath, ctx);
                             });
-                        });
+                        }, true);
                     });
                 });
             });
@@ -278,10 +285,10 @@ class MimeHandler {
             }
         }
         const absPath: string = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
-        return _fs.stat(absPath, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
+        return this._fileInfo.stat(absPath, (desc: IFileDescription): void => {
             return ctx.handleError(null, () => {
-                if (err) return ctx.next(404, true);
-                return this._render(ctx, mimeType, absPath, stats, cachePath || "");
+                if (!desc.stats) return ctx.next(404, true);
+                return this._render(ctx, mimeType, absPath, desc.stats, cachePath || "");
             });
         });
     }

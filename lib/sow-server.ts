@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 10:13 PM 5/2/2020
+// by rajib chy
 import {
     ISession, IResInfo, toString
 } from "./sow-static";
@@ -17,7 +18,7 @@ import {
 import * as _fs from 'fs';
 import * as _path from 'path';
 import * as fsw from './sow-fsw';
-import { Util, getLibRoot } from './sow-util';
+import { Util, getAppDir } from './sow-util';
 import { Schema } from './sow-schema-validator';
 import { Session } from './sow-static';
 import { ISowDatabaseType } from './sow-db-type';
@@ -554,6 +555,7 @@ export class SowServer implements ISowServer {
     private _errorPage: { [x: string]: string; };
     private _encryption: IServerEncryption;
     private root: string;
+    private preRegx: RegExp;
     private rootregx: RegExp;
     private publicregx: RegExp;
     private nodeModuleregx: RegExp;
@@ -611,7 +613,7 @@ ${appRoot}\\www_public
         if (this._public !== config.hostInfo.root) {
             throw new Error(`Server ready for App Root: ${this._public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
         }
-        const libRoot: string = getLibRoot();
+        const libRoot: string = getAppDir();
         this._errorPage = {
             "404": _path.resolve(`${libRoot}/dist/error_page/404.html`),
             "401": _path.resolve(`${libRoot}/dist/error_page/401.html`),
@@ -621,6 +623,7 @@ ${appRoot}\\www_public
         this.implimentConfig(config);
         this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
         this.publicregx = new RegExp(`${this._public}/`, "gi");
+        this.preRegx = new RegExp("<pre[^>]*>", "gi"); // /<pre[^>]*>/gi
         this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
         this.userInteractive = false;
         this.initilize();
@@ -750,7 +753,7 @@ ${appRoot}\\www_public
         });
     }
     copyright(): string {
-        return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
+        return '/*Copyright( c ) 2020, SOW (https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
         const context = getContext(this, req, res);
@@ -802,10 +805,10 @@ ${appRoot}\\www_public
     }
     passError(ctx: IContext): boolean {
         if (!ctx.error) return false;
-        if (!ctx.server.config.isDebug) {
+        if (!this._config.isDebug) {
             return ctx.res.status(500).send("Internal error occured. Please try again."), true;
         }
-        const msg: string = `<pre>${this.escape(ctx.error.replace(/<pre[^>]*>/gi, "").replace(/\\/gi, "/").replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
+        const msg: string = `<pre>${this.escape(ctx.error.replace(this.preRegx, "").replace(/\\/gi, "/").replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
         return ctx.res.status(500).send(msg), true;
     }
     getErrorPath(statusCode: number, tryServer?: boolean): string | void {

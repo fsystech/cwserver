@@ -1,6 +1,7 @@
 import { IContext } from './sow-server';
 export declare function assert(condition: any, expr: string): void;
 export declare function getLibRoot(): string;
+export declare function getAppDir(): string;
 export declare function generateRandomString(num: number): string;
 declare class JSONW {
     static parse(text: any, reviver?: (this: any, key: string, value: any) => any): any;

@@ -4,10 +4,11 @@
 * See the accompanying LICENSE file for terms.
 */
 // 3:15 PM 5/10/2020
+// by rajib chy
 import * as _fs from 'fs';
 import * as _path from 'path';
 import { ConsoleColor } from './sow-logger';
-import { getLibRoot } from './sow-util';
+import { getAppDir } from './sow-util';
 import * as fsw from './sow-fsw';
 export function createProjectTemplate(settings: {
 	appRoot: string;
@@ -20,7 +21,7 @@ export function createProjectTemplate(settings: {
 	if (isTest === false) {
 		console.log(ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}`);
 	}
-	const templateRoot: string = _path.resolve(`${getLibRoot()}/dist/project_template`);
+	const templateRoot: string = _path.resolve(`${getAppDir()}/dist/project_template`);
 	if (!_fs.existsSync(templateRoot))
 		throw new Error(`Project template not found in ${templateRoot}\r\nPlease uninstall and install again 'cwserver'`);
 	const appRoot: string = _path.resolve(settings.appRoot);

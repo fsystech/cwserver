@@ -30,7 +30,8 @@
             </div>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js" 
+    integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"
         integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
     <script type="text/javascript">
@@ -57,21 +58,21 @@
                     log: function (msg) {
                         let $li = $("<li>");
                         $li.css("color", "white");
-                        $li.html(createLog(msg));
+                        $li.html(escape(createLog(msg)));
                         $log.append($li);
                         return $li = void 0, this.scroll();
                     },
                     success: function (msg) {
                         let $li = $("<li>");
                         $li.css("color", "lime");
-                        $li.html(createLog(msg));
+                        $li.html(escape(createLog(msg)));
                         $log.append($li);
                         return $li = void 0, this.scroll();
                     },
                     error: function (msg) {
                         let $li = $("<li>");
                         $li.css("color", "red");
-                        $li.html(createLog(msg));
+                        $li.html(escape(createLog(msg)));
                         $log.append($li);
                         return $li = void 0, this.scroll();
                     }

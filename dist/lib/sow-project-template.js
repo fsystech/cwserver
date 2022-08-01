@@ -30,6 +30,7 @@ exports.createProjectTemplate = void 0;
 * See the accompanying LICENSE file for terms.
 */
 // 3:15 PM 5/10/2020
+// by rajib chy
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_logger_1 = require("./sow-logger");
@@ -40,7 +41,7 @@ function createProjectTemplate(settings) {
     if (isTest === false) {
         console.log(sow_logger_1.ConsoleColor.FgGreen, `Please wait creating your project ${settings.projectRoot}`);
     }
-    const templateRoot = _path.resolve(`${(0, sow_util_1.getLibRoot)()}/dist/project_template`);
+    const templateRoot = _path.resolve(`${(0, sow_util_1.getAppDir)()}/dist/project_template`);
     if (!_fs.existsSync(templateRoot))
         throw new Error(`Project template not found in ${templateRoot}\r\nPlease uninstall and install again 'cwserver'`);
     const appRoot = _path.resolve(settings.appRoot);

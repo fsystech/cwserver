@@ -1,3 +1,10 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+// 4:38 AM 5/22/2020
+// by rajib chy
 import expect from 'expect';
 import { wsClient, IWsClientInfo, ISowSocketServer, ISowSocketInfo, IOSocket, ISession, ISowServer } from '../index';
 const clientInfo: IWsClientInfo = wsClient();

@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 9:01 PM 5/2/2020
+// by rajib chy
 export interface ISession {
     isAuthenticated: boolean;
     loginId: string;

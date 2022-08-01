@@ -4,9 +4,10 @@
 * See the accompanying LICENSE file for terms.
 */
 // 1:20 AM 5/13/2020
+// by rajib chy
 import * as _fs from 'fs';
 import * as _path from 'path';
-import { Util, getLibRoot, assert } from './sow-util';
+import { Util, getAppDir, assert } from './sow-util';
 export interface IPropertiesDescription {
 	type?: string;
 	minLength: number;
@@ -143,7 +144,7 @@ export function schemaValidate(
 }
 export class Schema {
 	public static Validate(config: { [id: string]: any } | any): void {
-		const parent: string = getLibRoot();
+		const parent: string = getAppDir();
 		const absPath: string = _path.resolve(`${parent}/schema.json`);
 		const schema: ISchema = readSchemaAsync(absPath);
 		const schemaRoot: string | undefined = _supportSchema[schema.$schema];

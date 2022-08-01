@@ -1,4 +1,10 @@
+/*
+* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
 // 4:38 AM 5/22/2020
+// by rajib chy
 import expect from 'expect';
 import * as path from "path";
 import * as fs from "fs";
@@ -298,6 +304,8 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			parser.dispose();
 			ctx.res.status(200).json(data.shift() || {});
 		} catch (e: any) {
+			console.log("/upload-test error");
+			console.log(e);
 			ctx.transferError(e);
 		}
 	}).post('/upload-non-bolock', (ctx: IContext, requestParam?: IRequestParam): void => {

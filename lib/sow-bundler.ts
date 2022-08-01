@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 4:48 PM 5/3/2020
+// by rajib chy
 import * as _fs from 'fs';
 import * as _path from 'path';
 import * as _zlib from 'zlib';
@@ -13,8 +14,9 @@ import { IApplication } from './sow-server-core';
 import { ISowServer, IContext } from './sow-server';
 import { IController } from './sow-controller';
 import { Util } from './sow-util';
-import * as fsw from './sow-fsw';
 import { IBufferArray, BufferArray } from './sow-static';
+import { FileInfoCacheHandler, IFileInfoCacheHandler, IFileDescription } from './file-info';
+const _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
 enum ContentType {
     JS = 0,
     CSS = 1,
@@ -44,17 +46,6 @@ const responseWriteGzip = (
     }), void 0;
 }
 class Bundlew {
-    static getInfo(): string {
-        return `/*
-||####################################################################################################################################||
-||#  Sow "Combiner"                                                                                                                  #||
-||#  Version: 1.0.0.1; Build Date : Fri May 01, 2020 1:33:49 GMT+0600 (BDT)                                                          #||
-||#  Sow( https://github.com/safeonlineworld/cwserver). All rights reserved                                                          #||
-||#  Email: mssclang@outlook.com;                                                                                                    #||
-||####################################################################################################################################||
----------------------------------------------------------------------------------------------------------------------------------------
-This "Combiner" contains the following files:\n`;
-    }
     static getResContentType(ctEnum: ContentType): string {
         if (ctEnum === ContentType.JS)
             return "application/x-javascript; charset=utf-8";
@@ -119,9 +110,9 @@ This "Combiner" contains the following files:\n`;
                 } else {
                     absolute = server.formatPath(name, true);
                 }
-                return _fs.stat(absolute, (err: NodeJS.ErrnoException | null, stat: _fs.Stats) => {
-                    if (err) return next([], new Error(`No file found\r\nPath:${absolute}\r\nName:${name}`));
-                    const changeTime = stat.mtime.getTime();
+                return _fileInfo.stat(absolute, (desc: IFileDescription) => {
+                    if (!desc.exists || !desc.stats) return next([], new Error(`No file found\r\nPath:${absolute}\r\nName:${name}`));
+                    const changeTime = desc.stats.mtime.getTime();
                     result.push({
                         name: name.replace(/\$.+?\//gi, "/"),
                         absolute,
@@ -143,7 +134,7 @@ This "Combiner" contains the following files:\n`;
         next: (buffer: IBufferArray) => void
     ): void {
         const out: IBufferArray = new BufferArray();
-        let istr: string = this.getInfo();
+        let istr: string = _getInfo();
         files.forEach((inf, index) => {
             istr += `${index + 1}==>${inf.name}\r\n`;
         });
@@ -287,14 +278,14 @@ This "Combiner" contains the following files:\n`;
             return this._sendFromMemCache(ctx, cte, _mamCache[memCacheKey]);
         }
         const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
-        return fsw.stat(cachpath, (serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats): void => {
-            const existsCachFile: boolean = serr ? false : true;
+        return _fileInfo.stat(cachpath, (fdesc: IFileDescription): void => {
+            const existsCachFile: boolean = fdesc.exists;
             return ctx.handleError(null, () => {
                 let lastChangeTime: number = 0;
                 let cfileSize: number = 0;
-                if (existsCachFile && stat) {
-                    cfileSize = stat.size;
-                    lastChangeTime = stat.mtime.getTime();
+                if (existsCachFile && fdesc.stats) {
+                    cfileSize = fdesc.stats.size;
+                    lastChangeTime = fdesc.stats.mtime.getTime();
                 }
                 return this.getBundleInfo(server, desc.toString(), lastChangeTime, existsCachFile, (files: BundlerFileInfo[], ierr: Error | null): void => {
                     return ctx.handleError(ierr, () => {
@@ -341,12 +332,13 @@ This "Combiner" contains the following files:\n`;
                             if (!server.config.bundler.compress) {
                                 return _fs.writeFile(cachpath, buffer.data, (werr: NodeJS.ErrnoException | null): void => {
                                     return ctx.handleError(werr, () => {
-                                        return _fs.stat(cachpath, (cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats) => {
-                                            return ctx.handleError(cserr, () => {
-                                                lastChangeTime = cstat.mtime.getTime();
+                                        return _fileInfo.stat(cachpath, (edesc: IFileDescription) => {
+                                            return ctx.handleError(null, () => {
+                                                if (!edesc.stats) return ctx.next(404);
+                                                lastChangeTime = edesc.stats.mtime.getTime();
                                                 SowHttpCache.writeCacheHeader(ctx.res, {
                                                     lastChangeTime,
-                                                    etag: SowHttpCache.getEtag(lastChangeTime, cstat.size)
+                                                    etag: SowHttpCache.getEtag(lastChangeTime, edesc.stats.size)
                                                 }, server.config.cacheHeader);
                                                 ctx.res.status(200, {
                                                     'Content-Type': this.getResContentType(cte),
@@ -355,14 +347,14 @@ This "Combiner" contains the following files:\n`;
                                                 if (useFullOptimization) {
                                                     _mamCache[memCacheKey] = {
                                                         lastChangeTime,
-                                                        cfileSize: cstat.size,
+                                                        cfileSize: edesc.stats.size,
                                                         bundleData: buffer.data
                                                     };
                                                 }
                                                 ctx.res.end(buffer.data); buffer.dispose();
                                                 return ctx.next(200);
                                             });
-                                        });
+                                        }, true);
                                     });
                                 });
                             }
@@ -371,12 +363,13 @@ This "Combiner" contains the following files:\n`;
                                 return ctx.handleError(error, () => {
                                     return _fs.writeFile(cachpath, buff, (err: NodeJS.ErrnoException | null): void => {
                                         return ctx.handleError(err, () => {
-                                            return _fs.stat(cachpath, (cserr: NodeJS.ErrnoException | null, cstat: _fs.Stats) => {
-                                                return ctx.handleError(cserr, () => {
-                                                    lastChangeTime = cstat.mtime.getTime();
+                                            return _fileInfo.stat(cachpath, (edesc: IFileDescription) => {
+                                                return ctx.handleError(null, () => {
+                                                    if (!edesc.stats) return ctx.next(404);
+                                                    lastChangeTime = edesc.stats.mtime.getTime();
                                                     SowHttpCache.writeCacheHeader(ctx.res, {
                                                         lastChangeTime,
-                                                        etag: SowHttpCache.getEtag(lastChangeTime, cstat.size)
+                                                        etag: SowHttpCache.getEtag(lastChangeTime, edesc.stats.size)
                                                     }, server.config.cacheHeader);
                                                     ctx.res.status(200, {
                                                         'Content-Type': this.getResContentType(cte),
@@ -386,14 +379,14 @@ This "Combiner" contains the following files:\n`;
                                                     if (useFullOptimization) {
                                                         _mamCache[memCacheKey] = {
                                                             lastChangeTime,
-                                                            cfileSize: cstat.size,
+                                                            cfileSize: edesc.stats.size,
                                                             bundleData: buff
                                                         };
                                                     }
                                                     ctx.res.end(buff);
                                                     ctx.next(200);
                                                 });
-                                            });
+                                            }, true);
                                         });
                                     });
                                 });
@@ -415,4 +408,15 @@ export class Bundler {
             return Bundlew.createServerFileCache(server, ctx);
         });
     }
+}
+function _getInfo(): string {
+    return `/*
+||####################################################################################################################################||
+||#  Sow "Combiner"                                                                                                                  #||
+||#  Version: 1.0.0.1; Build Date : Fri May 01, 2020 1:33:49 GMT+0600 (BDT)                                                          #||
+||#  Sow( https://github.com/safeonlineworld/cwserver). All rights reserved                                                          #||
+||#  Email: mssclang@outlook.com;                                                                                                    #||
+||####################################################################################################################################||
+---------------------------------------------------------------------------------------------------------------------------------------
+This "Combiner" contains the following files:\n`;
 }

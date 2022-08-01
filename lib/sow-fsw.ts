@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 5:17 PM 6/15/2020
+// by rajib chy
 import * as _fs from 'fs';
 import * as _path from 'path';
 import { ErrorHandler } from './sow-static';
@@ -190,7 +191,7 @@ export function rmdir(
                     const forward = (): void => {
                         const npath: string | undefined = files.shift();
                         if (!npath) {
-                            return _fs.rmdir(path, (rmerr: NodeJS.ErrnoException | null): void => {
+                            return _fs.rm(path, { recursive: true, force: true }, (rmerr: NodeJS.ErrnoException | null): void => {
                                 return next(rmerr);
                             });
                         }
@@ -218,7 +219,7 @@ export function rmdirSync(path: string): void {
                 _path.join(path, nextItem)
             );
         });
-        _fs.rmdirSync(path);
+        _fs.rmSync(path, { recursive: true, force: true });
     } else {
         _fs.unlinkSync(path);
     }

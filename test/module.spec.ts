@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 4:38 AM 5/22/2020
+// by rajib chy
 import 'mocha';
 import * as crypto from 'crypto';
 import expect from 'expect';
@@ -14,6 +15,7 @@ import { io } from 'socket.io-client';
 import * as fsw from '../lib/sow-fsw';
 import { HttpStatus } from "../lib/sow-http-status";
 import * as cwserver from '../index';
+// import { FileInfoCacheHandler, FileDescription } from '../lib/file-info';
 import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/sow-static';
 import {
     IAppUtility, IContext
@@ -2740,7 +2742,7 @@ describe("cwserver-fsw", () => {
         });
     });
     it("test-fsw-async", function (done) {
-        this.timeout(5000);
+        this.timeout(10000);
         async function task() {
             let unlinkFileName: string | undefined;
             for await (const p of await fsw.getFilesAsync(logDir)) {
@@ -2766,6 +2768,9 @@ describe("cwserver-fsw", () => {
             const tPath = path.resolve('./_test/');
             await fsw.mkdirAsync(handleError, tPath, "");
             if (unlinkFileName) {
+                // let fcach = new FileInfoCacheHandler();
+                // expect(fcach.statSync(unlinkFileName)).toBeInstanceOf(FileDescription);
+                // expect(fcach.existsSync(unlinkFileName)).toBeInstanceOf(FileDescription);
                 expect(await fsw.existsAsync(unlinkFileName)).toBeTruthy();
                 try {
                     await fsw.existsAsync(`x/zz/`);
@@ -2782,7 +2787,6 @@ describe("cwserver-fsw", () => {
                 } catch (ex) {
                     expect(ex).toBeDefined();
                 }
-
                 try {
                     await sleep(100);
                     await fsw.unlinkAsync(unlinkFileName);
@@ -2792,7 +2796,8 @@ describe("cwserver-fsw", () => {
                 } catch (ex) {
                     expect(ex).toBeDefined();
                 }
-
+                // fcach = new FileInfoCacheHandler();
+                // expect(fcach.statSync(unlinkFileName)).toBeInstanceOf(FileDescription);
             }
             //appUtility.server.mapPath("/web/large.bin")
             done();

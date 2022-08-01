@@ -29,6 +29,8 @@ exports.Template = exports.TemplateCore = exports.templateNext = void 0;
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
+// 9:01 PM 5/2/2020
+// by rajib chy
 const _fs = __importStar(require("fs"));
 const _vm = __importStar(require("vm"));
 const _zlib = __importStar(require("zlib"));
@@ -37,6 +39,7 @@ const sow_http_status_1 = require("./sow-http-status");
 const fsw = __importStar(require("./sow-fsw"));
 const sow_util_1 = require("./sow-util");
 const os_1 = require("os");
+const file_info_1 = require("./file-info");
 const _isWin = (0, os_1.platform)() === "win32";
 function templateNext(ctx, next, isCompressed) {
     throw new Error("Method not implemented.");
@@ -247,6 +250,7 @@ function ExportExtendMatch(str) {
     }
     return match;
 }
+const _fileInfo = new file_info_1.FileInfoCacheHandler();
 class TemplateParser {
     static implimentAttachment(ctx, appRoot, str, next) {
         if (/#attach/gi.test(str) === false)
@@ -260,7 +264,7 @@ class TemplateParser {
                 return next(str);
             const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
-            return fsw.isExists(abspath, (exists, url) => {
+            return _fileInfo.exists(abspath, (exists, url) => {
                 if (!exists) {
                     return ctx.transferError(new Error(`Attachement ${path} not found...`));
                 }
@@ -310,7 +314,7 @@ class TemplateParser {
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").replace(/\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
             const matchStr = match[0];
-            return fsw.isExists(abspath, (exists) => {
+            return _fileInfo.exists(abspath, (exists) => {
                 if (!exists) {
                     return ctx.transferError(new Error(`Template ${path} not found...`));
                 }
@@ -475,7 +479,7 @@ class TemplateCore {
 }
 exports.TemplateCore = TemplateCore;
 function canReadFileCache(ctx, filePath, cachePath, next) {
-    return fsw.isExists(cachePath, (exists) => {
+    return _fileInfo.exists(cachePath, (exists) => {
         if (!exists)
             return next(false);
         return fsw.compairFile(filePath, cachePath, (err, changed) => {
@@ -513,7 +517,7 @@ class TemplateLink {
         };
     }
     static tryLive(ctx, path, status) {
-        return fsw.isExists(path, (exists, url) => {
+        return _fileInfo.exists(path, (exists, url) => {
             if (!exists)
                 return ctx.next(404);
             return _fs.readFile(url, "utf8", (err, data) => {
@@ -545,7 +549,7 @@ class TemplateLink {
         const cache = _tw.cache[key];
         if (cache)
             return next(cache);
-        return fsw.isExists(path, (exists, url) => {
+        return _fileInfo.exists(path, (exists, url) => {
             if (!exists)
                 return ctx.next(404);
             return _fs.readFile(url, "utf8", (err, data) => {
@@ -639,7 +643,7 @@ class TemplateLink {
                 return this._hadleCacheResponse(ctx, status, _tw.cache[cacheKey].data);
             }
         }
-        return fsw.isExists(path, (exists, filePath) => {
+        return _fileInfo.exists(path, (exists, filePath) => {
             if (!exists)
                 return ctx.next(404);
             return this._tryFileCacheOrLive(ctx, cacheKey, filePath, (func) => this._hadleCacheResponse(ctx, status, func));

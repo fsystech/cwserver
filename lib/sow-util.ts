@@ -3,6 +3,8 @@
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
+// 9:01 PM 5/2/2020
+// by rajib chy
 import { IContext } from './sow-server';
 import * as _fs from 'fs';
 import * as _path from 'path';
@@ -55,6 +57,12 @@ export function assert(condition: any, expr: string) {
 }
 export function getLibRoot(): string {
     return _path.resolve(__dirname, process.env.SCRIPT === "TS" ? '..' : '../..');
+}
+export function getAppDir(): string {
+    if ("pkg" in process) {
+        return `${process.cwd()}/lib/cwserver/`;
+    }
+    return getLibRoot();
 }
 export function generateRandomString(num: number): string {
     const

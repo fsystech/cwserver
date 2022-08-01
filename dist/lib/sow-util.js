@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Util = exports.generateRandomString = exports.getLibRoot = exports.assert = void 0;
+exports.Util = exports.generateRandomString = exports.getAppDir = exports.getLibRoot = exports.assert = void 0;
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const stream_1 = require("stream");
@@ -84,6 +84,13 @@ function getLibRoot() {
     return _path.resolve(__dirname, process.env.SCRIPT === "TS" ? '..' : '../..');
 }
 exports.getLibRoot = getLibRoot;
+function getAppDir() {
+    if ("pkg" in process) {
+        return `${process.cwd()}/lib/cwserver/`;
+    }
+    return getLibRoot();
+}
+exports.getAppDir = getAppDir;
 function generateRandomString(num) {
     const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     let result = "";

@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 9:10 PM 5/2/2020
+// by rajib chy
 import { IResInfo } from './sow-static';
 import { ResInfo, ToNumber } from './sow-static';
 export type Dict<T> = { [K in string | number]: T | undefined };

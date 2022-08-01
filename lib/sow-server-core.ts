@@ -4,6 +4,7 @@
 * See the accompanying LICENSE file for terms.
 */
 // 2:40 PM 5/7/2020
+// by rajib chy
 import './sow-global';
 import {
     createServer, OutgoingHttpHeaders,
@@ -15,7 +16,7 @@ import { ToResponseTime, toString, ISession, IResInfo } from './sow-static';
 import { HttpStatus } from './sow-http-status';
 import { IContext } from './sow-server';
 import { Template } from './sow-template';
-import { Util, assert, getLibRoot } from './sow-util';
+import { Util, assert, getAppDir } from './sow-util';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import urlHelpers, { UrlWithParsedQuery } from 'url';
@@ -90,7 +91,7 @@ export const {
     appVersion, readAppVersion
 } = (() => {
     const _readAppVersion = (): string => {
-        const libRoot: string = getLibRoot();
+        const libRoot: string = getAppDir();
         const absPath: string = resolve(`${libRoot}/package.json`);
         assert(existsSync(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
         const data: string = readFileSync(absPath, "utf-8");

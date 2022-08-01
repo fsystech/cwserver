@@ -5,9 +5,6 @@
 [![NPM Downloads][downloads-image]][downloads-url]
 [![Language grade: JavaScript][language-garde-image]][language-garde-url]
 [![Coverage Status][coveralls-image]][coveralls-url]
-[![Known Vulnerabilities][kvulnerabilities-image]][kvulnerabilities-url]
-[![Dependency Status][david-dep-image]][david-dep-url]
-[![devDependency Status][david-dev-image]][david-dev-url]
 
 ## cwserver ##
 The aim of the project is to create an easy to use, lightweight, ```Complete Web Server Framework``` with default ```NodeJs HTTP Server```.
@@ -352,11 +349,5 @@ run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
 [language-garde-url]: https://lgtm.com/projects/g/safeonlineworld/cwserver/context:javascript
 [coveralls-image]: https://img.shields.io/coveralls/github/safeonlineworld/cwserver/master
 [coveralls-url]: https://coveralls.io/github/safeonlineworld/cwserver?branch=master
-[kvulnerabilities-image]: https://snyk.io/test/github/safeonlineworld/cwserver/badge.svg?targetFile=package.json
-[kvulnerabilities-url]: https://snyk.io/test/github/safeonlineworld/cwserver?targetFile=package.json
-[david-dev-image]: https://img.shields.io/david/dev/safeonlineworld/cwserver
-[david-dev-url]: https://david-dm.org/safeonlineworld/cwserver?type=dev
-[david-dep-image]: https://img.shields.io/david/safeonlineworld/cwserver
-[david-dep-url]: https://david-dm.org/safeonlineworld/cwserver
 [cwserver-logo]: https://i.imgur.com/OSbUHaJ.png
 [cwserver-url]: http://cwserver.safeonline.world/

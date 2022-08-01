@@ -30,6 +30,7 @@ exports.HttpMimeHandler = void 0;
 * See the accompanying LICENSE file for terms.
 */
 // 9:22 PM 5/4/2020
+// by rajib chy
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const _zlib = __importStar(require("zlib"));
@@ -40,6 +41,7 @@ const sow_http_cache_1 = require("./sow-http-cache");
 const sow_web_streamer_1 = require("./sow-web-streamer");
 const sow_encryption_1 = require("./sow-encryption");
 const sow_util_1 = require("./sow-util");
+const file_info_1 = require("./file-info");
 const _mamCache = {};
 // "exe", "zip", "doc", "docx", "pdf", "ppt", "pptx", "gz"
 const TaskDeff = [
@@ -108,13 +110,13 @@ class MimeHandler {
     static servedFromServerFileCache(ctx, absPath, mimeType, fstat, cachePath) {
         const useFullOptimization = ctx.server.config.useFullOptimization;
         const reqCacheHeader = sow_http_cache_1.SowHttpCache.getChangedHeader(ctx.req.headers);
-        return _fs.stat(cachePath, (serr, stat) => {
-            const existsCachFile = serr ? false : true;
+        return this._fileInfo.stat(cachePath, (desc) => {
+            const existsCachFile = desc.exists;
             return ctx.handleError(null, () => {
                 let lastChangeTime = 0, cfileSize = 0;
-                if (existsCachFile && stat) {
-                    cfileSize = stat.size;
-                    lastChangeTime = stat.mtime.getTime();
+                if (existsCachFile && desc.stats) {
+                    cfileSize = desc.stats.size;
+                    lastChangeTime = desc.stats.mtime.getTime();
                 }
                 let hasChanged = true;
                 if (existsCachFile) {
@@ -164,20 +166,24 @@ class MimeHandler {
                     destroy(rstream);
                     destroy(wstream);
                     return ctx.handleError(gzipErr, () => {
-                        return _fs.stat(cachePath, (cserr, cstat) => {
-                            return ctx.handleError(cserr, () => {
-                                lastChangeTime = cstat.mtime.getTime();
+                        return this._fileInfo.stat(cachePath, (cdesc) => {
+                            return ctx.handleError(null, () => {
+                                if (!cdesc.stats) {
+                                    ctx.next(404, true);
+                                    return;
+                                }
+                                lastChangeTime = cdesc.stats.mtime.getTime();
                                 sow_http_cache_1.SowHttpCache.writeCacheHeader(ctx.res, {
                                     lastChangeTime,
-                                    etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cstat.size)
+                                    etag: sow_http_cache_1.SowHttpCache.getEtag(lastChangeTime, cdesc.stats.size)
                                 }, ctx.server.config.cacheHeader);
                                 ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
                                 if (useFullOptimization && cachePath) {
-                                    this._holdCache(cachePath, lastChangeTime, cstat.size);
+                                    this._holdCache(cachePath, lastChangeTime, cdesc.stats.size);
                                 }
                                 return sow_util_1.Util.pipeOutputStream(cachePath, ctx);
                             });
-                        });
+                        }, true);
                     });
                 });
             });
@@ -273,15 +279,16 @@ class MimeHandler {
             }
         }
         const absPath = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
-        return _fs.stat(absPath, (err, stats) => {
+        return this._fileInfo.stat(absPath, (desc) => {
             return ctx.handleError(null, () => {
-                if (err)
+                if (!desc.stats)
                     return ctx.next(404, true);
-                return this._render(ctx, mimeType, absPath, stats, cachePath || "");
+                return this._render(ctx, mimeType, absPath, desc.stats, cachePath || "");
             });
         });
     }
 }
+MimeHandler._fileInfo = new file_info_1.FileInfoCacheHandler();
 class HttpMimeHandler {
     getMimeType(extension) {
         return _mimeType.getMimeType(extension);

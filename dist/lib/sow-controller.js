@@ -1,27 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Controller = void 0;
 /*
@@ -30,11 +7,12 @@ exports.Controller = void 0;
 * See the accompanying LICENSE file for terms.
 */
 // 11:16 PM 5/2/2020
+// by rajib chy
 const sow_http_mime_1 = require("./sow-http-mime");
 const sow_http_status_1 = require("./sow-http-status");
 const sow_static_1 = require("./sow-static");
-const fsw = __importStar(require("./sow-fsw"));
 const sow_router_1 = require("./sow-router");
+const file_info_1 = require("./file-info");
 const routeTable = {
     any: {},
     get: {},
@@ -66,6 +44,7 @@ const _deleteRouter = (skip, router) => {
 };
 class Controller {
     constructor() {
+        this._fileInfo = new file_info_1.FileInfoCacheHandler();
         this._httpMimeHandler = new sow_http_mime_1.HttpMimeHandler();
     }
     get httpMimeHandler() {
@@ -153,7 +132,7 @@ class Controller {
             if (!name)
                 return ctx.next(404);
             const path = ctx.server.mapPath(`/${ctx.req.path}${name}${ctx.server.config.defaultExt}`);
-            return fsw.isExists(path, (exists, url) => {
+            return this._fileInfo.exists(path, (exists, url) => {
                 return ctx.handleError(null, () => {
                     if (exists)
                         return ctx.res.render(ctx, url);
@@ -177,7 +156,7 @@ class Controller {
                 return ctx.transferRequest((0, sow_static_1.ToNumber)(fileName));
             }
             const path = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
-            return fsw.isExists(path, (exists, url) => {
+            return this._fileInfo.exists(path, (exists, url) => {
                 return ctx.handleError(null, () => {
                     if (exists)
                         return ctx.res.render(ctx, url);

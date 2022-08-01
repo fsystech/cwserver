@@ -4,16 +4,17 @@
 * See the accompanying LICENSE file for terms.
 */
 // 11:16 PM 5/2/2020
+// by rajib chy
 import { HttpMimeHandler } from './sow-http-mime';
 import { IHttpMimeHandler } from './sow-http-mime';
 import { IContext, AppHandler } from './sow-server';
 import { HttpStatus } from './sow-http-status';
 import { ToNumber } from './sow-static';
-import * as fsw from './sow-fsw';
 import {
     getRouteMatcher, getRouteInfo,
     ILayerInfo, IRouteInfo
 } from './sow-router';
+import { FileInfoCacheHandler, IFileInfoCacheHandler } from './file-info';
 export interface IController {
     readonly httpMimeHandler: IHttpMimeHandler;
     any(route: string, next: AppHandler): IController;
@@ -59,10 +60,12 @@ const _deleteRouter = (skip: string[], router: { [x: string]: AppHandler }) => {
 }
 export class Controller implements IController {
     private _httpMimeHandler: IHttpMimeHandler;
+    private _fileInfo: IFileInfoCacheHandler;
     public get httpMimeHandler() {
         return this._httpMimeHandler;
     }
     constructor() {
+        this._fileInfo = new FileInfoCacheHandler();
         this._httpMimeHandler = new HttpMimeHandler();
     }
     reset(): void {
@@ -142,7 +145,7 @@ export class Controller implements IController {
             const name: string | undefined = ctx.server.config.defaultDoc[index];
             if (!name) return ctx.next(404);
             const path: string = ctx.server.mapPath(`/${ctx.req.path}${name}${ctx.server.config.defaultExt}`);
-            return fsw.isExists(path, (exists: boolean, url: string): void => {
+            return this._fileInfo.exists(path, (exists: boolean, url: string): void => {
                 return ctx.handleError(null, () => {
                     if (exists) return ctx.res.render(ctx, url);
                     return forword();
@@ -163,7 +166,7 @@ export class Controller implements IController {
                 return ctx.transferRequest(ToNumber(fileName));
             }
             const path: string = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
-            return fsw.isExists(path, (exists: boolean, url: string): void => {
+            return this._fileInfo.exists(path, (exists: boolean, url: string): void => {
                 return ctx.handleError(null, () => {
                     if (exists) return ctx.res.render(ctx, url);
                     return ctx.next(404);

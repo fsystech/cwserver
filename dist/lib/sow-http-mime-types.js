@@ -30,12 +30,12 @@ exports.isValidExtension = exports.getMimeType = exports.loadMimeType = void 0;
 * See the accompanying LICENSE file for terms.
 */
 // 12:04 AM 6/19/2020
-/// <reference types="node" />
+// by rajib chy
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 const sow_util_1 = require("./sow-util");
 function loadMimeType() {
-    const libRoot = (0, sow_util_1.getLibRoot)();
+    const libRoot = (0, sow_util_1.getAppDir)();
     const absPath = _path.resolve(`${libRoot}/mime-types.json`);
     (0, sow_util_1.assert)(_fs.existsSync(absPath), `No mime-type found in ${libRoot}\nPlease re-install cwserver`);
     const data = sow_util_1.Util.JSON.parse(_fs.readFileSync(absPath, "utf-8"));

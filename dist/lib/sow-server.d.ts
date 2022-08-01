@@ -276,6 +276,7 @@ export declare class SowServer implements ISowServer {
     private _errorPage;
     private _encryption;
     private root;
+    private preRegx;
     private rootregx;
     private publicregx;
     private nodeModuleregx;

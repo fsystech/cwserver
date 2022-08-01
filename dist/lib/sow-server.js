@@ -31,6 +31,7 @@ exports.initilizeServer = exports.SowServer = exports.SessionSecurity = exports.
 * See the accompanying LICENSE file for terms.
 */
 // 10:13 PM 5/2/2020
+// by rajib chy
 const sow_static_1 = require("./sow-static");
 const sow_server_core_1 = require("./sow-server-core");
 const _fs = __importStar(require("fs"));
@@ -396,7 +397,7 @@ ${appRoot}\\www_public
         if (this._public !== config.hostInfo.root) {
             throw new Error(`Server ready for App Root: ${this._public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
         }
-        const libRoot = (0, sow_util_1.getLibRoot)();
+        const libRoot = (0, sow_util_1.getAppDir)();
         this._errorPage = {
             "404": _path.resolve(`${libRoot}/dist/error_page/404.html`),
             "401": _path.resolve(`${libRoot}/dist/error_page/401.html`),
@@ -406,6 +407,7 @@ ${appRoot}\\www_public
         this.implimentConfig(config);
         this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
         this.publicregx = new RegExp(`${this._public}/`, "gi");
+        this.preRegx = new RegExp("<pre[^>]*>", "gi"); // /<pre[^>]*>/gi
         this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
         this.userInteractive = false;
         this.initilize();
@@ -563,7 +565,7 @@ ${appRoot}\\www_public
         });
     }
     copyright() {
-        return '/*Copyright( c ) 2018, Sow ( https://safeonline.world, https://www.facebook.com/safeonlineworld, mssclang@outlook.com, https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
+        return '/*Copyright( c ) 2020, SOW (https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
     }
     createContext(req, res, next) {
         const context = (0, exports.getContext)(this, req, res);
@@ -616,10 +618,10 @@ ${appRoot}\\www_public
     passError(ctx) {
         if (!ctx.error)
             return false;
-        if (!ctx.server.config.isDebug) {
+        if (!this._config.isDebug) {
             return ctx.res.status(500).send("Internal error occured. Please try again."), true;
         }
-        const msg = `<pre>${this.escape(ctx.error.replace(/<pre[^>]*>/gi, "").replace(/\\/gi, "/").replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
+        const msg = `<pre>${this.escape(ctx.error.replace(this.preRegx, "").replace(/\\/gi, "/").replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
         return ctx.res.status(500).send(msg), true;
     }
     getErrorPath(statusCode, tryServer) {
