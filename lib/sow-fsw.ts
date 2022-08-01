@@ -10,7 +10,6 @@ import * as _path from 'path';
 import { ErrorHandler } from './sow-static';
 const _fsRmdir = typeof (_fs.rm) === "function" ? _fs.rm : _fs.rmdir;
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
-
 export function stat(
     path: string,
     next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void

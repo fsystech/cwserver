@@ -30,8 +30,6 @@ export class FileDescription implements IFileDescription {
     }
 }
 export interface IFileInfoCacheHandler {
-    // existsSync(path: string): boolean;
-    // statSync(path: string): IFileDescription;
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
     exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
 }
@@ -40,25 +38,7 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
     constructor() {
         this._pathCache = {};
     }
-    // statSync(path: string): IFileDescription {
-    //     const info = this._pathCache[path];
-    //     if (info) return info;
-    //     const url = _path.resolve(path);
-    //     const stat = _fs.statSync(url);
-    //     let desc: FileDescription;
-    //     if (!stat) {
-    //         desc = new FileDescription(false, url);
-    //     } else {
-    //         desc = new FileDescription(true, url, stat);
-    //     }
-    //     return desc;
-    // }
-    // existsSync(path: string): boolean {
-    //     const desc: IFileDescription = this.statSync(path);
-    //     return desc.exists;
-    // }
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void {
-        // const _force: boolean = typeof (force) === "boolean" ? force : false;
         if (!force) {
             const info = this._pathCache[path];
             if (info) return next(info);

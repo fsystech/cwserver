@@ -54,25 +54,7 @@ class FileInfoCacheHandler {
     constructor() {
         this._pathCache = {};
     }
-    // statSync(path: string): IFileDescription {
-    //     const info = this._pathCache[path];
-    //     if (info) return info;
-    //     const url = _path.resolve(path);
-    //     const stat = _fs.statSync(url);
-    //     let desc: FileDescription;
-    //     if (!stat) {
-    //         desc = new FileDescription(false, url);
-    //     } else {
-    //         desc = new FileDescription(true, url, stat);
-    //     }
-    //     return desc;
-    // }
-    // existsSync(path: string): boolean {
-    //     const desc: IFileDescription = this.statSync(path);
-    //     return desc.exists;
-    // }
     stat(path, next, force) {
-        // const _force: boolean = typeof (force) === "boolean" ? force : false;
         if (!force) {
             const info = this._pathCache[path];
             if (info)
