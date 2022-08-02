@@ -190,8 +190,10 @@ class Context {
         if (!this._isDisposed && this._next)
             return this._next;
         return (code, transfer) => {
+            if (this._isDisposed)
+                return;
             // Unreachable....
-            console.log('Warning: `context already destroyed or "next" function doesn\'t set yet`');
+            console.warn('Warning: `context already destroyed or "next" function doesn\'t set yet`');
         };
     }
     set next(val) {

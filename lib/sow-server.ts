@@ -314,8 +314,9 @@ export class Context implements IContext {
     public get next(): CtxNext {
         if (!this._isDisposed && this._next) return this._next;
         return (code?: number, transfer?: boolean): void => {
+            if (this._isDisposed) return;
             // Unreachable....
-            console.log('Warning: `context already destroyed or "next" function doesn\'t set yet`');
+            console.warn('Warning: `context already destroyed or "next" function doesn\'t set yet`');
         };
     }
     public set next(val: CtxNext) {
