@@ -40,7 +40,7 @@ type Agent = request.SuperAgentStatic & request.Request;
 const agent: Agent = request.agent();
 let appIsLestening: boolean = false;
 let appUtility: IAppUtility;
-console.info(`Working for cwserver v${cwserver.appVersion}`);
+console.info(`Starting test for "cwserver" v${cwserver.appVersion}`);
 const createRequest = (method: string, url: string, ensure?: string): request.SuperAgentRequest => {
     expect(appIsLestening).toEqual(true);
     const client: request.SuperAgentRequest = method === "GET" ? agent.get(url) : agent.post(url);
