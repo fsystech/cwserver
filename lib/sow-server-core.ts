@@ -90,16 +90,15 @@ export interface IApplication {
 export const {
     appVersion, readAppVersion
 } = (() => {
+    let _appVersion: string = '3.1.3';
     const _readAppVersion = (): string => {
         const libRoot: string = getAppDir();
         const absPath: string = resolve(`${libRoot}/package.json`);
         assert(existsSync(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
         const data: string = readFileSync(absPath, "utf-8");
-        return Util.JSON.parse(data).version;
+        _appVersion = Util.JSON.parse(data).version;
+        return _appVersion;
     }
-    const _appVersion: string = ((): string => {
-        return _readAppVersion();
-    })();
     return {
         get appVersion() {
             return _appVersion;

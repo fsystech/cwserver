@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Session = exports.parseCookie = exports.App = exports.SessionSecurity = exports.createProjectTemplate = exports.wsClient = exports.socketInitilizer = exports.Streamer = exports.fsw = exports.Util = exports.PayloadParser = exports.getBodyParser = exports.ConsoleColor = exports.HttpMimeHandler = exports.Encryption = exports.initilizeServer = void 0;
+exports.Session = exports.appVersion = exports.readAppVersion = exports.parseCookie = exports.App = exports.SessionSecurity = exports.createProjectTemplate = exports.wsClient = exports.socketInitilizer = exports.Streamer = exports.fsw = exports.Util = exports.PayloadParser = exports.getBodyParser = exports.ConsoleColor = exports.HttpMimeHandler = exports.Encryption = exports.initilizeServer = void 0;
 /*
 * Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
@@ -57,6 +57,8 @@ Object.defineProperty(exports, "SessionSecurity", { enumerable: true, get: funct
 var sow_server_core_1 = require("./lib/sow-server-core");
 Object.defineProperty(exports, "App", { enumerable: true, get: function () { return sow_server_core_1.App; } });
 Object.defineProperty(exports, "parseCookie", { enumerable: true, get: function () { return sow_server_core_1.parseCookie; } });
+Object.defineProperty(exports, "readAppVersion", { enumerable: true, get: function () { return sow_server_core_1.readAppVersion; } });
+Object.defineProperty(exports, "appVersion", { enumerable: true, get: function () { return sow_server_core_1.appVersion; } });
 var sow_static_1 = require("./lib/sow-static");
 Object.defineProperty(exports, "Session", { enumerable: true, get: function () { return sow_static_1.Session; } });
 //# sourceMappingURL=index.js.map

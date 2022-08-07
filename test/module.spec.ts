@@ -23,7 +23,7 @@ import {
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
 } from '../lib/sow-router';
-import { IApplication, readAppVersion, App, IRequest, IResponse, NextFunction } from '../lib/sow-server-core';
+import { IApplication, App, IRequest, IResponse, NextFunction } from '../lib/sow-server-core';
 import { assert, Util } from '../lib/sow-util';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
 import { TemplateCore, templateNext, CompilerResult } from '../lib/sow-template';
@@ -40,6 +40,7 @@ type Agent = request.SuperAgentStatic & request.Request;
 const agent: Agent = request.agent();
 let appIsLestening: boolean = false;
 let appUtility: IAppUtility;
+console.info(`Working for cwserver v${cwserver.appVersion}`);
 const createRequest = (method: string, url: string, ensure?: string): request.SuperAgentRequest => {
     expect(appIsLestening).toEqual(true);
     const client: request.SuperAgentRequest = method === "GET" ? agent.get(url) : agent.post(url);
@@ -1980,7 +1981,7 @@ describe("cwserver-utility", () => {
         (() => {
             process.env.SCRIPT = "JS";
             expect(shouldBeError(() => {
-                readAppVersion();
+                cwserver.readAppVersion();
             })).toBeInstanceOf(Error);
             process.env.SCRIPT = "TS";
             const parent = path.resolve(__dirname, '..');
@@ -1988,7 +1989,7 @@ describe("cwserver-utility", () => {
             fs.renameSync(absPath, `${absPath}.bak`);
             fs.writeFileSync(absPath, "INVALID_JSON");
             expect(shouldBeError(() => {
-                readAppVersion();
+                cwserver.readAppVersion();
             })).toBeInstanceOf(Error);
             fs.unlinkSync(absPath);
             fs.renameSync(`${absPath}.bak`, absPath);

@@ -49,16 +49,15 @@ const url_1 = __importDefault(require("url"));
 const _zlib = __importStar(require("zlib"));
 const _mimeType = __importStar(require("./sow-http-mime-types"));
 _a = (() => {
+    let _appVersion = '3.1.3';
     const _readAppVersion = () => {
         const libRoot = (0, sow_util_1.getAppDir)();
         const absPath = (0, path_1.resolve)(`${libRoot}/package.json`);
         (0, sow_util_1.assert)((0, fs_1.existsSync)(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
         const data = (0, fs_1.readFileSync)(absPath, "utf-8");
-        return sow_util_1.Util.JSON.parse(data).version;
+        _appVersion = sow_util_1.Util.JSON.parse(data).version;
+        return _appVersion;
     };
-    const _appVersion = (() => {
-        return _readAppVersion();
-    })();
     return {
         get appVersion() {
             return _appVersion;
