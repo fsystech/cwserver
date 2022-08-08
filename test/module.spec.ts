@@ -1,8 +1,23 @@
-/*
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
-* Copyrights licensed under the New BSD License.
-* See the accompanying LICENSE file for terms.
-*/
+// Copyright (c) 2022 Safe Online World Ltd.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 // 4:38 AM 5/22/2020
 // by rajib chy
 import 'mocha';
@@ -30,6 +45,7 @@ import { TemplateCore, templateNext, CompilerResult } from '../lib/sow-template'
 import { shouldBeError } from "./test-view";
 import { Logger, LogTime, ShadowLogger } from '../lib/sow-logger';
 import { promisify } from 'util';
+import destroy from 'destroy';
 const sleep = promisify(setTimeout);
 let app: IApplication;
 const appRoot = process.env.SCRIPT === "TS" ? path.join(path.resolve(__dirname, '..'), "/dist/test/") : __dirname;
@@ -1482,6 +1498,7 @@ describe("cwserver-multipart-body-parser", () => {
                 return swrite();
             }
             writer.on("close", () => {
+                destroy(writer);
                 console.log("writer.on->close..fire..done");
                 setTimeout(() => {
                     const readStream = fs.createReadStream(leargeFile);
@@ -1530,6 +1547,7 @@ describe("cwserver-multipart-body-parser", () => {
         }
         let isAbort: boolean = false;
         write(5 * 1024 * 1024, () => {
+            destroy(writer);
             const readStream = fs.createReadStream(leargeFile);
             const req: request.SuperAgentRequest = getAgent()
                 .post(`http://localhost:${appUtility.port}/abort-error`)
