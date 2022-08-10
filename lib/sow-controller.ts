@@ -76,12 +76,14 @@ const _deleteRouter = (skip: string[], router: { [x: string]: AppHandler }) => {
 export class Controller implements IController {
     private _httpMimeHandler: IHttpMimeHandler;
     private _fileInfo: IFileInfoCacheHandler;
+    private _hasDefaultExt: boolean;
     public get httpMimeHandler() {
         return this._httpMimeHandler;
     }
-    constructor() {
+    constructor(hasDefaultExt: boolean) {
         this._fileInfo = new FileInfoCacheHandler();
         this._httpMimeHandler = new HttpMimeHandler();
+        this._hasDefaultExt = hasDefaultExt;
     }
     reset(): void {
         // @ts-ignore
@@ -170,7 +172,7 @@ export class Controller implements IController {
         return forword();
     }
     private sendDefaultDoc(ctx: IContext): void {
-        if (ctx.server.config.defaultExt && ctx.server.config.defaultExt.length > 0) {
+        if (this._hasDefaultExt) {
             if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
                 return this.passDefaultDoc(ctx);
             }
@@ -200,7 +202,7 @@ export class Controller implements IController {
         if (fireHandler(ctx)) return void 0;
         if (ctx.extension) {
             if (
-                ctx.server.config.defaultExt
+                this._hasDefaultExt
                 && ctx.server.config.defaultExt === `.${ctx.extension}`
             ) {
                 return ctx.next(404);

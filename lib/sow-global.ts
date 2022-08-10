@@ -27,6 +27,11 @@ import { loadMimeType, IMimeType } from './sow-http-mime-types';
 import { SandBox } from './sow-template';
 type IViewRegister = (app: IApplication, controller: IController, server: ISowServer) => void;
 interface ISowGlobalServer {
+    /**
+     * Register new `view` module
+     * @param ev  Event name
+     * @param next View register function
+     */
     on(ev: "register-view", next: IViewRegister): void;
     emit(ev: "register-view", app: IApplication, controller: IController, server: ISowServer): void;
 }
@@ -46,7 +51,7 @@ class SowGlobalServer implements ISowGlobalServer {
     }
     public on(ev: "register-view", next: (app: IApplication, controller: IController, server: ISowServer) => void): void {
         if (this._isInitilized) {
-            throw new Error("After initilize view, you should not register new veiw.");
+            throw new Error('After initialization "views", you could not register new view.');
         }
         this._evt.push(next);
     }
@@ -59,9 +64,9 @@ interface ISowGlobal {
 }
 class SowGlobal implements ISowGlobal {
     public isInitilized: boolean;
-    _server: ISowGlobalServer;
-    _HttpMime: IMimeType<string>;
-    _templateCtx: NodeJS.Dict<SandBox>;
+    private _server: ISowGlobalServer;
+    private _HttpMime: IMimeType<string>;
+    private _templateCtx: NodeJS.Dict<SandBox>;
     public get templateCtx() {
         return this._templateCtx;
     }
@@ -87,5 +92,10 @@ declare global {
 }
 declare global {
     var sow: ISowGlobal;
+    /** Import script/assets from local resource */
+    function _importLocalAssets(path: string): any;
 }
 global.sow = new SowGlobal();
+global._importLocalAssets = (path: string): any => {
+    return require(path);
+};

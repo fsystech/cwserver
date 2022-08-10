@@ -178,7 +178,7 @@ export interface ISowServer {
         route: string;
         root: string
     } | void;
-    formatPath(name: string, noCheck?: boolean): string;
+    formatPath(path: string, noCheck?: boolean): string;
     createBundle(str: string): string;
     addMimeType(extension: string, val: string): void;
     getRoot(): string;
@@ -250,27 +250,24 @@ function parseMaxAge(maxAge: any): number {
     return getEpoch(type.toUpperCase(), parseInt(add), maxAge);
 }
 const _formatPath = (() => {
-    const _exportObj = (server: ISowServer, name: string): {
-        value?: string,
-        name?: string
-    } => {
-        if (name === "root") return { value: server.getRoot() };
-        if (name === "public") return { value: server.getPublicDirName() };
-        return { value: void 0 };
+    const _exportPath = (server: ISowServer, path: string): string | void => {
+        if (path === "root") return server.getRoot();
+        if (path === "public") return server.getPublicDirName();
+        return undefined;
     }
-    return (server: ISowServer, name: string, noCheck?: boolean): string => {
-        if (/\$/gi.test(name) === false) return name;
-        const absPath: string = _path.resolve(name.replace(/\$.+?\//gi, (m) => {
+    return (server: ISowServer, path: string, noCheck?: boolean): string => {
+        if (/\$/gi.test(path) === false) return path;
+        const absPath: string = _path.resolve(path.replace(/\$.+?\//gi, (m) => {
             m = m.replace(/\$/gi, "").replace(/\//gi, "");
-            const rs = _exportObj(server, m.replace(/\$/gi, "").replace(/\//gi, ""));
-            if (!rs.value) {
+            const epath: string | void = _exportPath(server, m.replace(/\$/gi, "").replace(/\//gi, ""));
+            if (!epath) {
                 throw new Error(`Invalid key ${m}`);
             }
-            return `${rs.value}/`;
+            return `${epath}/`;
         }));
         if (noCheck === true) return absPath;
         if (!_fs.existsSync(absPath))
-            throw new Error(`No file found\r\nPath:${absPath}\r\nName:${name}`);
+            throw new Error(`No file found\r\nPath:${absPath}\r\Request Path:${path}`);
         return absPath;
     };
 })();
@@ -556,26 +553,26 @@ export class SessionSecurity {
     }
 }
 export class SowServer implements ISowServer {
+    private _public: string;
+    private _log: ILogger;
+    private _root: string;
+    // private preRegx: RegExp;
+    private _rootregx: RegExp;
+    private _publicregx: RegExp;
+    private _config: IServerConfig;
+    private _port: string | number;
+    private _nodeModuleregx: RegExp;
+    private _userInteractive: boolean;
+    private _encryption: IServerEncryption;
+    private _isInitilized: boolean = false;
+    private _db: NodeJS.Dict<ISowDatabaseType>;
+    private _errorPage: { [x: string]: string; };
     public get version() {
         return appVersion;
     }
-    private _isInitilized: boolean = false;
     public get isInitilized() {
         return this._isInitilized;
     }
-    private _config: IServerConfig;
-    private _public: string;
-    private _log: ILogger;
-    private _port: string | number;
-    private _db: NodeJS.Dict<ISowDatabaseType>;
-    private _errorPage: { [x: string]: string; };
-    private _encryption: IServerEncryption;
-    private root: string;
-    private preRegx: RegExp;
-    private rootregx: RegExp;
-    private publicregx: RegExp;
-    private nodeModuleregx: RegExp;
-    private userInteractive: boolean;
     public get config(): IServerConfig {
         return this._config;
     }
@@ -613,18 +610,14 @@ ${appRoot}\\www_public
             }
             throw new Error(`Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root`);
         }
-        this.root = appRoot;
-        this._public = wwwName.toString();
+        this._root = appRoot;
+        this._public = wwwName.toString().trim();
         this._config = new ServerConfig();
-        this._db = {};
-        const absPath: string = _path.resolve(`${this.root}/${this._public}/config/${this.getAppConfigName()}`);
-        if (!_fs.existsSync(absPath)) {
-            throw new Error(`No config file found in ${absPath}`);
-        }
+        this._db = Object.create(null);
+        const absPath: string = _path.resolve(`${this._root}/${this._public}/config/${this.getAppConfigName()}`);
+        if (!_fs.existsSync(absPath)) throw new Error(`No config file found in ${absPath}`);
         const config: NodeJS.Dict<any> | void = fsw.readJsonSync<IServerConfig>(absPath);
-        if (!config) {
-            throw new Error(`Invalid config file defined.\r\nConfig: ${absPath}`);
-        }
+        if (!config) throw new Error(`Invalid config file defined.\r\nConfig: ${absPath}`);
         Schema.Validate(config);
         if (this._public !== config.hostInfo.root) {
             throw new Error(`Server ready for App Root: ${this._public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
@@ -637,11 +630,11 @@ ${appRoot}\\www_public
         };
         Util.extend(this._config, config, true);
         this.implimentConfig(config);
-        this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
-        this.publicregx = new RegExp(`${this._public}/`, "gi");
-        this.preRegx = new RegExp("<pre[^>]*>", "gi"); // /<pre[^>]*>/gi
-        this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
-        this.userInteractive = false;
+        this._publicregx = new RegExp(`${this._public}/`, "gi");
+        this._rootregx = new RegExp(this._root.replace(/\\/gi, '/'), "gi");
+        // this.preRegx = new RegExp("<pre[^>]*>", "gi"); // /<pre[^>]*>/gi
+        this._nodeModuleregx = new RegExp(`${this._root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
+        this._userInteractive = false;
         this.initilize();
         this._encryption = new ServerEncryption(this._config.encryptionKey);
         fsw.mkdirSync(this.getPublic(), "/web/temp/cache/");
@@ -663,13 +656,13 @@ ${appRoot}\\www_public
         return "app.config.json";
     }
     getRoot(): string {
-        return this.root;
+        return this._root;
     }
     parseMaxAge(maxAge: any): number {
         return parseMaxAge(maxAge);
     }
     getPublic(): string {
-        return `${this.root}/${this._public}`;
+        return `${this._root}/${this._public}`;
     }
     getPublicDirName(): string {
         return this._public;
@@ -710,14 +703,14 @@ ${appRoot}\\www_public
         this._config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
     }
     createLogger() {
-        this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
+        this._userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         if (typeof (this._log.dispose) === "function") {
             this._log.dispose();
         }
         if (!this._config.isDebug) {
             this._log = new ShadowLogger();
         } else {
-            this._log = new Logger(`./log/`, this._public, void 0, this.userInteractive, this._config.isDebug);
+            this._log = new Logger(`./log/`, this._public, void 0, this._userInteractive, this._config.isDebug);
         }
     }
     initilize(): void {
@@ -725,14 +718,11 @@ ${appRoot}\\www_public
             if (!Util.isArrayLike<IDatabaseConfig>(this._config.database))
                 throw new Error("database cofig should be Array....");
             this._config.database.forEach((conf: IDatabaseConfig): void => {
-                if (!conf.module)
-                    throw new Error("database module name requeired.");
-                if (this._db[conf.module])
-                    throw new Error(`database module ${conf.module} already exists.`);
-                if (!conf.path)
-                    throw new Error(`No path defined for module ${conf.module}`);
+                if (!conf.module) throw new Error("database module name requeired.");
+                if (this._db[conf.module]) throw new Error(`database module ${conf.module} already exists.`);
+                if (!conf.path) throw new Error(`No path defined for module ${conf.module}`);
                 conf.path = this.formatPath(conf.path);
-                this._db[conf.module] = new (require(conf.path))(conf.dbConn)
+                this._db[conf.module] = new (_importLocalAssets(conf.path))(conf.dbConn);
             });
         }
         if (!this._config.errorPage || (Util.isPlainObject(this._config.errorPage) && Object.keys(this._config.errorPage).length === 0)) {
@@ -764,12 +754,12 @@ ${appRoot}\\www_public
                 }
             }
         }
-        this._config.views.forEach((name: string, index: number) => {
-            this._config.views[index] = this.formatPath(name);
+        this._config.views.forEach((path: string, index: number) => {
+            this._config.views[index] = this.formatPath(path);
         });
     }
     copyright(): string {
-        return '/*Copyright( c ) 2020, SOW (https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
+        return '/*Copyright (c) 2022 Safe Online World Ltd. All rights reserved*/\r\n';
     }
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
         const context = getContext(this, req, res);
@@ -824,8 +814,9 @@ ${appRoot}\\www_public
         if (!this._config.isDebug) {
             return ctx.res.status(500).send("Internal error occured. Please try again."), true;
         }
-        const msg: string = `<pre>${this.escape(ctx.error.replace(this.preRegx, "").replace(/\\/gi, "/").replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
-        return ctx.res.status(500).send(msg), true;
+        // ctx.error.replace(this.preRegx, "")
+        const msg: string = this.escape(ctx.error.replace(/\\/gi, "/").replace(this._rootregx, "$root").replace(this._publicregx, "$public/"));
+        return ctx.res.status(500).send(`<pre>${msg}</pre>`), true;
     }
     getErrorPath(statusCode: number, tryServer?: boolean): string | void {
         if (!HttpStatus.isErrorCode(statusCode)) {
@@ -890,7 +881,7 @@ ${appRoot}\\www_public
         }
     }
     mapPath(path: string): string {
-        return _path.resolve(`${this.root}/${this._public}/${path}`);
+        return _path.resolve(`${this._root}/${this._public}/${path}`);
     }
     pathToUrl(path: string): string {
         if (!Util.getExtension(path)) return path;
@@ -899,7 +890,7 @@ ${appRoot}\\www_public
         if (index > 0) {
             path = path.substring(path.indexOf(this._public) + this._public.length);
         } else {
-            path = path.replace(this.rootregx, "/$root");
+            path = path.replace(this._rootregx, "/$root");
         }
         index = path.lastIndexOf(".");
         return path.substring(0, index).replace(/\\/gi, "/");
@@ -920,9 +911,9 @@ ${appRoot}\\www_public
         }
         ctx.error = ctx.error
             .replace(/\\/gi, '/')
-            .replace(this.rootregx, "$root")
-            .replace(this.publicregx, "$public/")
-            .replace(this.nodeModuleregx, "$engine/");
+            .replace(this._rootregx, "$root")
+            .replace(this._publicregx, "$public/")
+            .replace(this._nodeModuleregx, "$engine/");
         return ctx;
     }
     escape(unsafe?: string | null): string {
@@ -934,8 +925,8 @@ ${appRoot}\\www_public
             .replace(/\r\n/gi, "<br/>")
             .replace(/\n/gi, "<br/>");
     }
-    formatPath(name: string, noCheck?: boolean): string {
-        return _formatPath(this, name, noCheck);
+    formatPath(path: string, noCheck?: boolean): string {
+        return _formatPath(this, path, noCheck);
     }
     createBundle(str: string): string {
         if (!str) throw new Error("No string found to create bundle...")
@@ -977,13 +968,18 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             const _context = _server.createContext(req, res, next);
             const _next = _context.next;
             _context.next = (code?: number | undefined, transfer?: boolean): any => {
-                // if ( code && code === -404 ) return next();
+                if (_context.isDisposed) {
+                    console.warn('Warning: `context already disposed`. Cannot access disposed object.');
+                    return;
+                }
                 return _process.render(code, _context, _next, transfer);
             }
             return _context;
         }
     }
-    const _controller: IController = new Controller();
+    const _controller: IController = new Controller(
+        _server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false
+    );
     function initilize(): IApplication {
         if (_server.isInitilized) {
             throw new Error("Server already initilized...");
@@ -995,10 +991,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         if (_server.config.isDebug) {
             _app.on("request-begain", (req: IRequest): void => {
                 _server.log.success(`${req.method} ${req.path}`);
-            });
-        }
-        _app.on("response-end", (req: IRequest, res: IResponse): void => {
-            if (_server.config.isDebug) {
+            }).on("response-end", (req: IRequest, res: IResponse): void => {
                 const ctx: IContext | undefined = getMyContext(req.id);
                 if (ctx && !ctx.isDisposed) {
                     if (res.statusCode && HttpStatus.isErrorCode(res.statusCode)) {
@@ -1007,9 +1000,13 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                         _server.log.success(`Send ${res.statusCode} ${ctx.path}`);
                     }
                 }
-            }
-            return removeContext(req.id);
-        });
+                return removeContext(req.id);
+            });
+        } else {
+            _app.on("response-end", (req: IRequest, res: IResponse): void => {
+                return removeContext(req.id);
+            });
+        }
         const _virtualDir: { [x: string]: string; }[] = [];
         _server.virtualInfo = (route: string): { route: string; root: string; } | void => {
             const v = _virtualDir.find((a) => a.route === route);
@@ -1065,8 +1062,8 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             const { Bundler } = require("./sow-bundler");
             Bundler.Init(_app, _controller, _server);
         }
-        if (_server.config.views) {
-            _server.config.views.forEach((a: string, _index: number, _array: string[]) => require(a));
+        if (Util.isArrayLike(_server.config.views)) {
+            _server.config.views.forEach(path => _importLocalAssets(path));
         }
         global.sow.server.emit("register-view", _app, _controller, _server);
         _controller.sort();

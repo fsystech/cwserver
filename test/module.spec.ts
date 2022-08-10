@@ -30,6 +30,7 @@ import { io } from 'socket.io-client';
 import * as fsw from '../lib/sow-fsw';
 import { HttpStatus } from "../lib/sow-http-status";
 import * as cwserver from '../index';
+import { getAppDir } from '../lib/sow-util';
 // import { FileInfoCacheHandler, FileDescription } from '../lib/file-info';
 import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/sow-static';
 import {
@@ -56,6 +57,10 @@ type Agent = request.SuperAgentStatic & request.Request;
 const agent: Agent = request.agent();
 let appIsLestening: boolean = false;
 let appUtility: IAppUtility;
+const switchDefaultExt = (value: boolean) => {
+    // @ts-ignore
+    appUtility.controller._hasDefaultExt = value;
+}
 console.info(`Starting test for "cwserver" v${cwserver.appVersion}`);
 const createRequest = (method: string, url: string, ensure?: string): request.SuperAgentRequest => {
     expect(appIsLestening).toEqual(true);
@@ -118,6 +123,15 @@ function toBeTextHtml(val?: string): void {
     expect(val.indexOf("text/html")).toBeGreaterThanOrEqual(0);
 }
 describe("cwserver-core", () => {
+    it('validate application directory', (done: Mocha.Done): void => {
+        // @ts-ignore
+        process.pkg = Object.create(null);
+        expect(getAppDir()).toBeDefined();
+        // @ts-ignore
+        delete process.pkg;
+        expect(getAppDir()).toBeDefined();
+        done();
+    });
     it("initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", (done: Mocha.Done): void => {
         const root: string = path.resolve(`${appRoot}/ewww`); // path.resolve( appRoot, "/ewww" );
         fsw.mkdir(appRoot, "/ewww/config", (err: NodeJS.ErrnoException | null): void => {
@@ -658,7 +672,7 @@ describe("cwserver-template-engine", () => {
                 done();
             });
     });
-    it('send get request should be 404 response config.defaultExt = .html', (done: Mocha.Done): void => {
+    it('send get request should be status code 404, config.defaultExt = .html', (done: Mocha.Done): void => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/index.html`)
             .end((err, res) => {
@@ -668,7 +682,7 @@ describe("cwserver-template-engine", () => {
                 done();
             });
     });
-    it('send get request should be 404 response', (done: Mocha.Done): void => {
+    it('send get request should be status code 404', (done: Mocha.Done): void => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/ksdafsfasbd`)
             .end((err, res) => {
@@ -678,9 +692,10 @@ describe("cwserver-template-engine", () => {
                 done();
             });
     });
-    it('send get request should be 200 response', (done: Mocha.Done): void => {
+    it('send get request should be status code 200', (done: Mocha.Done): void => {
         const defaultExt = appUtility.server.config.defaultExt;
         appUtility.server.config.defaultExt = "";
+        switchDefaultExt(false);
         getAgent()
             .get(`http://localhost:${appUtility.port}/index.html`)
             .end((err, res) => {
@@ -688,6 +703,21 @@ describe("cwserver-template-engine", () => {
                 expect(res.status).toBe(200);
                 toBeTextHtml(res.header["content-type"]);
                 appUtility.server.config.defaultExt = defaultExt;
+                switchDefaultExt(defaultExt && defaultExt.length > 0 ? true : false);
+                done();
+            });
+    });
+    it('default extension disabled and without extension should be status code 404', (done: Mocha.Done): void => {
+        const defaultExt = appUtility.server.config.defaultExt;
+        appUtility.server.config.defaultExt = "";
+        switchDefaultExt(false);
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/index`)
+            .end((err, res) => {
+                expect(err).toBeInstanceOf(Error);
+                expect(res.status).toBe(404);
+                appUtility.server.config.defaultExt = defaultExt;
+                switchDefaultExt(defaultExt && defaultExt.length > 0 ? true : false);
                 done();
             });
     });
@@ -1906,11 +1936,13 @@ describe("cwserver-controller-reset", () => {
         const defaultDoc = appUtility.server.config.defaultDoc;
         appUtility.server.config.defaultDoc = ["index.html", "default.html"];
         appUtility.server.config.defaultExt = "";
+        switchDefaultExt(false);
         getAgent()
             .get(`http://localhost:${appUtility.port}/`)
             .end((err, res) => {
                 appUtility.server.config.defaultExt = defaultExt;
                 appUtility.server.config.defaultDoc = defaultDoc;
+                switchDefaultExt(defaultExt && defaultExt.length > 0 ? true : false);
                 expect(err).not.toBeInstanceOf(Error);
                 expect(res.status).toBe(200);
                 done();
@@ -1997,6 +2029,7 @@ describe("cwserver-utility", () => {
             assert("", "string");
         })).toBeInstanceOf(Error);
         (() => {
+            expect(cwserver.readAppVersion()).toBeDefined();
             process.env.SCRIPT = "JS";
             expect(shouldBeError(() => {
                 cwserver.readAppVersion();

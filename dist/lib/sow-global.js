@@ -34,7 +34,7 @@ class SowGlobalServer {
     }
     on(ev, next) {
         if (this._isInitilized) {
-            throw new Error("After initilize view, you should not register new veiw.");
+            throw new Error('After initialization "views", you could not register new view.');
         }
         this._evt.push(next);
     }
@@ -57,4 +57,7 @@ class SowGlobal {
     }
 }
 global.sow = new SowGlobal();
+global._importLocalAssets = (path) => {
+    return require(path);
+};
 //# sourceMappingURL=sow-global.js.map

@@ -123,28 +123,28 @@ function parseMaxAge(maxAge) {
     return getEpoch(type.toUpperCase(), parseInt(add), maxAge);
 }
 const _formatPath = (() => {
-    const _exportObj = (server, name) => {
-        if (name === "root")
-            return { value: server.getRoot() };
-        if (name === "public")
-            return { value: server.getPublicDirName() };
-        return { value: void 0 };
+    const _exportPath = (server, path) => {
+        if (path === "root")
+            return server.getRoot();
+        if (path === "public")
+            return server.getPublicDirName();
+        return undefined;
     };
-    return (server, name, noCheck) => {
-        if (/\$/gi.test(name) === false)
-            return name;
-        const absPath = _path.resolve(name.replace(/\$.+?\//gi, (m) => {
+    return (server, path, noCheck) => {
+        if (/\$/gi.test(path) === false)
+            return path;
+        const absPath = _path.resolve(path.replace(/\$.+?\//gi, (m) => {
             m = m.replace(/\$/gi, "").replace(/\//gi, "");
-            const rs = _exportObj(server, m.replace(/\$/gi, "").replace(/\//gi, ""));
-            if (!rs.value) {
+            const epath = _exportPath(server, m.replace(/\$/gi, "").replace(/\//gi, ""));
+            if (!epath) {
                 throw new Error(`Invalid key ${m}`);
             }
-            return `${rs.value}/`;
+            return `${epath}/`;
         }));
         if (noCheck === true)
             return absPath;
         if (!_fs.existsSync(absPath))
-            throw new Error(`No file found\r\nPath:${absPath}\r\nName:${name}`);
+            throw new Error(`No file found\r\nPath:${absPath}\r\Request Path:${path}`);
         return absPath;
     };
 })();
@@ -397,18 +397,16 @@ ${appRoot}\\www_public
             }
             throw new Error(`Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root`);
         }
-        this.root = appRoot;
-        this._public = wwwName.toString();
+        this._root = appRoot;
+        this._public = wwwName.toString().trim();
         this._config = new ServerConfig();
-        this._db = {};
-        const absPath = _path.resolve(`${this.root}/${this._public}/config/${this.getAppConfigName()}`);
-        if (!_fs.existsSync(absPath)) {
+        this._db = Object.create(null);
+        const absPath = _path.resolve(`${this._root}/${this._public}/config/${this.getAppConfigName()}`);
+        if (!_fs.existsSync(absPath))
             throw new Error(`No config file found in ${absPath}`);
-        }
         const config = fsw.readJsonSync(absPath);
-        if (!config) {
+        if (!config)
             throw new Error(`Invalid config file defined.\r\nConfig: ${absPath}`);
-        }
         sow_schema_validator_1.Schema.Validate(config);
         if (this._public !== config.hostInfo.root) {
             throw new Error(`Server ready for App Root: ${this._public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
@@ -421,11 +419,11 @@ ${appRoot}\\www_public
         };
         sow_util_1.Util.extend(this._config, config, true);
         this.implimentConfig(config);
-        this.rootregx = new RegExp(this.root.replace(/\\/gi, '/'), "gi");
-        this.publicregx = new RegExp(`${this._public}/`, "gi");
-        this.preRegx = new RegExp("<pre[^>]*>", "gi"); // /<pre[^>]*>/gi
-        this.nodeModuleregx = new RegExp(`${this.root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
-        this.userInteractive = false;
+        this._publicregx = new RegExp(`${this._public}/`, "gi");
+        this._rootregx = new RegExp(this._root.replace(/\\/gi, '/'), "gi");
+        // this.preRegx = new RegExp("<pre[^>]*>", "gi"); // /<pre[^>]*>/gi
+        this._nodeModuleregx = new RegExp(`${this._root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
+        this._userInteractive = false;
         this.initilize();
         this._encryption = new ServerEncryption(this._config.encryptionKey);
         fsw.mkdirSync(this.getPublic(), "/web/temp/cache/");
@@ -471,13 +469,13 @@ ${appRoot}\\www_public
         return "app.config.json";
     }
     getRoot() {
-        return this.root;
+        return this._root;
     }
     parseMaxAge(maxAge) {
         return parseMaxAge(maxAge);
     }
     getPublic() {
-        return `${this.root}/${this._public}`;
+        return `${this._root}/${this._public}`;
     }
     getPublicDirName() {
         return this._public;
@@ -519,7 +517,7 @@ ${appRoot}\\www_public
         this._config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
     }
     createLogger() {
-        this.userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
+        this._userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         if (typeof (this._log.dispose) === "function") {
             this._log.dispose();
         }
@@ -527,7 +525,7 @@ ${appRoot}\\www_public
             this._log = new sow_logger_1.ShadowLogger();
         }
         else {
-            this._log = new sow_logger_1.Logger(`./log/`, this._public, void 0, this.userInteractive, this._config.isDebug);
+            this._log = new sow_logger_1.Logger(`./log/`, this._public, void 0, this._userInteractive, this._config.isDebug);
         }
     }
     initilize() {
@@ -542,7 +540,7 @@ ${appRoot}\\www_public
                 if (!conf.path)
                     throw new Error(`No path defined for module ${conf.module}`);
                 conf.path = this.formatPath(conf.path);
-                this._db[conf.module] = new (require(conf.path))(conf.dbConn);
+                this._db[conf.module] = new (_importLocalAssets(conf.path))(conf.dbConn);
             });
         }
         if (!this._config.errorPage || (sow_util_1.Util.isPlainObject(this._config.errorPage) && Object.keys(this._config.errorPage).length === 0)) {
@@ -576,12 +574,12 @@ ${appRoot}\\www_public
                 }
             }
         }
-        this._config.views.forEach((name, index) => {
-            this._config.views[index] = this.formatPath(name);
+        this._config.views.forEach((path, index) => {
+            this._config.views[index] = this.formatPath(path);
         });
     }
     copyright() {
-        return '/*Copyright( c ) 2020, SOW (https://github.com/safeonlineworld/cwserver). All rights reserved*/\r\n';
+        return '/*Copyright (c) 2022 Safe Online World Ltd. All rights reserved*/\r\n';
     }
     createContext(req, res, next) {
         const context = (0, exports.getContext)(this, req, res);
@@ -637,8 +635,9 @@ ${appRoot}\\www_public
         if (!this._config.isDebug) {
             return ctx.res.status(500).send("Internal error occured. Please try again."), true;
         }
-        const msg = `<pre>${this.escape(ctx.error.replace(this.preRegx, "").replace(/\\/gi, "/").replace(this.rootregx, "$root").replace(this.publicregx, "$public/"))}</pre>`;
-        return ctx.res.status(500).send(msg), true;
+        // ctx.error.replace(this.preRegx, "")
+        const msg = this.escape(ctx.error.replace(/\\/gi, "/").replace(this._rootregx, "$root").replace(this._publicregx, "$public/"));
+        return ctx.res.status(500).send(`<pre>${msg}</pre>`), true;
     }
     getErrorPath(statusCode, tryServer) {
         if (!sow_http_status_1.HttpStatus.isErrorCode(statusCode)) {
@@ -707,7 +706,7 @@ ${appRoot}\\www_public
         }
     }
     mapPath(path) {
-        return _path.resolve(`${this.root}/${this._public}/${path}`);
+        return _path.resolve(`${this._root}/${this._public}/${path}`);
     }
     pathToUrl(path) {
         if (!sow_util_1.Util.getExtension(path))
@@ -719,7 +718,7 @@ ${appRoot}\\www_public
             path = path.substring(path.indexOf(this._public) + this._public.length);
         }
         else {
-            path = path.replace(this.rootregx, "/$root");
+            path = path.replace(this._rootregx, "/$root");
         }
         index = path.lastIndexOf(".");
         return path.substring(0, index).replace(/\\/gi, "/");
@@ -743,9 +742,9 @@ ${appRoot}\\www_public
         }
         ctx.error = ctx.error
             .replace(/\\/gi, '/')
-            .replace(this.rootregx, "$root")
-            .replace(this.publicregx, "$public/")
-            .replace(this.nodeModuleregx, "$engine/");
+            .replace(this._rootregx, "$root")
+            .replace(this._publicregx, "$public/")
+            .replace(this._nodeModuleregx, "$engine/");
         return ctx;
     }
     escape(unsafe) {
@@ -758,8 +757,8 @@ ${appRoot}\\www_public
             .replace(/\r\n/gi, "<br/>")
             .replace(/\n/gi, "<br/>");
     }
-    formatPath(name, noCheck) {
-        return _formatPath(this, name, noCheck);
+    formatPath(path, noCheck) {
+        return _formatPath(this, path, noCheck);
     }
     createBundle(str) {
         if (!str)
@@ -794,13 +793,16 @@ function initilizeServer(appRoot, wwwName) {
             const _context = _server.createContext(req, res, next);
             const _next = _context.next;
             _context.next = (code, transfer) => {
-                // if ( code && code === -404 ) return next();
+                if (_context.isDisposed) {
+                    console.warn('Warning: `context already disposed`. Cannot access disposed object.');
+                    return;
+                }
                 return _process.render(code, _context, _next, transfer);
             };
             return _context;
         }
     };
-    const _controller = new sow_controller_1.Controller();
+    const _controller = new sow_controller_1.Controller(_server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false);
     function initilize() {
         if (_server.isInitilized) {
             throw new Error("Server already initilized...");
@@ -812,10 +814,7 @@ function initilizeServer(appRoot, wwwName) {
         if (_server.config.isDebug) {
             _app.on("request-begain", (req) => {
                 _server.log.success(`${req.method} ${req.path}`);
-            });
-        }
-        _app.on("response-end", (req, res) => {
-            if (_server.config.isDebug) {
+            }).on("response-end", (req, res) => {
                 const ctx = (0, exports.getMyContext)(req.id);
                 if (ctx && !ctx.isDisposed) {
                     if (res.statusCode && sow_http_status_1.HttpStatus.isErrorCode(res.statusCode)) {
@@ -825,9 +824,14 @@ function initilizeServer(appRoot, wwwName) {
                         _server.log.success(`Send ${res.statusCode} ${ctx.path}`);
                     }
                 }
-            }
-            return (0, exports.removeContext)(req.id);
-        });
+                return (0, exports.removeContext)(req.id);
+            });
+        }
+        else {
+            _app.on("response-end", (req, res) => {
+                return (0, exports.removeContext)(req.id);
+            });
+        }
         const _virtualDir = [];
         _server.virtualInfo = (route) => {
             const v = _virtualDir.find((a) => a.route === route);
@@ -887,8 +891,8 @@ function initilizeServer(appRoot, wwwName) {
             const { Bundler } = require("./sow-bundler");
             Bundler.Init(_app, _controller, _server);
         }
-        if (_server.config.views) {
-            _server.config.views.forEach((a, _index, _array) => require(a));
+        if (sow_util_1.Util.isArrayLike(_server.config.views)) {
+            _server.config.views.forEach(path => _importLocalAssets(path));
         }
         global.sow.server.emit("register-view", _app, _controller, _server);
         _controller.sort();

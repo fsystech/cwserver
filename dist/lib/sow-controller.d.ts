@@ -15,8 +15,9 @@ export interface IController {
 export declare class Controller implements IController {
     private _httpMimeHandler;
     private _fileInfo;
+    private _hasDefaultExt;
     get httpMimeHandler(): IHttpMimeHandler;
-    constructor();
+    constructor(hasDefaultExt: boolean);
     reset(): void;
     delete(...args: string[]): void;
     get(route: string, next: AppHandler): IController;

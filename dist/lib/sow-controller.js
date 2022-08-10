@@ -57,9 +57,10 @@ const _deleteRouter = (skip, router) => {
     }
 };
 class Controller {
-    constructor() {
+    constructor(hasDefaultExt) {
         this._fileInfo = new file_info_1.FileInfoCacheHandler();
         this._httpMimeHandler = new sow_http_mime_1.HttpMimeHandler();
+        this._hasDefaultExt = hasDefaultExt;
     }
     get httpMimeHandler() {
         return this._httpMimeHandler;
@@ -157,7 +158,7 @@ class Controller {
         return forword();
     }
     sendDefaultDoc(ctx) {
-        if (ctx.server.config.defaultExt && ctx.server.config.defaultExt.length > 0) {
+        if (this._hasDefaultExt) {
             if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
                 return this.passDefaultDoc(ctx);
             }
@@ -190,7 +191,7 @@ class Controller {
         if (fireHandler(ctx))
             return void 0;
         if (ctx.extension) {
-            if (ctx.server.config.defaultExt
+            if (this._hasDefaultExt
                 && ctx.server.config.defaultExt === `.${ctx.extension}`) {
                 return ctx.next(404);
             }

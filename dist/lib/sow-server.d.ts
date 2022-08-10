@@ -145,7 +145,7 @@ export interface ISowServer {
         route: string;
         root: string;
     } | void;
-    formatPath(name: string, noCheck?: boolean): string;
+    formatPath(path: string, noCheck?: boolean): string;
     createBundle(str: string): string;
     addMimeType(extension: string, val: string): void;
     getRoot(): string;
@@ -265,22 +265,21 @@ export declare class SessionSecurity {
     static isValidSession(req: IRequest): void;
 }
 export declare class SowServer implements ISowServer {
-    get version(): string;
-    private _isInitilized;
-    get isInitilized(): boolean;
-    private _config;
     private _public;
     private _log;
+    private _root;
+    private _rootregx;
+    private _publicregx;
+    private _config;
     private _port;
+    private _nodeModuleregx;
+    private _userInteractive;
+    private _encryption;
+    private _isInitilized;
     private _db;
     private _errorPage;
-    private _encryption;
-    private root;
-    private preRegx;
-    private rootregx;
-    private publicregx;
-    private nodeModuleregx;
-    private userInteractive;
+    get version(): string;
+    get isInitilized(): boolean;
     get config(): IServerConfig;
     get public(): string;
     get log(): ILogger;
@@ -320,7 +319,7 @@ export declare class SowServer implements ISowServer {
     pathToUrl(path: string): string;
     addError(ctx: IContext, ex: string | Error): IContext;
     escape(unsafe?: string | null): string;
-    formatPath(name: string, noCheck?: boolean): string;
+    formatPath(path: string, noCheck?: boolean): string;
     createBundle(str: string): string;
     addMimeType(extension: string, val: string): void;
 }
