@@ -72,7 +72,16 @@ const _deleteRouter = (skip: string[], router: { [x: string]: AppHandler }) => {
         if (skip.some(a => prop.indexOf(a) > -1)) continue;
         delete router[prop];
     }
-}
+};
+/**
+ * Create duplicate `route` error message
+ * @param method `route` group
+ * @param route `route` path
+ * @returns {string} duplicate `route` error message
+ */
+const _createDRM = (method: string, route: string): string => {
+    return `This given "${method}" route ${route} already exists in route table`;
+};
 export class Controller implements IController {
     private _httpMimeHandler: IHttpMimeHandler;
     private _fileInfo: IFileInfoCacheHandler;
@@ -107,9 +116,9 @@ export class Controller implements IController {
     }
     public get(route: string, next: AppHandler): IController {
         if (routeTable.get[route])
-            throw new Error(`Duplicate get route defined ${route}`);
+            throw new Error(_createDRM('get', route));
         if (routeTable.any[route])
-            throw new Error(`Duplicate get route defined ${route}`);
+            throw new Error(_createDRM('get', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
             routeTable.router.push({
                 method: "GET",
@@ -123,9 +132,9 @@ export class Controller implements IController {
     }
     public post(route: string, next: AppHandler): IController {
         if (routeTable.post[route])
-            throw new Error(`Duplicate post route defined ${route}`);
+            throw new Error(_createDRM('post', route));
         if (routeTable.any[route])
-            throw new Error(`Duplicate post route defined ${route}`);
+            throw new Error(_createDRM('post', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
             routeTable.router.push({
                 method: "POST",
@@ -139,11 +148,11 @@ export class Controller implements IController {
     }
     public any(route: string, next: AppHandler): IController {
         if (routeTable.post[route])
-            throw new Error(`Duplicate post route defined ${route}`);
+            throw new Error(_createDRM('post', route));
         if (routeTable.get[route])
-            throw new Error(`Duplicate get route defined ${route}`);
+            throw new Error(_createDRM('get', route));
         if (routeTable.any[route])
-            throw new Error(`Duplicate any route defined ${route}`);
+            throw new Error(_createDRM('any', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
             routeTable.router.push({
                 method: "ANY",

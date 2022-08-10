@@ -328,7 +328,7 @@ export class Context implements IContext {
         return (code?: number, transfer?: boolean): void => {
             if (this._isDisposed) return;
             // Unreachable....
-            console.warn('Warning: `context already destroyed or "next" function doesn\'t set yet`');
+            console.warn('Warning: `context already disposed or "next" function doesn\'t set yet`');
         };
     }
     public set next(val: CtxNext) {
@@ -982,7 +982,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
     );
     function initilize(): IApplication {
         if (_server.isInitilized) {
-            throw new Error("Server already initilized...");
+            throw new Error("Server already initilized");
         }
         const _app: IApplication = sowAppCore();
         _server.on = (ev: "shutdown", handler: () => void): void => {

@@ -56,6 +56,15 @@ const _deleteRouter = (skip, router) => {
         delete router[prop];
     }
 };
+/**
+ * Create duplicate `route` error message
+ * @param method `route` group
+ * @param route `route` path
+ * @returns {string} duplicate `route` error message
+ */
+const _createDRM = (method, route) => {
+    return `This given "${method}" route ${route} already exists in route table`;
+};
 class Controller {
     constructor(hasDefaultExt) {
         this._fileInfo = new file_info_1.FileInfoCacheHandler();
@@ -91,9 +100,9 @@ class Controller {
     }
     get(route, next) {
         if (routeTable.get[route])
-            throw new Error(`Duplicate get route defined ${route}`);
+            throw new Error(_createDRM('get', route));
         if (routeTable.any[route])
-            throw new Error(`Duplicate get route defined ${route}`);
+            throw new Error(_createDRM('get', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
             routeTable.router.push({
                 method: "GET",
@@ -107,9 +116,9 @@ class Controller {
     }
     post(route, next) {
         if (routeTable.post[route])
-            throw new Error(`Duplicate post route defined ${route}`);
+            throw new Error(_createDRM('post', route));
         if (routeTable.any[route])
-            throw new Error(`Duplicate post route defined ${route}`);
+            throw new Error(_createDRM('post', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
             routeTable.router.push({
                 method: "POST",
@@ -123,11 +132,11 @@ class Controller {
     }
     any(route, next) {
         if (routeTable.post[route])
-            throw new Error(`Duplicate post route defined ${route}`);
+            throw new Error(_createDRM('post', route));
         if (routeTable.get[route])
-            throw new Error(`Duplicate get route defined ${route}`);
+            throw new Error(_createDRM('get', route));
         if (routeTable.any[route])
-            throw new Error(`Duplicate any route defined ${route}`);
+            throw new Error(_createDRM('any', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
             routeTable.router.push({
                 method: "ANY",

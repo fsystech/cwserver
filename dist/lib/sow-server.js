@@ -207,7 +207,7 @@ class Context {
             if (this._isDisposed)
                 return;
             // Unreachable....
-            console.warn('Warning: `context already destroyed or "next" function doesn\'t set yet`');
+            console.warn('Warning: `context already disposed or "next" function doesn\'t set yet`');
         };
     }
     set next(val) {
@@ -805,7 +805,7 @@ function initilizeServer(appRoot, wwwName) {
     const _controller = new sow_controller_1.Controller(_server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false);
     function initilize() {
         if (_server.isInitilized) {
-            throw new Error("Server already initilized...");
+            throw new Error("Server already initilized");
         }
         const _app = (0, sow_server_core_1.App)();
         _server.on = (ev, handler) => {
