@@ -40,7 +40,7 @@ declare global {
              * and please create folder to `project_root/lib/cwserver/dist/error_page`
              * copy all error page from node_module/cwserver/dist/error_page
              * ```
-             * define {@see https://github.com/vercel/pkg}
+             * define {@see https://github.com/vercel/pkg }
              */
             pkg?: {
                 mount: () => void;
