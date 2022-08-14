@@ -124,10 +124,8 @@ function toBeTextHtml(val?: string): void {
 }
 describe("cwserver-core", () => {
     it('validate application directory', (done: Mocha.Done): void => {
-        // @ts-ignore
         process.pkg = Object.create(null);
         expect(getAppDir()).toBeDefined();
-        // @ts-ignore
         delete process.pkg;
         expect(getAppDir()).toBeDefined();
         done();
@@ -2720,7 +2718,7 @@ describe("cwserver-schema-validator", () => {
         expect(fs.existsSync(absPath)).toBe(true);
         const distPath = path.resolve(`${parent}/schemas.json`);
         fs.renameSync(absPath, distPath);
-        process.env.SCRIPT = "TSX";
+        process.env.SCRIPT = "JS";
         expect(shouldBeError(() => {
             Schema.Validate(config);
         })).toBeInstanceOf(Error);

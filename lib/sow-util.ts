@@ -74,7 +74,7 @@ export function getLibRoot(): string {
     return _path.resolve(__dirname, process.env.SCRIPT === "TS" ? '..' : '../..');
 }
 export function getAppDir(): string {
-    if ("pkg" in process) {
+    if (process.pkg) {
         return `${process.cwd()}/lib/cwserver/`;
     }
     return getLibRoot();

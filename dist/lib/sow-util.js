@@ -104,7 +104,7 @@ function getLibRoot() {
 }
 exports.getLibRoot = getLibRoot;
 function getAppDir() {
-    if ("pkg" in process) {
+    if (process.pkg) {
         return `${process.cwd()}/lib/cwserver/`;
     }
     return getLibRoot();
