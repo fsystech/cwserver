@@ -55,7 +55,9 @@ declare global {
 }
 declare global {
     var sow: ISowGlobal;
-    /** Import script/assets from local resource */
+    /**
+     * `cwserver` import script/assets from local resource. If you like to use `pkg` ({@see https://github.com/vercel/pkg }) compailer, please override this method at root.
+     */
     function _importLocalAssets(path: string): any;
 }
 export {};
