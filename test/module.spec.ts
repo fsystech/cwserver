@@ -27,24 +27,23 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as request from 'superagent';
 import { io } from 'socket.io-client';
-import * as fsw from '../lib/sow-fsw';
-import { HttpStatus } from "../lib/sow-http-status";
+import * as fsw from '../lib/fsw';
+import { HttpStatus } from "../lib/http-status";
 import * as cwserver from '../index';
-import { getAppDir } from '../lib/sow-util';
+import { getAppDir } from '../lib/app-util';
 // import { FileInfoCacheHandler, FileDescription } from '../lib/file-info';
-import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/sow-static';
+import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
 import {
     IAppUtility, IContext
-} from '../lib/sow-server';
+} from '../lib/server';
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
-} from '../lib/sow-router';
-import { IApplication, App, IRequest, IResponse, NextFunction } from '../lib/sow-server-core';
-import { assert, Util } from '../lib/sow-util';
-import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/sow-schema-validator';
-import { TemplateCore, templateNext, CompilerResult } from '../lib/sow-template';
+} from '../lib/app-router';
+import { IApplication, App, IRequest, IResponse, NextFunction } from '../lib/server-core';
+import { assert, Util } from '../lib/app-util';
+import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/schema-validator';
+import { TemplateCore, templateNext, CompilerResult } from '../lib/app-template';
 import { shouldBeError } from "./test-view";
-import { Logger, LogTime, ShadowLogger } from '../lib/sow-logger';
 import { promisify } from 'util';
 import destroy from 'destroy';
 const sleep = promisify(setTimeout);
@@ -2007,7 +2006,7 @@ describe("cwserver-utility", () => {
         }
     })();
     it("test-app-utility", function (done: Mocha.Done) {
-        const slogger = new ShadowLogger();
+        const slogger = new cwserver.ShadowLogger();
         slogger.newLine();
         expect(slogger.isProduction).toBeTruthy();
         slogger.reset().writeToStream("");
@@ -2450,7 +2449,7 @@ describe("cwserver-utility", () => {
         appUtility.server.log.log("log-test");
         appUtility.server.log.info("log-info-test");
         appUtility.server.log.dispose();
-        let logger = new Logger();
+        let logger = new cwserver.Logger();
         expect(logger.isProduction).toBeFalsy();
         logger.log("log-test");
         logger.info("log-test");
@@ -2461,15 +2460,15 @@ describe("cwserver-utility", () => {
         })).toBeInstanceOf(Error);
         logger.reset();
         logger.dispose(); logger.dispose();
-        logger = new Logger(logDir, void 0, "+6", void 0, false);
+        logger = new cwserver.Logger(logDir, void 0, "+6", void 0, false);
         logger.write("test\r\n ");
         logger.reset();
         logger.dispose();
-        logger = new Logger(void 0, void 0, "+6", false);
+        logger = new cwserver.Logger(void 0, void 0, "+6", false);
         logger.write(cwserver.ConsoleColor.Cyan("User Interactive"));
         logger.dispose();
         appUtility.server.log.dispose();
-        logger = new Logger(logDir, projectRoot, "+6", false, false, 100);
+        logger = new cwserver.Logger(logDir, projectRoot, "+6", false, false, 100);
         logger.write("No way");
         expect(logger.flush()).toEqual(true);
         expect(logger.flush()).toEqual(false);
@@ -2481,12 +2480,12 @@ describe("cwserver-utility", () => {
         logger.writeToStream("log-test");
         logger.reset();
         logger.dispose();
-        expect(LogTime.dfo(0)).toEqual("01");
-        expect(LogTime.dfm(11)).toEqual("12");
-        expect(LogTime.dfm(8)).toEqual("09");
-        logger = new Logger(path.resolve('./log/n-log/'), 'test-logger');
+        expect(cwserver.LogTime.dfo(0)).toEqual("01");
+        expect(cwserver.LogTime.dfm(11)).toEqual("12");
+        expect(cwserver.LogTime.dfm(8)).toEqual("09");
+        logger = new cwserver.Logger(path.resolve('./log/n-log/'), 'test-logger');
         logger.newLine(); logger.dispose();
-        logger = new Logger(path.resolve('./log/n-log/'), 'test-logger', undefined, false, true);
+        logger = new cwserver.Logger(path.resolve('./log/n-log/'), 'test-logger', undefined, false, true);
         logger.info("Test-info").newLine();
         logger.success("Success message..");
         logger.error("Error message..");

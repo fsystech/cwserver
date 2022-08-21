@@ -23,28 +23,28 @@
 import expect from 'expect';
 import * as path from "path";
 import * as fs from "fs";
-import * as fsw from '../lib/sow-fsw';
+import * as fsw from '../lib/fsw';
 import {
 	IRequestParam
-} from '../lib/sow-router';
+} from '../lib/app-router';
 import {
 	IApplication, IRequest, IResponse, NextFunction,
 	parseCookie, parseUrl, getClientIp, escapePath
-} from '../lib/sow-server-core';
-import { IController } from '../lib/sow-controller';
+} from '../lib/server-core';
+import { IController } from '../lib/app-controller';
 import {
 	disposeContext, getMyContext, removeContext
-} from '../lib/sow-server';
-import { SowHttpCache } from '../lib/sow-http-cache';
+} from '../lib/server';
+import { SowHttpCache } from '../lib/http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
 	ISowServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
 	socketInitilizer, getBodyParser, PayloadParser,
 	HttpMimeHandler, Streamer, Encryption, SessionSecurity
 } from '../index';
-import { toString } from '../lib/sow-static';
-import { decodeBodyBuffer } from '../lib/sow-body-parser';
-import { assert, Util } from '../lib/sow-util';
+import { toString } from '../lib/app-static';
+import { decodeBodyBuffer } from '../lib/body-parser';
+import { assert, Util } from '../lib/app-util';
 const mimeHandler = new HttpMimeHandler();
 export function shouldBeError(next: () => void, printerr?: boolean): Error | void {
 	try {
