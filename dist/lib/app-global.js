@@ -56,8 +56,10 @@ class SowGlobal {
         return this._HttpMime;
     }
 }
-global.sow = new SowGlobal();
-global._importLocalAssets = (path) => {
-    return require(path);
-};
+if (!global.sow) {
+    global.sow = new SowGlobal();
+}
+if (!global._importLocalAssets) {
+    global._importLocalAssets = (path) => require(path);
+}
 //# sourceMappingURL=app-global.js.map

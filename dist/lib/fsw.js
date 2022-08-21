@@ -75,7 +75,7 @@ var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _ar
     function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.moveFileAsync = exports.existsAsync = exports.mkdirAsync = exports.writeFileAsync = exports.unlinkAsync = exports.getFilesAsync = exports.opendirAsync = exports.copyDirSync = exports.copyDir = exports.copyFileSync = exports.copyFile = exports.unlink = exports.rmdirSync = exports.rmdir = exports.mkdirSync = exports.mkdir = exports.readJsonSync = exports.readJson = exports.isExists = exports.compairFileSync = exports.compairFile = exports.moveFile = exports.stat = void 0;
+exports.moveFileAsync = exports.existsAsync = exports.mkdirAsync = exports.writeFileAsync = exports.unlinkAsync = exports.getFilesAsync = exports.opendirAsync = exports.copyDirSync = exports.copyDir = exports.copyFileSync = exports.copyFile = exports.unlink = exports.rmdirSync = exports.rmdir = exports.mkdirSync = exports.mkdir = exports.readJsonSync = exports.readJson = exports.isExists = exports.compareFileSync = exports.compareFile = exports.moveFile = exports.stat = void 0;
 // 5:17 PM 6/15/2020
 // by rajib chy
 const _fs = __importStar(require("fs"));
@@ -110,8 +110,8 @@ function moveFile(src, dest, next, force) {
     });
 }
 exports.moveFile = moveFile;
-/** compairFile a stat.mtime > b stat.mtime */
-function compairFile(a, b, next, errHandler) {
+/** compareFile a stat.mtime > b stat.mtime */
+function compareFile(a, b, next, errHandler) {
     return _fs.stat(a, (err, astat) => {
         return errHandler(err, () => {
             return _fs.stat(b, (serr, bstat) => {
@@ -122,16 +122,16 @@ function compairFile(a, b, next, errHandler) {
         });
     });
 }
-exports.compairFile = compairFile;
-/** compairFileSync a stat.mtime > b stat.mtime */
-function compairFileSync(a, b) {
+exports.compareFile = compareFile;
+/** compareFileSync a stat.mtime > b stat.mtime */
+function compareFileSync(a, b) {
     const astat = _fs.statSync(a);
     const bstat = _fs.statSync(b);
     if (astat.mtime.getTime() > bstat.mtime.getTime())
         return true;
     return false;
 }
-exports.compairFileSync = compairFileSync;
+exports.compareFileSync = compareFileSync;
 function isExists(path, next) {
     const url = _path.resolve(path);
     return _fs.stat(url, (err, stats) => {

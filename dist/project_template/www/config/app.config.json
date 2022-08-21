@@ -5,6 +5,7 @@
   "version": "0.0.1",
   "packageVersion": "1",
   "isDebug": true,
+  "useFullOptimization": true,
   "template": {
     "cache": true,
     "cacheType": "FILE",

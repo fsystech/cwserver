@@ -121,7 +121,9 @@ declare global {
      */
     function _importLocalAssets(path: string): any;
 }
-global.sow = new SowGlobal();
-global._importLocalAssets = (path: string): any => {
-    return require(path);
-};
+if (!global.sow) {
+    global.sow = new SowGlobal();
+}
+if (!global._importLocalAssets) {
+    global._importLocalAssets = (path: string): any => require(path);
+}

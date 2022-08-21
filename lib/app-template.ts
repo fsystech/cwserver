@@ -509,7 +509,7 @@ export class TemplateCore {
 function canReadFileCache(ctx: IContext, filePath: string, cachePath: string, next: (readCache: boolean) => void): void {
     return _fileInfo.exists(cachePath, (exists: boolean): void => {
         if (!exists) return next(false);
-        return fsw.compairFile(filePath, cachePath, (err: NodeJS.ErrnoException | null, changed: boolean) => {
+        return fsw.compareFile(filePath, cachePath, (err: NodeJS.ErrnoException | null, changed: boolean) => {
             return ctx.handleError(err, () => {
                 if (changed) {
                     return _fs.unlink(cachePath, (uerr: NodeJS.ErrnoException | null): void => {

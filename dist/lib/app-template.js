@@ -479,7 +479,7 @@ function canReadFileCache(ctx, filePath, cachePath, next) {
     return _fileInfo.exists(cachePath, (exists) => {
         if (!exists)
             return next(false);
-        return fsw.compairFile(filePath, cachePath, (err, changed) => {
+        return fsw.compareFile(filePath, cachePath, (err, changed) => {
             return ctx.handleError(err, () => {
                 if (changed) {
                     return _fs.unlink(cachePath, (uerr) => {

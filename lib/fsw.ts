@@ -56,8 +56,8 @@ export function moveFile(
         });
     });
 }
-/** compairFile a stat.mtime > b stat.mtime */
-export function compairFile(
+/** compareFile a stat.mtime > b stat.mtime */
+export function compareFile(
     a: string, b: string,
     next: (err: NodeJS.ErrnoException | null, changed: boolean) => void,
     errHandler: ErrorHandler
@@ -72,8 +72,8 @@ export function compairFile(
         });
     });
 }
-/** compairFileSync a stat.mtime > b stat.mtime */
-export function compairFileSync(a: string, b: string): boolean {
+/** compareFileSync a stat.mtime > b stat.mtime */
+export function compareFileSync(a: string, b: string): boolean {
     const astat = _fs.statSync(a);
     const bstat = _fs.statSync(b);
     if (astat.mtime.getTime() > bstat.mtime.getTime()) return true;

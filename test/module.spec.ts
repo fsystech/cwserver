@@ -155,9 +155,9 @@ describe("cwserver-core", () => {
         const filePath: string = path.resolve(root + "/config/app.config.json");
         fs.writeFile(filePath, "INVALID_FILE", (err: NodeJS.ErrnoException | null) => {
             const orginalCfg: string = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
-            fsw.compairFileSync(filePath, orginalCfg);
+            fsw.compareFileSync(filePath, orginalCfg);
             setTimeout(() => {
-                fsw.compairFileSync(filePath, filePath);
+                fsw.compareFileSync(filePath, filePath);
                 expect(shouldBeError(() => {
                     cwserver.initilizeServer(appRoot, `ewww`);
                 })).toBeInstanceOf(Error);
@@ -884,7 +884,7 @@ describe("cwserver-bundler", () => {
                 done();
             });
     });
-    it('bundler should compair if-modified-since header and send 304 (server file cache)', (() => {
+    it('bundler should compare if-modified-since header and send 304 (server file cache)', (() => {
         const sendReq = (done: Mocha.Done, tryCount: number): void => {
             if (tryCount > 0) {
                 console.log(`Try Count: ${tryCount} and if-modified-since: ${lastModified}`);
@@ -917,7 +917,7 @@ describe("cwserver-bundler", () => {
             return sendReq(done, 0);
         };
     })());
-    it('bundler should compair if-none-match and send 304 (server file cache)', (() => {
+    it('bundler should compare if-none-match and send 304 (server file cache)', (() => {
         const sendReq = (done: Mocha.Done, tryCount: number): void => {
             if (tryCount > 0) {
                 console.log(`Try Count: ${tryCount} and if-none-match: ${eTag}`);
@@ -1008,7 +1008,7 @@ describe("cwserver-bundler", () => {
                     return done();
                 });
         };
-        it("bundler should compair if-modified-since header and send 304 (no server cache)", function (done: Mocha.Done): void {
+        it("bundler should compare if-modified-since header and send 304 (no server cache)", function (done: Mocha.Done): void {
             this.timeout(5000);
             expect(lastModified.length).toBeGreaterThan(0);
             appUtility.server.config.bundler.fileCache = false;
@@ -2107,7 +2107,6 @@ describe("cwserver-utility", () => {
                 iv: void 0
             });
         })).toBeInstanceOf(Error);
-        // fsw.compairFileSync("", "");
         expect(shouldBeError(() => {
             fsw.mkdirSync(logDir, "./");
         })).toBeInstanceOf(Error);
