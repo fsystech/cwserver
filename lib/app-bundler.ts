@@ -24,7 +24,7 @@ import * as _fs from 'fs';
 import * as _path from 'path';
 import * as _zlib from 'zlib';
 import { Encryption } from './encryption';
-import { SowHttpCache, IChangeHeader } from './http-cache';
+import { HttpCache, IChangeHeader } from './http-cache';
 import { IApplication } from './server-core';
 import { ISowServer, IContext } from './server';
 import { IController } from './app-controller';
@@ -74,20 +74,24 @@ class Bundlew {
         return ContentType.UNKNOWN;
     }
     static getCachePath(
-        ctx: IContext,
-        str: string,
-        ctEnum: ContentType,
-        cacheKey: string
-    ): string {
+        server: ISowServer, str: string, ctEnum: ContentType, cacheKey: string
+    ): {
+        readonly memCacheKey: string,
+        readonly cachpath: string
+    } {
         // const dir = ctx.server.mapPath( `/web/temp/` );
-        let path: string = _path.join(ctx.server.config.bundler.tempPath, `${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${Encryption.toMd5(str)}`);
-        /// let path: string = `${ctx.server.config.bundler.tempPath}\\${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${Encryption.toMd5(str)}`;
+        let fileName: string = `${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${Encryption.toMd5(str)}`;
+        // let path: string = _path.join(server.config.bundler.tempPath, `${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${Encryption.toMd5(str)}`);
+        // let path: string = `${ctx.server.config.bundler.tempPath}\\${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${Encryption.toMd5(str)}`;
         if (ctEnum === ContentType.JS) {
-            path = `${path}.js.cache`
+            fileName = `${fileName}.js.cache`
         } else {
-            path = `${path}.css.cache`
+            fileName = `${fileName}.css.cache`
         }
-        return path;
+        return {
+            memCacheKey: fileName,
+            cachpath: _path.join(server.config.bundler.tempPath, fileName)
+        };
     }
     static getBundleInfo(
         server: ISowServer, str: string,
@@ -105,32 +109,36 @@ class Bundlew {
             try {
                 const _name: string | void = files.shift();
                 if (!_name) return next(result, null);
-                let name = _name;
+                let fname: string = _name;
                 let isOwn: boolean = false;
-                if (name.indexOf("|") > 0) {
-                    const spl: string[] = name.split("|");
-                    name = spl[0];
+                if (fname.indexOf("|") > 0) {
+                    const spl: string[] = fname.split("|");
+                    fname = spl[0];
                     if (spl[1] === "__owner__") isOwn = true;
                     spl.length = 0;
                 }
-                if (/\$/gi.test(name) === false) {
-                    name = `$root/$public/${name}`;
+                if (/\$/gi.test(fname) === false) {
+                    fname = `$root/$public/${fname}`;
                 }
                 let absolute: string = "";
-                if (/\$virtual/gi.test(name)) {
-                    absolute = _path.resolve(name.replace(/\$.+?\//gi, (m) => {
+                if (/\$virtual/gi.test(fname)) {
+                    absolute = _path.resolve(fname.replace(/\$.+?\//gi, (m) => {
                         const vinfo = server.virtualInfo(`/${m.split("_")[1].replace("/", "")}`);
-                        if (!vinfo) throw new Error(`No virtual info found for ${name}`);
+                        if (!vinfo) throw new Error(`No virtual info found for ${fname}`);
                         return `${vinfo.root}/`;
                     }));
                 } else {
-                    absolute = server.formatPath(name, true);
+                    absolute = server.formatPath(fname, true);
                 }
                 return _fileInfo.stat(absolute, (desc: IFileDescription) => {
-                    if (!desc.exists || !desc.stats) return next([], new Error(`No file found\r\nPath:${absolute}\r\nName:${name}`));
+                    if (!desc.exists || !desc.stats) return next([], new Error(`No file found\r\nPath:${absolute}\r\nName:${fname}`));
                     const changeTime = desc.stats.mtime.getTime();
+                    fname = fname.replace(/\$.+?\//gi, "");
+                    if (fname.charAt(0) !== '/') {
+                        fname = `/${fname}`;
+                    }
                     result.push({
-                        name: name.replace(/\$.+?\//gi, "/"),
+                        name: fname,
                         absolute,
                         changeTime,
                         isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
@@ -152,10 +160,9 @@ class Bundlew {
         const out: IBufferArray = new BufferArray();
         let istr: string = _getInfo();
         files.forEach((inf, index) => {
-            istr += `${index + 1}==>${inf.name}\r\n`;
+            istr += `// ${index + 1}==>${inf.name}\r\n`;
         });
-        istr += "Generated on- " + new Date().toString() + "\r\n";
-        istr += "---------------------------------------------------------------------------------------------------------------------------------------*/";
+        istr += "// Generated on- " + new Date().toString() + "\r\n";
         out.push(Buffer.from(istr));
         const copyBuff = Buffer.from(copyright);
         const forward = (): void => {
@@ -163,7 +170,7 @@ class Bundlew {
             if (!inf) {
                 return next(out);
             }
-            out.push(Buffer.from(`\r\n/*${inf.name}*/\r\n`));
+            out.push(Buffer.from(`\r\n// ${inf.name}\r\n`));
             if (inf.isOwn === true) {
                 out.push(copyBuff)
                 if (inf.name.indexOf(".min.") < 0) {
@@ -202,14 +209,14 @@ class Bundlew {
         if (cte === ContentType.UNKNOWN) return ctx.next(404);
         const desc: string | void = this.decryptFilePath(server, ctx, str.toString());
         if (!desc) return;
-        const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
+        const cngHander: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
         return this.getBundleInfo(server, desc.toString(), cngHander.sinceModify, false, (files: BundlerFileInfo[], err: Error | null): void => {
             return ctx.handleError(err, () => {
                 let hasChanged: boolean = true;
                 if (cngHander.sinceModify) {
                     hasChanged = files.some(a => a.isChange === true);
                 }
-                SowHttpCache.writeCacheHeader(ctx.res, {
+                HttpCache.writeCacheHeader(ctx.res, {
                     lastChangeTime: Date.now()
                 }, server.config.cacheHeader);
                 if (!hasChanged) {
@@ -231,28 +238,28 @@ class Bundlew {
         });
     }
     static _sendFromMemCache(ctx: IContext, cte: ContentType, dataInfo: MemCacheInfo): void {
-        const etag: string | undefined = dataInfo.cfileSize !== 0 ? SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize) : void 0;
-        const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
+        const etag: string | undefined = dataInfo.cfileSize !== 0 ? HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize) : void 0;
+        const cngHander: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
         ctx.res.setHeader('x-served-from', 'mem-cache');
         if (cngHander.etag || cngHander.sinceModify) {
             let exit: boolean = false;
             if (etag && cngHander.etag) {
                 if (cngHander.etag === etag) {
-                    SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                    HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                     ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
                     return ctx.next(304);
                 }
                 exit = true;
             }
             if (cngHander.sinceModify && !exit) {
-                SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                 ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
                 return ctx.next(304);
             }
         }
-        SowHttpCache.writeCacheHeader(ctx.res, {
+        HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime: dataInfo.lastChangeTime,
-            etag: SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
+            etag: HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
         }, ctx.server.config.cacheHeader);
         ctx.res.status(200, {
             'Content-Type': this.getResContentType(cte),
@@ -263,9 +270,9 @@ class Bundlew {
         }
         return ctx.res.end(dataInfo.bundleData), ctx.next(200);
     }
-    private static _getCacheMape(str: string): string {
-        return str.replace(/\\/gi, "_").replace(/-/gi, "_");
-    }
+    // private static _getCacheMape(str: string): string {
+    //     return str.replace(/\\/gi, "_").replace(/-/gi, "_");
+    // }
     static _holdCache(cacheKey: string, cachePath: string, lastChangeTime: number, size: number): void {
         if (_mamCache[cacheKey]) return;
         setImmediate(() => {
@@ -287,13 +294,13 @@ class Bundlew {
         if (cte === ContentType.UNKNOWN) return ctx.next(404);
         const desc: string | void = this.decryptFilePath(server, ctx, str.toString());
         if (!desc) return;
-        const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
-        const cachpath: string = this.getCachePath(ctx, desc.toString(), cte, cacheKey.toString());
-        const memCacheKey = this._getCacheMape(cachpath);
+        const useFullOptimization: boolean = server.config.useFullOptimization;
+        const { cachpath, memCacheKey } = this.getCachePath(server, desc.toString(), cte, cacheKey.toString());
+        // const memCacheKey: string = this._getCacheMape(fileName);
         if (useFullOptimization && _mamCache[memCacheKey]) {
             return this._sendFromMemCache(ctx, cte, _mamCache[memCacheKey]);
         }
-        const cngHander: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
+        const cngHander: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
         return _fileInfo.stat(cachpath, (fdesc: IFileDescription): void => {
             const existsCachFile: boolean = fdesc.exists;
             return ctx.handleError(null, () => {
@@ -309,27 +316,27 @@ class Bundlew {
                         if (existsCachFile) {
                             hasChanged = files.some(a => a.isChange === true);
                         }
-                        const etag: string | undefined = cfileSize !== 0 ? SowHttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
+                        const etag: string | undefined = cfileSize !== 0 ? HttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
                         if (!hasChanged && existsCachFile && (cngHander.etag || cngHander.sinceModify)) {
                             let exit: boolean = false;
                             if (etag && cngHander.etag) {
                                 if (cngHander.etag === etag) {
-                                    SowHttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
+                                    HttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
                                     ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
                                     return ctx.next(304);
                                 }
                                 exit = true;
                             }
                             if (cngHander.sinceModify && !exit) {
-                                SowHttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
+                                HttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
                                 ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
                                 return ctx.next(304);
                             }
                         }
                         if (!hasChanged && existsCachFile) {
-                            SowHttpCache.writeCacheHeader(ctx.res, {
+                            HttpCache.writeCacheHeader(ctx.res, {
                                 lastChangeTime,
-                                etag: SowHttpCache.getEtag(lastChangeTime, cfileSize)
+                                etag: HttpCache.getEtag(lastChangeTime, cfileSize)
                             }, server.config.cacheHeader);
                             ctx.res.status(200, {
                                 'Content-Type': this.getResContentType(cte),
@@ -352,9 +359,9 @@ class Bundlew {
                                             return ctx.handleError(null, () => {
                                                 if (!edesc.stats) return ctx.next(404);
                                                 lastChangeTime = edesc.stats.mtime.getTime();
-                                                SowHttpCache.writeCacheHeader(ctx.res, {
+                                                HttpCache.writeCacheHeader(ctx.res, {
                                                     lastChangeTime,
-                                                    etag: SowHttpCache.getEtag(lastChangeTime, edesc.stats.size)
+                                                    etag: HttpCache.getEtag(lastChangeTime, edesc.stats.size)
                                                 }, server.config.cacheHeader);
                                                 ctx.res.status(200, {
                                                     'Content-Type': this.getResContentType(cte),
@@ -383,9 +390,9 @@ class Bundlew {
                                                 return ctx.handleError(null, () => {
                                                     if (!edesc.stats) return ctx.next(404);
                                                     lastChangeTime = edesc.stats.mtime.getTime();
-                                                    SowHttpCache.writeCacheHeader(ctx.res, {
+                                                    HttpCache.writeCacheHeader(ctx.res, {
                                                         lastChangeTime,
-                                                        etag: SowHttpCache.getEtag(lastChangeTime, edesc.stats.size)
+                                                        etag: HttpCache.getEtag(lastChangeTime, edesc.stats.size)
                                                     }, server.config.cacheHeader);
                                                     ctx.res.status(200, {
                                                         'Content-Type': this.getResContentType(cte),
@@ -419,20 +426,12 @@ export const __moduleName: string = "Bundler";
 export class Bundler {
     public static Init(app: IApplication, controller: IController, server: ISowServer): void {
         controller.get(server.config.bundler.route, (ctx: IContext): void => {
-            const isGzip: boolean = SowHttpCache.isAcceptedEncoding(ctx.req.headers, "gzip");
+            const isGzip: boolean = HttpCache.isAcceptedEncoding(ctx.req.headers, "gzip");
             if (!isGzip || server.config.bundler.fileCache === false) return Bundlew.createMemmory(server, ctx, isGzip);
             return Bundlew.createServerFileCache(server, ctx);
         });
     }
 }
 function _getInfo(): string {
-    return `/*
-||####################################################################################################################################||
-||#  Sow "Combiner"                                                                                                                  #||
-||#  Version: 1.0.0.1; Build Date : Fri May 01, 2020 1:33:49 GMT+0600 (BDT)                                                          #||
-||#  Sow( https://github.com/safeonlineworld/cwserver). All rights reserved                                                          #||
-||#  Email: mssclang@outlook.com;                                                                                                    #||
-||####################################################################################################################################||
----------------------------------------------------------------------------------------------------------------------------------------
-This "Combiner" contains the following files:\n`;
+    return '// Sow "Combiner"\r\n// Copyright (c) 2022 Safe Online World Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
 }

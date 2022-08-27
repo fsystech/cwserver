@@ -759,7 +759,7 @@ ${appRoot}\\www_public
         });
     }
     copyright(): string {
-        return '/*Copyright (c) 2022 Safe Online World Ltd. All rights reserved*/\r\n';
+        return '//\tCopyright (c) 2022 Safe Online World Ltd.\r\n';
     }
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
         const context = getContext(this, req, res);

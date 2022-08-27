@@ -46,7 +46,7 @@ export type IoResult = {
     ret_msg: string;
     ret_data_table?: any;
 }
-export type QResult<R> = {
+export type QResult<R extends QueryResultRow> = {
     isError: boolean; err?: Error; res?: QueryResult<R>;
 }
 export interface ISowDatabaseType {

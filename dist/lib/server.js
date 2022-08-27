@@ -579,7 +579,7 @@ ${appRoot}\\www_public
         });
     }
     copyright() {
-        return '/*Copyright (c) 2022 Safe Online World Ltd. All rights reserved*/\r\n';
+        return '//\tCopyright (c) 2022 Safe Online World Ltd.\r\n';
     }
     createContext(req, res, next) {
         const context = (0, exports.getContext)(this, req, res);

@@ -24,8 +24,8 @@ import './app-global';
 import {
     createServer, OutgoingHttpHeaders,
     Server, IncomingMessage, ServerResponse
-} from 'http';
-import { EventEmitter } from 'events';
+} from 'node:http';
+import { EventEmitter } from 'node:events';
 import { IRequestParam, ILayerInfo, IRouteInfo, getRouteInfo, getRouteMatcher } from './app-router';
 import { ToResponseTime, toString, ISession, IResInfo } from './app-static';
 import { HttpStatus } from './http-status';
@@ -33,10 +33,11 @@ import { IContext } from './server';
 import { Template } from './app-template';
 import { Util, assert, getAppDir } from './app-util';
 import { existsSync, readFileSync } from 'fs';
-import { resolve } from 'path';
-import urlHelpers, { UrlWithParsedQuery } from 'url';
-import * as _zlib from 'zlib';
+import { resolve } from 'node:path';
+import urlHelpers, { UrlWithParsedQuery } from 'node:url';
+import * as _zlib from 'node:zlib';
 import * as _mimeType from './http-mime-types';
+import { Socket } from 'node:net';
 type ParsedUrlQuery = { [key: string]: string | string[] | undefined; };
 type onError = (req: IRequest, res: IResponse, err?: Error | number) => void;
 export type NextFunction = (err?: any) => void;
@@ -95,7 +96,8 @@ export interface IApplication {
     use(handler: HandlerFunc): IApplication;
     use(route: string, handler: HandlerFunc, isVirtual?: boolean): IApplication;
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApplication;
-    shutdown(next?: (err?: Error) => void): Promise<void> | void;
+    shutdown(next: (err?: Error) => void): Promise<void> | void;
+    shutdownAsync(): Promise<void>;
     on(ev: 'request-begain', handler: (req: IRequest) => void): IApplication;
     on(ev: 'response-end', handler: (req: IRequest, res: IResponse) => void): IApplication;
     on(ev: 'error', handler: onError): IApplication;
@@ -484,6 +486,8 @@ class Response extends ServerResponse implements IResponse {
 }
 class Application extends EventEmitter implements IApplication {
     private _httpServer: Server;
+    private _connectionKey: number;
+    private _connectionMap: NodeJS.Dict<Socket>;
     public get version() {
         return appVersion;
     }
@@ -502,6 +506,8 @@ class Application extends EventEmitter implements IApplication {
         this._appHandler = [];
         this._prerequisitesHandler = [];
         this._isRunning = false;
+        this._connectionMap = {};
+        this._connectionKey = 0;
     }
     public clearHandler(): void {
         if (this._appHandler.length > 0) {
@@ -526,12 +532,25 @@ class Application extends EventEmitter implements IApplication {
             this._isRunning = false;
             this._httpServer.close().once('close', () => resolveTerminating());
         }
+        this._destroyActiveSocket();
         return promise;
     }
-    public shutdown(next?: (err?: Error | undefined) => void): void | Promise<void> {
+    private _destroyActiveSocket(): void {
+        Object.keys(this._connectionMap).forEach((socketKey) => {
+            const _socket: Socket | undefined = this._connectionMap[socketKey];
+            if (_socket) {
+                _socket.destroy();
+            }
+        });
+        this._connectionMap = {};
+    }
+    public shutdown(next: (err?: Error | undefined) => void): void {
         this.emit('shutdown');
-        if (typeof (next) !== 'function') return this._shutdown();
         return this._shutdown().then(() => next()).catch((err) => next(err)), void 0;
+    }
+    public shutdownAsync(): Promise<void> {
+        this.emit('shutdown');
+        return this._shutdown();
     }
     private _handleRequest(
         req: IRequest, res: IResponse,
@@ -613,11 +632,19 @@ class Application extends EventEmitter implements IApplication {
         if (this.isRunning) {
             throw new Error('Server already running....');
         }
-        return this._httpServer.listen(handle, () => {
+        this._httpServer.listen(handle, () => {
             this._isRunning = true;
             if (listeningListener)
                 return listeningListener();
-        }), this;
+        });
+        this._httpServer.on('connection', (socket: Socket) => {
+            const connectionKey: string = String(++this._connectionKey);
+            this._connectionMap[connectionKey] = socket;
+            socket.on('close', () => {
+                delete this._connectionMap[connectionKey];
+            });
+        });
+        return this;
     }
 }
 function setAppHeader(res: Response) {

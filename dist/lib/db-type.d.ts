@@ -24,7 +24,7 @@ export declare type IoResult = {
     ret_msg: string;
     ret_data_table?: any;
 };
-export declare type QResult<R> = {
+export declare type QResult<R extends QueryResultRow> = {
     isError: boolean;
     err?: Error;
     res?: QueryResult<R>;

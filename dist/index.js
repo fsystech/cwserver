@@ -42,7 +42,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Session = exports.appVersion = exports.readAppVersion = exports.parseCookie = exports.App = exports.SessionSecurity = exports.createProjectTemplate = exports.wsClient = exports.socketInitilizer = exports.Streamer = exports.fsw = exports.Util = exports.PayloadParser = exports.getBodyParser = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.HttpMimeHandler = exports.Encryption = exports.initilizeServer = void 0;
+exports.Session = exports.appVersion = exports.readAppVersion = exports.parseCookie = exports.App = exports.SessionSecurity = exports.createProjectTemplate = exports.wsClient = exports.socketInitilizer = exports.Streamer = exports.fsw = exports.Util = exports.PayloadParser = exports.getBodyParser = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.HttpCache = exports.HttpMimeHandler = exports.Encryption = exports.initilizeServer = void 0;
 // 3:56 PM 5/9/2020
 // by rajib chy
 var server_1 = require("./lib/server");
@@ -51,6 +51,8 @@ var encryption_1 = require("./lib/encryption");
 Object.defineProperty(exports, "Encryption", { enumerable: true, get: function () { return encryption_1.Encryption; } });
 var http_mime_1 = require("./lib/http-mime");
 Object.defineProperty(exports, "HttpMimeHandler", { enumerable: true, get: function () { return http_mime_1.HttpMimeHandler; } });
+var http_cache_1 = require("./lib/http-cache");
+Object.defineProperty(exports, "HttpCache", { enumerable: true, get: function () { return http_cache_1.HttpCache; } });
 var logger_1 = require("./lib/logger");
 Object.defineProperty(exports, "ConsoleColor", { enumerable: true, get: function () { return logger_1.ConsoleColor; } });
 Object.defineProperty(exports, "Logger", { enumerable: true, get: function () { return logger_1.Logger; } });

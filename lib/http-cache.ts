@@ -27,7 +27,7 @@ export type IChangeHeader = {
     sinceModify?: number | void;
     etag?: string;
 };
-export class SowHttpCache {
+export class HttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
     public static getIfModifiedSinceUTCTime(headers: IncomingHttpHeaders): number | void {
         const ifModifiedSinceHeaderText: string | string[] | undefined = headers["If-Modified-Since"] || headers["if-modified-since"];

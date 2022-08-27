@@ -50,23 +50,23 @@ exports.App = exports.parseUrl = exports.getClientIp = exports.escapePath = expo
 // 2:40 PM 5/7/2020
 // by rajib chy
 require("./app-global");
-const http_1 = require("http");
-const events_1 = require("events");
+const node_http_1 = require("node:http");
+const node_events_1 = require("node:events");
 const app_router_1 = require("./app-router");
 const app_static_1 = require("./app-static");
 const http_status_1 = require("./http-status");
 const app_template_1 = require("./app-template");
 const app_util_1 = require("./app-util");
 const fs_1 = require("fs");
-const path_1 = require("path");
-const url_1 = __importDefault(require("url"));
-const _zlib = __importStar(require("zlib"));
+const node_path_1 = require("node:path");
+const node_url_1 = __importDefault(require("node:url"));
+const _zlib = __importStar(require("node:zlib"));
 const _mimeType = __importStar(require("./http-mime-types"));
 _a = (() => {
     let _appVersion = '3.1.5';
     const _readAppVersion = () => {
         const libRoot = (0, app_util_1.getAppDir)();
-        const absPath = (0, path_1.resolve)(`${libRoot}/package.json`);
+        const absPath = (0, node_path_1.resolve)(`${libRoot}/package.json`);
         (0, app_util_1.assert)((0, fs_1.existsSync)(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
         const data = (0, fs_1.readFileSync)(absPath, "utf-8");
         _appVersion = app_util_1.Util.JSON.parse(data).version;
@@ -184,14 +184,14 @@ function getClientIp(req) {
 exports.getClientIp = getClientIp;
 function parseUrl(url) {
     if (url) {
-        return url_1.default.parse(url, true);
+        return node_url_1.default.parse(url, true);
     }
     return Object.create({
         pathname: null, query: {}
     });
 }
 exports.parseUrl = parseUrl;
-class Request extends http_1.IncomingMessage {
+class Request extends node_http_1.IncomingMessage {
     get isMobile() {
         if (this._isMobile !== undefined)
             return this._isMobile;
@@ -279,7 +279,7 @@ class Request extends http_1.IncomingMessage {
         }
     }
 }
-class Response extends http_1.ServerResponse {
+class Response extends node_http_1.ServerResponse {
     // @ts-ignore
     get statusCode() {
         return this._statusCode === undefined ? 0 : this._statusCode;
@@ -458,13 +458,15 @@ class Response extends http_1.ServerResponse {
         }
     }
 }
-class Application extends events_1.EventEmitter {
+class Application extends node_events_1.EventEmitter {
     constructor(httpServer) {
         super();
         this._httpServer = httpServer;
         this._appHandler = [];
         this._prerequisitesHandler = [];
         this._isRunning = false;
+        this._connectionMap = {};
+        this._connectionKey = 0;
     }
     get version() {
         return exports.appVersion;
@@ -499,13 +501,25 @@ class Application extends events_1.EventEmitter {
             this._isRunning = false;
             this._httpServer.close().once('close', () => resolveTerminating());
         }
+        this._destroyActiveSocket();
         return promise;
+    }
+    _destroyActiveSocket() {
+        Object.keys(this._connectionMap).forEach((socketKey) => {
+            const _socket = this._connectionMap[socketKey];
+            if (_socket) {
+                _socket.destroy();
+            }
+        });
+        this._connectionMap = {};
     }
     shutdown(next) {
         this.emit('shutdown');
-        if (typeof (next) !== 'function')
-            return this._shutdown();
         return this._shutdown().then(() => next()).catch((err) => next(err)), void 0;
+    }
+    shutdownAsync() {
+        this.emit('shutdown');
+        return this._shutdown();
     }
     _handleRequest(req, res, handlers, next, isPrerequisites) {
         if (handlers.length === 0)
@@ -586,11 +600,19 @@ class Application extends events_1.EventEmitter {
         if (this.isRunning) {
             throw new Error('Server already running....');
         }
-        return this._httpServer.listen(handle, () => {
+        this._httpServer.listen(handle, () => {
             this._isRunning = true;
             if (listeningListener)
                 return listeningListener();
-        }), this;
+        });
+        this._httpServer.on('connection', (socket) => {
+            const connectionKey = String(++this._connectionKey);
+            this._connectionMap[connectionKey] = socket;
+            socket.on('close', () => {
+                delete this._connectionMap[connectionKey];
+            });
+        });
+        return this;
     }
 }
 function setAppHeader(res) {
@@ -599,7 +621,7 @@ function setAppHeader(res) {
     res.setHeader('x-powered-by', 'safeonline.world');
 }
 function App() {
-    const app = new Application((0, http_1.createServer)((request, response) => {
+    const app = new Application((0, node_http_1.createServer)((request, response) => {
         const req = Object.setPrototypeOf(request, Request.prototype);
         const res = Object.setPrototypeOf(response, Response.prototype);
         try {

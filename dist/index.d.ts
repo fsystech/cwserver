@@ -1,6 +1,7 @@
 export { initilizeServer } from './lib/server';
 export { Encryption } from './lib/encryption';
 export { HttpMimeHandler } from './lib/http-mime';
+export { HttpCache } from './lib/http-cache';
 export { ConsoleColor, Logger, ShadowLogger, LogTime } from './lib/logger';
 export { getBodyParser, PayloadParser } from './lib/body-parser';
 export { Util } from './lib/app-util';

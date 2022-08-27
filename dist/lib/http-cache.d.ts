@@ -5,7 +5,7 @@ export declare type IChangeHeader = {
     sinceModify?: number | void;
     etag?: string;
 };
-export declare class SowHttpCache {
+export declare class HttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
     static getIfModifiedSinceUTCTime(headers: IncomingHttpHeaders): number | void;
     /** Gets the {sinceModify, etag} from given header {If-None-Match, If-Modified-Since}. */

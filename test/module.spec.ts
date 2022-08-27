@@ -48,9 +48,9 @@ import { promisify } from 'util';
 import destroy from 'destroy';
 const sleep = promisify(setTimeout);
 let app: IApplication;
-const appRoot = process.env.SCRIPT === "TS" ? path.join(path.resolve(__dirname, '..'), "/dist/test/") : __dirname;
-const projectRoot = 'test_web';
-const logDir = path.resolve('./log/');
+const appRoot: string = process.env.SCRIPT === "TS" ? path.join(path.resolve(__dirname, '..'), "/dist/test/") : __dirname;
+const projectRoot: string = 'test_web';
+const logDir: string = path.resolve('./log/');
 let authCookies: string = "";
 type Agent = request.SuperAgentStatic & request.Request;
 const agent: Agent = request.agent();
@@ -89,7 +89,7 @@ const shutdownApp = (done?: Mocha.Done): void => {
     }
 };
 describe("cwserver-default-project-template", () => {
-    it("create project template", function (done: Mocha.Done): void {
+    it("create project template for test", function (done: Mocha.Done): void {
         this.timeout(5000);
         cwserver.createProjectTemplate({
             appRoot,
@@ -254,7 +254,7 @@ describe("cwserver-core", () => {
             if (res.isAlive) {
                 res.status(200).type("text").send((err instanceof Error) ? err.message : `Error occured ${err}`);
             }
-            await xapp.shutdown();
+            await xapp.shutdownAsync();
             console.log("Error handle done...");
             expect(err).toBeInstanceOf(Error);
             console.log(err.message);
@@ -881,6 +881,12 @@ describe("cwserver-bundler", () => {
                 expect(res.header["last-modified"]).toBeDefined();
                 lastModified = res.header['last-modified'];
                 eTag = res.header.etag;
+                // const val = res.text || res.body;
+                // if (Buffer.isBuffer(val)) {
+                //     console.log(val.toString());
+                // } else {
+                //     console.log(val);
+                // }
                 done();
             });
     });
@@ -1585,11 +1591,12 @@ describe("cwserver-multipart-body-parser", () => {
                 if (event.total) {
                     if (event.loaded >= (event.total / 3)) {
                         isAbort = true;
-                        setTimeout(() => {
-                            readStream.close();
+                        setImmediate(() => {
                             req.abort();
+                            console.log('Aborated....');
+                            readStream.close();
                             done();
-                        }, 0);
+                        });
                     }
                 }
             });
@@ -2172,9 +2179,15 @@ describe("cwserver-utility", () => {
             fsw.moveFile(`${logDir}/temp/nofile.lg`, "./", (err: NodeJS.ErrnoException | null) => {
                 expect(err).toBeInstanceOf(Error);
                 const leargeFile: string = appUtility.server.mapPath("/web/large.bin");
-                fsw.moveFile(leargeFile, `${leargeFile}.not`, (errz: NodeJS.ErrnoException | null) => {
-                    done();
-                }, true);
+                fsw.stat(leargeFile, (serr, stat) => {
+                    expect(serr).not.toBeInstanceOf(Error);
+                    fsw.moveFile(leargeFile, `${leargeFile}.not`, (errz: NodeJS.ErrnoException | null) => {
+                        fsw.stat(leargeFile, (snerr, stat) => {
+                            expect(snerr).toBeInstanceOf(Error);
+                            done();
+                        });
+                    }, true);
+                });
             }, true);
         })();
     });
@@ -2854,10 +2867,26 @@ describe("cwserver-fsw", () => {
     });
 });
 describe("finalization", () => {
+    it("create project template for production", function (done: Mocha.Done): void {
+        this.timeout(5000);
+        cwserver.createProjectTemplate({
+            appRoot,
+            force: true, // Delete if projectRoot exists
+            isTest: false, // add test view
+            allExample: true,
+            projectRoot: "test_all"
+        });
+        done();
+        // fsw.mkdir(path.join(path.resolve(__dirname, '..'), "dist"), "test", (err) => {  }, handleError);
+    });
     it("shutdown-application", function (done: Mocha.Done): void {
         this.timeout(5000);
         (async () => {
-            await app.shutdown();
+            try {
+                await app.shutdownAsync();
+            } catch (ex) {
+                console.log(ex);
+            }
             done();
         })();
     });

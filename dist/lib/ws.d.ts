@@ -1,4 +1,5 @@
 /// <reference types="node" />
+/// <reference types="node" />
 import { ISowServer } from './server';
 import { ISession } from './app-static';
 import { EventEmitter } from 'events';

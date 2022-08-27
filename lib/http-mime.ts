@@ -27,7 +27,7 @@ import { pipeline } from 'stream';
 import destroy = require('destroy');
 import * as _mimeType from './http-mime-types';
 import { IContext } from './server';
-import { SowHttpCache, IChangeHeader } from './http-cache';
+import { HttpCache, IChangeHeader } from './http-cache';
 import { Streamer } from './web-streamer';
 import { Encryption } from './encryption';
 import { Util } from './app-util';
@@ -72,28 +72,28 @@ class MimeHandler {
         return _path.resolve(`${path}.${ctx.extension}.cache`);
     }
     static _sendFromMemCache(ctx: IContext, mimeType: string, dataInfo: MemCacheInfo): void {
-        const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
-        const etag: string = SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
+        const reqCacheHeader: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
+        const etag: string = HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
         ctx.res.setHeader('x-served-from', 'mem-cache');
         if (reqCacheHeader.etag || reqCacheHeader.sinceModify) {
             let exit: boolean = false;
             if (reqCacheHeader.etag) {
                 if (reqCacheHeader.etag === etag) {
-                    SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                    HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                     ctx.res.status(304, { 'Content-Type': mimeType }).send();
                     return ctx.next(304);
                 }
                 exit = true;
             }
             if (reqCacheHeader.sinceModify && !exit) {
-                SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                 ctx.res.status(304, { 'Content-Type': mimeType }).send();
                 return ctx.next(304);
             }
         }
-        SowHttpCache.writeCacheHeader(ctx.res, {
+        HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime: dataInfo.lastChangeTime,
-            etag: SowHttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
+            etag: HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
         }, ctx.server.config.cacheHeader);
         ctx.res.status(200, {
             'Content-Type': mimeType,
@@ -116,7 +116,7 @@ class MimeHandler {
         fstat: _fs.Stats, cachePath: string
     ): void {
         const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
-        const reqCacheHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
+        const reqCacheHeader: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
         return this._fileInfo.stat(cachePath, (desc: IFileDescription): void => {
             const existsCachFile: boolean = desc.exists;
             return ctx.handleError(null, () => {
@@ -129,12 +129,12 @@ class MimeHandler {
                 if (existsCachFile) {
                     hasChanged = fstat.mtime.getTime() > lastChangeTime;
                 }
-                const etag: string | undefined = cfileSize !== 0 ? SowHttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
+                const etag: string | undefined = cfileSize !== 0 ? HttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
                 if (!hasChanged && existsCachFile && (reqCacheHeader.etag || reqCacheHeader.sinceModify)) {
                     let exit: boolean = false;
                     if (etag && reqCacheHeader.etag) {
                         if (reqCacheHeader.etag === etag) {
-                            SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                            HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                             ctx.res.status(304, { 'Content-Type': mimeType }).send();
                             if (useFullOptimization && cachePath) {
                                 this._holdCache(cachePath, lastChangeTime, cfileSize);
@@ -144,7 +144,7 @@ class MimeHandler {
                         exit = true;
                     }
                     if (reqCacheHeader.sinceModify && !exit) {
-                        SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                        HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                         ctx.res.status(304, { 'Content-Type': mimeType }).send();
                         if (useFullOptimization && cachePath) {
                             this._holdCache(cachePath, lastChangeTime, cfileSize);
@@ -153,9 +153,9 @@ class MimeHandler {
                     }
                 }
                 if (!hasChanged && existsCachFile) {
-                    SowHttpCache.writeCacheHeader(ctx.res, {
+                    HttpCache.writeCacheHeader(ctx.res, {
                         lastChangeTime,
-                        etag: SowHttpCache.getEtag(lastChangeTime, cfileSize)
+                        etag: HttpCache.getEtag(lastChangeTime, cfileSize)
                     }, ctx.server.config.cacheHeader);
                     ctx.res.status(200, {
                         'Content-Type': mimeType,
@@ -179,9 +179,9 @@ class MimeHandler {
                                     return;
                                 }
                                 lastChangeTime = cdesc.stats.mtime.getTime();
-                                SowHttpCache.writeCacheHeader(ctx.res, {
+                                HttpCache.writeCacheHeader(ctx.res, {
                                     lastChangeTime,
-                                    etag: SowHttpCache.getEtag(lastChangeTime, cdesc.stats.size)
+                                    etag: HttpCache.getEtag(lastChangeTime, cdesc.stats.size)
                                 }, ctx.server.config.cacheHeader);
                                 ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
                                 if (useFullOptimization && cachePath) {
@@ -200,7 +200,7 @@ class MimeHandler {
         mimeType: string, isGzip: boolean,
         size: number
     ): void {
-        SowHttpCache.writeCacheHeader(ctx.res, {
+        HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime: void 0,
             etag: void 0
         }, { maxAge: 0, serverRevalidate: true });
@@ -224,18 +224,18 @@ class MimeHandler {
         mimeType: string, isGzip: boolean,
         fstat: _fs.Stats
     ): void {
-        const reqCachHeader: IChangeHeader = SowHttpCache.getChangedHeader(ctx.req.headers);
+        const reqCachHeader: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
         const lastChangeTime: number = fstat.mtime.getTime();
-        const curEtag: string = SowHttpCache.getEtag(lastChangeTime, fstat.size);
+        const curEtag: string = HttpCache.getEtag(lastChangeTime, fstat.size);
         if (
             (reqCachHeader.etag && reqCachHeader.etag === curEtag) ||
             (reqCachHeader.sinceModify && reqCachHeader.sinceModify === lastChangeTime)
         ) {
-            SowHttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+            HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
             ctx.res.status(304, { 'Content-Type': mimeType }).send();
             return ctx.next(304);
         }
-        SowHttpCache.writeCacheHeader(ctx.res, {
+        HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime,
             etag: curEtag
         }, ctx.server.config.cacheHeader);
@@ -255,7 +255,7 @@ class MimeHandler {
     ): void {
         ctx.req.setSocketNoDelay(true);
         if (ctx.path.indexOf('favicon.ico') > -1) {
-            SowHttpCache.writeCacheHeader(ctx.res, {
+            HttpCache.writeCacheHeader(ctx.res, {
                 lastChangeTime: void 0, etag: void 0
             }, {
                 maxAge: ctx.server.config.cacheHeader.maxAge,
@@ -269,7 +269,7 @@ class MimeHandler {
         }
         let noCache: boolean = false;
         const taskDeff: ITaskDeff | undefined = TaskDeff.find(a => a.ext === ctx.extension);
-        let isGzip: boolean = (!ctx.server.config.staticFile.compression ? false : SowHttpCache.isAcceptedEncoding(ctx.req.headers, "gzip"));
+        let isGzip: boolean = (!ctx.server.config.staticFile.compression ? false : HttpCache.isAcceptedEncoding(ctx.req.headers, "gzip"));
         if (isGzip) {
             if (ctx.server.config.staticFile.minCompressionSize > 0 && stat.size < ctx.server.config.staticFile.minCompressionSize) {
                 isGzip = false;

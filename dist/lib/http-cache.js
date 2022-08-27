@@ -19,9 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SowHttpCache = void 0;
+exports.HttpCache = void 0;
 const app_static_1 = require("./app-static");
-class SowHttpCache {
+class HttpCache {
     /** Gets value in millisecond of {If-Modified-Since} from header. */
     static getIfModifiedSinceUTCTime(headers) {
         const ifModifiedSinceHeaderText = headers["If-Modified-Since"] || headers["if-modified-since"];
@@ -72,5 +72,5 @@ class SowHttpCache {
         return acceptEncoding.indexOf(name) > -1;
     }
 }
-exports.SowHttpCache = SowHttpCache;
+exports.HttpCache = HttpCache;
 //# sourceMappingURL=http-cache.js.map

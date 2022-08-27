@@ -1,10 +1,13 @@
 /// <reference types="node" />
+/// <reference types="node" />
+/// <reference types="node" />
+/// <reference types="node" />
 import './app-global';
-import { OutgoingHttpHeaders, Server, IncomingMessage, ServerResponse } from 'http';
+import { OutgoingHttpHeaders, Server, IncomingMessage, ServerResponse } from 'node:http';
 import { IRequestParam } from './app-router';
 import { ISession, IResInfo } from './app-static';
 import { IContext } from './server';
-import { UrlWithParsedQuery } from 'url';
+import { UrlWithParsedQuery } from 'node:url';
 declare type ParsedUrlQuery = {
     [key: string]: string | string[] | undefined;
 };
@@ -67,7 +70,8 @@ export interface IApplication {
     use(handler: HandlerFunc): IApplication;
     use(route: string, handler: HandlerFunc, isVirtual?: boolean): IApplication;
     prerequisites(handler: (req: IRequest, res: IResponse, next: NextFunction) => void): IApplication;
-    shutdown(next?: (err?: Error) => void): Promise<void> | void;
+    shutdown(next: (err?: Error) => void): Promise<void> | void;
+    shutdownAsync(): Promise<void>;
     on(ev: 'request-begain', handler: (req: IRequest) => void): IApplication;
     on(ev: 'response-end', handler: (req: IRequest, res: IResponse) => void): IApplication;
     on(ev: 'error', handler: onError): IApplication;

@@ -35,7 +35,7 @@ import { IController } from '../lib/app-controller';
 import {
 	disposeContext, getMyContext, removeContext
 } from '../lib/server';
-import { SowHttpCache } from '../lib/http-cache';
+import { HttpCache } from '../lib/http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
 	ISowServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
@@ -460,7 +460,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 				controller.processAny(nctx);
 				const oldEncoding = ctx.req.headers['accept-encoding'];
 				ctx.req.headers['accept-encoding'] = void 0;
-				expect(SowHttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
+				expect(HttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
 				ctx.req.headers['accept-encoding'] = oldEncoding;
 				const treq = ctx.transferRequest;
 				ctx.transferRequest = (toPath: string | number): void => {
