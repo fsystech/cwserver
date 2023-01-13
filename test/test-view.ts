@@ -39,7 +39,7 @@ import { HttpCache } from '../lib/http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
 	ISowServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
-	socketInitilizer, getBodyParser, PayloadParser,
+	socketInitilizer, getBodyParser, PayloadParser, HttpCache as _HttpCache,
 	HttpMimeHandler, Streamer, Encryption, SessionSecurity
 } from '../index';
 import { toString } from '../lib/app-static';
@@ -461,6 +461,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 				const oldEncoding = ctx.req.headers['accept-encoding'];
 				ctx.req.headers['accept-encoding'] = void 0;
 				expect(HttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
+				expect(_HttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
 				ctx.req.headers['accept-encoding'] = oldEncoding;
 				const treq = ctx.transferRequest;
 				ctx.transferRequest = (toPath: string | number): void => {

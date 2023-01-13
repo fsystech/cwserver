@@ -48,11 +48,6 @@ exports.FileInfoCacheHandler = exports.FileDescription = void 0;
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
 class FileDescription {
-    constructor(exists, url, stats) {
-        this._exists = exists;
-        this._url = url;
-        this._stats = stats;
-    }
     get url() {
         return this._url;
     }
@@ -62,11 +57,23 @@ class FileDescription {
     get stats() {
         return this._stats;
     }
+    constructor(exists, url, stats) {
+        this._exists = exists;
+        this._url = url;
+        this._stats = stats;
+    }
 }
 exports.FileDescription = FileDescription;
 class FileInfoCacheHandler {
     constructor() {
         this._pathCache = {};
+    }
+    rmove(path) {
+        if (this._pathCache[path]) {
+            delete this._pathCache[path];
+            return true;
+        }
+        return false;
     }
     stat(path, next, force) {
         if (!force) {

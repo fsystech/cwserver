@@ -14,7 +14,7 @@ export interface IResInfo {
     isInternalErrorCode: boolean;
     description: string;
 }
-export declare type ErrorHandler = (err: NodeJS.ErrnoException | Error | null | undefined, next: () => void) => void;
+export type ErrorHandler = (err: NodeJS.ErrnoException | Error | null | undefined, next: () => void) => void;
 export interface IDispose {
     dispose(): void;
 }

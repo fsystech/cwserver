@@ -174,11 +174,6 @@ class PostedFileInfo {
 }
 const RE_BOUNDARY = /^multipart\/.+?(?:; boundary=(?:(?:"(.+)")|(?:([^\s]+))))$/i;
 class MultipartDataReader extends events_1.EventEmitter {
-    constructor() {
-        super();
-        this._isDisposed = false;
-        this._forceExit = false;
-    }
     get forceExit() {
         return this._forceExit;
     }
@@ -190,6 +185,11 @@ class MultipartDataReader extends events_1.EventEmitter {
     exit(reason) {
         this._forceExit = true;
         this.emit("end", new Error(reason));
+    }
+    constructor() {
+        super();
+        this._isDisposed = false;
+        this._forceExit = false;
     }
     skipFile(fileInfo) {
         return false;
@@ -267,6 +267,12 @@ class MultipartDataReader extends events_1.EventEmitter {
     }
 }
 class DataParser {
+    get files() {
+        return this._files;
+    }
+    get body() {
+        return this._body.data;
+    }
     constructor(tempDir) {
         this._errors = [];
         this._files = [];
@@ -274,12 +280,6 @@ class DataParser {
         this._readers = [];
         this._tempDir = tempDir;
         this._multipartBody = {};
-    }
-    get files() {
-        return this._files;
-    }
-    get body() {
-        return this._body.data;
     }
     onRawData(buff) {
         this._body.push(buff);

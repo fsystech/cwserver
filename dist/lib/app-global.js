@@ -40,12 +40,6 @@ class SowGlobalServer {
     }
 }
 class SowGlobal {
-    constructor() {
-        this._server = new SowGlobalServer();
-        this.isInitilized = false;
-        this._HttpMime = (0, http_mime_types_1.loadMimeType)();
-        this._templateCtx = {};
-    }
     get templateCtx() {
         return this._templateCtx;
     }
@@ -54,6 +48,12 @@ class SowGlobal {
     }
     get HttpMime() {
         return this._HttpMime;
+    }
+    constructor() {
+        this._server = new SowGlobalServer();
+        this.isInitilized = false;
+        this._HttpMime = (0, http_mime_types_1.loadMimeType)();
+        this._templateCtx = {};
     }
 }
 if (!global.sow) {

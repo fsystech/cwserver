@@ -66,13 +66,13 @@ const _createDRM = (method, route) => {
     return `This given "${method}" route ${route} already exists in route table`;
 };
 class Controller {
+    get httpMimeHandler() {
+        return this._httpMimeHandler;
+    }
     constructor(hasDefaultExt) {
         this._fileInfo = new file_info_1.FileInfoCacheHandler();
         this._httpMimeHandler = new http_mime_1.HttpMimeHandler();
         this._hasDefaultExt = hasDefaultExt;
-    }
-    get httpMimeHandler() {
-        return this._httpMimeHandler;
     }
     reset() {
         // @ts-ignore

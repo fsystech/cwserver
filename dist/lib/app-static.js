@@ -21,11 +21,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ToResponseTime = exports.ToNumber = exports.toString = exports.ResInfo = exports.Session = exports.BufferArray = void 0;
 class BufferArray {
-    constructor() {
-        this._data = [];
-        this._isDisposed = false;
-        this._length = 0;
-    }
     get data() {
         this.shouldNotDisposed();
         return Buffer.concat(this._data, this.length);
@@ -33,6 +28,11 @@ class BufferArray {
     get length() {
         this.shouldNotDisposed();
         return this._length;
+    }
+    constructor() {
+        this._data = [];
+        this._isDisposed = false;
+        this._length = 0;
     }
     shouldNotDisposed() {
         if (this._isDisposed)

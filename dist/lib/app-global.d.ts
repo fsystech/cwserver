@@ -4,7 +4,7 @@ import { IController } from './app-controller';
 import { ISowServer } from './server';
 import { IMimeType } from './http-mime-types';
 import { SandBox } from './app-template';
-declare type IViewRegister = (app: IApplication, controller: IController, server: ISowServer) => void;
+type IViewRegister = (app: IApplication, controller: IController, server: ISowServer) => void;
 interface ISowGlobalServer {
     /**
      * Register new `view` module

@@ -15,12 +15,14 @@ export declare class FileDescription implements IFileDescription {
     constructor(exists: boolean, url: string, stats?: _fs.Stats);
 }
 export interface IFileInfoCacheHandler {
+    rmove(path: string): boolean;
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
     exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
 }
 export declare class FileInfoCacheHandler implements IFileInfoCacheHandler {
     private _pathCache;
     constructor();
+    rmove(path: string): boolean;
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
     exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
 }

@@ -3,7 +3,6 @@
 [![Linux Build][travis-image]][travis-url]
 [![npm version][npm-version-image]][npm-version-url]
 [![NPM Downloads][downloads-image]][downloads-url]
-[![Language grade: JavaScript][language-garde-image]][language-garde-url]
 [![Coverage Status][coveralls-image]][coveralls-url]
 
 ## cwserver ##

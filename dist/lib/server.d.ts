@@ -7,8 +7,8 @@ import { ISowDatabaseType } from './db-type';
 import { IController } from './app-controller';
 import { ICryptoInfo } from "./encryption";
 import { ILogger } from "./logger";
-export declare type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
-export declare type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
+export type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
+export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 export interface IContext {
     readonly isDisposed: boolean;
     error?: string;
@@ -155,7 +155,7 @@ export interface ISowServer {
     parseMaxAge(maxAge: any): number;
     on(ev: 'shutdown', handler: () => void): void;
 }
-export declare type IViewHandler = (app: IApplication, controller: IController, server: ISowServer) => void;
+export type IViewHandler = (app: IApplication, controller: IController, server: ISowServer) => void;
 export declare const disposeContext: (ctx: IContext) => void, removeContext: (id: string) => void, getContext: (server: ISowServer, req: IRequest, res: IResponse) => IContext, getMyContext: (id: string) => IContext | undefined;
 export declare class ServerEncryption implements IServerEncryption {
     private cryptoInfo;

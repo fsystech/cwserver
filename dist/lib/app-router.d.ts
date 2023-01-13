@@ -1,22 +1,22 @@
-export declare type IRouteMatcher = {
+export type IRouteMatcher = {
     readonly test: (val: string) => boolean;
     readonly replace: (val: string) => string;
     readonly exec: (val: string) => RegExpMatchArray | null;
 };
-export declare type IRequestParam = {
+export type IRequestParam = {
     query: {
         [x: string]: string;
     };
     match: string[];
 };
-export declare type ILayerInfo<T> = {
+export type ILayerInfo<T> = {
     route: string;
     handler: T;
     routeMatcher: IRouteMatcher | undefined;
     method: "GET" | "POST" | "ANY";
     pathArray: string[];
 };
-export declare type IRouteInfo<T> = {
+export type IRouteInfo<T> = {
     layer: ILayerInfo<T>;
     requestParam?: IRequestParam;
 };

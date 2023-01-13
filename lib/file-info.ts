@@ -45,6 +45,7 @@ export class FileDescription implements IFileDescription {
     }
 }
 export interface IFileInfoCacheHandler {
+    rmove(path: string) : boolean;
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
     exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
 }
@@ -52,6 +53,13 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
     private _pathCache: NodeJS.Dict<FileDescription>;
     constructor() {
         this._pathCache = {};
+    }
+    rmove(path: string) : boolean {
+        if (this._pathCache[path]) {
+            delete this._pathCache[path];
+            return true;
+        }
+        return false;
     }
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void {
         if (!force) {

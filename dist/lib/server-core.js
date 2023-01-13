@@ -459,15 +459,6 @@ class Response extends node_http_1.ServerResponse {
     }
 }
 class Application extends node_events_1.EventEmitter {
-    constructor(httpServer) {
-        super();
-        this._httpServer = httpServer;
-        this._appHandler = [];
-        this._prerequisitesHandler = [];
-        this._isRunning = false;
-        this._connectionMap = {};
-        this._connectionKey = 0;
-    }
     get version() {
         return exports.appVersion;
     }
@@ -476,6 +467,15 @@ class Application extends node_events_1.EventEmitter {
     }
     get isRunning() {
         return this._isRunning;
+    }
+    constructor(httpServer) {
+        super();
+        this._httpServer = httpServer;
+        this._appHandler = [];
+        this._prerequisitesHandler = [];
+        this._isRunning = false;
+        this._connectionMap = {};
+        this._connectionKey = 0;
     }
     clearHandler() {
         if (this._appHandler.length > 0) {

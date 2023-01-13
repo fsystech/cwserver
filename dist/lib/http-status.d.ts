@@ -1,5 +1,5 @@
 import { IResInfo } from './app-static';
-export declare type Dict<T> = {
+export type Dict<T> = {
     [K in string | number]: T | undefined;
 };
 export declare class HttpStatus {

@@ -19,12 +19,12 @@ export interface QueryResultBase {
 export interface QueryResult<R extends QueryResultRow = any> extends QueryResultBase {
     rows: R[];
 }
-export declare type IoResult = {
+export type IoResult = {
     ret_val: number;
     ret_msg: string;
     ret_data_table?: any;
 };
-export declare type QResult<R extends QueryResultRow> = {
+export type QResult<R extends QueryResultRow> = {
     isError: boolean;
     err?: Error;
     res?: QueryResult<R>;

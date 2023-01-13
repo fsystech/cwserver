@@ -58,15 +58,15 @@ function wsClient() {
 }
 exports.wsClient = wsClient;
 class SowSocketServer {
+    get clients() {
+        return this._clients;
+    }
     constructor(server, wsClientInfo) {
         this.implimented = false;
         this._clients = [];
         this.connected = false;
         this._server = server;
         this._wsClients = wsClientInfo;
-    }
-    get clients() {
-        return this._clients;
     }
     isActiveSocket(token) {
         return this._clients.some(soc => soc.token === token);

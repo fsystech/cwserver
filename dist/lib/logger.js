@@ -115,11 +115,11 @@ function isString(a) {
     return typeof (a) === "string";
 }
 class ShadowLogger {
-    constructor() {
-        this._isProduction = true;
-    }
     get isProduction() {
         return this._isProduction;
+    }
+    constructor() {
+        this._isProduction = true;
     }
     writeBuffer(msg) {
         return;
@@ -157,6 +157,9 @@ class ShadowLogger {
 }
 exports.ShadowLogger = ShadowLogger;
 class Logger {
+    get isProduction() {
+        return this._isProduction;
+    }
     constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
         this._blockSize = 0;
         this._maxBlockSize = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
@@ -191,9 +194,6 @@ class Logger {
         else {
             this.newLine();
         }
-    }
-    get isProduction() {
-        return this._isProduction;
     }
     flush() {
         if (this._fd < 0) {

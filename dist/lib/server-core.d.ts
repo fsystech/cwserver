@@ -8,12 +8,12 @@ import { IRequestParam } from './app-router';
 import { ISession, IResInfo } from './app-static';
 import { IContext } from './server';
 import { UrlWithParsedQuery } from 'node:url';
-declare type ParsedUrlQuery = {
+type ParsedUrlQuery = {
     [key: string]: string | string[] | undefined;
 };
-declare type onError = (req: IRequest, res: IResponse, err?: Error | number) => void;
-export declare type NextFunction = (err?: any) => void;
-export declare type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunction, requestParam?: IRequestParam) => void;
+type onError = (req: IRequest, res: IResponse, err?: Error | number) => void;
+export type NextFunction = (err?: any) => void;
+export type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunction, requestParam?: IRequestParam) => void;
 export interface CookieOptions {
     maxAge?: number;
     signed?: boolean;

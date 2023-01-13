@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { IncomingHttpHeaders } from 'http';
 import { IResponse } from './server-core';
-export declare type IChangeHeader = {
+export type IChangeHeader = {
     sinceModify?: number | void;
     etag?: string;
 };

@@ -2,14 +2,14 @@
 /// <reference types="node" />
 import { IRequest } from './server-core';
 import { IDispose, ErrorHandler } from './app-static';
-export declare type UploadFileInfo = {
+export type UploadFileInfo = {
     contentType: string;
     name: string;
     fileName: string;
     contentDisposition: string;
     tempPath: string | undefined;
 };
-export declare type FileInfo = {
+export type FileInfo = {
     contentDisposition: string;
     name: string;
     fileName: string;

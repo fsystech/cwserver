@@ -173,18 +173,6 @@ class ServerEncryption {
 }
 exports.ServerEncryption = ServerEncryption;
 class Context {
-    constructor(server, req, res) {
-        this._isDisposed = false;
-        this.error = void 0;
-        this.path = "";
-        this.root = "";
-        this._res = res;
-        this._req = req;
-        this._server = server;
-        this.extension = "";
-        this.errorPage = "";
-        this.errorCode = 0;
-    }
     get isDisposed() {
         return this._isDisposed;
     }
@@ -212,6 +200,18 @@ class Context {
     }
     set next(val) {
         this._next = val;
+    }
+    constructor(server, req, res) {
+        this._isDisposed = false;
+        this.error = void 0;
+        this.path = "";
+        this.root = "";
+        this._res = res;
+        this._req = req;
+        this._server = server;
+        this.extension = "";
+        this.errorPage = "";
+        this.errorCode = 0;
     }
     addError(err) {
         if (!this._isDisposed) {
@@ -379,6 +379,33 @@ class SessionSecurity {
 }
 exports.SessionSecurity = SessionSecurity;
 class SowServer {
+    get version() {
+        return server_core_1.appVersion;
+    }
+    get isInitilized() {
+        return this._isInitilized;
+    }
+    get config() {
+        return this._config;
+    }
+    get public() {
+        return this._public;
+    }
+    get log() {
+        return this._log;
+    }
+    get port() {
+        return this._port;
+    }
+    get db() {
+        return this._db;
+    }
+    get encryption() {
+        return this._encryption;
+    }
+    get errorPage() {
+        return this._errorPage;
+    }
     constructor(appRoot, wwwName) {
         this._isInitilized = false;
         this._port = 0;
@@ -434,33 +461,6 @@ ${appRoot}\\www_public
         this._config.staticFile.tempPath = this.mapPath(this._config.staticFile.tempPath);
         this.createLogger();
         return;
-    }
-    get version() {
-        return server_core_1.appVersion;
-    }
-    get isInitilized() {
-        return this._isInitilized;
-    }
-    get config() {
-        return this._config;
-    }
-    get public() {
-        return this._public;
-    }
-    get log() {
-        return this._log;
-    }
-    get port() {
-        return this._port;
-    }
-    get db() {
-        return this._db;
-    }
-    get encryption() {
-        return this._encryption;
-    }
-    get errorPage() {
-        return this._errorPage;
     }
     getAppConfigName() {
         if (process.env.APP_CONFIG_NAME) {

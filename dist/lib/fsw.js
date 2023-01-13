@@ -399,23 +399,30 @@ exports.opendirAsync = opendirAsync;
 /** Get all file(s) async from given directory */
 function getFilesAsync(dir, recursive) {
     return __asyncGenerator(this, arguments, function* getFilesAsync_1() {
-        var e_1, _a;
+        var _a, e_1, _b, _c;
         try {
-            for (var _b = __asyncValues(yield __await(opendirAsync(dir))), _c; _c = yield __await(_b.next()), !_c.done;) {
-                const d = _c.value;
-                const entry = _path.join(dir, d.name);
-                if (d.isDirectory()) {
-                    if (recursive)
-                        yield __await(yield* __asyncDelegator(__asyncValues(yield __await(getFilesAsync(entry, recursive)))));
+            for (var _d = true, _e = __asyncValues(yield __await(opendirAsync(dir))), _f; _f = yield __await(_e.next()), _a = _f.done, !_a;) {
+                _c = _f.value;
+                _d = false;
+                try {
+                    const d = _c;
+                    const entry = _path.join(dir, d.name);
+                    if (d.isDirectory()) {
+                        if (recursive)
+                            yield __await(yield* __asyncDelegator(__asyncValues(yield __await(getFilesAsync(entry, recursive)))));
+                    }
+                    else if (d.isFile())
+                        yield yield __await(entry);
                 }
-                else if (d.isFile())
-                    yield yield __await(entry);
+                finally {
+                    _d = true;
+                }
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
         finally {
             try {
-                if (_c && !_c.done && (_a = _b.return)) yield __await(_a.call(_b));
+                if (!_d && !_a && (_b = _e.return)) yield __await(_b.call(_e));
             }
             finally { if (e_1) throw e_1.error; }
         }

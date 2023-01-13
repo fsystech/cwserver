@@ -31,7 +31,7 @@ import * as fsw from '../lib/fsw';
 import { HttpStatus } from "../lib/http-status";
 import * as cwserver from '../index';
 import { getAppDir } from '../lib/app-util';
-// import { FileInfoCacheHandler, FileDescription } from '../lib/file-info';
+import { IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription } from '../lib/file-info';
 import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
 import {
     IAppUtility, IContext
@@ -2802,6 +2802,17 @@ describe("cwserver-fsw", () => {
             }, handleError);
         });
     });
+    it("test-file-cache", function (done) {
+        this.timeout(10000);
+        const fromFile: string = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
+        let fcach: IFileInfoCacheHandler = new FileInfoCacheHandler();
+        fcach.stat(fromFile, (dec: IFileDescription) => {
+            expect(dec).toBeInstanceOf(FileDescription);
+            expect(fcach.rmove(fromFile)).toBeTruthy();
+            expect(fcach.rmove(fromFile)).toBeFalsy();
+            done();
+        });
+    });
     it("test-fsw-async", function (done) {
         this.timeout(10000);
         async function task() {
@@ -2829,9 +2840,6 @@ describe("cwserver-fsw", () => {
             const tPath = path.resolve('./_test/');
             await fsw.mkdirAsync(handleError, tPath, "");
             if (unlinkFileName) {
-                // let fcach = new FileInfoCacheHandler();
-                // expect(fcach.statSync(unlinkFileName)).toBeInstanceOf(FileDescription);
-                // expect(fcach.existsSync(unlinkFileName)).toBeInstanceOf(FileDescription);
                 expect(await fsw.existsAsync(unlinkFileName)).toBeTruthy();
                 try {
                     await fsw.existsAsync(`x/zz/`);

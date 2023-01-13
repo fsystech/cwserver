@@ -73,23 +73,19 @@ class ParserInfo {
     }
 }
 class ScriptTag {
-    constructor() {
-        this.l = '{%';
-        this.r = '%}';
-        this.repre = /NO_NEED/gi;
-    }
     get lre() {
         return /{%/gi;
     }
     get rre() {
         return /%}/gi;
     }
+    constructor() {
+        this.l = '{%';
+        this.r = '%}';
+        this.repre = /NO_NEED/gi;
+    }
 }
 class WriteTag {
-    constructor() {
-        this.l = '{=';
-        this.r = '=}';
-    }
     get lre() {
         return /{=/gi;
     }
@@ -99,6 +95,10 @@ class WriteTag {
     }
     get repre() {
         return /{=(.+?)=}/gi;
+    }
+    constructor() {
+        this.l = '{=';
+        this.r = '=}';
     }
 }
 class Tag {

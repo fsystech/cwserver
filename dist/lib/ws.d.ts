@@ -82,9 +82,9 @@ export interface ISowSocketServer {
     removeSocket(token: string): boolean;
     sendMsg(token: string, method: string, data?: any): boolean;
 }
-declare type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocketServer) => void;
-declare type IWsNext = (session: ISession, socket: IOSocket) => void | boolean;
-declare type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocketServer, server: ISowServer) => {
+type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocketServer) => void;
+type IWsNext = (session: ISession, socket: IOSocket) => void | boolean;
+type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocketServer, server: ISowServer) => {
     [x: string]: any;
 };
 export declare function wsClient(): IWsClientInfo;
