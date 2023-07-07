@@ -42,33 +42,33 @@ export interface IOSocket extends EventEmitter {
     json: IOSocket;
     volatile: IOSocket;
     broadcast: IOSocket;
-    to( room: string ): IOSocket;
-    in( room: string ): IOSocket;
-    use( fn: ( packet: any[], next: ( err?: any ) => void ) => void ): IOSocket;
-    send( ...args: any[] ): IOSocket;
-    write( ...args: any[] ): IOSocket;
-    join( name: string | string[], fn?: ( err?: any ) => void ): IOSocket;
-    leave( name: string, fn?: () => void ): IOSocket;
+    to(room: string): IOSocket;
+    in(room: string): IOSocket;
+    use(fn: (packet: any[], next: (err?: any) => void) => void): IOSocket;
+    send(...args: any[]): IOSocket;
+    write(...args: any[]): IOSocket;
+    join(name: string | string[], fn?: (err?: any) => void): IOSocket;
+    leave(name: string, fn?: () => void): IOSocket;
     leaveAll(): void;
-    disconnect( close?: boolean ): IOSocket;
-    listeners( event: string ): (()=>void)[];
-    compress( compress: boolean ): IOSocket;
-    error( err: any ): void;
+    disconnect(close?: boolean): IOSocket;
+    listeners(event: string): (() => void)[];
+    compress(compress: boolean): IOSocket;
+    error(err: any): void;
 }
 interface Namespace {
     _path: string;
-    close( ...args: any[]): void;
-    use( fn: ( socket: IOSocket, fn: ( err?: any ) => void ) => void ): Namespace
-    on( event: 'connect', listener: ( socket: IOSocket ) => void ): Namespace;
-    on( event: 'connection', listener: ( socket: IOSocket ) => void ): this;
+    close(...args: any[]): void;
+    use(fn: (socket: IOSocket, fn: (err?: any) => void) => void): Namespace;
+    on(event: 'connect', listener: (socket: IOSocket) => void): Namespace;
+    on(event: 'connection', listener: (socket: IOSocket) => void): this;
 }
-type ioServer = ( server: any, opt: { path?: string, pingTimeout?: number, cookie?: boolean } ) => Namespace;
+type ioServer = (server: any, opt: { path?: string, pingTimeout?: number, cookie?: boolean }) => Namespace;
 /** [/socket.io blueprint] */
 export interface IWsClientInfo {
-    on( ev: 'getClient', handler: IWsClient ): void;
-    on( ev: 'disConnected' | 'connected', handler: IEvtHandler ): void;
-    on( ev: 'beforeInitiateConnection', handler: IWsNext ): void;
-    emit( ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocketServer ): void;
+    on(ev: 'getClient', handler: IWsClient): void;
+    on(ev: 'disConnected' | 'connected', handler: IEvtHandler): void;
+    on(ev: 'beforeInitiateConnection', handler: IWsNext): void;
+    emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocketServer): void;
     getServerEvent(): { [x: string]: any; } | void;
     beforeInitiateConnection: IWsNext;
     client: IWsClient;
@@ -84,57 +84,57 @@ export interface ISowSocketInfo {
     group?: string;
     roleId: string;
     readonly socket: IOSocket;
-    sendMsg( method: string, data: any ): void;
+    sendMsg(method: string, data: any): void;
 }
 export interface ISowSocketServer {
     readonly clients: ISowSocketInfo[];
-    isActiveSocket( token: string ): boolean;
-    getOwners( group?: string ): ISowSocketInfo[];
-    exists( hash: string ): boolean;
-    findByHash( hash: string ): ISowSocketInfo[];
-    findByLogin( loginId: string ): ISowSocketInfo[];
-    findByRoleId( roleId: string ): ISowSocketInfo[];
-    findByToken( token: string ): ISowSocketInfo[];
-    toList( sockets: ISowSocketInfo[] ): { [x: string]: any; }[];
-    getClientByExceptHash( exceptHash: string, group?: string ): ISowSocketInfo[];
-    getClientByExceptLogin( exceptLoginId: string, group?: string ): ISowSocketInfo[];
-    getClientByExceptToken( token: string, group?: string ): ISowSocketInfo[];
-    getSocket( token: string ): ISowSocketInfo | void;
-    removeSocket( token: string ): boolean;
-    sendMsg( token: string, method: string, data?: any ): boolean;
+    isActiveSocket(token: string): boolean;
+    getOwners(group?: string): ISowSocketInfo[];
+    exists(hash: string): boolean;
+    findByHash(hash: string): ISowSocketInfo[];
+    findByLogin(loginId: string): ISowSocketInfo[];
+    findByRoleId(roleId: string): ISowSocketInfo[];
+    findByToken(token: string): ISowSocketInfo[];
+    toList(sockets: ISowSocketInfo[]): { [x: string]: any; }[];
+    getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[];
+    getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[];
+    getClientByExceptToken(token: string, group?: string): ISowSocketInfo[];
+    getSocket(token: string): ISowSocketInfo | void;
+    removeSocket(token: string): boolean;
+    sendMsg(token: string, method: string, data?: any): boolean;
 }
-type IEvtHandler = ( me: ISowSocketInfo, wsServer: ISowSocketServer ) => void;
-type IWsNext = ( session: ISession, socket: IOSocket ) => void | boolean;
-type IWsClient = ( me: ISowSocketInfo, session: ISession, sowSocket: ISowSocketServer, server: ISowServer ) => { [x: string]: any; };
+type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocketServer) => void;
+type IWsNext = (session: ISession, socket: IOSocket) => void | boolean;
+type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocketServer, server: ISowServer) => { [x: string]: any; };
 class WsClientInfo implements IWsClientInfo {
-    beforeInitiateConnection: IWsNext = Object.create( null );
-    client: IWsClient = Object.create( null );
-    event: { [id: string]: any } = {};
-    getServerEvent(): { [x: string]: any; } | void {
+    public beforeInitiateConnection: IWsNext = Object.create(null);
+    public client: IWsClient = Object.create(null);
+    public event: { [id: string]: any } = {};
+    public getServerEvent(): { [x: string]: any; } | void {
         const obj = this.event.getClient();
-        if ( obj instanceof Object ) {
+        if (obj instanceof Object) {
             return obj;
         }
     }
-    on( ev: string, handler: any ): void {
-        if ( ev === "getClient" ) {
+    public on(ev: string, handler: any): void {
+        if (ev === "getClient") {
             this.event[ev] = handler;
             return this.client = handler, void 0;
         }
-        if ( ev === 'beforeInitiateConnection' ) {
+        if (ev === 'beforeInitiateConnection') {
             return this.beforeInitiateConnection = handler, void 0;
         }
         this.event[ev] = handler;
         return void 0;
     }
-    emit( ev: string, me: ISowSocketInfo, wsServer: ISowSocketServer ): void {
-        if ( this.event[ev] ) {
-            return this.event[ev]( me, wsServer );
+    public emit(ev: string, me: ISowSocketInfo, wsServer: ISowSocketServer): void {
+        if (this.event[ev]) {
+            return this.event[ev](me, wsServer);
         }
     }
 }
-export function wsClient( ): IWsClientInfo {
-    return new WsClientInfo( );
+export function wsClient(): IWsClientInfo {
+    return new WsClientInfo();
 }
 class SowSocketServer implements ISowSocketServer {
     _server: ISowServer;
@@ -145,103 +145,105 @@ class SowSocketServer implements ISowSocketServer {
         return this._clients;
     }
     connected: boolean;
-    constructor( server: ISowServer, wsClientInfo: IWsClientInfo ) {
+    constructor(server: ISowServer, wsClientInfo: IWsClientInfo) {
         this.implimented = false; this._clients = [];
         this.connected = false;
         this._server = server; this._wsClients = wsClientInfo;
     }
-    isActiveSocket( token: string ): boolean {
-        return this._clients.some( soc => soc.token === token );
+    isActiveSocket(token: string): boolean {
+        return this._clients.some(soc => soc.token === token);
     }
-    exists( hash: string ): boolean {
-        return this._clients.some( soc => soc.hash === hash );
+    exists(hash: string): boolean {
+        return this._clients.some(soc => soc.hash === hash);
     }
-    getOwners( group?: string ): ISowSocketInfo[] {
-        return group ? this._clients.filter( soc => soc.isOwner === true && soc.group === group ) : this._clients.filter( soc => soc.isOwner === true );
+    getOwners(group?: string): ISowSocketInfo[] {
+        return group ? this._clients.filter(soc => soc.isOwner === true && soc.group === group) : this._clients.filter(soc => soc.isOwner === true);
     }
-    findByHash( hash: string ): ISowSocketInfo[] {
-        return this._clients.filter( soc => soc.hash === hash );
+    findByHash(hash: string): ISowSocketInfo[] {
+        return this._clients.filter(soc => soc.hash === hash);
     }
-    findByLogin( loginId: string ): ISowSocketInfo[] {
-        return this._clients.filter( soc => soc.loginId === loginId );
+    findByLogin(loginId: string): ISowSocketInfo[] {
+        return this._clients.filter(soc => soc.loginId === loginId);
     }
-    findByRoleId( roleId: string ): ISowSocketInfo[] {
-        return this._clients.filter( soc => soc.roleId === roleId );
+    findByRoleId(roleId: string): ISowSocketInfo[] {
+        return this._clients.filter(soc => soc.roleId === roleId);
     }
-    findByToken( token: string ): ISowSocketInfo[] {
-        return this._clients.filter( soc => soc.token === token );
+    findByToken(token: string): ISowSocketInfo[] {
+        return this._clients.filter(soc => soc.token === token);
     }
-    toList( clients: ISowSocketInfo[] ): { [x: string]: any; }[] {
+    toList(clients: ISowSocketInfo[]): { [x: string]: any; }[] {
         const list: { [x: string]: any; }[] = [];
-        if ( clients.length === 0 ) return list;
-        clients.forEach( a => {
-            list.push( {
+        if (clients.length === 0) {
+            return list;
+        }
+        clients.forEach((a) => {
+            list.push({
                 token: a.token, hash: a.hash, loginId: a.loginId
-            } );
-        } );
+            });
+        });
         return list;
     }
-    getClientByExceptHash( exceptHash: string, group?: string ): ISowSocketInfo[] {
+    getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[] {
         return !group ? this._clients.filter(
             soc => soc.hash !== exceptHash
         ) : this._clients.filter(
             soc => soc.hash !== exceptHash && soc.group === group
         );
     }
-    getClientByExceptLogin( exceptLoginId: string, group?: string ): ISowSocketInfo[] {
+    getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[] {
         return !group ? this._clients.filter(
             soc => soc.loginId !== exceptLoginId
         ) : this._clients.filter(
             soc => soc.loginId !== exceptLoginId && soc.group === group
         );
     }
-    getClientByExceptToken( token: string, group?: string ): ISowSocketInfo[] {
+    getClientByExceptToken(token: string, group?: string): ISowSocketInfo[] {
         return !group ? this._clients.filter(
             soc => soc.token !== token
         ) : this._clients.filter(
             soc => soc.token !== token && soc.group === group
         );
     }
-    getSocket( token: string ): ISowSocketInfo | void {
-        return this._clients.find( soc => soc.token === token );
+    getSocket(token: string): ISowSocketInfo | void {
+        return this._clients.find(soc => soc.token === token);
     }
-    removeSocket( token: string ): boolean {
-        const index: number = this._clients.findIndex( ( soc: ISowSocketInfo ) => {
+    removeSocket(token: string): boolean {
+        const index: number = this._clients.findIndex((soc: ISowSocketInfo) => {
             return soc.token === token;
-        } );
-        if ( index < 0 ) return false;
-        this._clients.splice( index, 1 );
+        });
+        if (index < 0) return false;
+        this._clients.splice(index, 1);
         return true;
     }
-    sendMsg( token: string, method: string, data?: any ): boolean {
-        const soc: ISowSocketInfo | void = this.getSocket( token );
-        if ( !soc ) return false;
-        return soc.sendMsg( method, data ), true;
+    sendMsg(token: string, method: string, data?: any): boolean {
+        const soc: ISowSocketInfo | void = this.getSocket(token);
+        if (!soc) return false;
+        return soc.sendMsg(method, data), true;
     }
-    create( ioserver: ioServer, httpServer: Server ): boolean {
-        if ( this.implimented ) return false;
+    create(ioserver: ioServer, httpServer: Server): boolean {
+        if (this.implimented) return false;
         this.implimented = true;
-        const io = ioserver( httpServer, {
+        const io = ioserver(httpServer, {
             path: this._server.config.socketPath,
-            pingTimeout: ( 1000 * 5 ),
+            pingTimeout: (1000 * 5),
             cookie: true
-        } );
-        this._server.on( "shutdown", (): void => {
+        });
+        this._server.on("shutdown", (): void => {
             io.close();
-        } );
-        if ( !this._server.config.socketPath ) {
+        });
+        if (!this._server.config.socketPath) {
             this._server.config.socketPath = io._path;
         }
-        io.use( ( socket: IOSocket, next: ( err?: any ) => void ): void => {
-            socket.request.session = this._server.parseSession( socket.request.headers.cookie );
-            if ( this._wsClients.beforeInitiateConnection( socket.request.session, socket ) ) {
+        io.use((socket: IOSocket, next: (err?: any) => void): void => {
+            socket.request.session = this._server.parseSession(socket.request.headers.cookie);
+            if (this._wsClients.beforeInitiateConnection(socket.request.session, socket)) {
                 return next();
             }
-        } );
-        return io.on( "connect", ( socket: IOSocket ): void => {
+        });
+        return io.on("connect", (socket: IOSocket): void => {
             this.connected = socket.connected;
-        } ).on( 'connection', ( socket: IOSocket ): void => {
-            const _me: ISowSocketInfo = ( (): ISowSocketInfo => {
+        }).on('connection', (socket: IOSocket): void => {
+            const _me: ISowSocketInfo = ((): ISowSocketInfo => {
                 const socketInfo: ISowSocketInfo = {
                     token: Util.guid(),
                     loginId: socket.request.session.loginId,
@@ -253,31 +255,31 @@ class SowSocketServer implements ISowSocketServer {
                     isReconnectd: false,
                     roleId: "_INVALID_",
                     get socket() { return socket; },
-                    sendMsg: ( method: string, data: any ): void => {
-                        return socket.emit( method, data ), void 0;
+                    sendMsg: (method: string, data: any): void => {
+                        return socket.emit(method, data), void 0;
                     },
                 };
-                if ( socket.request.session.isAuthenticated ) {
-                    socketInfo.hash = Encryption.toMd5( socket.request.session.loginId );
+                if (socket.request.session.isAuthenticated) {
+                    socketInfo.hash = Encryption.toMd5(socket.request.session.loginId);
                     socketInfo.roleId = socket.request.session.roleId;
                 }
-                this._clients.push( socketInfo );
+                this._clients.push(socketInfo);
                 return socketInfo;
-            } )();
-            socket.on( 'disconnect', ( ...args: any[] ): void => {
+            })();
+            socket.on('disconnect', (...args: any[]): void => {
                 /*if ( this.removeSocket( _me.token ) ) {
                     this._wsClients.emit( "disConnected", _me, this );
                 }*/
-                this.removeSocket( _me.token );
-                this._wsClients.emit( "disConnected", _me, this );
+                this.removeSocket(_me.token);
+                this._wsClients.emit("disConnected", _me, this);
                 return void 0;
-            } );
-            const client = this._wsClients.client( _me, socket.request.session, this, this._server );
-            for ( const method in client ) {
-                socket.on( method, client[method] );
+            });
+            const client = this._wsClients.client(_me, socket.request.session, this, this._server);
+            for (const method in client) {
+                socket.on(method, client[method]);
             }
-            return this._wsClients.emit( "connected", _me, this ), void 0;
-        } ), true;
+            return this._wsClients.emit("connected", _me, this), void 0;
+        }), true;
     }
 }
 /**
@@ -285,20 +287,20 @@ class SowSocketServer implements ISowSocketServer {
  * const ws = socketInitilizer( server, SocketClient() );
  * ws.create( require( "socket.io" ), app.httpServer );
  */
-export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInfo ): {
+export function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
     readonly isConnectd: boolean;
     readonly wsEvent: { [x: string]: any; } | void;
-    readonly create: ( ioserver: any, httpServer: Server ) => boolean;
+    readonly create: (ioserver: any, httpServer: Server) => boolean;
     readonly wsServer: ISowSocketServer;
 } {
-    if ( typeof ( wsClientInfo.client ) !== "function" ) {
-        throw new Error( "`getClient` event did not registered..." );
+    if (typeof (wsClientInfo.client) !== "function") {
+        throw new Error("`getClient` event did not registered...");
     }
-    if ( typeof ( wsClientInfo.beforeInitiateConnection ) !== "function" ) {
-        throw new Error( "`beforeInitiateConnection` event did not registered..." );
+    if (typeof (wsClientInfo.beforeInitiateConnection) !== "function") {
+        throw new Error("`beforeInitiateConnection` event did not registered...");
     }
     let _wsEvent: { [x: string]: any; } | void = void 0;
-    const _ws: SowSocketServer = new SowSocketServer( server, wsClientInfo );
+    const _ws: SowSocketServer = new SowSocketServer(server, wsClientInfo);
     return {
         get wsServer() {
             return _ws;
@@ -307,10 +309,10 @@ export function socketInitilizer( server: ISowServer, wsClientInfo: IWsClientInf
             return _ws.implimented;
         },
         get wsEvent(): { [x: string]: any; } | void {
-            return _wsEvent ? _wsEvent : ( _wsEvent = wsClientInfo.getServerEvent(), _wsEvent );
+            return _wsEvent ? _wsEvent : (_wsEvent = wsClientInfo.getServerEvent(), _wsEvent);
         },
-        create( ioserver: any, httpServer: Server ): boolean {
-            return _ws.create( ioserver, httpServer );
+        create(ioserver: any, httpServer: Server): boolean {
+            return _ws.create(ioserver, httpServer);
         }
     };
 }

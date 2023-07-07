@@ -24,11 +24,13 @@ import { EventEmitter } from 'events';
 import { deprecate } from 'util';
 import * as _fs from 'fs';
 import * as _path from 'path';
-import Dicer from 'dicer';
+// import Dicer from 'dicer';
+import { Dicer, PartStream } from './dicer';
 import { pipeline } from 'stream';
 import os from 'os';
 import destroy = require('destroy');
 import { IRequest } from './server-core';
+
 import { ToNumber, toString, IDispose, IBufferArray, BufferArray, ErrorHandler } from './app-static';
 import { Util } from './app-util';
 import * as fsw from './fsw';
@@ -62,7 +64,7 @@ export interface IPostedFileInfo extends IDispose {
 interface IMultipartDataReader extends IDispose {
     readonly forceExit: boolean;
     skipFile(fileInfo: IPostedFileInfo): boolean;
-    read(partStream: Dicer.PartStream, tempDir: string): void;
+    read(stream: PartStream, tempDir: string): void;
     on(ev: "field", handler: (key: string, buff: string) => void): IMultipartDataReader;
     on(ev: "file", handler: (file: IPostedFileInfo) => void): IMultipartDataReader;
     on(ev: "end", handler: (err?: Error) => void): IMultipartDataReader;
@@ -104,15 +106,15 @@ function dispose<T extends IDispose>(data: T[]) {
     }
 }
 const incomingContentType: {
-    URL_ENCODE: string;
     APP_JSON: string;
     MULTIPART: string;
     RAW_TEXT: string;
+    URL_ENCODE: string;
 } = {
-    URL_ENCODE: "application/x-www-form-urlencoded",
     APP_JSON: "application/json",
     MULTIPART: "multipart/form-data",
-    RAW_TEXT: "text/plain"
+    RAW_TEXT: "text/plain",
+    URL_ENCODE: "application/x-www-form-urlencoded"
 }
 enum ContentType {
     URL_ENCODE = 1,
@@ -249,13 +251,13 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
     public skipFile(fileInfo: IPostedFileInfo): boolean {
         return false;
     }
-    public read(partStream: Dicer.PartStream, tempDir: string) {
+    public read(stream: PartStream, tempDir: string) {
         let
             fieldName: string = "", fileName: string = "",
             disposition: string = "", contentType: string = "",
             isFile: boolean = false;
         const body: IBufferArray = new BufferArray();
-        partStream.on("header", (header: object): void => {
+        stream.on("header", (header: object): void => {
             for (const [key, value] of Object.entries(header)) {
                 if (Util.isArrayLike<string>(value)) {
                     const part: string | undefined = value[0];
@@ -281,7 +283,7 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
                 }
             }
             if (!isFile) {
-                return partStream.on("data", (chunk: string | Buffer): void => {
+                return stream.on("data", (chunk: string | Buffer): void => {
                     body.push(chunk);
                 }).on("end", () => {
                     this.emit("field", fieldName, body.data.toString());
@@ -294,13 +296,13 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
             if (contentType.length > 0) {
                 const fileInfo = new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), _path.resolve(`${tempDir}/${Util.guid()}.temp`));
                 if (this.skipFile(fileInfo)) {
-                    partStream.resume();
+                    stream.resume();
                     this.emit("end");
                     return;
                 }
                 const tempFile: string | void = fileInfo.getTempPath();
                 if (tempFile) {
-                    this._writeStream = pipeline(partStream, _fs.createWriteStream(tempFile, { 'flags': 'a' }), (err: NodeJS.ErrnoException | null) => {
+                    this._writeStream = pipeline(stream, _fs.createWriteStream(tempFile, { flags: 'a' }), (err: NodeJS.ErrnoException | null) => {
                         this.destroy();
                         this.emit("end", err);
                     });
@@ -328,7 +330,7 @@ interface IDataParser extends IDispose {
     onRawData(buff: Buffer | string): void;
     getRawData(encoding?: BufferEncoding): string;
     onPart(
-        partStream: Dicer.PartStream,
+        stream: PartStream,
         next: (forceExit: boolean) => void,
         skipFile?: (fileInfo: IPostedFileInfo) => boolean
     ): void;
@@ -372,7 +374,7 @@ class DataParser implements IDataParser {
         return this._multipartBody;
     }
     public onPart(
-        partStream: Dicer.PartStream,
+        stream: PartStream,
         next: (forceExit: boolean) => void,
         skipFile?: (fileInfo: IPostedFileInfo) => boolean
     ): void {
@@ -393,7 +395,7 @@ class DataParser implements IDataParser {
             next(reader.forceExit);
             return reader.dispose();
         });
-        reader.read(partStream, this._tempDir);
+        reader.read(stream, this._tempDir);
         this._readers.push(reader);
         return void 0;
     }
@@ -422,22 +424,15 @@ function decode(str: string): string {
     return decodeURIComponent(str.replace(/\+/g, ' '));
 }
 export function decodeBodyBuffer(buff: Buffer, part: (k: string, v: string) => void) {
-    let p = 0; const len: number = buff.length;
+    let p: number = 0;
+    const len: number = buff.length;
     while (p < len) {
-        let nd: number = 0, eq: number = 0;
-        for (let i = p; i < len; ++i) {
-            if (buff[i] === 0x3D/*=*/) {
-                if (eq !== 0) {
-                    throw new Error("Malformed data...");
-                }
-                eq = i;
-            } else if (buff[i] === 0x26/*&*/) {
-                nd = i;
-                break;
-            }
+        let nd: number = buff.indexOf(0x26/*&*/, p);
+        if (nd === -1) {
+            nd = len;
         }
-        if (nd === 0) nd = len;
-        if (eq === 0) {
+        const eq: number = buff.indexOf(0x3D/*=*/, p);
+        if (eq === -1 || eq > nd) {
             throw new Error("Malformed data");
         }
         part(decode(buff.toString('binary', p, eq)), decode(buff.toString('binary', eq + 1, nd)));
@@ -610,16 +605,16 @@ class BodyParser implements IBodyParser {
         if (error) return onReadEnd(new Error(error));
         return onReadEnd();
     }
-    private skipPart(partStream: Dicer.PartStream): void {
-        partStream.resume();
+    private skipPart(stream: PartStream): void {
+        stream.resume();
     }
-    private onPart(onReadEnd: (err?: Error) => void): (partStream: Dicer.PartStream) => void {
-        return (partStream: Dicer.PartStream): void => {
+    private onPart(onReadEnd: (err?: Error) => void): (stream: PartStream) => void {
+        return (stream: PartStream): void => {
             this._part.push(1);
-            this._parser.onPart(partStream, (forceExit: boolean): void => {
+            this._parser.onPart(stream, (forceExit: boolean): void => {
                 if (forceExit) {
                     this._part.length = 0;
-                    this.skipPart(partStream);
+                    this.skipPart(stream);
                     if (this._multipartParser) {
                         this._multipartParser.removeListener('part', this.onPart);
                         this._multipartParser.on("part", this.skipPart)
@@ -666,7 +661,7 @@ class BodyParser implements IBodyParser {
                 this._isReadEnd = true;
                 return onReadEnd();
             });
-            this._req.on("close", this.finalEvent("close", onReadEnd));
+            // this._req.on("close", this.finalEvent("close", onReadEnd));
             return;
         }
         const match: RegExpExecArray | null = RE_BOUNDARY.exec(this._contentType);
@@ -678,7 +673,7 @@ class BodyParser implements IBodyParser {
                 return this.tryFinish(onReadEnd);
             });
             this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
-            this._req.on("close", this.finalEvent("close", onReadEnd));
+            // this._req.on("close", this.finalEvent("close", onReadEnd));
             this._req.pipe(this._multipartParser);
         }
     }

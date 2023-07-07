@@ -17,7 +17,8 @@
     "**/coverage/**",
     "**/dist/**/*",
     "**/test/**/*",
-    "**/lib/sow-project-template.ts",
+    "**/lib/project-template.ts",
+    "**/lib/dicer.ts",
     "**/*.d.ts"
   ],
   "require": [

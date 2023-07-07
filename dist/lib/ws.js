@@ -91,9 +91,10 @@ class SowSocketServer {
     }
     toList(clients) {
         const list = [];
-        if (clients.length === 0)
+        if (clients.length === 0) {
             return list;
-        clients.forEach(a => {
+        }
+        clients.forEach((a) => {
             list.push({
                 token: a.token, hash: a.hash, loginId: a.loginId
             });

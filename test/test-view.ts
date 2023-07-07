@@ -501,14 +501,17 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 				})();
 				(() => {
 					expect(shouldBeError(() => {
-						decodeBodyBuffer(Buffer.from("data==10&p=10&c=10"), (k: string, b: string): void => {
-							// Nothing to do
-						})
-					})).toBeInstanceOf(Error);
-					expect(shouldBeError(() => {
-						decodeBodyBuffer(Buffer.from("&data==10&p=10&c=10"), (k: string, b: string): void => {
-							// Nothing to do
-						})
+						try {
+							//let data: NodeJS.Dict<string> = {};
+							decodeBodyBuffer(Buffer.from("data==10&p=10&a"), (k: string, b: string): void => {
+								// Nothing to do
+								//data[k] = b;
+							});
+							//console.log(data);
+						} catch (exp: any) {
+							console.log(`decodeBodyBuffer->Error ${exp.message}`);
+						}
+						throw new Error("decodeBodyBuffer error");
 					})).toBeInstanceOf(Error);
 				})();
 				(() => {

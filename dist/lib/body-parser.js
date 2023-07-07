@@ -52,7 +52,8 @@ const events_1 = require("events");
 const util_1 = require("util");
 const _fs = __importStar(require("fs"));
 const _path = __importStar(require("path"));
-const dicer_1 = __importDefault(require("dicer"));
+// import Dicer from 'dicer';
+const dicer_1 = require("./dicer");
 const stream_1 = require("stream");
 const os_1 = __importDefault(require("os"));
 const destroy = require("destroy");
@@ -68,10 +69,10 @@ function dispose(data) {
     }
 }
 const incomingContentType = {
-    URL_ENCODE: "application/x-www-form-urlencoded",
     APP_JSON: "application/json",
     MULTIPART: "multipart/form-data",
-    RAW_TEXT: "text/plain"
+    RAW_TEXT: "text/plain",
+    URL_ENCODE: "application/x-www-form-urlencoded"
 };
 var ContentType;
 (function (ContentType) {
@@ -194,10 +195,10 @@ class MultipartDataReader extends events_1.EventEmitter {
     skipFile(fileInfo) {
         return false;
     }
-    read(partStream, tempDir) {
+    read(stream, tempDir) {
         let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false;
         const body = new app_static_1.BufferArray();
-        partStream.on("header", (header) => {
+        stream.on("header", (header) => {
             for (const [key, value] of Object.entries(header)) {
                 if (app_util_1.Util.isArrayLike(value)) {
                     const part = value[0];
@@ -223,7 +224,7 @@ class MultipartDataReader extends events_1.EventEmitter {
                 }
             }
             if (!isFile) {
-                return partStream.on("data", (chunk) => {
+                return stream.on("data", (chunk) => {
                     body.push(chunk);
                 }).on("end", () => {
                     this.emit("field", fieldName, body.data.toString());
@@ -236,13 +237,13 @@ class MultipartDataReader extends events_1.EventEmitter {
             if (contentType.length > 0) {
                 const fileInfo = new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), _path.resolve(`${tempDir}/${app_util_1.Util.guid()}.temp`));
                 if (this.skipFile(fileInfo)) {
-                    partStream.resume();
+                    stream.resume();
                     this.emit("end");
                     return;
                 }
                 const tempFile = fileInfo.getTempPath();
                 if (tempFile) {
-                    this._writeStream = (0, stream_1.pipeline)(partStream, _fs.createWriteStream(tempFile, { 'flags': 'a' }), (err) => {
+                    this._writeStream = (0, stream_1.pipeline)(stream, _fs.createWriteStream(tempFile, { flags: 'a' }), (err) => {
                         this.destroy();
                         this.emit("end", err);
                     });
@@ -296,7 +297,7 @@ class DataParser {
     getMultipartBody() {
         return this._multipartBody;
     }
-    onPart(partStream, next, skipFile) {
+    onPart(stream, next, skipFile) {
         const reader = new MultipartDataReader();
         if (skipFile) {
             reader.skipFile = skipFile;
@@ -314,7 +315,7 @@ class DataParser {
             next(reader.forceExit);
             return reader.dispose();
         });
-        reader.read(partStream, this._tempDir);
+        reader.read(stream, this._tempDir);
         this._readers.push(reader);
         return void 0;
     }
@@ -347,22 +348,12 @@ function decodeBodyBuffer(buff, part) {
     let p = 0;
     const len = buff.length;
     while (p < len) {
-        let nd = 0, eq = 0;
-        for (let i = p; i < len; ++i) {
-            if (buff[i] === 0x3D /*=*/) {
-                if (eq !== 0) {
-                    throw new Error("Malformed data...");
-                }
-                eq = i;
-            }
-            else if (buff[i] === 0x26 /*&*/) {
-                nd = i;
-                break;
-            }
-        }
-        if (nd === 0)
+        let nd = buff.indexOf(0x26 /*&*/, p);
+        if (nd === -1) {
             nd = len;
-        if (eq === 0) {
+        }
+        const eq = buff.indexOf(0x3D /*=*/, p);
+        if (eq === -1 || eq > nd) {
             throw new Error("Malformed data");
         }
         part(decode(buff.toString('binary', p, eq)), decode(buff.toString('binary', eq + 1, nd)));
@@ -530,16 +521,16 @@ class BodyParser {
             return onReadEnd(new Error(error));
         return onReadEnd();
     }
-    skipPart(partStream) {
-        partStream.resume();
+    skipPart(stream) {
+        stream.resume();
     }
     onPart(onReadEnd) {
-        return (partStream) => {
+        return (stream) => {
             this._part.push(1);
-            this._parser.onPart(partStream, (forceExit) => {
+            this._parser.onPart(stream, (forceExit) => {
                 if (forceExit) {
                     this._part.length = 0;
-                    this.skipPart(partStream);
+                    this.skipPart(stream);
                     if (this._multipartParser) {
                         this._multipartParser.removeListener('part', this.onPart);
                         this._multipartParser.on("part", this.skipPart);
@@ -584,19 +575,19 @@ class BodyParser {
                 this._isReadEnd = true;
                 return onReadEnd();
             });
-            this._req.on("close", this.finalEvent("close", onReadEnd));
+            // this._req.on("close", this.finalEvent("close", onReadEnd));
             return;
         }
         const match = RE_BOUNDARY.exec(this._contentType);
         if (match) {
-            this._multipartParser = new dicer_1.default({ boundary: match[1] || match[2] });
+            this._multipartParser = new dicer_1.Dicer({ boundary: match[1] || match[2] });
             this._multipartParser.on("part", this.onPart(onReadEnd));
             this._multipartParser.on("finish", () => {
                 this._isReadEnd = true;
                 return this.tryFinish(onReadEnd);
             });
             this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
-            this._req.on("close", this.finalEvent("close", onReadEnd));
+            // this._req.on("close", this.finalEvent("close", onReadEnd));
             this._req.pipe(this._multipartParser);
         }
     }
