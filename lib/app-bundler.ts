@@ -20,9 +20,9 @@
 
 // 4:48 PM 5/3/2020
 // by rajib chy
-import * as _fs from 'fs';
-import * as _path from 'path';
-import * as _zlib from 'zlib';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
+import * as _zlib from 'node:zlib';
 import { Encryption } from './encryption';
 import { HttpCache, IChangeHeader } from './http-cache';
 import { IApplication } from './server-core';
@@ -101,7 +101,7 @@ class Bundlew {
     ): void {
         const result: BundlerFileInfo[] = [];
         if (hasCacheFile && !server.config.bundler.reValidate) {
-            return next(result, null);
+            return process.nextTick(() => next(result, null));
         }
         const lchangeTime: number = typeof (lastChangeTime) === "number" ? lastChangeTime : 0;
         const files: string[] = str.split(",");
@@ -168,7 +168,7 @@ class Bundlew {
         const forward = (): void => {
             const inf: BundlerFileInfo | undefined = files.shift();
             if (!inf) {
-                return next(out);
+                return process.nextTick(() => next(out));
             }
             out.push(Buffer.from(`\r\n// ${inf.name}\r\n`));
             if (inf.isOwn === true) {

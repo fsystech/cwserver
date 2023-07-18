@@ -22,8 +22,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Streamer = void 0;
 // 9:19 PM 5/8/2020
 // by rajib chy
-const fs_1 = require("fs");
-const stream_1 = require("stream");
+const node_fs_1 = require("node:fs");
+const node_stream_1 = require("node:stream");
 const destroy = require("destroy");
 class Streamer {
     static stream(ctx, absPath, mimeType, fstat) {
@@ -38,7 +38,7 @@ class Streamer {
             const start = parseInt(partialstart, 10);
             const end = partialend ? parseInt(partialend, 10) : total - 1;
             const chunksize = (end - start) + 1;
-            openenedFile = (0, fs_1.createReadStream)(absPath, {
+            openenedFile = (0, node_fs_1.createReadStream)(absPath, {
                 start, end
             });
             statusCode = 206;
@@ -50,13 +50,13 @@ class Streamer {
             });
         }
         else {
-            openenedFile = (0, fs_1.createReadStream)(absPath);
+            openenedFile = (0, node_fs_1.createReadStream)(absPath);
             ctx.res.status(statusCode, {
                 'Content-Length': total,
                 'Content-Type': mimeType
             });
         }
-        return (0, stream_1.pipeline)(openenedFile, ctx.res, (err) => {
+        return (0, node_stream_1.pipeline)(openenedFile, ctx.res, (err) => {
             destroy(openenedFile);
             ctx.next(statusCode, false);
         }), void 0;

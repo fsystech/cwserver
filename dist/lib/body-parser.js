@@ -48,14 +48,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getBodyParser = exports.PayloadParser = exports.decodeBodyBuffer = void 0;
 // 11:17 PM 5/5/2020
 // by rajib chy
-const events_1 = require("events");
-const util_1 = require("util");
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
+const node_events_1 = require("node:events");
+const node_util_1 = require("node:util");
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
 // import Dicer from 'dicer';
 const dicer_1 = require("./dicer");
-const stream_1 = require("stream");
-const os_1 = __importDefault(require("os"));
+const node_stream_1 = require("node:stream");
+const node_os_1 = __importDefault(require("node:os"));
 const destroy = require("destroy");
 const app_static_1 = require("./app-static");
 const app_util_1 = require("./app-util");
@@ -174,7 +174,7 @@ class PostedFileInfo {
     }
 }
 const RE_BOUNDARY = /^multipart\/.+?(?:; boundary=(?:(?:"(.+)")|(?:([^\s]+))))$/i;
-class MultipartDataReader extends events_1.EventEmitter {
+class MultipartDataReader extends node_events_1.EventEmitter {
     get forceExit() {
         return this._forceExit;
     }
@@ -243,7 +243,7 @@ class MultipartDataReader extends events_1.EventEmitter {
                 }
                 const tempFile = fileInfo.getTempPath();
                 if (tempFile) {
-                    this._writeStream = (0, stream_1.pipeline)(stream, _fs.createWriteStream(tempFile, { flags: 'a' }), (err) => {
+                    this._writeStream = (0, node_stream_1.pipeline)(stream, _fs.createWriteStream(tempFile, { flags: 'a' }), (err) => {
                         this.destroy();
                         this.emit("end", err);
                     });
@@ -344,21 +344,18 @@ class DataParser {
 function decode(str) {
     return decodeURIComponent(str.replace(/\+/g, ' '));
 }
-function decodeBodyBuffer(buff, part) {
-    let p = 0;
-    const len = buff.length;
-    while (p < len) {
-        let nd = buff.indexOf(0x26 /*&*/, p);
-        if (nd === -1) {
-            nd = len;
+function decodeBodyBuffer(buff) {
+    const outObj = {};
+    const decoder = new node_util_1.TextDecoder('utf-8');
+    const params = new URLSearchParams(decoder.decode(buff));
+    for (const [key, value] of params.entries()) {
+        if (!value) {
+            // &p=10&a
+            continue;
         }
-        const eq = buff.indexOf(0x3D /*=*/, p);
-        if (eq === -1 || eq > nd) {
-            throw new Error("Malformed data");
-        }
-        part(decode(buff.toString('binary', p, eq)), decode(buff.toString('binary', eq + 1, nd)));
-        p = nd + 1;
+        outObj[decode(key)] = decode(value);
     }
+    return outObj;
 }
 exports.decodeBodyBuffer = decodeBodyBuffer;
 const MaxBuffLength = 1024 * 1024 * 20; // (20mb)
@@ -385,7 +382,7 @@ class BodyParser {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
         if (this._contentTypeEnum !== ContentType.UNKNOWN) {
-            this._parser = new DataParser(tempDir || os_1.default.tmpdir());
+            this._parser = new DataParser(tempDir || node_os_1.default.tmpdir());
             this._req = req;
         }
         else {
@@ -490,10 +487,7 @@ class BodyParser {
         if (this._contentTypeEnum === ContentType.RAW_TEXT) {
             throw new Error("Raw Text data found. It's can not transform to json.");
         }
-        const outObj = {};
-        decodeBodyBuffer(this._parser.body, (k, v) => {
-            outObj[k] = v;
-        });
+        const outObj = decodeBodyBuffer(this._parser.body);
         app_util_1.Util.extend(outObj, this._parser.getMultipartBody());
         return outObj;
     }
@@ -557,12 +551,12 @@ class BodyParser {
     }
     parse(onReadEnd) {
         if (!this.isValidRequest())
-            return onReadEnd(new Error("Invalid request defiend...."));
+            return process.nextTick(() => onReadEnd(new Error("Invalid request defiend....")));
         if (this._contentTypeEnum === ContentType.APP_JSON ||
             this._contentTypeEnum === ContentType.URL_ENCODE ||
             this._contentTypeEnum === ContentType.RAW_TEXT) {
             if (this._contentLength > this._maxBuffLength) {
-                return onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`));
+                return process.nextTick(() => onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`)));
             }
         }
         if (this._contentTypeEnum === ContentType.URL_ENCODE ||
@@ -575,7 +569,6 @@ class BodyParser {
                 this._isReadEnd = true;
                 return onReadEnd();
             });
-            // this._req.on("close", this.finalEvent("close", onReadEnd));
             return;
         }
         const match = RE_BOUNDARY.exec(this._contentType);
@@ -587,7 +580,6 @@ class BodyParser {
                 return this.tryFinish(onReadEnd);
             });
             this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
-            // this._req.on("close", this.finalEvent("close", onReadEnd));
             this._req.pipe(this._multipartParser);
         }
     }
@@ -621,12 +613,12 @@ class BodyParser {
 }
 /** @deprecated since v2.0.3 - use `getBodyParser` instead. */
 exports.PayloadParser = (() => {
-    return { PayloadParser: (0, util_1.deprecate)(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
+    return { PayloadParser: (0, node_util_1.deprecate)(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
 })().PayloadParser;
-BodyParser.prototype.clear = (0, util_1.deprecate)(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
-BodyParser.prototype.readData = (0, util_1.deprecate)(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
-BodyParser.prototype.readDataAsync = (0, util_1.deprecate)(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
-PostedFileInfo.prototype.clear = (0, util_1.deprecate)(PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');
+BodyParser.prototype.clear = (0, node_util_1.deprecate)(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
+BodyParser.prototype.readData = (0, node_util_1.deprecate)(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
+BodyParser.prototype.readDataAsync = (0, node_util_1.deprecate)(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
+PostedFileInfo.prototype.clear = (0, node_util_1.deprecate)(PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');
 function getBodyParser(req, tempDir) {
     return new BodyParser(req, tempDir);
 }

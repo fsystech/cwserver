@@ -45,9 +45,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Bundler = exports.__moduleName = void 0;
 // 4:48 PM 5/3/2020
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
-const _zlib = __importStar(require("zlib"));
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
+const _zlib = __importStar(require("node:zlib"));
 const encryption_1 = require("./encryption");
 const http_cache_1 = require("./http-cache");
 const app_util_1 = require("./app-util");
@@ -107,7 +107,7 @@ class Bundlew {
     static getBundleInfo(server, str, lastChangeTime, hasCacheFile, next) {
         const result = [];
         if (hasCacheFile && !server.config.bundler.reValidate) {
-            return next(result, null);
+            return process.nextTick(() => next(result, null));
         }
         const lchangeTime = typeof (lastChangeTime) === "number" ? lastChangeTime : 0;
         const files = str.split(",");
@@ -176,7 +176,7 @@ class Bundlew {
         const forward = () => {
             const inf = files.shift();
             if (!inf) {
-                return next(out);
+                return process.nextTick(() => next(out));
             }
             out.push(Buffer.from(`\r\n// ${inf.name}\r\n`));
             if (inf.isOwn === true) {

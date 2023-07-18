@@ -49,7 +49,7 @@ exports.Encryption = exports.CryptoInfo = exports.md5 = void 0;
 // 6:22 PM 5/19/2020
 // by rajib chy
 const crypto_js_1 = __importDefault(require("crypto-js"));
-const crypto = __importStar(require("crypto"));
+const crypto = __importStar(require("node:crypto"));
 function md5(contents) {
     return crypto.createHash('md5').update(contents).digest("hex");
 }

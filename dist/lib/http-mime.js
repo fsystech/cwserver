@@ -45,10 +45,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HttpMimeHandler = void 0;
 // 9:22 PM 5/4/2020
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
-const _zlib = __importStar(require("zlib"));
-const stream_1 = require("stream");
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
+const _zlib = __importStar(require("node:zlib"));
+const node_stream_1 = require("node:stream");
 const destroy = require("destroy");
 const _mimeType = __importStar(require("./http-mime-types"));
 const http_cache_1 = require("./http-cache");
@@ -91,14 +91,14 @@ class MimeHandler {
                 if (reqCacheHeader.etag === etag) {
                     http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                     ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                    return ctx.next(304);
+                    return process.nextTick(() => ctx.next(304));
                 }
                 exit = true;
             }
             if (reqCacheHeader.sinceModify && !exit) {
                 http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                 ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                return ctx.next(304);
+                return process.nextTick(() => ctx.next(304));
             }
         }
         http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
@@ -177,7 +177,7 @@ class MimeHandler {
                 }
                 const rstream = _fs.createReadStream(absPath);
                 const wstream = _fs.createWriteStream(cachePath);
-                return (0, stream_1.pipeline)(rstream, createGzip(), wstream, (gzipErr) => {
+                return (0, node_stream_1.pipeline)(rstream, createGzip(), wstream, (gzipErr) => {
                     destroy(rstream);
                     destroy(wstream);
                     return ctx.handleError(gzipErr, () => {
@@ -215,7 +215,7 @@ class MimeHandler {
                 'Content-Encoding': 'gzip'
             });
             const rstream = _fs.createReadStream(absPath);
-            return (0, stream_1.pipeline)(rstream, createGzip(), ctx.res, (gzipErr) => {
+            return (0, node_stream_1.pipeline)(rstream, createGzip(), ctx.res, (gzipErr) => {
                 destroy(rstream);
             }), void 0;
         }
@@ -232,7 +232,7 @@ class MimeHandler {
             (reqCachHeader.sinceModify && reqCachHeader.sinceModify === lastChangeTime)) {
             http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
             ctx.res.status(304, { 'Content-Type': mimeType }).send();
-            return ctx.next(304);
+            return process.nextTick(() => ctx.next(304));
         }
         http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime,
@@ -241,7 +241,7 @@ class MimeHandler {
         if (ctx.server.config.staticFile.compression && isGzip) {
             ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
             const rstream = _fs.createReadStream(absPath);
-            return (0, stream_1.pipeline)(rstream, createGzip(), ctx.res, (gzipErr) => {
+            return (0, node_stream_1.pipeline)(rstream, createGzip(), ctx.res, (gzipErr) => {
                 destroy(rstream);
             }), void 0;
         }

@@ -20,10 +20,10 @@
 
 // 9:22 PM 5/4/2020
 // by rajib chy
-import * as _fs from 'fs';
-import * as _path from 'path';
-import * as _zlib from 'zlib';
-import { pipeline } from 'stream';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
+import * as _zlib from 'node:zlib';
+import { pipeline } from 'node:stream';
 import destroy = require('destroy');
 import * as _mimeType from './http-mime-types';
 import { IContext } from './server';
@@ -81,14 +81,14 @@ class MimeHandler {
                 if (reqCacheHeader.etag === etag) {
                     HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                     ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                    return ctx.next(304);
+                    return process.nextTick(() => ctx.next(304));
                 }
                 exit = true;
             }
             if (reqCacheHeader.sinceModify && !exit) {
                 HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                 ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                return ctx.next(304);
+                return process.nextTick(() => ctx.next(304));
             }
         }
         HttpCache.writeCacheHeader(ctx.res, {
@@ -233,7 +233,7 @@ class MimeHandler {
         ) {
             HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
             ctx.res.status(304, { 'Content-Type': mimeType }).send();
-            return ctx.next(304);
+            return process.nextTick(() => ctx.next(304));
         }
         HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime,

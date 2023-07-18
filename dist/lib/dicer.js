@@ -20,6 +20,9 @@ exports.Dicer = exports.PartStream = void 0;
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
+// 12:03 AM 7/8/2023
+// converted js to ts and updated by rajib chy
+// sloved dicer DoS vulnerability @see https://security.snyk.io/vuln/SNYK-JS-DICER-2311764
 const streamsearch_1 = __importDefault(require("streamsearch"));
 const stream_1 = require("stream");
 /// [PartStream]

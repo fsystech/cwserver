@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /// <reference types="node" />
 /// <reference types="node" />
-import * as _fs from 'fs';
+import * as _fs from 'node:fs';
 import { ErrorHandler } from './app-static';
 export declare function stat(path: string, next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void): void;
 export declare function moveFile(src: string, dest: string, next: (err: NodeJS.ErrnoException | null) => void, force?: boolean): void;

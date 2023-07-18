@@ -78,8 +78,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.moveFileAsync = exports.existsAsync = exports.mkdirAsync = exports.writeFileAsync = exports.unlinkAsync = exports.getFilesAsync = exports.opendirAsync = exports.copyDirSync = exports.copyDir = exports.copyFileSync = exports.copyFile = exports.unlink = exports.rmdirSync = exports.rmdir = exports.mkdirSync = exports.mkdir = exports.readJsonSync = exports.readJson = exports.isExists = exports.compareFileSync = exports.compareFile = exports.moveFile = exports.stat = void 0;
 // 5:17 PM 6/15/2020
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
 const _fsRmdir = typeof (_fs.rm) === "function" ? _fs.rm : _fs.rmdir;
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
 function stat(path, next) {
@@ -164,7 +164,7 @@ function readJsonSync(absPath) {
 exports.readJsonSync = readJsonSync;
 function mkdirCheckAndCreate(errHandler, fnext, path) {
     if (!path)
-        return fnext(true);
+        return process.nextTick(() => fnext(true));
     return _fs.stat(path, (err, stats) => {
         if (!err)
             return fnext(false);
@@ -176,8 +176,9 @@ function mkdirCheckAndCreate(errHandler, fnext, path) {
     });
 }
 function mkdir(rootDir, targetDir, next, errHandler) {
-    if (rootDir.length === 0)
-        return next(new Error("Argument missing..."));
+    if (rootDir.length === 0) {
+        return process.nextTick(() => next(new Error("Argument missing...")));
+    }
     let fullPath = "";
     let sep = "";
     if (targetDir && targetDir.length > 0) {
@@ -303,9 +304,9 @@ function unlink(path, next) {
 exports.unlink = unlink;
 function copyFile(src, dest, next, errHandler) {
     if (!_path.parse(src).ext)
-        return next(new Error("Source file path required...."));
+        return process.nextTick(() => next(new Error("Source file path required....")));
     if (!_path.parse(dest).ext)
-        return next(new Error("Dest file path required...."));
+        return process.nextTick(() => next(new Error("Dest file path required....")));
     return _fs.stat(src, (errs, stats) => {
         if (errs)
             return next(new Error(`Source directory not found ${src}`));

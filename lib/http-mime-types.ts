@@ -20,8 +20,8 @@
 
 // 12:04 AM 6/19/2020
 // by rajib chy
-import * as _fs from 'fs';
-import * as _path from 'path';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
 import { assert, getAppDir, Util } from './app-util';
 export interface IMimeType<T> {
     readonly type: (extension: string) => T | undefined;

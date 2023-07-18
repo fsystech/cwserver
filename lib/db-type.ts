@@ -55,6 +55,7 @@ export interface ISowDatabaseType {
     executeIo(sp: string, ctx: string, formObj: string,
         next: (resp: IoResult) => void
     ): void;
+    executeQuary(queryText: string, values: any[], next: (result: NodeJS.Dict<any>) => void): void;
     executeIoAsync(sp: string, ctx: string, formObj: string): Promise<IoResult>;
     query<R extends QueryResultRow = any>(
         queryText: string,

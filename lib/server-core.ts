@@ -563,10 +563,10 @@ class Application extends EventEmitter implements IApplication {
         let count: number = 0;
         const Loop = (): void => {
             const inf: ILayerInfo<HandlerFunc> | undefined = handlers[count];
-            if (!inf) return next();
+            if (!inf) return process.nextTick(() => next());
             if (!inf.route || isPrerequisites === true)
                 return inf.handler.call(this, req, res, _next);
-            if (isRouted) return _next();
+            if (isRouted) return process.nextTick(() => _next());
             const routeInfo: IRouteInfo<HandlerFunc> | undefined = getRouteInfo(req.path, handlers, 'ANY');
             isRouted = true;
             if (routeInfo) {
@@ -579,7 +579,7 @@ class Application extends EventEmitter implements IApplication {
                     return this.emit('error', req, res, e), void 0;
                 }
             }
-            return _next();
+            return process.nextTick(() => _next());
         }
         const _next = (statusCode?: number | Error): any => {
             if (statusCode instanceof Error) {

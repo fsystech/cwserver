@@ -45,8 +45,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Logger = exports.ShadowLogger = exports.ConsoleColor = exports.LogTime = void 0;
 // 11:26 PM 9/28/2019
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
 const app_static_1 = require("./app-static");
 const fsw = __importStar(require("./fsw"));
 class LogTime {

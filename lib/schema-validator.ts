@@ -20,8 +20,8 @@
 
 // 1:20 AM 5/13/2020
 // by rajib chy
-import * as _fs from 'fs';
-import * as _path from 'path';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
 import { Util, getAppDir, assert } from './app-util';
 export interface IPropertiesDescription {
 	type?: string;

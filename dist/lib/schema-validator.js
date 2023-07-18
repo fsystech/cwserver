@@ -45,8 +45,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Schema = exports.schemaValidate = exports.fillUpType = void 0;
 // 1:20 AM 5/13/2020
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
 const app_util_1 = require("./app-util");
 const _supportSchema = {
     "http://json-schema.org/draft-07/schema": "draft-07"

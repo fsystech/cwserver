@@ -20,16 +20,16 @@
 
 // 9:01 PM 5/2/2020
 // by rajib chy
-import * as _fs from 'fs';
-import * as _vm from 'vm';
-import * as _zlib from 'zlib';
-import * as _path from 'path';
+import * as _fs from 'node:fs';
+import * as _vm from 'node:vm';
+import * as _zlib from 'node:zlib';
+import * as _path from 'node:path';
 import { HttpStatus } from './http-status';
 import { IResInfo, IDispose } from './app-static';
 import { IContext } from './server';
 import * as fsw from './fsw';
 import { generateRandomString } from './app-util';
-import { platform } from 'os';
+import { platform } from 'node:os';
 import { FileInfoCacheHandler, IFileInfoCacheHandler } from './file-info';
 const _isWin: boolean = platform() === "win32";
 type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
@@ -280,7 +280,7 @@ class TemplateParser {
         if (!match) return next(str);
         const forword = (): void => {
             const orgMatch: string | undefined = match.shift();
-            if (!orgMatch) return next(str);
+            if (!orgMatch) return process.nextTick(() => next(str));
             const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
             return _fileInfo.exists(abspath, (exists: boolean, url: string): void => {
@@ -382,7 +382,7 @@ class TemplateParser {
                     parentTemplate = templats[len].replace(/\r\n/gi, "8_r_n_gx_8").replace(/\n/gi, "8_n_gx_8");
                     body = this.margeTemplate(match, parentTemplate, body);
                 } while (len > 0);
-                return next(body.replace(/8_r_n_gx_8/gi, "\r\n").replace(/8_n_gx_8/gi, "\n"));
+                return process.nextTick(() => next(body.replace(/8_r_n_gx_8/gi, "\r\n").replace(/8_n_gx_8/gi, "\n")));
             } catch (e: any) {
                 return ctx.transferError(e);
             }
@@ -405,7 +405,7 @@ export class TemplateCore {
         str: string | undefined, next: TemplateNextFunc
     ): void {
         if (!str) {
-            return next({ str: "", err: new Error("No script found to compile....") });
+            return process.nextTick(() => next({ str: "", err: new Error("No script found to compile....") }));
         }
         try {
             const sandBox: string = `${generateRandomString(30)}_thisNext`;
@@ -416,9 +416,9 @@ export class TemplateCore {
             script.runInContext(_vm.createContext(global));
             const func: SandBox | undefined = global.sow.templateCtx[sandBox];
             delete global.sow.templateCtx[sandBox];
-            return next({ str, isScript: true, sandBox: func });
+            return process.nextTick(() => next({ str, isScript: true, sandBox: func }));
         } catch (e: any) {
-            return next({ str, err: e });
+            return process.nextTick(() => next({ str, err: e }));
         }
     }
     private static parseScript(str: string): string | undefined {
@@ -488,7 +488,7 @@ export class TemplateCore {
                 return fnext(tstr, true);
             });
         }
-        return fnext(str, false);
+        return process.nextTick(() => fnext(str, false));
     }
     public static run(
         ctx: IContext,
@@ -577,7 +577,7 @@ class TemplateLink {
     ): void {
         const key = this._getCacheMape(path);
         const cache = _tw.cache[key];
-        if (cache) return next(cache);
+        if (cache) return process.nextTick(() => next(cache));
         return _fileInfo.exists(path, (exists: boolean, url: string): void => {
             if (!exists) return ctx.next(404);
             return _fs.readFile(url, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {

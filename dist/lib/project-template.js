@@ -45,8 +45,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createProjectTemplate = void 0;
 // 3:15 PM 5/10/2020
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
 const logger_1 = require("./logger");
 const app_util_1 = require("./app-util");
 const fsw = __importStar(require("./fsw"));

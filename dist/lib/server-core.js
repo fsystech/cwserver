@@ -529,11 +529,11 @@ class Application extends node_events_1.EventEmitter {
         const Loop = () => {
             const inf = handlers[count];
             if (!inf)
-                return next();
+                return process.nextTick(() => next());
             if (!inf.route || isPrerequisites === true)
                 return inf.handler.call(this, req, res, _next);
             if (isRouted)
-                return _next();
+                return process.nextTick(() => _next());
             const routeInfo = (0, app_router_1.getRouteInfo)(req.path, handlers, 'ANY');
             isRouted = true;
             if (routeInfo) {
@@ -547,7 +547,7 @@ class Application extends node_events_1.EventEmitter {
                     return this.emit('error', req, res, e), void 0;
                 }
             }
-            return _next();
+            return process.nextTick(() => _next());
         };
         const _next = (statusCode) => {
             if (statusCode instanceof Error) {

@@ -58,7 +58,7 @@ export interface IBodyParser extends IDispose {
     /** @deprecated since v2.0.3 - use `dispose` instead. */
     clear(): void;
 }
-export declare function decodeBodyBuffer(buff: Buffer, part: (k: string, v: string) => void): void;
+export declare function decodeBodyBuffer(buff: Buffer): NodeJS.Dict<string>;
 declare class BodyParser implements IBodyParser {
     private _contentType;
     private _contentTypeEnum;

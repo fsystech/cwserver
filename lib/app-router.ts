@@ -102,7 +102,7 @@ export function getRouteInfo<T>(
         reqPath = "/";
     }
     if (method === "ANY") {
-        const layer = handlerInfos.find(a => {
+        const layer: ILayerInfo<T> | undefined = handlerInfos.find(a => {
             if (a.routeMatcher)
                 return a.routeMatcher.test(reqPath);
             return false;

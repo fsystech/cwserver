@@ -20,8 +20,8 @@
 
 // 3:15 PM 5/10/2020
 // by rajib chy
-import * as _fs from 'fs';
-import * as _path from 'path';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
 import { ConsoleColor } from './logger';
 import { getAppDir } from './app-util';
 import * as fsw from './fsw';

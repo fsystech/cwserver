@@ -45,8 +45,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileInfoCacheHandler = exports.FileDescription = void 0;
 // 10:56 AM 8/1/2022
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
 class FileDescription {
     get url() {
         return this._url;
@@ -79,7 +79,7 @@ class FileInfoCacheHandler {
         if (!force) {
             const info = this._pathCache[path];
             if (info)
-                return next(info);
+                return process.nextTick(() => next(info));
         }
         const url = _path.resolve(path);
         _fs.stat(url, (serr, stat) => {

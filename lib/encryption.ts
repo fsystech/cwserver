@@ -21,7 +21,7 @@
 // 6:22 PM 5/19/2020
 // by rajib chy
 import CryptoJS from 'crypto-js';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 export interface ICryptoInfo {
     oldKey: string;
     md5?: string;

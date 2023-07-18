@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import * as _fs from 'fs';
+import * as _fs from 'node:fs';
 export interface IFileDescription {
     readonly url: string;
     readonly exists: boolean;

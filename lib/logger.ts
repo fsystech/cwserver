@@ -20,8 +20,8 @@
 
 // 11:26 PM 9/28/2019
 // by rajib chy
-import * as _fs from 'fs';
-import * as _path from 'path';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
 import { IDispose, IBufferArray, BufferArray } from './app-static';
 import * as fsw from './fsw';
 export interface ILogger extends IDispose {

@@ -20,7 +20,7 @@
 
 // 1:47 AM 5/5/2020
 // by rajib chy
-import { IncomingHttpHeaders } from 'http';
+import { IncomingHttpHeaders } from 'node:http';
 import { IResponse } from './server-core';
 import { ToResponseTime } from './app-static';
 export type IChangeHeader = {

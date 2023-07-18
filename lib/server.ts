@@ -30,8 +30,8 @@ import {
     App as sowAppCore, parseCookie as cookieParser,
     appVersion
 } from './server-core';
-import * as _fs from 'fs';
-import * as _path from 'path';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
 import * as fsw from './fsw';
 import { Util, getAppDir } from './app-util';
 import { Schema } from './schema-validator';
@@ -643,7 +643,7 @@ ${appRoot}\\www_public
         this.virtualInfo = Object.create(null);
         this._config.bundler.tempPath = this.mapPath(this._config.bundler.tempPath);
         this._config.staticFile.tempPath = this.mapPath(this._config.staticFile.tempPath);
-        this.createLogger();
+        this._log = new ShadowLogger();
         return;
     }
     on: (ev: "shutdown", handler: () => void) => void;
@@ -1081,7 +1081,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
             req.session = _server.parseSession(req.cookies);
             SessionSecurity.isValidSession(req);
-            return next();
+            return process.nextTick(() => next());
         });
         _app.use((req: IRequest, res: IResponse, next: NextFunction) => {
             const context = _process.createContext(req, res, next);

@@ -45,16 +45,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Template = exports.TemplateCore = exports.templateNext = void 0;
 // 9:01 PM 5/2/2020
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _vm = __importStar(require("vm"));
-const _zlib = __importStar(require("zlib"));
-const _path = __importStar(require("path"));
+const _fs = __importStar(require("node:fs"));
+const _vm = __importStar(require("node:vm"));
+const _zlib = __importStar(require("node:zlib"));
+const _path = __importStar(require("node:path"));
 const http_status_1 = require("./http-status");
 const fsw = __importStar(require("./fsw"));
 const app_util_1 = require("./app-util");
-const os_1 = require("os");
+const node_os_1 = require("node:os");
 const file_info_1 = require("./file-info");
-const _isWin = (0, os_1.platform)() === "win32";
+const _isWin = (0, node_os_1.platform)() === "win32";
 function templateNext(ctx, next, isCompressed) {
     throw new Error("Method not implemented.");
 }
@@ -268,7 +268,7 @@ class TemplateParser {
         const forword = () => {
             const orgMatch = match.shift();
             if (!orgMatch)
-                return next(str);
+                return process.nextTick(() => next(str));
             const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
             return _fileInfo.exists(abspath, (exists, url) => {
@@ -361,7 +361,7 @@ class TemplateParser {
                     parentTemplate = templats[len].replace(/\r\n/gi, "8_r_n_gx_8").replace(/\n/gi, "8_n_gx_8");
                     body = this.margeTemplate(match, parentTemplate, body);
                 } while (len > 0);
-                return next(body.replace(/8_r_n_gx_8/gi, "\r\n").replace(/8_n_gx_8/gi, "\n"));
+                return process.nextTick(() => next(body.replace(/8_r_n_gx_8/gi, "\r\n").replace(/8_n_gx_8/gi, "\n")));
             }
             catch (e) {
                 return ctx.transferError(e);
@@ -379,7 +379,7 @@ class TemplateParser {
 class TemplateCore {
     static compile(str, next) {
         if (!str) {
-            return next({ str: "", err: new Error("No script found to compile....") });
+            return process.nextTick(() => next({ str: "", err: new Error("No script found to compile....") }));
         }
         try {
             const sandBox = `${(0, app_util_1.generateRandomString)(30)}_thisNext`;
@@ -390,10 +390,10 @@ class TemplateCore {
             script.runInContext(_vm.createContext(global));
             const func = global.sow.templateCtx[sandBox];
             delete global.sow.templateCtx[sandBox];
-            return next({ str, isScript: true, sandBox: func });
+            return process.nextTick(() => next({ str, isScript: true, sandBox: func }));
         }
         catch (e) {
-            return next({ str, err: e });
+            return process.nextTick(() => next({ str, err: e }));
         }
     }
     static parseScript(str) {
@@ -461,7 +461,7 @@ class TemplateCore {
                 return fnext(tstr, true);
             });
         }
-        return fnext(str, false);
+        return process.nextTick(() => fnext(str, false));
     }
     static run(ctx, appRoot, str, next) {
         return this._run(ctx, appRoot, str, (fstr, isTemplate) => {
@@ -545,7 +545,7 @@ class TemplateLink {
         const key = this._getCacheMape(path);
         const cache = _tw.cache[key];
         if (cache)
-            return next(cache);
+            return process.nextTick(() => next(cache));
         return _fileInfo.exists(path, (exists, url) => {
             if (!exists)
                 return ctx.next(404);

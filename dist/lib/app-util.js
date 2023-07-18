@@ -43,9 +43,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Util = exports.generateRandomString = exports.getAppDir = exports.getLibRoot = exports.assert = void 0;
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
-const stream_1 = require("stream");
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
+const node_stream_1 = require("node:stream");
 const destroy = require("destroy");
 const fsw_1 = require("./fsw");
 function _isPlainObject(obj) {
@@ -172,7 +172,7 @@ class Util {
         return ctx.handleError(null, () => {
             const statusCode = ctx.res.statusCode;
             const openenedFile = _fs.createReadStream(absPath);
-            return (0, stream_1.pipeline)(openenedFile, ctx.res, (err) => {
+            return (0, node_stream_1.pipeline)(openenedFile, ctx.res, (err) => {
                 destroy(openenedFile);
                 ctx.next(statusCode);
             }), void 0;

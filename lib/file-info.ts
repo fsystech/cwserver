@@ -20,8 +20,8 @@
 
 // 10:56 AM 8/1/2022
 // by rajib chy
-import * as _fs from 'fs';
-import * as _path from 'path';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
 export interface IFileDescription {
     readonly url: string;
     readonly exists: boolean;
@@ -45,7 +45,7 @@ export class FileDescription implements IFileDescription {
     }
 }
 export interface IFileInfoCacheHandler {
-    rmove(path: string) : boolean;
+    rmove(path: string): boolean;
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
     exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
 }
@@ -54,7 +54,7 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
     constructor() {
         this._pathCache = {};
     }
-    rmove(path: string) : boolean {
+    rmove(path: string): boolean {
         if (this._pathCache[path]) {
             delete this._pathCache[path];
             return true;
@@ -64,7 +64,7 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void {
         if (!force) {
             const info = this._pathCache[path];
-            if (info) return next(info);
+            if (info) return process.nextTick(() => next(info));
         }
         const url = _path.resolve(path);
         _fs.stat(url, (serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats): void => {

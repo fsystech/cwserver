@@ -48,8 +48,8 @@ exports.initilizeServer = exports.SowServer = exports.SessionSecurity = exports.
 // by rajib chy
 const app_static_1 = require("./app-static");
 const server_core_1 = require("./server-core");
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
 const fsw = __importStar(require("./fsw"));
 const app_util_1 = require("./app-util");
 const schema_validator_1 = require("./schema-validator");
@@ -459,7 +459,7 @@ ${appRoot}\\www_public
         this.virtualInfo = Object.create(null);
         this._config.bundler.tempPath = this.mapPath(this._config.bundler.tempPath);
         this._config.staticFile.tempPath = this.mapPath(this._config.staticFile.tempPath);
-        this.createLogger();
+        this._log = new logger_1.ShadowLogger();
         return;
     }
     getAppConfigName() {
@@ -910,7 +910,7 @@ function initilizeServer(appRoot, wwwName) {
         _app.prerequisites((req, res, next) => {
             req.session = _server.parseSession(req.cookies);
             SessionSecurity.isValidSession(req);
-            return next();
+            return process.nextTick(() => next());
         });
         _app.use((req, res, next) => {
             const context = _process.createContext(req, res, next);

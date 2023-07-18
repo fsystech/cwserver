@@ -24,8 +24,8 @@ import { Encryption } from './encryption';
 import { ISowServer } from './server';
 import { ISession } from './app-static';
 import { Util } from './app-util';
-import { EventEmitter } from 'events';
-import { Server } from 'http';
+import { EventEmitter } from 'node:events';
+import { Server } from 'node:http';
 /** [socket.io blueprint] */
 export interface IOSocket extends EventEmitter {
     nsp: object;

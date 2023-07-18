@@ -45,8 +45,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.isValidExtension = exports.getMimeType = exports.loadMimeType = void 0;
 // 12:04 AM 6/19/2020
 // by rajib chy
-const _fs = __importStar(require("fs"));
-const _path = __importStar(require("path"));
+const _fs = __importStar(require("node:fs"));
+const _path = __importStar(require("node:path"));
 const app_util_1 = require("./app-util");
 function loadMimeType() {
     const libRoot = (0, app_util_1.getAppDir)();

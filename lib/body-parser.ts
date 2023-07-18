@@ -20,14 +20,14 @@
 
 // 11:17 PM 5/5/2020
 // by rajib chy
-import { EventEmitter } from 'events';
-import { deprecate } from 'util';
-import * as _fs from 'fs';
-import * as _path from 'path';
+import { EventEmitter } from 'node:events';
+import { deprecate, TextDecoder } from 'node:util';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
 // import Dicer from 'dicer';
 import { Dicer, PartStream } from './dicer';
-import { pipeline } from 'stream';
-import os from 'os';
+import { pipeline } from 'node:stream';
+import os from 'node:os';
 import destroy = require('destroy');
 import { IRequest } from './server-core';
 
@@ -423,21 +423,18 @@ class DataParser implements IDataParser {
 function decode(str: string): string {
     return decodeURIComponent(str.replace(/\+/g, ' '));
 }
-export function decodeBodyBuffer(buff: Buffer, part: (k: string, v: string) => void) {
-    let p: number = 0;
-    const len: number = buff.length;
-    while (p < len) {
-        let nd: number = buff.indexOf(0x26/*&*/, p);
-        if (nd === -1) {
-            nd = len;
+export function decodeBodyBuffer(buff: Buffer): NodeJS.Dict<string> {
+    const outObj: NodeJS.Dict<string> = {};
+    const decoder: TextDecoder = new TextDecoder('utf-8');
+    const params = new URLSearchParams(decoder.decode(buff));
+    for (const [key, value] of params.entries()) {
+        if (!value) {
+            // &p=10&a
+            continue;
         }
-        const eq: number = buff.indexOf(0x3D/*=*/, p);
-        if (eq === -1 || eq > nd) {
-            throw new Error("Malformed data");
-        }
-        part(decode(buff.toString('binary', p, eq)), decode(buff.toString('binary', eq + 1, nd)));
-        p = nd + 1;
+        outObj[decode(key)] = decode(value);
     }
+    return outObj;
 }
 const MaxBuffLength: number = 1024 * 1024 * 20; // (20mb)
 class BodyParser implements IBodyParser {
@@ -577,10 +574,7 @@ class BodyParser implements IBodyParser {
         if (this._contentTypeEnum === ContentType.RAW_TEXT) {
             throw new Error("Raw Text data found. It's can not transform to json.");
         }
-        const outObj: NodeJS.Dict<string> = {};
-        decodeBodyBuffer(this._parser.body, (k: string, v: string): void => {
-            outObj[k] = v;
-        });
+        const outObj: NodeJS.Dict<string> = decodeBodyBuffer(this._parser.body);
         Util.extend(outObj, this._parser.getMultipartBody());
         return outObj;
     }
@@ -639,14 +633,14 @@ class BodyParser implements IBodyParser {
     }
     public parse(onReadEnd: (err?: Error) => void): void {
         if (!this.isValidRequest())
-            return onReadEnd(new Error("Invalid request defiend...."));
+            return process.nextTick(() => onReadEnd(new Error("Invalid request defiend....")));
         if (
             this._contentTypeEnum === ContentType.APP_JSON ||
             this._contentTypeEnum === ContentType.URL_ENCODE ||
             this._contentTypeEnum === ContentType.RAW_TEXT
         ) {
             if (this._contentLength > this._maxBuffLength) {
-                return onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`));
+                return process.nextTick(() => onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`)));
             }
         }
         if (
@@ -661,7 +655,6 @@ class BodyParser implements IBodyParser {
                 this._isReadEnd = true;
                 return onReadEnd();
             });
-            // this._req.on("close", this.finalEvent("close", onReadEnd));
             return;
         }
         const match: RegExpExecArray | null = RE_BOUNDARY.exec(this._contentType);
@@ -673,7 +666,6 @@ class BodyParser implements IBodyParser {
                 return this.tryFinish(onReadEnd);
             });
             this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
-            // this._req.on("close", this.finalEvent("close", onReadEnd));
             this._req.pipe(this._multipartParser);
         }
     }

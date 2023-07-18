@@ -20,8 +20,8 @@
 
 // 5:17 PM 6/15/2020
 // by rajib chy
-import * as _fs from 'fs';
-import * as _path from 'path';
+import * as _fs from 'node:fs';
+import * as _path from 'node:path';
 import { ErrorHandler } from './app-static';
 const _fsRmdir = typeof (_fs.rm) === "function" ? _fs.rm : _fs.rmdir;
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
@@ -116,7 +116,7 @@ function mkdirCheckAndCreate(
     fnext: (done: boolean) => void,
     path?: string
 ) {
-    if (!path) return fnext(true);
+    if (!path) return process.nextTick(() => fnext(true));
     return _fs.stat(path, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
         if (!err) return fnext(false);
         return _fs.mkdir(path, (merr: NodeJS.ErrnoException | null): void => {
@@ -132,7 +132,9 @@ export function mkdir(
     next: (err: NodeJS.ErrnoException | null) => void,
     errHandler: ErrorHandler
 ): void {
-    if (rootDir.length === 0) return next(new Error("Argument missing..."));
+    if (rootDir.length === 0) {
+        return process.nextTick(() => next(new Error("Argument missing...")));
+    }
     let fullPath: string = "";
     let sep: string = "";
     if (targetDir && targetDir.length > 0) {
@@ -255,9 +257,9 @@ export function copyFile(
     errHandler: ErrorHandler
 ): void {
     if (!_path.parse(src).ext)
-        return next(new Error("Source file path required...."));
+        return process.nextTick(() => next(new Error("Source file path required....")));
     if (!_path.parse(dest).ext)
-        return next(new Error("Dest file path required...."));
+        return process.nextTick(() => next(new Error("Dest file path required....")));
     return _fs.stat(src, (errs: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
         if (errs)
             return next(new Error(`Source directory not found ${src}`));

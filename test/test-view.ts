@@ -499,21 +499,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 					})).toBeInstanceOf(Error);
 					parser.dispose();
 				})();
-				(() => {
-					expect(shouldBeError(() => {
-						try {
-							//let data: NodeJS.Dict<string> = {};
-							decodeBodyBuffer(Buffer.from("data==10&p=10&a"), (k: string, b: string): void => {
-								// Nothing to do
-								//data[k] = b;
-							});
-							//console.log(data);
-						} catch (exp: any) {
-							console.log(`decodeBodyBuffer->Error ${exp.message}`);
-						}
-						throw new Error("decodeBodyBuffer error");
-					})).toBeInstanceOf(Error);
-				})();
+				expect(decodeBodyBuffer(Buffer.from("data==10&p=10&a"))).toBeInstanceOf(Object);
 				(() => {
 					const parser = new PayloadParser(ctx.req, server.mapPath("/upload/temp/"));
 					parser.clear();
