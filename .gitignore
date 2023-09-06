@@ -1,0 +1,14 @@
+.vscode
+node_modules
+.nyc_output
+coverage
+**/log
+package-lock.json
+lib/body-parser.ts.bak
+dist/error_page/404.html.cach
+dist/error_page/500.html.cach
+**/.vs
+**/obj/Debug
+**/**/**/*.cach
+**/web/temp
+lib/sow-ws.ts.bak

@@ -72,7 +72,7 @@ After, run this command ```node server www /**your project root*/```<br/>
 ### How to setup middleware ###
 First process ```app.prerequisites``` every request and then run ```app.use```
 ```
-global.sow.server.on( "register-view", ( app, controller, server ) => {
+global.cw.server.on( "register-view", ( app, controller, server ) => {
 	app.prerequisites( ( req, res, next ): void => {
 		res.setHeader( 'x-frame-options', 'sameorigin' );
 		return next();
@@ -85,7 +85,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 ```
 ### How to setup router ? ###
 ```
-global.sow.server.on( "register-view", ( app, controller, server ) => {
+global.cw.server.on( "register-view", ( app, controller, server ) => {
     controller
         .any( '/test-any/*', ( ctx, match ) => {
             return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: match } );
@@ -103,7 +103,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 ```
 ### How to add Virtual Directory ? ###
 ```
-global.sow.server.on( "register-view", ( app, controller, server ) => {
+global.cw.server.on( "register-view", ( app, controller, server ) => {
     const vDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
     server.addVirtualDir( "/vtest", vDir, ( ctx ) => {
         return mimeHandler.render( ctx, vDir, true );
@@ -116,7 +116,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 Session cookie name use from ```app.config.json => session.cookie```<br/>
 and session encryption use ```app.config.json => session.key```
 ```
-global.sow.server.on( "register-view", ( app, controller, server ) => {
+global.cw.server.on( "register-view", ( app, controller, server ) => {
     controller.get( '/authenticate/:loginId/:roleid', ( ctx, requestParam ) => {
         if ( ctx.req.session.isAuthenticated ) {
             ctx.res.status( 200 ).type( "html" ).send( `Hello ${ctx.req.session.loginId}` );
@@ -130,7 +130,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 ```
 ### SignOut From Application ###
 ```
-global.sow.server.on( "register-view", ( app, controller, server ) => {
+global.cw.server.on( "register-view", ( app, controller, server ) => {
 	controller.get( '/signout', ( ctx, requestParam ) => {
 		if ( ctx.session.isAuthenticated ) {
 			ctx.signOut();
@@ -142,7 +142,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 ### Handle post data ###
 ```
 const { getBodyParser, fsw } = require( 'cwserver' );
-global.sow.server.on( "register-view", ( app, controller, server ) => {
+global.cw.server.on( "register-view", ( app, controller, server ) => {
     const downloadDir = server.mapPath( "/upload/data/" );
     if ( !fs.existsSync( downloadDir ) ) {
         fsw.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
@@ -327,7 +327,7 @@ process.on( 'SIGINT', () => {
     }, 200 );
 } );
 app.listen( server.port, () => server.log.write( `
-    [+] Maintance      : https://www.safeonline.world
+    [+] Maintance      : https://www.fsys.tech
     [+] Server         : http://localhost:${server.port}
     [+] Socket         : ws://localhost:${server.port}${server.socketPath}
     [~] Running Server...
@@ -349,4 +349,4 @@ run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
 [coveralls-image]: https://img.shields.io/coveralls/github/safeonlineworld/cwserver/master
 [coveralls-url]: https://coveralls.io/github/safeonlineworld/cwserver?branch=master
 [cwserver-logo]: https://i.imgur.com/OSbUHaJ.png
-[cwserver-url]: http://cwserver.safeonline.world/
+[cwserver-url]: http://cwserver.fsys.tech/

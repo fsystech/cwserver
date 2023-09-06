@@ -1,5 +1,5 @@
 "use strict";
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -57,7 +57,7 @@ function wsClient() {
     return new WsClientInfo();
 }
 exports.wsClient = wsClient;
-class SowSocketServer {
+class CwSocketServer {
     get clients() {
         return this._clients;
     }
@@ -75,7 +75,7 @@ class SowSocketServer {
         return this._clients.some(soc => soc.hash === hash);
     }
     getOwners(group) {
-        return group ? this._clients.filter(soc => soc.isOwner === true && soc.group === group) : this._clients.filter(soc => soc.isOwner === true);
+        return group ? this._clients.filter(soc => soc.iCwner === true && soc.group === group) : this._clients.filter(soc => soc.iCwner === true);
     }
     findByHash(hash) {
         return this._clients.filter(soc => soc.hash === hash);
@@ -159,7 +159,7 @@ class SowSocketServer {
                     hash: void 0,
                     socketId: socket.id,
                     isAuthenticated: socket.request.session.isAuthenticated,
-                    isOwner: false,
+                    iCwner: false,
                     group: void 0,
                     isReconnectd: false,
                     roleId: "_INVALID_",
@@ -204,7 +204,7 @@ function socketInitilizer(server, wsClientInfo) {
         throw new Error("`beforeInitiateConnection` event did not registered...");
     }
     let _wsEvent = void 0;
-    const _ws = new SowSocketServer(server, wsClientInfo);
+    const _ws = new CwSocketServer(server, wsClientInfo);
     return {
         get wsServer() {
             return _ws;

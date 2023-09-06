@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ import { IRequestParam } from './app-router';
 import {
     NextFunction, IApplication,
     IRequest, IResponse,
-    App as sowAppCore, parseCookie as cookieParser,
+    App as CwAppCore, parseCookie as cookieParser,
     appVersion
 } from './server-core';
 import * as _fs from 'node:fs';
@@ -36,7 +36,7 @@ import * as fsw from './fsw';
 import { Util, getAppDir } from './app-util';
 import { Schema } from './schema-validator';
 import { Session } from './app-static';
-import { ISowDatabaseType } from './db-type';
+import { ICwDatabaseType } from './db-type';
 import { Controller, IController } from './app-controller';
 import { Encryption, ICryptoInfo } from "./encryption";
 import { HttpStatus } from "./http-status";
@@ -56,7 +56,7 @@ export interface IContext {
     root: string;
     readonly session: ISession;
     servedFrom?: string;
-    readonly server: ISowServer;
+    readonly server: ICwServer;
     next: CtxNext;
     redirect(url: string, force?: boolean): IContext;
     transferRequest(toPath: string | number): void;
@@ -146,13 +146,13 @@ export interface IServerConfig {
     /** If `useFullOptimization` true we will set highest priority to memory */
     useFullOptimization: boolean;
 }
-export interface ISowServer {
+export interface ICwServer {
     readonly version: string;
     readonly errorPage: { [x: string]: string; };
     readonly log: ILogger;
     readonly config: IServerConfig;
     readonly encryption: IServerEncryption;
-    readonly db: NodeJS.Dict<ISowDatabaseType>;
+    readonly db: NodeJS.Dict<ICwDatabaseType>;
     readonly port: string | number;
     copyright(): string;
     createLogger(): void;
@@ -187,7 +187,7 @@ export interface ISowServer {
     parseMaxAge(maxAge: any): number;
     on(ev: 'shutdown', handler: () => void): void;
 }
-export type IViewHandler = (app: IApplication, controller: IController, server: ISowServer) => void;
+export type IViewHandler = (app: IApplication, controller: IController, server: ICwServer) => void;
 // -------------------------------------------------------
 export const {
     disposeContext, removeContext,
@@ -215,7 +215,7 @@ export const {
             disposeContext(ctx);
             return void 0;
         },
-        getContext(server: ISowServer, req: IRequest, res: IResponse): IContext {
+        getContext(server: ICwServer, req: IRequest, res: IResponse): IContext {
             if (_curContext[req.id]) return _curContext[req.id];
             const context: IContext = new Context(server, req, res);
             _curContext[req.id] = context;
@@ -250,12 +250,12 @@ function parseMaxAge(maxAge: any): number {
     return getEpoch(type.toUpperCase(), parseInt(add), maxAge);
 }
 const _formatPath = (() => {
-    const _exportPath = (server: ISowServer, path: string): string | void => {
+    const _exportPath = (server: ICwServer, path: string): string | void => {
         if (path === "root") return server.getRoot();
         if (path === "public") return server.getPublicDirName();
         return undefined;
     }
-    return (server: ISowServer, path: string, noCheck?: boolean): string => {
+    return (server: ICwServer, path: string, noCheck?: boolean): string => {
         if (/\$/gi.test(path) === false) return path;
         const absPath: string = _path.resolve(path.replace(/\$.+?\//gi, (m) => {
             m = m.replace(/\$/gi, "").replace(/\//gi, "");
@@ -318,8 +318,8 @@ export class Context implements IContext {
         return this._req.session;
     }
     public servedFrom?: string;
-    private _server: ISowServer;
-    public get server(): ISowServer {
+    private _server: ICwServer;
+    public get server(): ICwServer {
         return this._server;
     }
     private _next?: CtxNext;
@@ -335,7 +335,7 @@ export class Context implements IContext {
         this._next = val;
     }
     constructor(
-        server: ISowServer,
+        server: ICwServer,
         req: IRequest,
         res: IResponse
     ) {
@@ -471,14 +471,14 @@ export class ServerConfig implements IServerConfig {
     };
     useFullOptimization: boolean;
     constructor() {
-        this.Author = "Safe Online World Ltd.";
-        this.appName = "Sow Server";
+        this.Author = "FSys Tech Ltd.";
+        this.appName = "Cw Server";
         this.version = "0.0.1";
         this.packageVersion = "101";
         this.isDebug = true;
         this.encryptionKey = Object.create(null);
         this.session = {
-            "cookie": "_sow_session",
+            "cookie": "_Cw_session",
             "key": Object.create(null),
             "maxAge": 100,
             isSecure: false
@@ -552,7 +552,7 @@ export class SessionSecurity {
         return;
     }
 }
-export class SowServer implements ISowServer {
+export class CwServer implements ICwServer {
     private _public: string;
     private _log: ILogger;
     private _root: string;
@@ -565,7 +565,7 @@ export class SowServer implements ISowServer {
     private _userInteractive: boolean;
     private _encryption: IServerEncryption;
     private _isInitilized: boolean = false;
-    private _db: NodeJS.Dict<ISowDatabaseType>;
+    private _db: NodeJS.Dict<ICwDatabaseType>;
     private _errorPage: { [x: string]: string; };
     public get version() {
         return appVersion;
@@ -585,7 +585,7 @@ export class SowServer implements ISowServer {
     public get port(): string | number {
         return this._port;
     }
-    public get db(): NodeJS.Dict<ISowDatabaseType> {
+    public get db(): NodeJS.Dict<ICwDatabaseType> {
         return this._db;
     }
     public get encryption(): IServerEncryption {
@@ -759,7 +759,7 @@ ${appRoot}\\www_public
         });
     }
     copyright(): string {
-        return '//\tCopyright (c) 2022 Safe Online World Ltd.\r\n';
+        return '//\tCopyright (c) 2022 FSys Tech Ltd.\r\n';
     }
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
         const context = getContext(this, req, res);
@@ -933,7 +933,7 @@ ${appRoot}\\www_public
         return Encryption.encryptUri(str, this._config.encryptionKey);
     }
     addMimeType(extension: string, val: string): void {
-        return global.sow.HttpMime.add(extension, val);
+        return global.cw.HttpMime.add(extension, val);
     }
 }
 export interface IAppUtility {
@@ -942,12 +942,12 @@ export interface IAppUtility {
     readonly port: string | number;
     readonly socketPath: string;
     readonly log: ILogger;
-    readonly server: ISowServer;
+    readonly server: ICwServer;
     readonly controller: IController;
 }
 export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility {
-    if (global.sow.isInitilized) throw new Error("Server instance can initilize 1 time...");
-    const _server: SowServer = new SowServer(appRoot, wwwName);
+    if (global.cw.isInitilized) throw new Error("Server instance can initilize 1 time...");
+    const _server: CwServer = new CwServer(appRoot, wwwName);
     const _process = {
         render: (code: number | undefined, ctx: IContext, next: NextFunction, transfer?: boolean): any => {
             if (transfer && typeof (transfer) !== "boolean") {
@@ -984,7 +984,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         if (_server.isInitilized) {
             throw new Error("Server already initilized");
         }
-        const _app: IApplication = sowAppCore();
+        const _app: IApplication = CwAppCore();
         _server.on = (ev: "shutdown", handler: () => void): void => {
             _app.on(ev, handler);
         };
@@ -1065,7 +1065,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         if (Util.isArrayLike(_server.config.views)) {
             _server.config.views.forEach(path => _importLocalAssets(path));
         }
-        global.sow.server.emit("register-view", _app, _controller, _server);
+        global.cw.server.emit("register-view", _app, _controller, _server);
         _controller.sort();
         _app.on("error", (req: IRequest, res: IResponse, err?: number | Error): void => {
             if (res.isAlive) {
@@ -1105,7 +1105,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _server.init();
         return _app;
     };
-    global.sow.isInitilized = true;
+    global.cw.isInitilized = true;
     return {
         init: initilize,
         get public() { return _server.public; },

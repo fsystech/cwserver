@@ -21,7 +21,7 @@ process.on( 'SIGINT', () => {
     }, 200 );
 } );
 app.listen( server.port, () => server.log.write( `
-    [+] Maintance      : https://www.safeonline.world
+    [+] Maintance      : https://www.fsys.tech
     [+] Server         : http://localhost:${server.port}
     [+] Socket         : ws://localhost:${server.port}${server.socketPath}
     [~] Running Server...

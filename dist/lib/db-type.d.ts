@@ -30,7 +30,7 @@ export type QResult<R extends QueryResultRow> = {
     err?: Error;
     res?: QueryResult<R>;
 };
-export interface ISowDatabaseType {
+export interface ICwDatabaseType {
     [id: string]: (...args: any[]) => any;
     getConn(): any;
     executeIo(sp: string, ctx: string, formObj: string, next: (resp: IoResult) => void): void;

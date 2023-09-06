@@ -1,26 +1,26 @@
 {
   "name": "cwserver",
-  "version": "3.1.5",
+  "version": "4.0.0",
   "description": "A Complete NodeJS Web Server",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": {
-    "name": "Safe Online World Ltd.",
-    "email": "safeonlineworld@gmail.com",
-    "url": "https://github.com/safeonlineworld/cwserver/issues"
+    "name": "FSys Tech Ltd.",
+    "email": "fsystechltd@gmail.com",
+    "url": "https://github.com/fsystech/cwserver/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/safeonlineworld/cwserver.git"
+    "url": "https://github.com/fsystech/cwserver.git"
   },
-  "homepage": "https://github.com/safeonlineworld/cwserver#readme",
+  "homepage": "https://github.com/fsystech/cwserver#readme",
   "license": "MIT",
   "scripts": {
     "clean": "node clean.js",
     "build": "node clean.js && tsc",
     "lint": "tslint --config tslint.json --project tsconfig.json",
-    "test:cov": "nyc node_modules/mocha/bin/_mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts",
-    "test:mocha": "mocha --require ts-node/register test/env.ts --globals sow --check-leaks --recursive test/*.spec.ts"
+    "test:cov": "nyc node_modules/mocha/bin/_mocha --require ts-node/register test/env.ts --globals cw --check-leaks --recursive test/*.spec.ts",
+    "test:mocha": "mocha --require ts-node/register test/env.ts --globals cw --check-leaks --recursive test/*.spec.ts"
   },
   "keywords": [
     "cwserver",

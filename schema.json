@@ -8,10 +8,10 @@
       "type": "string",
       "minLength": 1,
       "required": [
-        "Safe Online World Ltd."
+        "FSys Tech Ltd."
       ],
-      "const": "Safe Online World Ltd.",
-      "default": "Safe Online World Ltd.",
+      "const": "FSys Tech Ltd.",
+      "default": "FSys Tech Ltd.",
       "description": "cwserver Author Name"
     },
     "appName": {

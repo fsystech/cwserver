@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/cwserver/schema.json",
-  "Author": "Safe Online World Ltd.",
+  "Author": "FSys Tech Ltd.",
   "appName": "cwserver",
   "version": "0.0.1",
   "packageVersion": "1",

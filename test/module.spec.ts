@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -229,7 +229,7 @@ describe("cwserver-core", () => {
     it("application listen", (done: Mocha.Done): void => {
         app.listen(appUtility.port, () => {
             appUtility.log.write(`
-    [+] Maintance      : https://www.safeonline.world
+    [+] Maintance      : https://www.fsys.tech
     [+] Server         : http://localhost:${appUtility.port}
     [+] Socket         : ws://localhost:${appUtility.port}${appUtility.socketPath}
     [~] Running appUtility...
@@ -478,7 +478,7 @@ describe("cwserver-view", () => {
     it('should throw error (After initilize view, you should not register new veiw)', (done: Mocha.Done): void => {
         expect(shouldBeError(() => {
             // tslint:disable-next-line: no-empty
-            global.sow.server.on("register-view", (_app, controller, server) => { });
+            global.cw.server.on("register-view", (_app, controller, server) => { });
         })).toBeInstanceOf(Error);
         done();
     });
@@ -2752,7 +2752,7 @@ describe("cwserver-fsw", () => {
         this.timeout(5000);
         const root: string = path.resolve(`${appRoot}/ewww`);
         const filePath: string = path.resolve(root + "/config/app.config.json");
-        fs.writeFile(filePath, JSON.stringify({ name: "Safe Online World Ltd." }), (err: NodeJS.ErrnoException | null): void => {
+        fs.writeFile(filePath, JSON.stringify({ name: "FSys Tech Ltd." }), (err: NodeJS.ErrnoException | null): void => {
             assert(err === null, "test-fsw->fs.writeFile");
             fsw.readJson(filePath, (jerr: NodeJS.ErrnoException | null, json: { [id: string]: any } | void) => {
                 assert(jerr === null, "test-fsw->fsw.readJson");

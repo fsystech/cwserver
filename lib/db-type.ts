@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,7 @@ export type IoResult = {
 export type QResult<R extends QueryResultRow> = {
     isError: boolean; err?: Error; res?: QueryResult<R>;
 }
-export interface ISowDatabaseType {
+export interface ICwDatabaseType {
     [id: string]: (...args: any[]) => any;
     getConn(): any;
     executeIo(sp: string, ctx: string, formObj: string,

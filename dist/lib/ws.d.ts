@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { ISowServer } from './server';
+import { ICwServer } from './server';
 import { ISession } from './app-static';
 import { EventEmitter } from 'node:events';
 import { Server } from 'node:http';
@@ -43,19 +43,19 @@ export interface IWsClientInfo {
     on(ev: 'getClient', handler: IWsClient): void;
     on(ev: 'disConnected' | 'connected', handler: IEvtHandler): void;
     on(ev: 'beforeInitiateConnection', handler: IWsNext): void;
-    emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocketServer): void;
+    emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ICwSocketInfo, wsServer: ICwSocketServer): void;
     getServerEvent(): {
         [x: string]: any;
     } | void;
     beforeInitiateConnection: IWsNext;
     client: IWsClient;
 }
-export interface ISowSocketInfo {
+export interface ICwSocketInfo {
     token: string;
     loginId?: string;
     hash?: string;
     socketId: string;
-    isOwner: boolean;
+    iCwner: boolean;
     isAuthenticated: boolean;
     isReconnectd: boolean;
     group?: string;
@@ -63,28 +63,28 @@ export interface ISowSocketInfo {
     readonly socket: IOSocket;
     sendMsg(method: string, data: any): void;
 }
-export interface ISowSocketServer {
-    readonly clients: ISowSocketInfo[];
+export interface ICwSocketServer {
+    readonly clients: ICwSocketInfo[];
     isActiveSocket(token: string): boolean;
-    getOwners(group?: string): ISowSocketInfo[];
+    getOwners(group?: string): ICwSocketInfo[];
     exists(hash: string): boolean;
-    findByHash(hash: string): ISowSocketInfo[];
-    findByLogin(loginId: string): ISowSocketInfo[];
-    findByRoleId(roleId: string): ISowSocketInfo[];
-    findByToken(token: string): ISowSocketInfo[];
-    toList(sockets: ISowSocketInfo[]): {
+    findByHash(hash: string): ICwSocketInfo[];
+    findByLogin(loginId: string): ICwSocketInfo[];
+    findByRoleId(roleId: string): ICwSocketInfo[];
+    findByToken(token: string): ICwSocketInfo[];
+    toList(sockets: ICwSocketInfo[]): {
         [x: string]: any;
     }[];
-    getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[];
-    getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[];
-    getClientByExceptToken(token: string, group?: string): ISowSocketInfo[];
-    getSocket(token: string): ISowSocketInfo | void;
+    getClientByExceptHash(exceptHash: string, group?: string): ICwSocketInfo[];
+    getClientByExceptLogin(exceptLoginId: string, group?: string): ICwSocketInfo[];
+    getClientByExceptToken(token: string, group?: string): ICwSocketInfo[];
+    getSocket(token: string): ICwSocketInfo | void;
     removeSocket(token: string): boolean;
     sendMsg(token: string, method: string, data?: any): boolean;
 }
-type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocketServer) => void;
+type IEvtHandler = (me: ICwSocketInfo, wsServer: ICwSocketServer) => void;
 type IWsNext = (session: ISession, socket: IOSocket) => void | boolean;
-type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocketServer, server: ISowServer) => {
+type IWsClient = (me: ICwSocketInfo, session: ISession, CwSocket: ICwSocketServer, server: ICwServer) => {
     [x: string]: any;
 };
 export declare function wsClient(): IWsClientInfo;
@@ -93,12 +93,12 @@ export declare function wsClient(): IWsClientInfo;
  * const ws = socketInitilizer( server, SocketClient() );
  * ws.create( require( "socket.io" ), app.httpServer );
  */
-export declare function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
+export declare function socketInitilizer(server: ICwServer, wsClientInfo: IWsClientInfo): {
     readonly isConnectd: boolean;
     readonly wsEvent: {
         [x: string]: any;
     } | void;
     readonly create: (ioserver: any, httpServer: Server) => boolean;
-    readonly wsServer: ISowSocketServer;
+    readonly wsServer: ICwSocketServer;
 };
 export {};

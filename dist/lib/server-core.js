@@ -1,5 +1,5 @@
 "use strict";
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -616,9 +616,9 @@ class Application extends node_events_1.EventEmitter {
     }
 }
 function setAppHeader(res) {
-    res.setHeader('server', 'SOW Frontend');
+    res.setHeader('server', 'FSys Frontend');
     res.setHeader('x-app-version', exports.appVersion);
-    res.setHeader('x-powered-by', 'safeonline.world');
+    res.setHeader('x-powered-by', 'fsys.tech');
 }
 function App() {
     const app = new Application((0, node_http_1.createServer)((request, response) => {

@@ -1,5 +1,5 @@
 "use strict";
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initilizeServer = exports.SowServer = exports.SessionSecurity = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
+exports.initilizeServer = exports.CwServer = exports.SessionSecurity = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
 // 10:13 PM 5/2/2020
 // by rajib chy
 const app_static_1 = require("./app-static");
@@ -294,14 +294,14 @@ class Context {
 exports.Context = Context;
 class ServerConfig {
     constructor() {
-        this.Author = "Safe Online World Ltd.";
-        this.appName = "Sow Server";
+        this.Author = "FSys Tech Ltd.";
+        this.appName = "Cw Server";
         this.version = "0.0.1";
         this.packageVersion = "101";
         this.isDebug = true;
         this.encryptionKey = Object.create(null);
         this.session = {
-            "cookie": "_sow_session",
+            "cookie": "_Cw_session",
             "key": Object.create(null),
             "maxAge": 100,
             isSecure: false
@@ -378,7 +378,7 @@ class SessionSecurity {
     }
 }
 exports.SessionSecurity = SessionSecurity;
-class SowServer {
+class CwServer {
     get version() {
         return server_core_1.appVersion;
     }
@@ -579,7 +579,7 @@ ${appRoot}\\www_public
         });
     }
     copyright() {
-        return '//\tCopyright (c) 2022 Safe Online World Ltd.\r\n';
+        return '//\tCopyright (c) 2022 FSys Tech Ltd.\r\n';
     }
     createContext(req, res, next) {
         const context = (0, exports.getContext)(this, req, res);
@@ -766,14 +766,14 @@ ${appRoot}\\www_public
         return encryption_1.Encryption.encryptUri(str, this._config.encryptionKey);
     }
     addMimeType(extension, val) {
-        return global.sow.HttpMime.add(extension, val);
+        return global.cw.HttpMime.add(extension, val);
     }
 }
-exports.SowServer = SowServer;
+exports.CwServer = CwServer;
 function initilizeServer(appRoot, wwwName) {
-    if (global.sow.isInitilized)
+    if (global.cw.isInitilized)
         throw new Error("Server instance can initilize 1 time...");
-    const _server = new SowServer(appRoot, wwwName);
+    const _server = new CwServer(appRoot, wwwName);
     const _process = {
         render: (code, ctx, next, transfer) => {
             if (transfer && typeof (transfer) !== "boolean") {
@@ -894,7 +894,7 @@ function initilizeServer(appRoot, wwwName) {
         if (app_util_1.Util.isArrayLike(_server.config.views)) {
             _server.config.views.forEach(path => _importLocalAssets(path));
         }
-        global.sow.server.emit("register-view", _app, _controller, _server);
+        global.cw.server.emit("register-view", _app, _controller, _server);
         _controller.sort();
         _app.on("error", (req, res, err) => {
             if (res.isAlive) {
@@ -936,7 +936,7 @@ function initilizeServer(appRoot, wwwName) {
         return _app;
     }
     ;
-    global.sow.isInitilized = true;
+    global.cw.isInitilized = true;
     return {
         init: initilize,
         get public() { return _server.public; },

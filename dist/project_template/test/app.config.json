@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/cwserver/schema.json",
-  "Author": "Safe Online World Ltd.",
+  "Author": "FSys Tech Ltd.",
   "appName": "cwserver",
   "version": "0.0.1",
   "packageVersion": "1",
@@ -57,8 +57,8 @@
   "hostInfo": {
     "origin": [],
     "root": "www",
-    "hostName": "cwserver.safeonline.world",
-    "frameAncestors": "http://www.safeonline.world",
+    "hostName": "cwserver.fsys.tech",
+    "frameAncestors": "http://www.fsys.tech",
     "tls": false,
     "cert": {},
     "port": 8080

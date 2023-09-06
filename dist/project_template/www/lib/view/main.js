@@ -1,6 +1,6 @@
 //#!/usr/bin/env node
 /**
-* Copyright (c) 2018, SOW ( https://safeonline.world, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
+* Copyright (c) 2018, SOW ( https://fsys.tech, https://www.facebook.com/safeonlineworld). (https://github.com/safeonlineworld/cwserver) All rights reserved.
 * Copyrights licensed under the New BSD License.
 * See the accompanying LICENSE file for terms.
 */
@@ -18,7 +18,7 @@ function _generateRandomNumber( num ) {
 	}
 	return result;
 }
-global.sow.server.on( "register-view", ( app, controller, server ) => {
+global.cw.server.on( "register-view", ( app, controller, server ) => {
 	const { getBodyParser, Encryption, fsw } = require( 'cwserver' );
 	// const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
 	// const ws = socketInitilizer(server, require("../socket-client"));
@@ -39,7 +39,7 @@ global.sow.server.on( "register-view", ( app, controller, server ) => {
 	//		ctx.next(200);
 	//	});
 	//});
-	global.sow.server.on( "register-view", ( app, controller, server ) => {
+	global.cw.server.on( "register-view", ( app, controller, server ) => {
 		controller.get( '/authenticate/:loginId/:roleid', ( ctx, requestParam ) => {
 			if ( ctx.req.session.isAuthenticated ) {
 				ctx.res.status( 200 ).type( "html" ).send( `Hello ${ctx.req.session.loginId}` );

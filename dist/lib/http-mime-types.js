@@ -1,5 +1,5 @@
 "use strict";
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -75,14 +75,14 @@ function setCharset(mimeType) {
 }
 function getMimeType(extension) {
     extension = extension.replace(/^.*[\.\/\\]/gi, '').toLowerCase();
-    const mimeType = global.sow.HttpMime.type(extension);
+    const mimeType = global.cw.HttpMime.type(extension);
     if (!mimeType)
         throw new Error(`Unsupported extension =>${extension}`);
     return setCharset(mimeType);
 }
 exports.getMimeType = getMimeType;
 function isValidExtension(extension) {
-    return global.sow.HttpMime.type(extension) ? true : false;
+    return global.cw.HttpMime.type(extension) ? true : false;
 }
 exports.isValidExtension = isValidExtension;
 //# sourceMappingURL=http-mime-types.js.map

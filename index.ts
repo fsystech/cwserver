@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,11 +31,11 @@ export * as fsw from './lib/fsw';
 export { Streamer } from './lib/web-streamer';
 export { socketInitilizer, wsClient } from './lib/ws';
 export { createProjectTemplate } from './lib/project-template';
-export { IContext, ISowServer, SessionSecurity } from './lib/server';
+export { IContext, ICwServer, SessionSecurity } from './lib/server';
 export { App, IApplication, IRequest, IResponse, parseCookie, readAppVersion, appVersion } from './lib/server-core';
 export { IRequestParam } from './lib/app-router';
 export { IController } from './lib/app-controller';
 export { ISession, Session } from './lib/app-static';
 export { IPostedFileInfo, UploadFileInfo, IBodyParser } from './lib/body-parser';
-export { IWsClientInfo, ISowSocketServer, ISowSocketInfo, IOSocket } from './lib/ws';
+export { IWsClientInfo, ICwSocketServer, ICwSocketInfo, IOSocket } from './lib/ws';
 export { IoResult, QResult, QueryResult } from './lib/db-type';

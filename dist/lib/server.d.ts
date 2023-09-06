@@ -3,7 +3,7 @@
 import { ISession, IResInfo } from "./app-static";
 import { IRequestParam } from './app-router';
 import { NextFunction, IApplication, IRequest, IResponse } from './server-core';
-import { ISowDatabaseType } from './db-type';
+import { ICwDatabaseType } from './db-type';
 import { IController } from './app-controller';
 import { ICryptoInfo } from "./encryption";
 import { ILogger } from "./logger";
@@ -21,7 +21,7 @@ export interface IContext {
     root: string;
     readonly session: ISession;
     servedFrom?: string;
-    readonly server: ISowServer;
+    readonly server: ICwServer;
     next: CtxNext;
     redirect(url: string, force?: boolean): IContext;
     transferRequest(toPath: string | number): void;
@@ -113,7 +113,7 @@ export interface IServerConfig {
     /** If `useFullOptimization` true we will set highest priority to memory */
     useFullOptimization: boolean;
 }
-export interface ISowServer {
+export interface ICwServer {
     readonly version: string;
     readonly errorPage: {
         [x: string]: string;
@@ -121,7 +121,7 @@ export interface ISowServer {
     readonly log: ILogger;
     readonly config: IServerConfig;
     readonly encryption: IServerEncryption;
-    readonly db: NodeJS.Dict<ISowDatabaseType>;
+    readonly db: NodeJS.Dict<ICwDatabaseType>;
     readonly port: string | number;
     copyright(): string;
     createLogger(): void;
@@ -155,8 +155,8 @@ export interface ISowServer {
     parseMaxAge(maxAge: any): number;
     on(ev: 'shutdown', handler: () => void): void;
 }
-export type IViewHandler = (app: IApplication, controller: IController, server: ISowServer) => void;
-export declare const disposeContext: (ctx: IContext) => void, removeContext: (id: string) => void, getContext: (server: ISowServer, req: IRequest, res: IResponse) => IContext, getMyContext: (id: string) => IContext | undefined;
+export type IViewHandler = (app: IApplication, controller: IController, server: ICwServer) => void;
+export declare const disposeContext: (ctx: IContext) => void, removeContext: (id: string) => void, getContext: (server: ICwServer, req: IRequest, res: IResponse) => IContext, getMyContext: (id: string) => IContext | undefined;
 export declare class ServerEncryption implements IServerEncryption {
     private cryptoInfo;
     constructor(inf: ICryptoInfo);
@@ -183,11 +183,11 @@ export declare class Context implements IContext {
     get session(): ISession;
     servedFrom?: string;
     private _server;
-    get server(): ISowServer;
+    get server(): ICwServer;
     private _next?;
     get next(): CtxNext;
     set next(val: CtxNext);
-    constructor(server: ISowServer, req: IRequest, res: IResponse);
+    constructor(server: ICwServer, req: IRequest, res: IResponse);
     addError(err: NodeJS.ErrnoException | Error): void;
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
@@ -265,7 +265,7 @@ export declare class SessionSecurity {
     static createSession(req: IRequest, sessionObj: NodeJS.Dict<any>): string;
     static isValidSession(req: IRequest): void;
 }
-export declare class SowServer implements ISowServer {
+export declare class CwServer implements ICwServer {
     private _public;
     private _log;
     private _root;
@@ -285,7 +285,7 @@ export declare class SowServer implements ISowServer {
     get public(): string;
     get log(): ILogger;
     get port(): string | number;
-    get db(): NodeJS.Dict<ISowDatabaseType>;
+    get db(): NodeJS.Dict<ICwDatabaseType>;
     get encryption(): IServerEncryption;
     get errorPage(): {
         [x: string]: string;
@@ -330,7 +330,7 @@ export interface IAppUtility {
     readonly port: string | number;
     readonly socketPath: string;
     readonly log: ILogger;
-    readonly server: ISowServer;
+    readonly server: ICwServer;
     readonly controller: IController;
 }
 export declare function initilizeServer(appRoot: string, wwwName?: string): IAppUtility;

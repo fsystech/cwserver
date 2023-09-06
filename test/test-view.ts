@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ import {
 import { HttpCache } from '../lib/http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
-	ISowServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
+	ICwServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
 	socketInitilizer, getBodyParser, PayloadParser, HttpCache as _HttpCache,
 	HttpMimeHandler, Streamer, Encryption, SessionSecurity
 } from '../index';
@@ -55,7 +55,7 @@ export function shouldBeError(next: () => void, printerr?: boolean): Error | voi
 	}
 };
 expect(toString(1)).toEqual("1");
-global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
 	expect(shouldBeError(() => new SessionSecurity())).toBeInstanceOf(Error);
 	expect(SessionSecurity.getRemoteAddress("::1")).toEqual('127.0.0');
 	fsw.mkdirSync(server.config.staticFile.tempPath, "");
@@ -94,7 +94,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		return ctx.res.status(200).send();
 	});
 });
-global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
 	expect(shouldBeError(() => { mimeHandler.getMimeType("NO_EXT"); })).toBeInstanceOf(Error);
 	const vDir: string = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
 	server.addVirtualDir("/vtest", vDir, (ctx: IContext): void => {
@@ -114,7 +114,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		});
 	})).toBeInstanceOf(Error);
 });
-global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
 	const streamDir = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
 	server.addVirtualDir("/web-stream", streamDir, (ctx: IContext, requestParam?: IRequestParam): void => {
 		if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
@@ -140,7 +140,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		server.addVirtualDir("/:static-file", streamDir);
 	})).toBeInstanceOf(Error);
 });
-global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
 	const downloadDir = server.mapPath("/upload/data/");
 	if (!fs.existsSync(downloadDir)) {
 		fsw.mkdirSync(server.mapPath("/"), "/upload/data/");
@@ -392,7 +392,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		});
 	});
 });
-global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
 	controller
 		.get("/test-context", (ctx: IContext, requestParam?: IRequestParam): void => {
 			try {
@@ -573,7 +573,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 		});
 
 });
-global.sow.server.on("register-view", (app: IApplication, controller: IController, server: ISowServer) => {
+global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
 
 	{
 		const enc = server.encryption.encrypt("Hello World..");
@@ -612,7 +612,7 @@ global.sow.server.on("register-view", (app: IApplication, controller: IControlle
 			expect(ctx.req.ip).toBeDefined();
 			expect(ctx.res.get('Set-Cookie')).toBeDefined();
 			expect(ctx.req.get('cookie')).toBeDefined();
-			expect(ctx.res.get('server')).toEqual("SOW Frontend");
+			expect(ctx.res.get('server')).toEqual("FSys Frontend");
 			expect(ctx.res.isAlive).toBeTruthy();
 			server.config.session.isSecure = true;
 			server.setDefaultProtectionHeader(ctx.res);

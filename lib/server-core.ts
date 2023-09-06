@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -648,9 +648,9 @@ class Application extends EventEmitter implements IApplication {
     }
 }
 function setAppHeader(res: Response) {
-    res.setHeader('server', 'SOW Frontend');
+    res.setHeader('server', 'FSys Frontend');
     res.setHeader('x-app-version', appVersion);
-    res.setHeader('x-powered-by', 'safeonline.world');
+    res.setHeader('x-powered-by', 'fsys.tech');
 }
 export function App(): IApplication {
     const app: Application = new Application(createServer((request: IncomingMessage, response: ServerResponse) => {

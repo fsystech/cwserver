@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -409,13 +409,13 @@ export class TemplateCore {
         }
         try {
             const sandBox: string = `${generateRandomString(30)}_thisNext`;
-            global.sow.templateCtx[sandBox] = templateNext;
+            global.cw.templateCtx[sandBox] = templateNext;
             // bug fix by rajib chy on 8:16 PM 3/23/2021
             // Error: ctx.addError(ctx, ex) argument error
-            const script: _vm.Script = new _vm.Script(`sow.templateCtx.${sandBox} = async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n};`);
+            const script: _vm.Script = new _vm.Script(`cw.templateCtx.${sandBox} = async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n};`);
             script.runInContext(_vm.createContext(global));
-            const func: SandBox | undefined = global.sow.templateCtx[sandBox];
-            delete global.sow.templateCtx[sandBox];
+            const func: SandBox | undefined = global.cw.templateCtx[sandBox];
+            delete global.cw.templateCtx[sandBox];
             return process.nextTick(() => next({ str, isScript: true, sandBox: func }));
         } catch (e: any) {
             return process.nextTick(() => next({ str, err: e }));
@@ -424,7 +424,7 @@ export class TemplateCore {
     private static parseScript(str: string): string | undefined {
         str = str.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
         const script = str.split('\n');
-        let out = "/*__sow_template_script__*/";
+        let out = "/*__Cw_template_script__*/";
         const scriptParser: IScriptParser = new ScriptParser();
         const parserInfo: IParserInfo = new ParserInfo();
         for (parserInfo.line of script) {
@@ -474,7 +474,7 @@ export class TemplateCore {
     public static isScriptTemplate(str: string): boolean {
         const index = str.indexOf("\n");
         if (index < 0) return false;
-        return str.substring(0, index).indexOf("__sow_template_script__") > -1;
+        return str.substring(0, index).indexOf("__Cw_template_script__") > -1;
     }
     private static _run(
         ctx: IContext,

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 // 4:38 AM 5/22/2020
 // by rajib chy
 import expect from 'expect';
-import { wsClient, IWsClientInfo, ISowSocketServer, ISowSocketInfo, IOSocket, ISession, ISowServer } from '../index';
+import { wsClient, IWsClientInfo, ICwSocketServer, ICwSocketInfo, IOSocket, ISession, ICwServer } from '../index';
 const clientInfo: IWsClientInfo = wsClient();
 clientInfo.on( "beforeInitiateConnection", ( session: ISession, socket: IOSocket ) => {
     /*if ( !session.isAuthenticated ) {
@@ -29,7 +29,7 @@ clientInfo.on( "beforeInitiateConnection", ( session: ISession, socket: IOSocket
     }*/
     return true;
 } );
-clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: ISowSocketServer, server: ISowServer ) => {
+clientInfo.on( "getClient", ( me: ICwSocketInfo, session: ISession, wsServer: ICwSocketServer, server: ICwServer ) => {
     const _client = {
         'test-msg': ( data: any ): void => {
             expect( me.socket ).toBeDefined();
@@ -55,7 +55,7 @@ clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: I
             expect( wsServer.getClientByExceptToken( me.token, me.group || "no_group" ).length ).toEqual( 0 );
             expect( wsServer.sendMsg( "XX-INVALID-TOKEN", "on-test-msg", data ) ).toEqual( false );
             expect( wsServer.removeSocket( "XX-INVALID-TOKEN" ) ).toEqual( false );
-            me.isOwner = true;
+            me.iCwner = true;
             me.group = "TEST_GROUP";
             expect( wsServer.getOwners( me.group ).length ).toBeGreaterThan( 0 );
             if ( me.hash && me.loginId ) {
@@ -79,7 +79,7 @@ clientInfo.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: I
         client: []
     } : _client;
 } );
-clientInfo.on( "connected", ( me: ISowSocketInfo, wsServer: ISowSocketServer ) => {
+clientInfo.on( "connected", ( me: ICwSocketInfo, wsServer: ICwSocketServer ) => {
     const method = me.isReconnectd ? "on-re-connected-user" : "on-connect-user";
     wsServer.getClientByExceptToken( me.token ).forEach( conn => {
         conn.sendMsg( method, {
@@ -91,7 +91,7 @@ clientInfo.on( "connected", ( me: ISowSocketInfo, wsServer: ISowSocketServer ) =
         token: me.token, hash: me.hash, loginId: me.loginId
     } );
 } );
-clientInfo.on( "disConnected", ( me: ISowSocketInfo, wsServer: ISowSocketServer ) => {
+clientInfo.on( "disConnected", ( me: ICwSocketInfo, wsServer: ICwSocketServer ) => {
     // Here disconnect any user
     wsServer.getClientByExceptToken( me.token ).forEach( conn => {
         conn.sendMsg( "on-disconnected-user", {
@@ -100,7 +100,7 @@ clientInfo.on( "disConnected", ( me: ISowSocketInfo, wsServer: ISowSocketServer 
     } );
 } );
 const error1: IWsClientInfo = wsClient();
-error1.on( "getClient", ( me: ISowSocketInfo, session: ISession, wsServer: ISowSocketServer, server: ISowServer ) => {
+error1.on( "getClient", ( me: ICwSocketInfo, session: ISession, wsServer: ICwSocketServer, server: ICwServer ) => {
     const _client = {
         'test-msg': ( data: any ) => {
             return wsServer.sendMsg( me.token, "on-test-msg", data );

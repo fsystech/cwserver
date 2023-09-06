@@ -1,5 +1,5 @@
 "use strict";
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -117,12 +117,12 @@ class Bundlew {
                 if (!_name)
                     return next(result, null);
                 let fname = _name;
-                let isOwn = false;
+                let iCwn = false;
                 if (fname.indexOf("|") > 0) {
                     const spl = fname.split("|");
                     fname = spl[0];
                     if (spl[1] === "__owner__")
-                        isOwn = true;
+                        iCwn = true;
                     spl.length = 0;
                 }
                 if (/\$/gi.test(fname) === false) {
@@ -153,7 +153,7 @@ class Bundlew {
                         absolute,
                         changeTime,
                         isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
-                        isOwn
+                        iCwn
                     });
                     return forword();
                 });
@@ -179,7 +179,7 @@ class Bundlew {
                 return process.nextTick(() => next(out));
             }
             out.push(Buffer.from(`\r\n// ${inf.name}\r\n`));
-            if (inf.isOwn === true) {
+            if (inf.iCwn === true) {
                 out.push(copyBuff);
                 if (inf.name.indexOf(".min.") < 0) {
                     return _fs.readFile(inf.absolute, "utf8", (err, data) => {
@@ -451,6 +451,6 @@ class Bundler {
 }
 exports.Bundler = Bundler;
 function _getInfo() {
-    return '// Sow "Combiner"\r\n// Copyright (c) 2022 Safe Online World Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
+    return '// Cw "Combiner"\r\n// Copyright (c) 2022 FSys Tech Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
 }
 //# sourceMappingURL=app-bundler.js.map

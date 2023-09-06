@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@ import * as _zlib from 'node:zlib';
 import { Encryption } from './encryption';
 import { HttpCache, IChangeHeader } from './http-cache';
 import { IApplication } from './server-core';
-import { ISowServer, IContext } from './server';
+import { ICwServer, IContext } from './server';
 import { IController } from './app-controller';
 import { Util } from './app-util';
 import { IBufferArray, BufferArray } from './app-static';
@@ -37,7 +37,7 @@ enum ContentType {
     CSS = 1,
     UNKNOWN = -1
 }
-type BundlerFileInfo = { name: string, absolute: string, changeTime: number, isChange: boolean, isOwn: boolean };
+type BundlerFileInfo = { name: string, absolute: string, changeTime: number, isChange: boolean, iCwn: boolean };
 type MemCacheInfo = {
     readonly cfileSize: number;
     readonly bundleData: Buffer;
@@ -74,7 +74,7 @@ class Bundlew {
         return ContentType.UNKNOWN;
     }
     static getCachePath(
-        server: ISowServer, str: string, ctEnum: ContentType, cacheKey: string
+        server: ICwServer, str: string, ctEnum: ContentType, cacheKey: string
     ): {
         readonly memCacheKey: string,
         readonly cachpath: string
@@ -94,7 +94,7 @@ class Bundlew {
         };
     }
     static getBundleInfo(
-        server: ISowServer, str: string,
+        server: ICwServer, str: string,
         lastChangeTime: number | void,
         hasCacheFile: boolean,
         next: (bundleInfo: BundlerFileInfo[], err: Error | null) => void
@@ -110,11 +110,11 @@ class Bundlew {
                 const _name: string | void = files.shift();
                 if (!_name) return next(result, null);
                 let fname: string = _name;
-                let isOwn: boolean = false;
+                let iCwn: boolean = false;
                 if (fname.indexOf("|") > 0) {
                     const spl: string[] = fname.split("|");
                     fname = spl[0];
-                    if (spl[1] === "__owner__") isOwn = true;
+                    if (spl[1] === "__owner__") iCwn = true;
                     spl.length = 0;
                 }
                 if (/\$/gi.test(fname) === false) {
@@ -142,7 +142,7 @@ class Bundlew {
                         absolute,
                         changeTime,
                         isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
-                        isOwn
+                        iCwn
                     });
                     return forword();
                 });
@@ -171,7 +171,7 @@ class Bundlew {
                 return process.nextTick(() => next(out));
             }
             out.push(Buffer.from(`\r\n// ${inf.name}\r\n`));
-            if (inf.isOwn === true) {
+            if (inf.iCwn === true) {
                 out.push(copyBuff)
                 if (inf.name.indexOf(".min.") < 0) {
                     return _fs.readFile(inf.absolute, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
@@ -191,7 +191,7 @@ class Bundlew {
         }
         return forward();
     }
-    private static decryptFilePath(server: ISowServer, ctx: IContext, str: string): string | void {
+    private static decryptFilePath(server: ICwServer, ctx: IContext, str: string): string | void {
         str = server.encryption.decryptUri(str);
         if (str.length === 0) {
             return ctx.next(404), void 0;
@@ -199,7 +199,7 @@ class Bundlew {
         str = str.replace(/\r\n/gi, "").replace(/\s+/g, "");
         return str;
     }
-    static createMemmory(server: ISowServer, ctx: IContext, isGzip: boolean): void {
+    static createMemmory(server: ICwServer, ctx: IContext, isGzip: boolean): void {
         const ct = ctx.req.query.ct;
         const str = ctx.req.query.g;
         if (!str || !ct) {
@@ -283,7 +283,7 @@ class Bundlew {
             };
         });
     }
-    static createServerFileCache(server: ISowServer, ctx: IContext): void {
+    static createServerFileCache(server: ICwServer, ctx: IContext): void {
         const cacheKey = ctx.req.query.ck;
         const ct = ctx.req.query.ct;
         const str = ctx.req.query.g;
@@ -424,7 +424,7 @@ class Bundlew {
 // tslint:disable-next-line: variable-name
 export const __moduleName: string = "Bundler";
 export class Bundler {
-    public static Init(app: IApplication, controller: IController, server: ISowServer): void {
+    public static Init(app: IApplication, controller: IController, server: ICwServer): void {
         controller.get(server.config.bundler.route, (ctx: IContext): void => {
             const isGzip: boolean = HttpCache.isAcceptedEncoding(ctx.req.headers, "gzip");
             if (!isGzip || server.config.bundler.fileCache === false) return Bundlew.createMemmory(server, ctx, isGzip);
@@ -433,5 +433,5 @@ export class Bundler {
     }
 }
 function _getInfo(): string {
-    return '// Sow "Combiner"\r\n// Copyright (c) 2022 Safe Online World Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
+    return '// Cw "Combiner"\r\n// Copyright (c) 2022 FSys Tech Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
 }

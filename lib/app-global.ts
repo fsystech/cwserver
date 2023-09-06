@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,49 +22,49 @@
 // by rajib chy
 import { IApplication } from './server-core';
 import { IController } from './app-controller';
-import { ISowServer } from './server';
+import { ICwServer } from './server';
 import { loadMimeType, IMimeType } from './http-mime-types';
 import { SandBox } from './app-template';
-type IViewRegister = (app: IApplication, controller: IController, server: ISowServer) => void;
-interface ISowGlobalServer {
+type IViewRegister = (app: IApplication, controller: IController, server: ICwServer) => void;
+interface ICwGlobalServer {
     /**
      * Register new `view` module
      * @param ev  Event name
      * @param next View register function
      */
     on(ev: "register-view", next: IViewRegister): void;
-    emit(ev: "register-view", app: IApplication, controller: IController, server: ISowServer): void;
+    emit(ev: "register-view", app: IApplication, controller: IController, server: ICwServer): void;
 }
-class SowGlobalServer implements ISowGlobalServer {
+class CwGlobalServer implements ICwGlobalServer {
     private _evt: IViewRegister[];
     private _isInitilized: boolean;
     constructor() {
         this._evt = [];
         this._isInitilized = false;
     }
-    public emit(ev: "register-view", app: IApplication, controller: IController, server: ISowServer): void {
+    public emit(ev: "register-view", app: IApplication, controller: IController, server: ICwServer): void {
         this._isInitilized = true;
         this._evt.forEach(handler => {
             return handler(app, controller, server);
         });
         this._evt.length = 0;
     }
-    public on(ev: "register-view", next: (app: IApplication, controller: IController, server: ISowServer) => void): void {
+    public on(ev: "register-view", next: (app: IApplication, controller: IController, server: ICwServer) => void): void {
         if (this._isInitilized) {
             throw new Error('After initialization "views", you could not register new view.');
         }
         this._evt.push(next);
     }
 }
-interface ISowGlobal {
+interface ICwGlobal {
     isInitilized: boolean;
     readonly HttpMime: IMimeType<string>;
-    readonly server: ISowGlobalServer;
+    readonly server: ICwGlobalServer;
     readonly templateCtx: NodeJS.Dict<SandBox>;
 }
-class SowGlobal implements ISowGlobal {
+class CwGlobal implements ICwGlobal {
     public isInitilized: boolean;
-    private _server: ISowGlobalServer;
+    private _server: ICwGlobalServer;
     private _HttpMime: IMimeType<string>;
     private _templateCtx: NodeJS.Dict<SandBox>;
     public get templateCtx() {
@@ -77,7 +77,7 @@ class SowGlobal implements ISowGlobal {
         return this._HttpMime;
     }
     constructor() {
-        this._server = new SowGlobalServer();
+        this._server = new CwGlobalServer();
         this.isInitilized = false;
         this._HttpMime = loadMimeType<string>();
         this._templateCtx = {};
@@ -86,7 +86,7 @@ class SowGlobal implements ISowGlobal {
 declare global {
     namespace NodeJS {
         interface Global {
-            sow: ISowGlobal;
+            cw: ICwGlobal;
         }
         interface ProcessEnv {
             PORT?: string;
@@ -115,14 +115,15 @@ declare global {
     }
 }
 declare global {
-    var sow: ISowGlobal;
+    var cw: ICwGlobal;
     /**
      * `cwserver` import script/assets from local resource. If you like to use `pkg` ({@see https://github.com/vercel/pkg }) compiler, please override this method at root.
      */
     function _importLocalAssets(path: string): any;
 }
-if (!global.sow) {
-    global.sow = new SowGlobal();
+
+if (!global.cw) {
+    global.cw = new CwGlobal();
 }
 if (!global._importLocalAssets) {
     global._importLocalAssets = (path: string): any => require(path);

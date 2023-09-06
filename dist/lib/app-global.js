@@ -1,5 +1,5 @@
 "use strict";
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // SOFTWARE.
 Object.defineProperty(exports, "__esModule", { value: true });
 const http_mime_types_1 = require("./http-mime-types");
-class SowGlobalServer {
+class CwGlobalServer {
     constructor() {
         this._evt = [];
         this._isInitilized = false;
@@ -39,7 +39,7 @@ class SowGlobalServer {
         this._evt.push(next);
     }
 }
-class SowGlobal {
+class CwGlobal {
     get templateCtx() {
         return this._templateCtx;
     }
@@ -50,14 +50,14 @@ class SowGlobal {
         return this._HttpMime;
     }
     constructor() {
-        this._server = new SowGlobalServer();
+        this._server = new CwGlobalServer();
         this.isInitilized = false;
         this._HttpMime = (0, http_mime_types_1.loadMimeType)();
         this._templateCtx = {};
     }
 }
-if (!global.sow) {
-    global.sow = new SowGlobal();
+if (!global.cw) {
+    global.cw = new CwGlobal();
 }
 if (!global._importLocalAssets) {
     global._importLocalAssets = (path) => require(path);

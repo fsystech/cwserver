@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Safe Online World Ltd.
+// Copyright (c) 2022 FSys Tech Ltd.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 // 9:19 PM 5/8/2020
 // by rajib chy
 import { Encryption } from './encryption';
-import { ISowServer } from './server';
+import { ICwServer } from './server';
 import { ISession } from './app-static';
 import { Util } from './app-util';
 import { EventEmitter } from 'node:events';
@@ -68,17 +68,17 @@ export interface IWsClientInfo {
     on(ev: 'getClient', handler: IWsClient): void;
     on(ev: 'disConnected' | 'connected', handler: IEvtHandler): void;
     on(ev: 'beforeInitiateConnection', handler: IWsNext): void;
-    emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ISowSocketInfo, wsServer: ISowSocketServer): void;
+    emit(ev: 'disConnected' | 'connected' | 'beforeInitiateConnection', me: ICwSocketInfo, wsServer: ICwSocketServer): void;
     getServerEvent(): { [x: string]: any; } | void;
     beforeInitiateConnection: IWsNext;
     client: IWsClient;
 }
-export interface ISowSocketInfo {
+export interface ICwSocketInfo {
     token: string;
     loginId?: string;
     hash?: string;
     socketId: string;
-    isOwner: boolean;
+    iCwner: boolean;
     isAuthenticated: boolean;
     isReconnectd: boolean;
     group?: string;
@@ -86,26 +86,26 @@ export interface ISowSocketInfo {
     readonly socket: IOSocket;
     sendMsg(method: string, data: any): void;
 }
-export interface ISowSocketServer {
-    readonly clients: ISowSocketInfo[];
+export interface ICwSocketServer {
+    readonly clients: ICwSocketInfo[];
     isActiveSocket(token: string): boolean;
-    getOwners(group?: string): ISowSocketInfo[];
+    getOwners(group?: string): ICwSocketInfo[];
     exists(hash: string): boolean;
-    findByHash(hash: string): ISowSocketInfo[];
-    findByLogin(loginId: string): ISowSocketInfo[];
-    findByRoleId(roleId: string): ISowSocketInfo[];
-    findByToken(token: string): ISowSocketInfo[];
-    toList(sockets: ISowSocketInfo[]): { [x: string]: any; }[];
-    getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[];
-    getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[];
-    getClientByExceptToken(token: string, group?: string): ISowSocketInfo[];
-    getSocket(token: string): ISowSocketInfo | void;
+    findByHash(hash: string): ICwSocketInfo[];
+    findByLogin(loginId: string): ICwSocketInfo[];
+    findByRoleId(roleId: string): ICwSocketInfo[];
+    findByToken(token: string): ICwSocketInfo[];
+    toList(sockets: ICwSocketInfo[]): { [x: string]: any; }[];
+    getClientByExceptHash(exceptHash: string, group?: string): ICwSocketInfo[];
+    getClientByExceptLogin(exceptLoginId: string, group?: string): ICwSocketInfo[];
+    getClientByExceptToken(token: string, group?: string): ICwSocketInfo[];
+    getSocket(token: string): ICwSocketInfo | void;
     removeSocket(token: string): boolean;
     sendMsg(token: string, method: string, data?: any): boolean;
 }
-type IEvtHandler = (me: ISowSocketInfo, wsServer: ISowSocketServer) => void;
+type IEvtHandler = (me: ICwSocketInfo, wsServer: ICwSocketServer) => void;
 type IWsNext = (session: ISession, socket: IOSocket) => void | boolean;
-type IWsClient = (me: ISowSocketInfo, session: ISession, sowSocket: ISowSocketServer, server: ISowServer) => { [x: string]: any; };
+type IWsClient = (me: ICwSocketInfo, session: ISession, CwSocket: ICwSocketServer, server: ICwServer) => { [x: string]: any; };
 class WsClientInfo implements IWsClientInfo {
     public beforeInitiateConnection: IWsNext = Object.create(null);
     public client: IWsClient = Object.create(null);
@@ -127,7 +127,7 @@ class WsClientInfo implements IWsClientInfo {
         this.event[ev] = handler;
         return void 0;
     }
-    public emit(ev: string, me: ISowSocketInfo, wsServer: ISowSocketServer): void {
+    public emit(ev: string, me: ICwSocketInfo, wsServer: ICwSocketServer): void {
         if (this.event[ev]) {
             return this.event[ev](me, wsServer);
         }
@@ -136,16 +136,16 @@ class WsClientInfo implements IWsClientInfo {
 export function wsClient(): IWsClientInfo {
     return new WsClientInfo();
 }
-class SowSocketServer implements ISowSocketServer {
-    _server: ISowServer;
+class CwSocketServer implements ICwSocketServer {
+    _server: ICwServer;
     _wsClients: IWsClientInfo;
     implimented: boolean;
-    _clients: ISowSocketInfo[];
+    _clients: ICwSocketInfo[];
     public get clients() {
         return this._clients;
     }
     connected: boolean;
-    constructor(server: ISowServer, wsClientInfo: IWsClientInfo) {
+    constructor(server: ICwServer, wsClientInfo: IWsClientInfo) {
         this.implimented = false; this._clients = [];
         this.connected = false;
         this._server = server; this._wsClients = wsClientInfo;
@@ -156,22 +156,22 @@ class SowSocketServer implements ISowSocketServer {
     exists(hash: string): boolean {
         return this._clients.some(soc => soc.hash === hash);
     }
-    getOwners(group?: string): ISowSocketInfo[] {
-        return group ? this._clients.filter(soc => soc.isOwner === true && soc.group === group) : this._clients.filter(soc => soc.isOwner === true);
+    getOwners(group?: string): ICwSocketInfo[] {
+        return group ? this._clients.filter(soc => soc.iCwner === true && soc.group === group) : this._clients.filter(soc => soc.iCwner === true);
     }
-    findByHash(hash: string): ISowSocketInfo[] {
+    findByHash(hash: string): ICwSocketInfo[] {
         return this._clients.filter(soc => soc.hash === hash);
     }
-    findByLogin(loginId: string): ISowSocketInfo[] {
+    findByLogin(loginId: string): ICwSocketInfo[] {
         return this._clients.filter(soc => soc.loginId === loginId);
     }
-    findByRoleId(roleId: string): ISowSocketInfo[] {
+    findByRoleId(roleId: string): ICwSocketInfo[] {
         return this._clients.filter(soc => soc.roleId === roleId);
     }
-    findByToken(token: string): ISowSocketInfo[] {
+    findByToken(token: string): ICwSocketInfo[] {
         return this._clients.filter(soc => soc.token === token);
     }
-    toList(clients: ISowSocketInfo[]): { [x: string]: any; }[] {
+    toList(clients: ICwSocketInfo[]): { [x: string]: any; }[] {
         const list: { [x: string]: any; }[] = [];
         if (clients.length === 0) {
             return list;
@@ -183,32 +183,32 @@ class SowSocketServer implements ISowSocketServer {
         });
         return list;
     }
-    getClientByExceptHash(exceptHash: string, group?: string): ISowSocketInfo[] {
+    getClientByExceptHash(exceptHash: string, group?: string): ICwSocketInfo[] {
         return !group ? this._clients.filter(
             soc => soc.hash !== exceptHash
         ) : this._clients.filter(
             soc => soc.hash !== exceptHash && soc.group === group
         );
     }
-    getClientByExceptLogin(exceptLoginId: string, group?: string): ISowSocketInfo[] {
+    getClientByExceptLogin(exceptLoginId: string, group?: string): ICwSocketInfo[] {
         return !group ? this._clients.filter(
             soc => soc.loginId !== exceptLoginId
         ) : this._clients.filter(
             soc => soc.loginId !== exceptLoginId && soc.group === group
         );
     }
-    getClientByExceptToken(token: string, group?: string): ISowSocketInfo[] {
+    getClientByExceptToken(token: string, group?: string): ICwSocketInfo[] {
         return !group ? this._clients.filter(
             soc => soc.token !== token
         ) : this._clients.filter(
             soc => soc.token !== token && soc.group === group
         );
     }
-    getSocket(token: string): ISowSocketInfo | void {
+    getSocket(token: string): ICwSocketInfo | void {
         return this._clients.find(soc => soc.token === token);
     }
     removeSocket(token: string): boolean {
-        const index: number = this._clients.findIndex((soc: ISowSocketInfo) => {
+        const index: number = this._clients.findIndex((soc: ICwSocketInfo) => {
             return soc.token === token;
         });
         if (index < 0) return false;
@@ -216,7 +216,7 @@ class SowSocketServer implements ISowSocketServer {
         return true;
     }
     sendMsg(token: string, method: string, data?: any): boolean {
-        const soc: ISowSocketInfo | void = this.getSocket(token);
+        const soc: ICwSocketInfo | void = this.getSocket(token);
         if (!soc) return false;
         return soc.sendMsg(method, data), true;
     }
@@ -243,14 +243,14 @@ class SowSocketServer implements ISowSocketServer {
         return io.on("connect", (socket: IOSocket): void => {
             this.connected = socket.connected;
         }).on('connection', (socket: IOSocket): void => {
-            const _me: ISowSocketInfo = ((): ISowSocketInfo => {
-                const socketInfo: ISowSocketInfo = {
+            const _me: ICwSocketInfo = ((): ICwSocketInfo => {
+                const socketInfo: ICwSocketInfo = {
                     token: Util.guid(),
                     loginId: socket.request.session.loginId,
                     hash: void 0,
                     socketId: socket.id,
                     isAuthenticated: socket.request.session.isAuthenticated,
-                    isOwner: false,
+                    iCwner: false,
                     group: void 0,
                     isReconnectd: false,
                     roleId: "_INVALID_",
@@ -287,11 +287,11 @@ class SowSocketServer implements ISowSocketServer {
  * const ws = socketInitilizer( server, SocketClient() );
  * ws.create( require( "socket.io" ), app.httpServer );
  */
-export function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo): {
+export function socketInitilizer(server: ICwServer, wsClientInfo: IWsClientInfo): {
     readonly isConnectd: boolean;
     readonly wsEvent: { [x: string]: any; } | void;
     readonly create: (ioserver: any, httpServer: Server) => boolean;
-    readonly wsServer: ISowSocketServer;
+    readonly wsServer: ICwSocketServer;
 } {
     if (typeof (wsClientInfo.client) !== "function") {
         throw new Error("`getClient` event did not registered...");
@@ -300,7 +300,7 @@ export function socketInitilizer(server: ISowServer, wsClientInfo: IWsClientInfo
         throw new Error("`beforeInitiateConnection` event did not registered...");
     }
     let _wsEvent: { [x: string]: any; } | void = void 0;
-    const _ws: SowSocketServer = new SowSocketServer(server, wsClientInfo);
+    const _ws: CwSocketServer = new CwSocketServer(server, wsClientInfo);
     return {
         get wsServer() {
             return _ws;
