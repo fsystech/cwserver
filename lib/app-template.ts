@@ -424,7 +424,7 @@ export class TemplateCore {
     private static parseScript(str: string): string | undefined {
         str = str.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
         const script = str.split('\n');
-        let out = "/*__Cw_template_script__*/";
+        let out = "/*__cw_template_script__*/";
         const scriptParser: IScriptParser = new ScriptParser();
         const parserInfo: IParserInfo = new ParserInfo();
         for (parserInfo.line of script) {
