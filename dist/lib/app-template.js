@@ -277,7 +277,8 @@ class TemplateParser {
                 }
                 return _fs.readFile(url, "utf8", (err, data) => {
                     return ctx.handleError(err, () => {
-                        str = str.replace(orgMatch, data);
+                        // \n is reuired for tailing gurd
+                        str = str.replace(orgMatch, data + "\n");
                         return forword();
                     });
                 });
@@ -399,7 +400,7 @@ class TemplateCore {
     static parseScript(str) {
         str = str.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
         const script = str.split('\n');
-        let out = "/*__Cw_template_script__*/";
+        let out = "/*__cw_template_script__*/";
         const scriptParser = new ScriptParser();
         const parserInfo = new ParserInfo();
         for (parserInfo.line of script) {

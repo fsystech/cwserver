@@ -289,7 +289,8 @@ class TemplateParser {
                 }
                 return _fs.readFile(url, "utf8", (err: NodeJS.ErrnoException | null, data: string): void => {
                     return ctx.handleError(err, () => {
-                        str = str.replace(orgMatch, data);
+                        // \n is reuired for tailing gurd
+                        str = str.replace(orgMatch, data + "\n");
                         return forword();
                     });
                 });
