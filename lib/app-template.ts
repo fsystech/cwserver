@@ -298,7 +298,7 @@ class TemplateParser {
         }
         return forword();
     }
-    private static margeTemplate(
+    private static mergeTemplate(
         match: string[],
         template: string,
         body: string
@@ -363,27 +363,22 @@ class TemplateParser {
         next: (str: string) => void
     ): void {
         if (/#extends/gi.test(str) === false) return next(str);
-        return this.prepareTemplate(ctx, appRoot, str, (templats: string[]): void => {
-            let count: number = 0;
-            let body: string = "";
-            let parentTemplate: string = "";
-            const startTag: RegExp = /<placeholder[^>]*>/gi;
-            let len: number = templats.length;
+        return this.prepareTemplate(ctx, appRoot, str, (templates: string[]): void => {
             try {
-                do {
-                    len--;
-                    if (count === 0) {
-                        parentTemplate = templats[len].replace(/\r\n/gi, "8_r_n_gx_8").replace(/\n/gi, "8_n_gx_8");
-                        body += parentTemplate; count++; continue;
+                const templatesLength: number = templates.length - 1;
+                const startTagPattern: RegExp = /<placeholder[^>]*>/gi;
+                let parentTemplate: string = templates[templatesLength].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
+                let body: string = parentTemplate;
+                for (let i = templatesLength - 1; i >= 0; i--) {
+                    const currentTemplate = templates[i].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
+                    const matches: RegExpMatchArray | null = parentTemplate.match(startTagPattern);
+                    if (matches === null || (matches && matches.length === 0)) {
+                        throw new Error("Invalid master template. No placeholder tag found.");
                     }
-                    const match: RegExpMatchArray | null = parentTemplate.match(startTag);
-                    if (match === null || (match && match.length === 0)) {
-                        throw new Error("Invalid master template... No placeholder tag found....");
-                    }
-                    parentTemplate = templats[len].replace(/\r\n/gi, "8_r_n_gx_8").replace(/\n/gi, "8_n_gx_8");
-                    body = this.margeTemplate(match, parentTemplate, body);
-                } while (len > 0);
-                return process.nextTick(() => next(body.replace(/8_r_n_gx_8/gi, "\r\n").replace(/8_n_gx_8/gi, "\n")));
+                    parentTemplate = currentTemplate;
+                    body = this.mergeTemplate(matches, parentTemplate, body);
+                }
+                return process.nextTick(() => next(body.replace(/8rngx8/gi, "\r\n").replace(/8ngx8/gi, "\n")));
             } catch (e: any) {
                 return ctx.transferError(e);
             }
@@ -475,7 +470,7 @@ export class TemplateCore {
     public static isScriptTemplate(str: string): boolean {
         const index = str.indexOf("\n");
         if (index < 0) return false;
-        return str.substring(0, index).indexOf("__Cw_template_script__") > -1;
+        return str.substring(0, index).indexOf("__cw_template_script__") > -1;
     }
     private static _run(
         ctx: IContext,
