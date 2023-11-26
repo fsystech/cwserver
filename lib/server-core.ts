@@ -179,9 +179,6 @@ function createCookie(name: string, val: string, options: CookieOptions): string
             case 'none': str += ';SameSite=None'; break;
         }
     }
-    if (options.secure) {
-        str += ';Secure';
-    }
     return str;
 }
 function getCommonHeader(contentType: string, contentLength?: number, isGzip?: boolean): OutgoingHttpHeaders {

@@ -147,9 +147,6 @@ function createCookie(name, val, options) {
                 break;
         }
     }
-    if (options.secure) {
-        str += ';Secure';
-    }
     return str;
 }
 function getCommonHeader(contentType, contentLength, isGzip) {
