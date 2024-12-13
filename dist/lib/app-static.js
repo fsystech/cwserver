@@ -19,7 +19,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToResponseTime = exports.ToNumber = exports.toString = exports.ResInfo = exports.Session = exports.BufferArray = void 0;
+exports.ResInfo = exports.Session = exports.BufferArray = void 0;
+exports.toString = toString;
+exports.ToNumber = ToNumber;
+exports.ToResponseTime = ToResponseTime;
 class BufferArray {
     get data() {
         this.shouldNotDisposed();
@@ -97,7 +100,6 @@ function toString(val) {
         return "";
     return typeof (val) === "string" ? val : String(val);
 }
-exports.toString = toString;
 function ToNumber(obj) {
     if (!obj)
         return 0;
@@ -107,7 +109,6 @@ function ToNumber(obj) {
         return 0;
     return parseFloat(obj);
 }
-exports.ToNumber = ToNumber;
 const _map = {
     month: {
         1: 'Jan',
@@ -161,5 +162,4 @@ function ToResponseTime(timestamp) {
     }
     return `${dfo(date.getDay())}, ${dfon(date.getDate())} ${dfm(date.getMonth())} ${date.getFullYear()} ${dfon(date.getHours())}:${dfon(date.getMinutes())}:${dfon(date.getSeconds())} GMT`;
 }
-exports.ToResponseTime = ToResponseTime;
 //# sourceMappingURL=app-static.js.map

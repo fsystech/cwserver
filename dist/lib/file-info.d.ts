@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import * as _fs from 'node:fs';
 export interface IFileDescription {
     readonly url: string;
@@ -11,7 +10,7 @@ export declare class FileDescription implements IFileDescription {
     private _stats?;
     get url(): string;
     get exists(): boolean;
-    get stats(): _fs.Stats | undefined;
+    get stats(): _fs.Stats;
     constructor(exists: boolean, url: string, stats?: _fs.Stats);
 }
 export interface IFileInfoCacheHandler {

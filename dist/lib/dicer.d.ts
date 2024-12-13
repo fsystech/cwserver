@@ -1,5 +1,3 @@
-/// <reference types="node" />
-/// <reference types="node" />
 import { Writable as WritableStream, Readable as ReadableStream } from "stream";
 export declare class PartStream extends ReadableStream {
     constructor(config: any);

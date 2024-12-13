@@ -1,5 +1,3 @@
-/// <reference types="node" />
-/// <reference types="node" />
 import { IRequest } from './server-core';
 import { IDispose, ErrorHandler } from './app-static';
 export type UploadFileInfo = {

@@ -34,16 +34,27 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initilizeServer = exports.CwServer = exports.SessionSecurity = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
+exports.CwServer = exports.SessionSecurity = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
+exports.initilizeServer = initilizeServer;
 // 10:13 PM 5/2/2020
 // by rajib chy
 const app_static_1 = require("./app-static");
@@ -74,7 +85,7 @@ _a = (() => {
         getMyContext(id) {
             const ctx = _curContext[id];
             if (!ctx)
-                return;
+                return undefined;
             return ctx;
         },
         removeContext(id) {
@@ -333,7 +344,7 @@ class ServerConfig {
             tempPath: "/web/temp/cache/"
         };
         this.cacheHeader = {
-            maxAge: parseMaxAge("30D"),
+            maxAge: parseMaxAge("30D"), // 30Day
             serverRevalidate: true
         };
         this.liveStream = [];
@@ -947,5 +958,4 @@ function initilizeServer(appRoot, wwwName) {
         get controller() { return _controller; }
     };
 }
-exports.initilizeServer = initilizeServer;
 //# sourceMappingURL=server.js.map

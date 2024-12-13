@@ -231,7 +231,7 @@ export class Dicer extends WritableStream {
 
             }
             const r = this._hparser.push(data);
-            if (!this._inHeader && r !== undefined && r < data.length) {
+            if (!this._inHeader && typeof (r) === 'number' && r < data.length) {
                 data = data.slice(r);
             } else {
                 return cb();
@@ -322,7 +322,7 @@ export class Dicer extends WritableStream {
                     this._hparser.push(buf);
                 }
                 const r: number | void = this._hparser.push(data.slice(start, end));
-                if (!this._inHeader && r !== undefined && r < end) {
+                if (!this._inHeader && typeof (r) === 'number' && r < end) {
                     this._onInfo(false, data, start + r, end);
                 }
             }

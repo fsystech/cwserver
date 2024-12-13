@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { Stats } from 'node:fs';
 import { IContext } from './server';
 export declare class Streamer {

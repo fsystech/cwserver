@@ -251,7 +251,7 @@ class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
     public skipFile(fileInfo: IPostedFileInfo): boolean {
         return false;
     }
-    public read(stream: PartStream, tempDir: string) {
+    public read(stream: PartStream, tempDir: string): void {
         let
             fieldName: string = "", fileName: string = "",
             disposition: string = "", contentType: string = "",

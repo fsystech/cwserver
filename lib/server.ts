@@ -206,7 +206,7 @@ export const {
         },
         getMyContext(id: string): IContext | undefined {
             const ctx: IContext = _curContext[id];
-            if (!ctx) return;
+            if (!ctx) return undefined;
             return ctx;
         },
         removeContext(id: string): void {

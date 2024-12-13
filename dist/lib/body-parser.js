@@ -34,18 +34,30 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBodyParser = exports.PayloadParser = exports.decodeBodyBuffer = void 0;
+exports.PayloadParser = void 0;
+exports.decodeBodyBuffer = decodeBodyBuffer;
+exports.getBodyParser = getBodyParser;
 // 11:17 PM 5/5/2020
 // by rajib chy
 const node_events_1 = require("node:events");
@@ -357,7 +369,6 @@ function decodeBodyBuffer(buff) {
     }
     return outObj;
 }
-exports.decodeBodyBuffer = decodeBodyBuffer;
 const MaxBuffLength = 1024 * 1024 * 20; // (20mb)
 class BodyParser {
     constructor(req, tempDir) {
@@ -622,6 +633,5 @@ PostedFileInfo.prototype.clear = (0, node_util_1.deprecate)(PostedFileInfo.proto
 function getBodyParser(req, tempDir) {
     return new BodyParser(req, tempDir);
 }
-exports.getBodyParser = getBodyParser;
 // 3:20 PM 5/6/2020
 //# sourceMappingURL=body-parser.js.map

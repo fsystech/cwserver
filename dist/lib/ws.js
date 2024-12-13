@@ -19,7 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.socketInitilizer = exports.wsClient = void 0;
+exports.wsClient = wsClient;
+exports.socketInitilizer = socketInitilizer;
 // 9:19 PM 5/8/2020
 // by rajib chy
 const encryption_1 = require("./encryption");
@@ -56,7 +57,6 @@ class WsClientInfo {
 function wsClient() {
     return new WsClientInfo();
 }
-exports.wsClient = wsClient;
 class CwSocketServer {
     get clients() {
         return this._clients;
@@ -220,5 +220,4 @@ function socketInitilizer(server, wsClientInfo) {
         }
     };
 }
-exports.socketInitilizer = socketInitilizer;
 //# sourceMappingURL=ws.js.map

@@ -8,7 +8,7 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "target": "es6",
-    "lib": [ "es6" ],
+    "lib": ["es6"],
     "noEmitOnError": true,
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -16,9 +16,10 @@
     "preserveConstEnums": true,
     "sourceMap": true,
     "strict": true,
-    "typeRoots": [ "./node_modules/@types", "./lib" ],
+    "strictNullChecks": false,
+    "typeRoots": ["./node_modules/@types", "./lib"],
     "outDir": "dist",
-    "allowSyntheticDefaultImports": true, /* Allow default imports from modules with no default export. This does not affect code emit, just typechecking. */
+    "allowSyntheticDefaultImports": true /* Allow default imports from modules with no default export. This does not affect code emit, just typechecking. */,
     "esModuleInterop": true /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */
   },
   "lib": [ "ES6" ],
