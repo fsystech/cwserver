@@ -228,7 +228,7 @@ class Dicer extends stream_1.Writable {
                 }
             }
             const r = this._hparser.push(data);
-            if (!this._inHeader && r !== undefined && r < data.length) {
+            if (!this._inHeader && typeof (r) === 'number' && r < data.length) {
                 data = data.slice(r);
             }
             else {
@@ -324,7 +324,7 @@ class Dicer extends stream_1.Writable {
                     this._hparser.push(buf);
                 }
                 const r = this._hparser.push(data.slice(start, end));
-                if (!this._inHeader && r !== undefined && r < end) {
+                if (!this._inHeader && typeof (r) === 'number' && r < end) {
                     this._onInfo(false, data, start + r, end);
                 }
             }

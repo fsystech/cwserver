@@ -1,7 +1,3 @@
-/// <reference types="node" />
-/// <reference types="node" />
-/// <reference types="node" />
-/// <reference types="node" />
 import './app-global';
 import { OutgoingHttpHeaders, Server, IncomingMessage, ServerResponse } from 'node:http';
 import { IRequestParam } from './app-router';

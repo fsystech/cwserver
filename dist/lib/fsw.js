@@ -34,13 +34,23 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -61,13 +71,14 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
 var __asyncDelegator = (this && this.__asyncDelegator) || function (o) {
     var i, p;
     return i = {}, verb("next"), verb("throw", function (e) { throw e; }), verb("return"), i[Symbol.iterator] = function () { return this; }, i;
-    function verb(n, f) { i[n] = o[n] ? function (v) { return (p = !p) ? { value: __await(o[n](v)), done: n === "return" } : f ? f(v) : v; } : f; }
+    function verb(n, f) { i[n] = o[n] ? function (v) { return (p = !p) ? { value: __await(o[n](v)), done: false } : f ? f(v) : v; } : f; }
 };
 var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _arguments, generator) {
     if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
     var g = generator.apply(thisArg, _arguments || []), i, q = [];
-    return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
-    function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
+    return i = Object.create((typeof AsyncIterator === "function" ? AsyncIterator : Object).prototype), verb("next"), verb("throw"), verb("return", awaitReturn), i[Symbol.asyncIterator] = function () { return this; }, i;
+    function awaitReturn(f) { return function (v) { return Promise.resolve(v).then(f, reject); }; }
+    function verb(n, f) { if (g[n]) { i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; if (f) i[n] = f(i[n]); } }
     function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
     function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
     function fulfill(value) { resume("next", value); }
@@ -75,7 +86,29 @@ var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _ar
     function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.moveFileAsync = exports.existsAsync = exports.mkdirAsync = exports.writeFileAsync = exports.unlinkAsync = exports.getFilesAsync = exports.opendirAsync = exports.copyDirSync = exports.copyDir = exports.copyFileSync = exports.copyFile = exports.unlink = exports.rmdirSync = exports.rmdir = exports.mkdirSync = exports.mkdir = exports.readJsonSync = exports.readJson = exports.isExists = exports.compareFileSync = exports.compareFile = exports.moveFile = exports.stat = void 0;
+exports.stat = stat;
+exports.moveFile = moveFile;
+exports.compareFile = compareFile;
+exports.compareFileSync = compareFileSync;
+exports.isExists = isExists;
+exports.readJson = readJson;
+exports.readJsonSync = readJsonSync;
+exports.mkdir = mkdir;
+exports.mkdirSync = mkdirSync;
+exports.rmdir = rmdir;
+exports.rmdirSync = rmdirSync;
+exports.unlink = unlink;
+exports.copyFile = copyFile;
+exports.copyFileSync = copyFileSync;
+exports.copyDir = copyDir;
+exports.copyDirSync = copyDirSync;
+exports.opendirAsync = opendirAsync;
+exports.getFilesAsync = getFilesAsync;
+exports.unlinkAsync = unlinkAsync;
+exports.writeFileAsync = writeFileAsync;
+exports.mkdirAsync = mkdirAsync;
+exports.existsAsync = existsAsync;
+exports.moveFileAsync = moveFileAsync;
 // 5:17 PM 6/15/2020
 // by rajib chy
 const _fs = __importStar(require("node:fs"));
@@ -89,7 +122,6 @@ function stat(path, next) {
         return next(null, stats);
     });
 }
-exports.stat = stat;
 function isSameDrive(src, dest) {
     const aroot = _path.parse(src).root;
     const broot = _path.parse(dest).root;
@@ -109,7 +141,6 @@ function moveFile(src, dest, next, force) {
         });
     });
 }
-exports.moveFile = moveFile;
 /** compareFile a stat.mtime > b stat.mtime */
 function compareFile(a, b, next, errHandler) {
     return _fs.stat(a, (err, astat) => {
@@ -122,7 +153,6 @@ function compareFile(a, b, next, errHandler) {
         });
     });
 }
-exports.compareFile = compareFile;
 /** compareFileSync a stat.mtime > b stat.mtime */
 function compareFileSync(a, b) {
     const astat = _fs.statSync(a);
@@ -131,14 +161,12 @@ function compareFileSync(a, b) {
         return true;
     return false;
 }
-exports.compareFileSync = compareFileSync;
 function isExists(path, next) {
     const url = _path.resolve(path);
     return _fs.stat(url, (err, stats) => {
         return next(err ? false : true, url);
     });
 }
-exports.isExists = isExists;
 function readJson(absPath, next, errHandler) {
     return _fs.readFile(absPath, (err, data) => {
         return errHandler(err, () => {
@@ -151,7 +179,6 @@ function readJson(absPath, next, errHandler) {
         });
     });
 }
-exports.readJson = readJson;
 function readJsonSync(absPath) {
     const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
     try {
@@ -161,7 +188,6 @@ function readJsonSync(absPath) {
         return void 0;
     }
 }
-exports.readJsonSync = readJsonSync;
 function mkdirCheckAndCreate(errHandler, fnext, path) {
     if (!path)
         return process.nextTick(() => fnext(true));
@@ -215,7 +241,6 @@ function mkdir(rootDir, targetDir, next, errHandler) {
         return doNext(false);
     });
 }
-exports.mkdir = mkdir;
 function mkdirSync(rootDir, targetDir) {
     if (rootDir.length === 0)
         return false;
@@ -250,7 +275,6 @@ function mkdirSync(rootDir, targetDir) {
     }, rootDir);
     return _fs.existsSync(fullPath);
 }
-exports.mkdirSync = mkdirSync;
 function rmdir(path, next, errHandler) {
     return _fs.stat(path, (err, stats) => {
         if (err)
@@ -280,7 +304,6 @@ function rmdir(path, next, errHandler) {
         });
     });
 }
-exports.rmdir = rmdir;
 function rmdirSync(path) {
     if (!_fs.existsSync(path))
         return;
@@ -295,13 +318,11 @@ function rmdirSync(path) {
         _fs.unlinkSync(path);
     }
 }
-exports.rmdirSync = rmdirSync;
 function unlink(path, next) {
     return _fs.unlink(path, (err) => {
         return next(err);
     });
 }
-exports.unlink = unlink;
 function copyFile(src, dest, next, errHandler) {
     if (!_path.parse(src).ext)
         return process.nextTick(() => next(new Error("Source file path required....")));
@@ -319,7 +340,6 @@ function copyFile(src, dest, next, errHandler) {
         });
     });
 }
-exports.copyFile = copyFile;
 function copyFileSync(src, dest) {
     let parse = _path.parse(src);
     if (!parse.ext)
@@ -333,7 +353,6 @@ function copyFileSync(src, dest) {
         _fs.unlinkSync(dest);
     _fs.copyFileSync(src, dest);
 }
-exports.copyFileSync = copyFileSync;
 function copyDir(src, dest, next, errHandler) {
     return _fs.stat(src, (err, stats) => {
         if (err)
@@ -366,7 +385,6 @@ function copyDir(src, dest, next, errHandler) {
         });
     });
 }
-exports.copyDir = copyDir;
 function copyDirSync(src, dest) {
     if (!_fs.existsSync(src))
         return;
@@ -382,7 +400,6 @@ function copyDirSync(src, dest) {
         _fs.copyFileSync(src, dest);
     }
 }
-exports.copyDirSync = copyDirSync;
 /** Async */
 /** opendir async */
 function opendirAsync(absolute) {
@@ -396,28 +413,22 @@ function opendirAsync(absolute) {
         });
     });
 }
-exports.opendirAsync = opendirAsync;
 /** Get all file(s) async from given directory */
 function getFilesAsync(dir, recursive) {
     return __asyncGenerator(this, arguments, function* getFilesAsync_1() {
         var _a, e_1, _b, _c;
         try {
-            for (var _d = true, _e = __asyncValues(yield __await(opendirAsync(dir))), _f; _f = yield __await(_e.next()), _a = _f.done, !_a;) {
+            for (var _d = true, _e = __asyncValues(yield __await(opendirAsync(dir))), _f; _f = yield __await(_e.next()), _a = _f.done, !_a; _d = true) {
                 _c = _f.value;
                 _d = false;
-                try {
-                    const d = _c;
-                    const entry = _path.join(dir, d.name);
-                    if (d.isDirectory()) {
-                        if (recursive)
-                            yield __await(yield* __asyncDelegator(__asyncValues(yield __await(getFilesAsync(entry, recursive)))));
-                    }
-                    else if (d.isFile())
-                        yield yield __await(entry);
+                const d = _c;
+                const entry = _path.join(dir, d.name);
+                if (d.isDirectory()) {
+                    if (recursive)
+                        yield __await(yield* __asyncDelegator(__asyncValues(yield __await(getFilesAsync(entry, recursive)))));
                 }
-                finally {
-                    _d = true;
-                }
+                else if (d.isFile())
+                    yield yield __await(entry);
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -429,7 +440,6 @@ function getFilesAsync(dir, recursive) {
         }
     });
 }
-exports.getFilesAsync = getFilesAsync;
 /** unlink Async */
 function unlinkAsync(absolute) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -442,7 +452,6 @@ function unlinkAsync(absolute) {
         });
     });
 }
-exports.unlinkAsync = unlinkAsync;
 /** WriteFile Async */
 function writeFileAsync(absolute, data) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -455,7 +464,6 @@ function writeFileAsync(absolute, data) {
         }));
     });
 }
-exports.writeFileAsync = writeFileAsync;
 /** Make Dir Async */
 function mkdirAsync(errHandler, rootDir, targetDir) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -466,7 +474,6 @@ function mkdirAsync(errHandler, rootDir, targetDir) {
         });
     });
 }
-exports.mkdirAsync = mkdirAsync;
 /** Check File or Dir is exists */
 function existsAsync(path) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -477,7 +484,6 @@ function existsAsync(path) {
         });
     });
 }
-exports.existsAsync = existsAsync;
 /** Move file async */
 function moveFileAsync(src, dest) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -490,5 +496,4 @@ function moveFileAsync(src, dest) {
         });
     });
 }
-exports.moveFileAsync = moveFileAsync;
 //# sourceMappingURL=fsw.js.map

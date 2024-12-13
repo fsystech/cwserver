@@ -1,5 +1,3 @@
-/// <reference types="node" />
-/// <reference types="node" />
 import { ICwServer } from './server';
 import { ISession } from './app-static';
 import { EventEmitter } from 'node:events';

@@ -34,19 +34,34 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.App = exports.parseUrl = exports.getClientIp = exports.escapePath = exports.parseCookie = exports.readAppVersion = exports.appVersion = void 0;
+exports.readAppVersion = exports.appVersion = void 0;
+exports.parseCookie = parseCookie;
+exports.escapePath = escapePath;
+exports.getClientIp = getClientIp;
+exports.parseUrl = parseUrl;
+exports.App = App;
 // 2:40 PM 5/7/2020
 // by rajib chy
 require("./app-global");
@@ -100,7 +115,6 @@ function parseCookie(cook) {
         return cook;
     return getCook(cook.split(';'));
 }
-exports.parseCookie = parseCookie;
 function escapePath(unsafe) {
     if (!unsafe)
         return "";
@@ -112,7 +126,6 @@ function escapePath(unsafe) {
         .replace(/&/gi, "")
         .trim();
 }
-exports.escapePath = escapePath;
 function createCookie(name, val, options) {
     let str = `${name}=${val}`;
     if (options.domain)
@@ -178,7 +191,6 @@ function getClientIp(req) {
     ip = parseIp((0, app_static_1.toString)(req.socket.remoteAddress));
     return (0, app_static_1.toString)(ip);
 }
-exports.getClientIp = getClientIp;
 function parseUrl(url) {
     if (url) {
         return node_url_1.default.parse(url, true);
@@ -187,7 +199,6 @@ function parseUrl(url) {
         pathname: null, query: {}
     });
 }
-exports.parseUrl = parseUrl;
 class Request extends node_http_1.IncomingMessage {
     get isMobile() {
         if (this._isMobile !== undefined)
@@ -496,7 +507,10 @@ class Application extends node_events_1.EventEmitter {
         }
         else {
             this._isRunning = false;
-            this._httpServer.close().once('close', () => resolveTerminating());
+            this._httpServer.once('close', () => resolveTerminating());
+            this._httpServer.close();
+            // bug solved at 6:00 PM 12/13/2024
+            // this._httpServer.close().once('close', () => resolveTerminating());
         }
         this._destroyActiveSocket();
         return promise;
@@ -639,5 +653,4 @@ function App() {
     }));
     return app;
 }
-exports.App = App;
 //# sourceMappingURL=server-core.js.map

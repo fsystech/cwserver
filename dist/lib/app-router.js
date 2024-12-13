@@ -19,7 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRouteInfo = exports.pathToArray = exports.getRouteMatcher = void 0;
+exports.getRouteMatcher = getRouteMatcher;
+exports.pathToArray = pathToArray;
+exports.getRouteInfo = getRouteInfo;
 const pathRegx = new RegExp('/', "gi");
 function getRouteMatcher(route, rRepRegx) {
     if (route.charAt(route.length - 1) === '/') {
@@ -65,7 +67,6 @@ function getRouteMatcher(route, rRepRegx) {
         }
     };
 }
-exports.getRouteMatcher = getRouteMatcher;
 // 2:07 AM 6/7/2020
 function pathToArray(pathStr, to) {
     const from = pathStr.split("/");
@@ -75,7 +76,6 @@ function pathToArray(pathStr, to) {
         to.push(kv);
     }
 }
-exports.pathToArray = pathToArray;
 function getRouteInfo(reqPath, handlerInfos, method) {
     if (handlerInfos.length === 0)
         return void 0;
@@ -140,5 +140,4 @@ function getRouteInfo(reqPath, handlerInfos, method) {
     }
     return void 0;
 }
-exports.getRouteInfo = getRouteInfo;
 //# sourceMappingURL=app-router.js.map

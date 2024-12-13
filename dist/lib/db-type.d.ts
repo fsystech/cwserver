@@ -1,4 +1,3 @@
-/// <reference types="node" />
 export interface FieldDef {
     name: string;
     tableID: number;

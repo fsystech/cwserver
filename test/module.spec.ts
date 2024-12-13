@@ -52,7 +52,8 @@ const appRoot: string = process.env.SCRIPT === "TS" ? path.join(path.resolve(__d
 const projectRoot: string = 'test_web';
 const logDir: string = path.resolve('./log/');
 let authCookies: string = "";
-type Agent = request.SuperAgentStatic & request.Request;
+type Agent = ReturnType<typeof request.agent>;
+//type Agent = request.SuperAgentStatic & request.Request;
 const agent: Agent = request.agent();
 let appIsLestening: boolean = false;
 let appUtility: IAppUtility;
@@ -547,7 +548,7 @@ describe("cwserver-get", () => {
                 expect(err).not.toBeInstanceOf(Error);
                 expect(res.status).toBe(200);
                 toBeApplicationJson(res.header["content-type"]);
-                const cook: string[] = res.get("Set-Cookie");
+                const cook: string[] = res.get("Set-Cookie") ?? [];
                 expect(cook.length).toBeGreaterThan(3);
                 done();
             });
@@ -1580,7 +1581,10 @@ describe("cwserver-multipart-body-parser", () => {
         }
         let isAbort: boolean = false;
         write(5 * 1024 * 1024, () => {
-            destroy(writer);
+            // if (writer.destroyed) {
+            //     console.log(`${size}: ${writer.destroyed}`)
+            // }
+            // destroy(writer);
             const readStream = fs.createReadStream(leargeFile);
             const req: request.SuperAgentRequest = getAgent()
                 .post(`http://localhost:${appUtility.port}/abort-error`)

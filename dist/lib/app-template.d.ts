@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { IResInfo } from './app-static';
 import { IContext } from './server';
 type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;

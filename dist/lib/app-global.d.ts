@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { IApplication } from './server-core';
 import { IController } from './app-controller';
 import { ICwServer } from './server';

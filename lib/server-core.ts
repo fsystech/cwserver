@@ -527,7 +527,10 @@ class Application extends EventEmitter implements IApplication {
             });
         } else {
             this._isRunning = false;
-            this._httpServer.close().once('close', () => resolveTerminating());
+            this._httpServer.once('close', () => resolveTerminating());
+            this._httpServer.close();
+            // bug solved at 6:00 PM 12/13/2024
+            // this._httpServer.close().once('close', () => resolveTerminating());
         }
         this._destroyActiveSocket();
         return promise;
