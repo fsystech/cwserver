@@ -1,6 +1,5 @@
 [![Cwserver Logo][cwserver-logo]][cwserver-url]
 
-[![Linux Build][travis-image]][travis-url]
 [![npm version][npm-version-image]][npm-version-url]
 [![NPM Downloads][downloads-image]][downloads-url]
 [![Coverage Status][coveralls-image]][coveralls-url]
@@ -336,8 +335,6 @@ app.listen( server.port, () => server.log.write( `
 Read more about [app.config.json](https://github.com/safeonlineworld/cwserver/blob/master/schema.json)<br/> 
 run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
 
-[travis-image]: https://img.shields.io/travis/com/safeonlineworld/cwserver/master.svg?label=linux&v=3
-[travis-url]: https://travis-ci.com/github/safeonlineworld/cwserver
 [appveyor-image]: https://img.shields.io/appveyor/build/rktuxyn/cwserver/master.svg?label=windows&v=3
 [appveyor-url]: https://ci.appveyor.com/project/rktuxyn/cwserver
 [npm-version-url]: https://badge.fury.io/js/cwserver
