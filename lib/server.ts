@@ -156,6 +156,7 @@ export interface ICwServer {
     readonly port: string | number;
     copyright(): string;
     createLogger(): void;
+    isValidContext(ctx: IContext): boolean;
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
     initilize(): void;
     getAppConfigName(): string;
