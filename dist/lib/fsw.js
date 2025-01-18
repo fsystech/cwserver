@@ -91,6 +91,7 @@ exports.moveFile = moveFile;
 exports.compareFile = compareFile;
 exports.compareFileSync = compareFileSync;
 exports.isExists = isExists;
+exports.isExistsAsync = isExistsAsync;
 exports.readJson = readJson;
 exports.readJsonSync = readJsonSync;
 exports.mkdir = mkdir;
@@ -165,6 +166,14 @@ function isExists(path, next) {
     const url = _path.resolve(path);
     return _fs.stat(url, (err, stats) => {
         return next(err ? false : true, url);
+    });
+}
+function isExistsAsync(path) {
+    const url = _path.resolve(path);
+    return new Promise((resolve) => {
+        _fs.stat(url, (err, stats) => {
+            return resolve({ exists: err ? false : true, url });
+        });
     });
 }
 function readJson(absPath, next, errHandler) {

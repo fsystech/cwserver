@@ -296,6 +296,7 @@ export declare class CwServer implements ICwServer {
         root: string;
     } | void;
     getAppConfigName(): string;
+    isValidContext(ctx: IContext): boolean;
     getRoot(): string;
     parseMaxAge(maxAge: any): number;
     getPublic(): string;

@@ -7,6 +7,10 @@ export declare function compareFile(a: string, b: string, next: (err: NodeJS.Err
 /** compareFileSync a stat.mtime > b stat.mtime */
 export declare function compareFileSync(a: string, b: string): boolean;
 export declare function isExists(path: string, next: (exists: boolean, url: string) => void): void;
+export declare function isExistsAsync(path: string): Promise<{
+    exists: boolean;
+    url: string;
+}>;
 export declare function readJson<T>(absPath: string, next: (err: NodeJS.ErrnoException | null, json: NodeJS.Dict<T> | void) => void, errHandler: ErrorHandler): void;
 export declare function readJsonSync<T>(absPath: string): NodeJS.Dict<T> | void;
 export declare function mkdir(rootDir: string, targetDir: string, next: (err: NodeJS.ErrnoException | null) => void, errHandler: ErrorHandler): void;

@@ -655,6 +655,9 @@ ${appRoot}\\www_public
         }
         return "app.config.json";
     }
+    isValidContext(ctx: IContext): boolean {
+        return true;
+    }
     getRoot(): string {
         return this._root;
     }
@@ -1025,11 +1028,14 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             route += route.charAt(route.length - 1) !== "/" ? "/" : "";
             route += "*";
             const _processHandler = (req: IRequest, res: IResponse, next: NextFunction, forWord: (ctx: IContext) => void): void => {
-                const _ctx = _server.createContext(req, res, next);
-                const _next = next;
+                const _ctx: IContext = _server.createContext(req, res, next);
+                const _next: NextFunction = next;
                 _ctx.next = (code?: number | undefined, transfer?: boolean): any => {
                     if (!code || code === 200) return;
                     return _process.render(code, _ctx, _next, transfer);
+                }
+                if (!_server.isValidContext(_ctx)) {
+                    return;
                 }
                 return fsw.isExists(`${root}/${_ctx.path}`, (exists: boolean, url: string): void => {
                     if (!exists) return _ctx.next(404);
@@ -1084,7 +1090,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             return process.nextTick(() => next());
         });
         _app.use((req: IRequest, res: IResponse, next: NextFunction) => {
-            const context = _process.createContext(req, res, next);
+            const context: IContext = _process.createContext(req, res, next);
             const reqPath: string = req.path;
             if (_server.config.hiddenDirectory.some((a) => {
                 return reqPath.substring(0, a.length) === a;
@@ -1097,7 +1103,9 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 return _server.transferRequest(context, 404);
             }
             try {
-                return _controller.processAny(context);
+                if (_server.isValidContext(context)) {
+                    return _controller.processAny(context);
+                }
             } catch (ex: any) {
                 return _server.transferRequest(_server.addError(context, ex), 500);
             }

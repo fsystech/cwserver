@@ -88,6 +88,14 @@ export function isExists(
         return next(err ? false : true, url);
     });
 }
+export function isExistsAsync(path: string): Promise<{ exists: boolean, url: string }> {
+    const url = _path.resolve(path);
+    return new Promise((resolve) => {
+        _fs.stat(url, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
+            return resolve({ exists: err ? false : true, url });
+        })
+    })
+}
 export function readJson<T>(
     absPath: string,
     next: (err: NodeJS.ErrnoException | null, json: NodeJS.Dict<T> | void) => void,

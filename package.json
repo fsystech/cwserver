@@ -46,6 +46,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.10.2",
     "@types/socket.io-client": "^3.0.0",
+    "@types/streamsearch": "^1.1.2",
     "@types/superagent": "^8.1.9",
     "expect": "^29.7.0",
     "mocha": "^11.0.1",

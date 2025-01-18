@@ -479,6 +479,9 @@ ${appRoot}\\www_public
         }
         return "app.config.json";
     }
+    isValidContext(ctx) {
+        return true;
+    }
     getRoot() {
         return this._root;
     }
@@ -869,6 +872,9 @@ function initilizeServer(appRoot, wwwName) {
                         return;
                     return _process.render(code, _ctx, _next, transfer);
                 };
+                if (!_server.isValidContext(_ctx)) {
+                    return;
+                }
                 return fsw.isExists(`${root}/${_ctx.path}`, (exists, url) => {
                     if (!exists)
                         return _ctx.next(404);
@@ -937,7 +943,9 @@ function initilizeServer(appRoot, wwwName) {
                 return _server.transferRequest(context, 404);
             }
             try {
-                return _controller.processAny(context);
+                if (_server.isValidContext(context)) {
+                    return _controller.processAny(context);
+                }
             }
             catch (ex) {
                 return _server.transferRequest(_server.addError(context, ex), 500);
