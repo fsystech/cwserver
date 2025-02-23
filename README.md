@@ -1,349 +1,199 @@
-[![Cwserver Logo][cwserver-logo]][cwserver-url]
+---
 
-[![npm version][npm-version-image]][npm-version-url]
-[![NPM Downloads][downloads-image]][downloads-url]
-[![Coverage Status][coveralls-image]][coveralls-url]
+# cwserver
 
-## cwserver ##
-The aim of the project is to create an easy to use, lightweight, ```Complete Web Server Framework``` with default ```NodeJs HTTP Server```.
-- The framework also provides default
-  - ```Secure User Session```,
-  - ```Cookie Parser```,
-  - ```Flexible Router```,
-  - ```Multiple Views```,
-  - ```Virtual Directory```,
-  - ```Hidden Directory```,
-  - ```Template Engine```,
-  - ```Nested Master Template Engine```,
-  - ```Post Data Handler (with multipart form data and large file)```,
-  - ```Mimetype Handler```,
-  - ```WebStream Handler```,
-  - ```JS/CSS Bundler```,
-  - ```socket.io Interface```,
-  - ```Easy way to bind with IIS/NGINX```
+`cwserver` is a lightweight and high-performance Node.js web server framework designed for building RESTful APIs and microservices. It provides a simple interface for routing, middleware management, and request handling. It is optimized for speed and minimal overhead, making it perfect for use cases where performance is critical.
 
-Install ```cwserver``` by this command ```npm i cwserver```<br/>
-How to use ```cwserver``` core ```IApplication```?<br/>
+---
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Basic Usage](#basic-usage)
+  - [Creating a Simple Server](#creating-a-simple-server)
+  - [Handling Different HTTP Methods](#handling-different-http-methods)
+- [Advanced Usage](#advanced-usage)
+  - [Using Middleware](#using-middleware)
+  - [CORS Configuration](#cors-configuration)
+  - [Handling POST Requests](#handling-post-requests)
+- [API Reference](#api-reference)
+  - [cwserver.App()](#cwserverapp)
+  - [Methods](#methods)
+- [Performance](#performance)
+- [Use Cases](#use-cases)
+- [License](#license)
+
+---
+
+## Installation
+
+To install `cwserver` in your Node.js project, you can use npm or yarn.
+
+```bash
+npm install cwserver
 ```
-const { App } = require('cwserver');
-const app = App();
-const port = 8080;
-app.on("request-begain", (req) => {
-    console.log(`${req.method} ${req.path}`);
+
+or
+
+```bash
+yarn add cwserver
+```
+
+---
+
+## Basic Usage
+
+### Creating a Simple Server
+
+Once you've installed `cwserver`, you can create a basic web server with minimal code:
+
+```javascript
+const cwserver = require('cwserver');
+
+const app = new cwserver.App();
+
+// Simple route
+app.get('/hello', (req, res) => {
+    res.json({ message: "Hello from cwserver!" });
 });
-app.on("response-end", (req, res) => {
-    console.log(`Send ${res.statusCode} ${req.path}`);
-});
-app.use((req, res, next) => {
-    res.status(200).send("Hello World...");
-});
-app.listen(port, () => {
-    console.log(`Listing port => ${port}`);
+
+// Start the server on port 3000
+app.listen(3000, () => {
+    console.log('Server running on port 3000');
 });
 ```
-Or you may use full application by following:<br/>
-Create ```createProjectTemplate.js``` as following
-```
-const { createProjectTemplate } = require( 'cwserver' );
-createProjectTemplate( {
-    appRoot: __dirname,
-    projectRoot: "www" /** Your project root folder name*/,
-    allExample: false
-} );
-```
-Then run this commmand ```node createProjectTemplate```<br/>
-It will create default project template for ```cwserver``` in your application root.<br/>
-Now your appRoot look like this
-```
-appRoot 
-├─┬ wwww ( projectRoot )
-│ └─┬ config
-│   ├ lib
-│   ├ template (this contains master template file)
-│   ├ web (this contains temp and cache files)
-│   └ index.html
-├─ node_modules
-├─ server.js
-├─ package.json
-└─ README.md
-```
-After, run this command ```node server www /**your project root*/```<br/>
-### How to setup middleware ###
-First process ```app.prerequisites``` every request and then run ```app.use```
-```
-global.cw.server.on( "register-view", ( app, controller, server ) => {
-	app.prerequisites( ( req, res, next ): void => {
-		res.setHeader( 'x-frame-options', 'sameorigin' );
-		return next();
-	} );
-	app.use( ( req, res, next ): void => {
-		res.setHeader( 'x-frame-options', 'sameorigin' );
-		return next();
-	} );
-} );
-```
-### How to setup router ? ###
-```
-global.cw.server.on( "register-view", ( app, controller, server ) => {
-    controller
-        .any( '/test-any/*', ( ctx, match ) => {
-            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/test-any/*", q: match } );
-        } )
-        .get( '/task/:id/*', ( ctx, match ) => {
-            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/task/:id/*", q: match } );
-        } )
-        .get( '/dist/*', ( ctx, match ) => {
-            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/dist/*", q: match } );
-        } )
-        .get( '/user/:id/settings', ( ctx, match ) => {
-            return ctx.res.json( { reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match } );
-        } );
-} );
-```
-### How to add Virtual Directory ? ###
-```
-global.cw.server.on( "register-view", ( app, controller, server ) => {
-    const vDir = path.join( path.resolve( server.getRoot(), '..' ), "/project_template/test/" );
-    server.addVirtualDir( "/vtest", vDir, ( ctx ) => {
-        return mimeHandler.render( ctx, vDir, true );
-    } );
-    server.addVirtualDir( "/test-virtual", vDir );
-    server.addVirtualDir( "/vtest/virtual/", vDir );
-} );
-```
-### Authetication
-Session cookie name use from ```app.config.json => session.cookie```<br/>
-and session encryption use ```app.config.json => session.key```
-```
-global.cw.server.on( "register-view", ( app, controller, server ) => {
-    controller.get( '/authenticate/:loginId/:roleid', ( ctx, requestParam ) => {
-        if ( ctx.req.session.isAuthenticated ) {
-            ctx.res.status( 200 ).type( "html" ).send( `Hello ${ctx.req.session.loginId}` );
-        } else {
-            ctx.setSession(/*loginId*/requestParam.query.loginId,/*roleId*/requestParam.query.roleId, /*userData*/{ token: ctx.req.query.token } );
-            ctx.res.status( 200 ).type( "html" ).send( `Authentication success ${ctx.req.query.loginId}` );
-        }
-        return ctx.next( 200 );
-    } );
-} );
-```
-### SignOut From Application ###
-```
-global.cw.server.on( "register-view", ( app, controller, server ) => {
-	controller.get( '/signout', ( ctx, requestParam ) => {
-		if ( ctx.session.isAuthenticated ) {
-			ctx.signOut();
-		}
-		ctx.redirect( "/" ).next( 302, true );
-	} );
-} );
-```
-### Handle post data ###
-```
-const { getBodyParser, fsw } = require( 'cwserver' );
-global.cw.server.on( "register-view", ( app, controller, server ) => {
-    const downloadDir = server.mapPath( "/upload/data/" );
-    if ( !fs.existsSync( downloadDir ) ) {
-        fsw.mkdirSync( server.mapPath( "/" ), "/upload/data/" );
-    }
-    const tempDir = server.mapPath( "/upload/temp/" );
-    controller.post( '/post-async', async ( ctx ) => {
-        const parser = getBodyParser( ctx.req, tempDir );
-        await parser.parseSync();
-        if ( parser.isUrlEncoded() || parser.isAppJson() ) {
-            ctx.res.status( 200, { 'Content-Type': 'application/json' } );
-            ctx.res.end( JSON.stringify( parser.getJson() ) );
-            parser.dispose();
-            return ctx.next( 200 );
-        }
-        parser.saveAsSync( downloadDir ); parser.dispose();
-        return ctx.res.status( 200 ).send( "<h1>success</h1>" );
-        // or
-        // return ctx.res.asHTML( 200 ).end( "<h1>success</h1>" );
-        // or
-        /*const data = [];
-        parser.getFilesSync( ( file ) => {
-            data.push( {
-                content_type: file.getContentType(),
-                name: file.getName(),
-                file_name: file.getFileName(),
-                content_disposition: file.getContentDisposition(),
-                temp_path: file.getTempPath()
-            } );
-            file.saveAsSync( `${downloadDir}/${Util.guid()}_${file.getFileName()}` );
-        } );
-        return ctx.res.status( 200 ).json( data );*/
-    } )
-} );
-```
-[See more test here](https://github.com/safeonlineworld/cwserver/blob/master/test/test-view.ts)<br/> 
-### Template Engine ###
-Template can run ```config.defaultExt``` file extension or ```ctx.res.render( ctx, to_file_path )``` <br/>
-Example of server-side script in ```config.defaultExt``` or ```app.config.json => template.ext```<br/>
-```
-ctx.res.render( ctx, server.mapPath( `/index${server.config.defaultExt || ".html"}` ) );
-```
-Code block:
-```
-{%
-    if( !ctx.session.isAuthenticated ){
-       return ctx.next( 401, true );
-    } else {
-       ctx.write( JSON.stringify( ctx.session ) );
-    }
-%}
-```
-```
-<ul>
-  {% users.forEach(function(user){ %}
-    {= user =}
-  {% }); %}
-</ul>
 
-<ul>
-  <!--{%--> users.forEach(function(user){ <!--%}-->
-    {= user =}
-  <!--{%--> }); <!--%}-->
-</ul>
+In this example:
+- We create an instance of `cwserver.App()`.
+- Define a route `GET /hello` that returns a JSON response.
+- The server listens on port 3000.
 
-<script>
-    var userLength = 0;
-    /*{%*/ if ( users.length > 0 ) {/*%}*/
-    userLength = {= users.length =};
-    /*{%*/ } /*%}*/
-</script>
+### Handling Different HTTP Methods
 
-<script>
-    var userLength = 0;
-    {% if ( users.length > 0 ) { %}
-    userLength = {= users.length =};
-    {% } %}
-</script>
-```
-Response write: ```{= myVar =}``` or ```ctx.write(myVar)```<br/>
-```
-{%
-    const result = await ctx.server.db.pgsql.executeIoAsync( "my_shcema.__get_dataset", JSON.stringify( {
-        login_id: ctx.req.session.loginId
-    } ), JSON.stringify( {
-        trade_date: "2020-02-03"
-    } ) );
-%}
-{% if ( result.ret_val < 0) { %}
-    <span style="color:red">No Data Found...</span>
-{% } else { %}
-<table style="width:100%">
-   <thead>
-      <tr>
-         <th>Firstname</th>
-         <th>Lastname</th>
-         <th>Age</th>
-      </tr>
-   </thead>
-   <tbody>
-   {% for( const row of result.ret_data_table ){ %}
-        <tr>
-            <td>{= row.first_name =}</td>
-            <td>{= row.last_name =}</td>
-            <td>{= row.age_name =}</td>
-        </tr>
-   {% } %}
-   </tbody>
-</table>
-{% } %}
-```
-### Nested Master Template ###
-```#extends``` keyword define my master template<br/>
-You can add multiple file by ```#attach``` keyword
-```
-www
-├─┬ template
-│ └─┬ master.html 
-│   ├ footer.html
-│   ├ header.html
-│   └ readme.html
-├─ index.html
+`cwserver` allows you to handle various HTTP methods like `GET`, `POST`, `PUT`, and `DELETE`:
 
-index.html  ==> #extends /template/readme.html
-==> index.html impliment placeholder id of readme.html (parent master)
--------------------------------------------
-#extends /template/readme.html
-<impl-placeholder id="container">
-    container here
-</impl-placeholder>
--------------------------------------------
-readme.html ==> #extends /template/master.html (parent master)
-==> readme.html like as master template and its contains own placeholder and impliment placeholder id of master.html
--------------------------------------------
-#extends /template/master.html
-<impl-placeholder id="body">
-    <!--Here create new placeholder-->
-    <placeholder id="container">
-    </placeholder>
-</impl-placeholder>
-<impl-placeholder id="header">
-    #attach /template/header.html
-</impl-placeholder>
--------------------------------------------
-master.html ==> root master template
---------------------------------------------
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-<placeholder id="header">
-</placeholder>
-<body>
-    <placeholder id="body">
-    </placeholder>
-    #attach /template/footer.html
-</body>
-</html>
---------------------------------------------
-```
-see more about template /dist/project_template/www <br/><br/>
-### server.js ###
-You may create server.js file by you:
-```
-const { ConsoleColor, initilizeServer } = require( 'cwserver' );
-let wwwName = void 0;
-if ( process.argv.length > 2 ) {
-    wwwName = process.argv[2];
-} else {
-    if ( process.env.APP_POOL_ID ) {
-        wwwName = process.env[process.env.APP_POOL_ID];
-    }
-}
-const server = initilizeServer( __dirname, wwwName );
-const app = server.init();
-process.on( 'exit', () => {
-    console.log( "Exited..." );
-} );
-process.on( 'SIGINT', () => {
-    server.log.error( "Caught interrupt signal" );
-    server.log.error( "Application Exited..." );
-    server.log.reset(); server.log.dispose();
-    setTimeout( () => {
-        process.exit( 0 );
-    }, 200 );
-} );
-app.listen( server.port, () => server.log.write( `
-    [+] Maintance      : https://www.fsys.tech
-    [+] Server         : http://localhost:${server.port}
-    [+] Socket         : ws://localhost:${server.port}${server.socketPath}
-    [~] Running Server...
-`, ConsoleColor.FgMagenta ) );
-```
-Read more about [app.config.json](https://github.com/safeonlineworld/cwserver/blob/master/schema.json)<br/> 
-run ```node server your_app_dir_name``` or ```npm start your_app_dir_name```
+```javascript
+app.get('/hello', (req, res) => {
+    res.json({ message: "Hello, GET!" });
+});
 
-[appveyor-image]: https://img.shields.io/appveyor/build/rktuxyn/cwserver/master.svg?label=windows&v=3
-[appveyor-url]: https://ci.appveyor.com/project/rktuxyn/cwserver
-[npm-version-url]: https://badge.fury.io/js/cwserver
-[npm-version-image]: https://badge.fury.io/js/cwserver.svg
-[downloads-image]: https://img.shields.io/npm/dt/cwserver.svg
-[downloads-url]: https://npmcharts.com/compare/cwserver?minimal=true
-[language-garde-image]: https://img.shields.io/lgtm/grade/javascript/g/safeonlineworld/cwserver.svg?logo=lgtm&logoWidth=18
-[language-garde-url]: https://lgtm.com/projects/g/safeonlineworld/cwserver/context:javascript
-[coveralls-image]: https://img.shields.io/coveralls/github/safeonlineworld/cwserver/master
-[coveralls-url]: https://coveralls.io/github/safeonlineworld/cwserver?branch=master
-[cwserver-logo]: https://i.imgur.com/OSbUHaJ.png
-[cwserver-url]: http://cwserver.fsys.tech/
+app.post('/submit', (req, res) => {
+    res.json({ message: "POST request received!" });
+});
+
+app.put('/update', (req, res) => {
+    res.json({ message: "PUT request received!" });
+});
+
+app.delete('/delete', (req, res) => {
+    res.json({ message: "DELETE request received!" });
+});
+```
+
+---
+
+## Advanced Usage
+
+### Using Middleware
+
+You can use `app.prerequisites()` to add global middleware. This middleware will be executed before handling any routes:
+
+```javascript
+app.prerequisites((req, res, next) => {
+    console.log(`Request method: ${req.method}, Request URL: ${req.url}`);
+    next(); // Proceed to the next middleware or route handler
+});
+```
+
+You can also add middleware for specific routes, enabling fine-grained control.
+
+### CORS Configuration
+
+`cwserver` supports Cross-Origin Resource Sharing (CORS). You can use the `cors` package for custom CORS configuration:
+
+```javascript
+const cors = require('cors');
+
+const allowedOrigins = ['https://example.com'];
+
+app.prerequisites(cors({
+    origin: allowedOrigins,
+    methods: 'GET,POST',
+    maxAge: 7200, // 2 hours
+    credentials: true,
+    allowedHeaders: 'x-app-token, x-app-type, Content-Type, Accept, X-Requested-With, remember-me'
+}));
+```
+
+In this example:
+- CORS is configured to allow requests from `https://example.com`.
+- The server supports `GET` and `POST` methods.
+- Preflight requests are cached for 2 hours (`maxAge: 7200`).
+
+### Handling POST Requests
+
+You can handle `POST` requests by using `app.post()`:
+
+```javascript
+app.post('/data', (req, res) => {
+    const requestData = req.body;
+    res.json({ received: requestData });
+});
+```
+
+This route listens for `POST` requests to `/data` and responds with the data sent in the request.
+
+---
+
+## API Reference
+
+### `cwserver.App()`
+
+This creates a new instance of the `cwserver` application.
+
+#### **Methods:**
+
+- **`app.get(route, handler)`**  
+  Defines a `GET` route handler for the specified `route`.
+  
+- **`app.post(route, handler)`**  
+  Defines a `POST` route handler for the specified `route`.
+  
+- **`app.put(route, handler)`**  
+  Defines a `PUT` route handler for the specified `route`.
+  
+- **`app.delete(route, handler)`**  
+  Defines a `DELETE` route handler for the specified `route`.
+  
+- **`app.listen(port, callback)`**  
+  Starts the server on the specified `port` and invokes the callback when the server starts.
+
+- **`app.prerequisites(middleware)`**  
+  Adds global middleware that is executed before handling any routes.
+
+---
+
+## Performance
+
+`cwserver` is designed to be minimalistic and fast, which makes it ideal for small services, microservices, and APIs where performance is critical. Because `cwserver` is built with minimal dependencies, it has lower overhead compared to larger frameworks like Express.js.
+
+While we don't have official benchmarks, you can expect **cwserver** to perform well under light to moderate load. For high-traffic applications, it's recommended to perform stress testing to ensure it meets your performance needs.
+
+---
+
+## Use Cases
+
+- **Microservices**: Perfect for creating small, lightweight services that need to handle a high number of HTTP requests.
+- **RESTful APIs**: Quickly set up and deploy APIs for handling `GET`, `POST`, `PUT`, and `DELETE` requests.
+- **Static File Servers**: Serve static files or integrate with frontend frameworks like React or Angular.
+- **Lightweight Web Apps**: Build smaller, faster web applications without unnecessary overhead.
+
+---
+
+## License
+
+`cwserver` is licensed under the MIT License.
+
+---
+
+Feel free to ask if you need more information or examples! 🚀
