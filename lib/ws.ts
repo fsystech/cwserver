@@ -235,7 +235,7 @@ class CwSocketServer implements ICwSocketServer {
             this._server.config.socketPath = io._path;
         }
         io.use((socket: IOSocket, next: (err?: any) => void): void => {
-            socket.request.session = this._server.parseSession(socket.request.headers.cookie);
+            socket.request.session = this._server.parseSession(socket.request.headers, socket.request.headers.cookie);
             if (this._wsClients.beforeInitiateConnection(socket.request.session, socket)) {
                 return next();
             }

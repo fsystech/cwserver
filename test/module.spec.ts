@@ -2057,10 +2057,10 @@ describe("cwserver-utility", () => {
             const old = appUtility.server.config.session.cookie;
             appUtility.server.config.session.cookie = "";
             expect(shouldBeError(() => {
-                appUtility.server.parseSession("");
+                appUtility.server.parseSession({}, "");
             })).toBeInstanceOf(Error);
             appUtility.server.config.session.cookie = old;
-            expect(appUtility.server.parseSession("").isAuthenticated).toBeFalsy();
+            expect(appUtility.server.parseSession({}, "").isAuthenticated).toBeFalsy();
             expect(appUtility.server.escape()).toBeDefined();
             expect(appUtility.server.pathToUrl(`/${projectRoot}/test.png`)).toBeDefined();
             expect(appUtility.server.pathToUrl(`${projectRoot}/test.png`)).toBeDefined();
@@ -2378,9 +2378,9 @@ describe("cwserver-utility", () => {
                     throw e;
                 }
             })).toBeInstanceOf(Error);
-            expect(appUtility.server.parseSession("test=1;no-parse")).toBeInstanceOf(Session);
+            expect(appUtility.server.parseSession({}, "test=1;no-parse")).toBeInstanceOf(Session);
             cwserver.Util.extend(appUtility.server.config, untouchedConfig);
-            expect(appUtility.server.parseSession("_session=error")).toBeInstanceOf(Session);
+            expect(appUtility.server.parseSession({}, "_session=error")).toBeInstanceOf(Session);
             expect(shouldBeError(() => {
                 const oldkey = appUtility.server.config.session;
                 const enckey = appUtility.server.config.encryptionKey;

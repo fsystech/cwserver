@@ -144,7 +144,7 @@ class CwSocketServer {
             this._server.config.socketPath = io._path;
         }
         io.use((socket, next) => {
-            socket.request.session = this._server.parseSession(socket.request.headers.cookie);
+            socket.request.session = this._server.parseSession(socket.request.headers, socket.request.headers.cookie);
             if (this._wsClients.beforeInitiateConnection(socket.request.session, socket)) {
                 return next();
             }

@@ -618,7 +618,7 @@ ${appRoot}\\www_public
             }
         }
     }
-    parseSession(cook) {
+    parseSession(headers, cook) {
         if (!this._config.session.cookie || this._config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new app_static_2.Session();
@@ -925,7 +925,7 @@ function initilizeServer(appRoot, wwwName) {
             }
         });
         _app.prerequisites((req, res, next) => {
-            req.session = _server.parseSession(req.cookies);
+            req.session = _server.parseSession(req.headers, req.cookies);
             SessionSecurity.isValidSession(req);
             return process.nextTick(() => next());
         });

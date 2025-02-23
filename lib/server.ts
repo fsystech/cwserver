@@ -41,6 +41,7 @@ import { Controller, IController } from './app-controller';
 import { Encryption, ICryptoInfo } from "./encryption";
 import { HttpStatus } from "./http-status";
 import { Logger, ILogger, ShadowLogger } from "./logger";
+import { IncomingHttpHeaders } from "node:http";
 export type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 // ----------------------------------------------------------
@@ -146,48 +147,217 @@ export interface IServerConfig {
     /** If `useFullOptimization` true we will set highest priority to memory */
     useFullOptimization: boolean;
 }
+/**
+ * Interface representing a web server.
+ */
 export interface ICwServer {
+    /** The version of the server. */
     readonly version: string;
-    readonly errorPage: { [x: string]: string; };
+
+    /** Mapping of error pages based on status codes. */
+    readonly errorPage: { [x: string]: string };
+
+    /** Logger instance for logging server activities. */
     readonly log: ILogger;
+
+    /** Configuration settings of the server. */
     readonly config: IServerConfig;
+
+    /** Encryption utilities used by the server. */
     readonly encryption: IServerEncryption;
+
+    /** Database connections managed by the server. */
     readonly db: NodeJS.Dict<ICwDatabaseType>;
+
+    /** The port number on which the server runs. */
     readonly port: string | number;
+
+    /**
+     * Returns the copyright information.
+     * @returns {string} The copyright text.
+     */
     copyright(): string;
+
+    /** Initializes the server logger. */
     createLogger(): void;
+
+    /**
+     * Validates if the provided context is valid.
+     * @param {IContext} ctx - The context to validate.
+     * @returns {boolean} `true` if valid, otherwise `false`.
+     */
     isValidContext(ctx: IContext): boolean;
+
+    /**
+     * Creates a new context for a request.
+     * @param {IRequest} req - The incoming request object.
+     * @param {IResponse} res - The response object.
+     * @param {NextFunction} next - The next middleware function.
+     * @returns {IContext} The created request context.
+     */
     createContext(req: IRequest, res: IResponse, next: NextFunction): IContext;
+
+    /** Initializes the server and its dependencies. */
     initilize(): void;
+
+    /**
+     * Gets the application configuration name.
+     * @returns {string} The name of the application configuration.
+     */
     getAppConfigName(): string;
+
+    /**
+     * Applies the provided configuration settings.
+     * @param {NodeJS.Dict<any>} config - Configuration object.
+     */
     implimentConfig(config: NodeJS.Dict<any>): void;
+
+    /**
+     * Sets default security-related HTTP headers.
+     * @param {IResponse} res - The response object.
+     */
     setDefaultProtectionHeader(res: IResponse): void;
-    parseSession(cook: undefined | string[] | string | { [x: string]: any; }): ISession;
+
+    /**
+     * Parses session data from request headers and cookies.
+     * @param {IncomingHttpHeaders} headers - Request headers.
+     * @param {undefined | string[] | string | { [x: string]: any }} cook - Cookies from the request.
+     * @returns {ISession} The parsed session object.
+     */
+    parseSession(headers: IncomingHttpHeaders, cook: undefined | string[] | string | { [x: string]: any }): ISession;
+
+    /**
+     * Sets a session for a user.
+     * @param {IContext} ctx - The request context.
+     * @param {string} loginId - The login ID of the user.
+     * @param {string} roleId - The role ID of the user.
+     * @param {any} userData - Additional user data.
+     * @returns {boolean} `true` if session was set successfully.
+     */
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
+
+    /**
+     * Determines whether the request should propagate an error.
+     * @param {IContext} ctx - The request context.
+     * @returns {boolean} `true` if the error should be passed.
+     */
     passError(ctx: IContext): boolean;
+
+    /**
+     * Retrieves the error page path for a given status code.
+     * @param {number} statusCode - The HTTP status code.
+     * @param {boolean} [tryServer] - Whether to try the server's default error page.
+     * @returns {string | void} The path of the error page.
+     */
     getErrorPath(statusCode: number, tryServer?: boolean): string | void;
+
+    /**
+     * Transfers a request to another path or resource.
+     * @param {IContext} ctx - The request context.
+     * @param {string | number} path - The target path.
+     * @param {IResInfo} [status] - The response status information.
+     */
     transferRequest(ctx: IContext, path: string | number, status?: IResInfo): void;
+
+    /**
+     * Maps a virtual or relative path to an absolute system path.
+     * @param {string} path - The relative path.
+     * @returns {string} The mapped absolute path.
+     */
     mapPath(path: string): string;
+
+    /**
+     * Converts a file system path to a URL path.
+     * @param {string} path - The system file path.
+     * @returns {string} The corresponding URL path.
+     */
     pathToUrl(path: string): string;
+
+    /**
+     * Adds an error message to the request context.
+     * @param {IContext} ctx - The request context.
+     * @param {Error | string} ex - The error object or message.
+     * @returns {IContext} The modified request context.
+     */
     addError(ctx: IContext, ex: Error | string): IContext;
+
+    /**
+     * Escapes a string to prevent XSS vulnerabilities.
+     * @param {string | null} [unsafe] - The unsafe input string.
+     * @returns {string} The escaped string.
+     */
     escape(unsafe?: string | null): string;
-    addVirtualDir(
-        route: string, root: string,
-        evt?: (ctx: IContext) => void
-    ): void;
-    virtualInfo(route: string): {
-        route: string;
-        root: string
-    } | void;
+
+    /**
+     * Adds a virtual directory mapping.
+     * @param {string} route - The route path.
+     * @param {string} root - The root directory path.
+     * @param {(ctx: IContext) => void} [evt] - Optional event handler for the directory.
+     */
+    addVirtualDir(route: string, root: string, evt?: (ctx: IContext) => void): void;
+
+    /**
+     * Retrieves information about a virtual directory.
+     * @param {string} route - The virtual directory route.
+     * @returns {{ route: string; root: string } | void} The virtual directory details.
+     */
+    virtualInfo(route: string): { route: string; root: string } | void;
+
+    /**
+     * Formats a file system path for consistency.
+     * @param {string} path - The path to format.
+     * @param {boolean} [noCheck] - Whether to skip validation checks.
+     * @returns {string} The formatted path.
+     */
     formatPath(path: string, noCheck?: boolean): string;
+
+    /**
+     * Creates a resource bundle from a given string.
+     * @param {string} str - The input string.
+     * @returns {string} The generated bundle.
+     */
     createBundle(str: string): string;
+
+    /**
+     * Adds a new MIME type mapping.
+     * @param {string} extension - The file extension (e.g., `.json`).
+     * @param {string} val - The corresponding MIME type (e.g., `application/json`).
+     */
     addMimeType(extension: string, val: string): void;
+
+    /**
+     * Retrieves the root directory of the server.
+     * @returns {string} The root directory path.
+     */
     getRoot(): string;
+
+    /**
+     * Retrieves the public directory of the server.
+     * @returns {string} The public directory path.
+     */
     getPublic(): string;
+
+    /**
+     * Retrieves the name of the public directory.
+     * @returns {string} The public directory name.
+     */
     getPublicDirName(): string;
+
+    /**
+     * Parses and normalizes the max-age value for caching.
+     * @param {any} maxAge - The max-age input.
+     * @returns {number} The normalized max-age in seconds.
+     */
     parseMaxAge(maxAge: any): number;
-    on(ev: 'shutdown', handler: () => void): void;
+
+    /**
+     * Registers an event listener for server events.
+     * @param {'shutdown'} ev - The event name.
+     * @param {() => void} handler - The event handler function.
+     */
+    on(ev: "shutdown", handler: () => void): void;
 }
+
 export type IViewHandler = (app: IApplication, controller: IController, server: ICwServer) => void;
 // -------------------------------------------------------
 export const {
@@ -787,7 +957,7 @@ ${appRoot}\\www_public
             }
         }
     }
-    parseSession(cook: undefined | string[] | string | { [x: string]: any; }): ISession {
+    parseSession(headers: IncomingHttpHeaders, cook: undefined | string[] | string | { [x: string]: any; }): ISession {
         if (!this._config.session.cookie || this._config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new Session();
@@ -1086,7 +1256,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             }
         });
         _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
-            req.session = _server.parseSession(req.cookies);
+            req.session = _server.parseSession(req.headers, req.cookies);
             SessionSecurity.isValidSession(req);
             return process.nextTick(() => next());
         });
