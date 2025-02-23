@@ -1,10 +1,6 @@
----
-
 # cwserver
 
 `cwserver` is a lightweight and high-performance Node.js web server framework designed for building RESTful APIs and microservices. It provides a simple interface for routing, middleware management, and request handling. It is optimized for speed and minimal overhead, making it perfect for use cases where performance is critical.
-
----
 
 ## Table of Contents
 
