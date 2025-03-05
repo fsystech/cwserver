@@ -23,24 +23,53 @@ exports.ResInfo = exports.Session = exports.BufferArray = void 0;
 exports.toString = toString;
 exports.ToNumber = ToNumber;
 exports.ToResponseTime = ToResponseTime;
+/**
+ * Class implementing a buffer array with dynamic buffer management.
+ */
 class BufferArray {
+    /**
+     * Retrieves the concatenated buffer data.
+     *
+     * @throws Error if the instance has been disposed.
+     */
     get data() {
         this.shouldNotDisposed();
         return Buffer.concat(this._data, this.length);
     }
+    /**
+     * Retrieves the total length of the buffer array.
+     *
+     * @throws Error if the instance has been disposed.
+     */
     get length() {
         this.shouldNotDisposed();
         return this._length;
     }
+    /**
+     * Initializes a new instance of the `BufferArray` class.
+     */
     constructor() {
         this._data = [];
         this._isDisposed = false;
         this._length = 0;
     }
+    /**
+     * Ensures that the instance is not disposed before accessing data.
+     *
+     * @throws Error if the instance has been disposed.
+     */
     shouldNotDisposed() {
         if (this._isDisposed)
             throw new Error("This `BufferArray` instance already disposed.");
     }
+    /**
+     * Adds a buffer or string to the buffer array.
+     *
+     * @param buff The buffer or string to add.
+     * @returns The length of the added buffer.
+     *
+     * @throws Error if the instance has been disposed.
+     */
     push(buff) {
         this.shouldNotDisposed();
         if (Buffer.isBuffer(buff)) {
@@ -53,14 +82,28 @@ class BufferArray {
         this._data.push(nBuff);
         return nBuff.length;
     }
+    /**
+     * Clears the buffer array by resetting stored data.
+     *
+     * @throws Error if the instance has been disposed.
+     */
     clear() {
         this.shouldNotDisposed();
         this._data.length = 0;
         this._length = 0;
     }
+    /**
+     * Converts the buffer data to a string with optional encoding.
+     *
+     * @param encoding The encoding to use (default is UTF-8).
+     * @returns The string representation of the buffer data.
+     */
     toString(encoding) {
         return this.data.toString(encoding);
     }
+    /**
+     * Disposes of the buffer array, releasing stored data.
+     */
     dispose() {
         if (!this._isDisposed) {
             this._isDisposed = true;
@@ -73,15 +116,155 @@ class BufferArray {
     }
 }
 exports.BufferArray = BufferArray;
+/**
+ * Class representing a user session.
+ *
+ * Implements the ISession interface to manage session states, user authentication,
+ * roles, and additional metadata associated with a session.
+ */
 class Session {
-    constructor() {
-        this.isAuthenticated = false;
-        this.loginId = "";
-        this.roleId = "";
-        this.userData = void 0;
-        this.ipPart = void 0;
+    /**
+     * Retrieves the login identifier of the user.
+     */
+    get loginId() {
+        var _a;
+        return (_a = this._obj) === null || _a === void 0 ? void 0 : _a.loginId;
     }
-    ;
+    /**
+     * Checks whether the user is authenticated.
+     */
+    get isAuthenticated() {
+        var _a;
+        return (_a = this._obj) === null || _a === void 0 ? void 0 : _a.isAuthenticated;
+    }
+    /**
+     * Updates the authentication status of the user.
+     */
+    set isAuthenticated(value) {
+        if (!this._obj)
+            return;
+        this._obj.isAuthenticated = value;
+    }
+    /**
+     * Retrieves additional user data.
+     */
+    get userData() {
+        var _a;
+        return (_a = this._obj) === null || _a === void 0 ? void 0 : _a.userData;
+    }
+    /**
+     * Retrieves the user's IP segment.
+     */
+    get ipPart() {
+        var _a;
+        return (_a = this._obj) === null || _a === void 0 ? void 0 : _a.ipPart;
+    }
+    /**
+     * Retrieves the primary role identifier assigned to the user.
+     */
+    get roleId() {
+        var _a;
+        return (_a = this._obj) === null || _a === void 0 ? void 0 : _a.roleIds[0];
+    }
+    /**
+     * Retrieves the session data as a dictionary.
+     */
+    get data() {
+        return this._obj;
+    }
+    /**
+     * Constructs a new Session instance with default values.
+     */
+    constructor() {
+        this._obj = {
+            roleIds: [],
+            loginId: undefined,
+            roleId: undefined,
+            isAuthenticated: false,
+            userData: {},
+            ipPart: undefined,
+        };
+    }
+    /**
+     * Converts the session data to a JSON string.
+     *
+     * @returns A JSON string representing the session.
+     */
+    toJson() {
+        if (!this._obj)
+            return '{}';
+        return JSON.stringify(this._obj);
+    }
+    /**
+     * Checks if the user has a specific role.
+     *
+     * @param roleId The role identifier to check.
+     * @returns True if the user has the specified role; otherwise, false.
+     */
+    isInRole(roleId) {
+        return this._obj && this._obj.roleIds.includes(roleId);
+    }
+    /**
+     * Parses a JSON string and updates the session data accordingly.
+     *
+     * @param jsonStr A JSON string representing session data.
+     * @returns The updated session instance.
+     */
+    parse(jsonStr) {
+        if (typeof jsonStr === 'string') {
+            try {
+                this._obj = JSON.parse(jsonStr);
+                this._obj.isAuthenticated = true;
+                if (Array.isArray(this._obj.roleId)) {
+                    this._obj.roleIds = this._obj.roleId;
+                }
+                else {
+                    this._obj.roleIds = [this._obj.roleId];
+                }
+                delete this._obj.roleId;
+            }
+            catch (ex) {
+                console.warn(ex);
+            }
+        }
+        else {
+            console.log(`Unknown input:`, jsonStr);
+        }
+        return this;
+    }
+    /**
+     * Retrieves a value from the session data.
+     *
+     * @param key The key of the data to retrieve.
+     * @param prop An optional property to access within the stored data.
+     * @returns The value associated with the key, or undefined if not found.
+     */
+    getData(key, prop) {
+        if (!this._obj)
+            return undefined;
+        if (!prop) {
+            return this._obj[key];
+        }
+        const value = this._obj[key];
+        if (!value)
+            return undefined;
+        return value[key];
+    }
+    /**
+     * Updates a value in the session data.
+     *
+     * @param key The key of the data to update.
+     * @param obj The new object data to store under the specified key.
+     */
+    updateData(key, obj) {
+        this._obj[key] = Object.assign({}, obj);
+    }
+    /**
+     * Clears the session data, effectively resetting the session.
+     */
+    clear() {
+        delete this._obj;
+    }
 }
 exports.Session = Session;
 class ResInfo {

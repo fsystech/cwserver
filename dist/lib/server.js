@@ -630,9 +630,10 @@ ${appRoot}\\www_public
         if (!str) {
             return session;
         }
-        app_util_1.Util.extend(session, app_util_1.Util.JSON.parse(str));
-        session.isAuthenticated = true;
-        return session;
+        // Util.extend(session, Util.JSON.parse(str));
+        // session.isAuthenticated = true;
+        // return session;
+        return session.parse(str);
     }
     setSession(ctx, loginId, roleId, userData) {
         return ctx.res.cookie(this._config.session.cookie, encryption_1.Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {

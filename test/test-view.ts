@@ -645,11 +645,13 @@ global.cw.server.on("register-view", (app: IApplication, controller: IController
 		.get('/is-authenticate', (ctx: IContext, requestParam?: IRequestParam): void => {
 			if (!ctx.req.query.loginId) return ctx.next(401);
 			const olPart = ctx.req.session.ipPart;
-			ctx.req.session.ipPart = undefined;
+			// @ts-ignore
+			ctx.req.session._obj.ipPart = undefined;
 			SessionSecurity.isValidSession(ctx.req);
-			ctx.req.session.ipPart = olPart;
+			// @ts-ignore
+			ctx.req.session._obj.ipPart = olPart;
 			if (ctx.session.loginId !== ctx.req.query.loginId) return ctx.next(401);
-			ctx.res.json(ctx.session); return ctx.next(200);
+			ctx.res.json(ctx.session.data); return ctx.next(200);
 		})
 		.get('/signout', (ctx: IContext, requestParam?: IRequestParam): void => {
 			if (!ctx.session.isAuthenticated) {
