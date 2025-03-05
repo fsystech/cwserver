@@ -170,16 +170,6 @@ export interface ISession {
      */
     readonly ipPart?: string;
     /**
-     * Converts the session object to a JSON string.
-     *
-     * @returns A JSON string representing the session data.
-     */
-    toJson(): string;
-    /**
-     * Clears the session data.
-     */
-    clear(): void;
-    /**
      * A dictionary for storing arbitrary session-related data.
      */
     readonly data: NodeJS.Dict<any>;
@@ -249,12 +239,16 @@ export declare class Session implements ISession {
      */
     isInRole(roleId: string): boolean;
     /**
-     * Parses a JSON string and updates the session data accordingly.
+     * Parses the provided data and updates the session instance accordingly.
      *
-     * @param jsonStr A JSON string representing session data.
+     * This method accepts either a JSON string or an object. If a JSON string is provided,
+     * it attempts to parse it into an object. Regardless of input type, the session data
+     * is updated, authentication is enabled, and role information is properly structured.
+     *
+     * @param data A JSON string or an object representing session data.
      * @returns The updated session instance.
      */
-    parse(jsonStr: string): ISession;
+    parse(data: string | any): ISession;
     /**
      * Retrieves a value from the session data.
      *

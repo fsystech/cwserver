@@ -205,31 +205,36 @@ class Session {
         return this._obj && this._obj.roleIds.includes(roleId);
     }
     /**
-     * Parses a JSON string and updates the session data accordingly.
+     * Parses the provided data and updates the session instance accordingly.
      *
-     * @param jsonStr A JSON string representing session data.
+     * This method accepts either a JSON string or an object. If a JSON string is provided,
+     * it attempts to parse it into an object. Regardless of input type, the session data
+     * is updated, authentication is enabled, and role information is properly structured.
+     *
+     * @param data A JSON string or an object representing session data.
      * @returns The updated session instance.
      */
-    parse(jsonStr) {
-        if (typeof jsonStr === 'string') {
+    parse(data) {
+        if (typeof data === 'string') {
             try {
-                this._obj = JSON.parse(jsonStr);
-                this._obj.isAuthenticated = true;
-                if (Array.isArray(this._obj.roleId)) {
-                    this._obj.roleIds = this._obj.roleId;
-                }
-                else {
-                    this._obj.roleIds = [this._obj.roleId];
-                }
-                delete this._obj.roleId;
+                this._obj = JSON.parse(data);
             }
-            catch (ex) {
-                console.warn(ex);
-            }
+            catch (_a) { }
         }
         else {
-            console.log(`Unknown input:`, jsonStr);
+            this._obj = Object.assign({}, data);
         }
+        try {
+            if (Array.isArray(this._obj.roleId)) {
+                this._obj.roleIds = this._obj.roleId;
+            }
+            else {
+                this._obj.roleIds = [this._obj.roleId];
+            }
+            delete this._obj.roleId;
+            this._obj.isAuthenticated = true;
+        }
+        catch (_b) { }
         return this;
     }
     /**
