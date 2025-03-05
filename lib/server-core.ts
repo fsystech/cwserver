@@ -296,8 +296,8 @@ class Request extends IncomingMessage implements IRequest {
     dispose(): void {
         delete this._id;
         delete this._q;
-        delete this._path;
         delete this._ip;
+        delete this._path;
         delete this._cookies;
         delete this._isLocal;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {

@@ -968,9 +968,10 @@ ${appRoot}\\www_public
         if (!str) {
             return session;
         }
-        Util.extend(session, Util.JSON.parse(str));
-        session.isAuthenticated = true;
-        return session;
+        // Util.extend(session, Util.JSON.parse(str));
+        // session.isAuthenticated = true;
+        // return session;
+        return session.parse(str);
     }
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
         return ctx.res.cookie(

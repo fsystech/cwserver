@@ -22,10 +22,11 @@
 // by rajib chy
 export interface ISession {
     isAuthenticated: boolean;
-    loginId: string;
-    roleId: string;
-    userData?: any;
-    ipPart?: string;
+    readonly loginId: string;
+    readonly roleId: string;
+    readonly userData?: any;
+    readonly ipPart?: string;
+    clear(): void
 }
 export interface IResInfo {
     code: number;
@@ -99,19 +100,98 @@ export class BufferArray implements IBufferArray {
     }
 }
 export class Session implements ISession {
-    isAuthenticated: boolean;
-    loginId: string;
-    roleId: string;
-    userData?: void;
-    ipPart?: string;
-    constructor() {
-        this.isAuthenticated = false;
-        this.loginId = "";
-        this.roleId = "";
-        this.userData = void 0;
-        this.ipPart = void 0;
+
+    get loginId() {
+        return this._obj?.loginId;
+    }
+
+    get isAuthenticated() {
+        return this._obj?.isAuthenticated;
+    }
+
+    set isAuthenticated(value) {
+        if (!this._obj) return;
+        this._obj.isAuthenticated = value;
+    }
+
+    get userData() {
+        return this._obj?.userData;
+    }
+
+    get ipPart() {
+        return this._obj?.ipPart;
+    }
+
+    get roleId() {
+        return this._obj?.roleIds[0];
+    }
+    _obj: {
+        [key: string]: any;
+        roleIds: Array<string>;
+        loginId: string;
+        roleId: string;
+        isAuthenticated: boolean;
+        userData: NodeJS.Dict<any>;
+        ipPart: string;
     };
+    constructor() {
+        this._obj = {
+            roleIds: [],
+            loginId: undefined,
+            roleId: undefined,
+            isAuthenticated: false,
+            userData: {},
+            ipPart: undefined,
+        };
+    }
+    isInRole(roleId: string): boolean {
+        return this._obj && this._obj.roleIds.includes(roleId);
+    }
+    parse(jsonStr: string): ISession {
+        if (typeof (jsonStr) === 'string') {
+            try {
+                this._obj = JSON.parse(jsonStr);
+                this._obj.isAuthenticated = true;
+                if (Array.isArray(this._obj.roleId)) {
+                    this._obj.roleIds = this._obj.roleId;
+                } else {
+                    this._obj.roleIds.push(this._obj.roleId);
+                }
+                delete this._obj.roleId;
+            } catch { }
+        }
+        return this;
+    }
+    getData(key: string, prop?: string): any {
+        if (!this._obj) return undefined;
+        if (!prop) {
+            return this._obj[key];
+        }
+        const value = this._obj[key];
+        if (!value) return undefined;
+        return value[key];
+    }
+    updateData(key: string, obj: NodeJS.Dict<any>): void {
+        this._obj[key] = { ...obj };
+    }
+    clear(): void {
+        delete this._obj;
+    }
 }
+// export class xSession implements ISession {
+//     isAuthenticated: boolean;
+//     loginId: string;
+//     roleId: string;
+//     userData?: void;
+//     ipPart?: string;
+//     constructor() {
+//         this.isAuthenticated = false;
+//         this.loginId = "";
+//         this.roleId = "";
+//         this.userData = void 0;
+//         this.ipPart = void 0;
+//     };
+// }
 export class ResInfo implements IResInfo {
     code: number;
     isValid: boolean;
