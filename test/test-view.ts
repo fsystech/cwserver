@@ -36,11 +36,12 @@ import {
 	disposeContext, getMyContext, removeContext
 } from '../lib/server';
 import { HttpCache } from '../lib/http-cache';
+
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
 	ICwServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
 	socketInitilizer, getBodyParser, PayloadParser, HttpCache as _HttpCache,
-	HttpMimeHandler, Streamer, Encryption, SessionSecurity
+	HttpMimeHandler, Streamer, Encryption, SessionSecurity, Session
 } from '../index';
 import { toString } from '../lib/app-static';
 import { decodeBodyBuffer } from '../lib/body-parser';
@@ -582,6 +583,10 @@ global.cw.server.on("register-view", (app: IApplication, controller: IController
 		expect(dec.length).toBeGreaterThan(0);
 		expect(server.encryption.decrypt("Hello World..").length).toEqual(0);
 	}
+	function _parseUserData(session: Session) {
+		session.parseUserData((d) => d);
+		session.parseUserData((d) => d, 'userData');
+	}
 	controller
 		.get('/get-file', (ctx: IContext, requestParam?: IRequestParam): void => {
 			return Util.sendResponse(ctx, server.mapPath("index.html"), "text/plain");
@@ -650,6 +655,8 @@ global.cw.server.on("register-view", (app: IApplication, controller: IController
 			SessionSecurity.isValidSession(ctx.req);
 			// @ts-ignore
 			ctx.req.session._obj.ipPart = olPart;
+			// @ts-ignore
+			_parseUserData(ctx.req.session);
 			if (ctx.session.loginId !== ctx.req.query.loginId) return ctx.next(401);
 			ctx.res.json(ctx.session.data); return ctx.next(200);
 		})

@@ -164,7 +164,7 @@ class Session {
      */
     get roleId() {
         var _a;
-        return (_a = this._obj) === null || _a === void 0 ? void 0 : _a.roleIds[0];
+        return (_a = this._obj) === null || _a === void 0 ? void 0 : _a.roleId;
     }
     /**
      * Retrieves the session data as a dictionary.
@@ -178,12 +178,26 @@ class Session {
     constructor() {
         this._obj = {
             roleIds: [],
+            userData: {},
             loginId: undefined,
             roleId: undefined,
-            isAuthenticated: false,
-            userData: {},
             ipPart: undefined,
+            isAuthenticated: false,
         };
+    }
+    /**
+     * Parses user data and updates the specified property or the default `userData` property.
+     *
+     * @param {Function} parseData - A function that processes the data and returns a dictionary.
+     * @param {string} [prop] - An optional property name to apply the parsing function to. If not provided, `userData` is used.
+     */
+    parseUserData(parseData, prop) {
+        if (prop) {
+            this._obj[prop] = parseData(this._obj[prop]);
+        }
+        else {
+            this._obj.userData = parseData(this._obj.userData);
+        }
     }
     /**
      * Converts the session data to a JSON string.
@@ -202,7 +216,11 @@ class Session {
      * @returns True if the user has the specified role; otherwise, false.
      */
     isInRole(roleId) {
-        return this._obj && this._obj.roleIds.includes(roleId);
+        if (!this._obj)
+            return false;
+        if (this._obj.roleId === roleId)
+            return true;
+        return this._obj.roleIds.includes(roleId);
     }
     /**
      * Parses the provided data and updates the session instance accordingly.
@@ -227,11 +245,12 @@ class Session {
         try {
             if (Array.isArray(this._obj.roleId)) {
                 this._obj.roleIds = this._obj.roleId;
+                this._obj.roleId = this._obj.roleIds[0];
+                delete this._obj.roleId;
             }
             else {
-                this._obj.roleIds = [this._obj.roleId];
+                this._obj.roleIds = [];
             }
-            delete this._obj.roleId;
             this._obj.isAuthenticated = true;
         }
         catch (_b) { }

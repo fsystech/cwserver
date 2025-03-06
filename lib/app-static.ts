@@ -312,7 +312,7 @@ export class Session implements ISession {
      * Retrieves the primary role identifier assigned to the user.
      */
     get roleId() {
-        return this._obj?.roleIds[0];
+        return this._obj?.roleId;
     }
 
     /**
@@ -327,12 +327,12 @@ export class Session implements ISession {
      */
     private _obj: {
         [key: string]: any;
-        roleIds: Array<string>;
+        ipPart: string;
         loginId: string;
         roleId: string;
         isAuthenticated: boolean;
         userData: NodeJS.Dict<any>;
-        ipPart: string;
+        roleIds: Array<string>;
     };
 
     /**
@@ -341,14 +341,28 @@ export class Session implements ISession {
     constructor() {
         this._obj = {
             roleIds: [],
+            userData: {},
             loginId: undefined,
             roleId: undefined,
-            isAuthenticated: false,
-            userData: {},
             ipPart: undefined,
+            isAuthenticated: false,
         };
     }
 
+    /**
+     * Parses user data and updates the specified property or the default `userData` property.
+     *
+     * @param {Function} parseData - A function that processes the data and returns a dictionary.
+     * @param {string} [prop] - An optional property name to apply the parsing function to. If not provided, `userData` is used.
+     */
+    parseUserData(parseData: (data: any) => NodeJS.Dict<any>, prop?: string): void {
+        if (prop) {
+            this._obj[prop] = parseData(this._obj[prop]);
+        } else {
+            this._obj.userData = parseData(this._obj.userData);
+        }
+    }
+    
     /**
      * Converts the session data to a JSON string.
      * 
@@ -366,7 +380,9 @@ export class Session implements ISession {
      * @returns True if the user has the specified role; otherwise, false.
      */
     isInRole(roleId: string): boolean {
-        return this._obj && this._obj.roleIds.includes(roleId);
+        if (!this._obj) return false;
+        if (this._obj.roleId === roleId) return true;
+        return this._obj.roleIds.includes(roleId);
     }
 
     /**
@@ -392,10 +408,11 @@ export class Session implements ISession {
         try {
             if (Array.isArray(this._obj.roleId)) {
                 this._obj.roleIds = this._obj.roleId;
+                this._obj.roleId = this._obj.roleIds[0];
+                delete this._obj.roleId;
             } else {
-                this._obj.roleIds = [this._obj.roleId];
+                this._obj.roleIds = [];
             }
-            delete this._obj.roleId;
             this._obj.isAuthenticated = true;
         } catch { }
 

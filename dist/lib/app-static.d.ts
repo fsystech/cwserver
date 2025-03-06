@@ -210,12 +210,12 @@ export declare class Session implements ISession {
      */
     get data(): {
         [key: string]: any;
-        roleIds: Array<string>;
+        ipPart: string;
         loginId: string;
         roleId: string;
         isAuthenticated: boolean;
         userData: NodeJS.Dict<any>;
-        ipPart: string;
+        roleIds: Array<string>;
     };
     /**
      * Internal storage object for session data.
@@ -225,6 +225,13 @@ export declare class Session implements ISession {
      * Constructs a new Session instance with default values.
      */
     constructor();
+    /**
+     * Parses user data and updates the specified property or the default `userData` property.
+     *
+     * @param {Function} parseData - A function that processes the data and returns a dictionary.
+     * @param {string} [prop] - An optional property name to apply the parsing function to. If not provided, `userData` is used.
+     */
+    parseUserData(parseData: (data: any) => NodeJS.Dict<any>, prop?: string): void;
     /**
      * Converts the session data to a JSON string.
      *
