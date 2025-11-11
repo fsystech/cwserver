@@ -19,31 +19,58 @@
 // SOFTWARE.
 
 // 12:04 AM 6/19/2020
+// updated at 12:22 AM 11/12/2025
 // by rajib chy
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
 import { assert, getAppDir, Util } from './app-util';
-export interface IMimeType<T> {
-    readonly type: (extension: string) => T | undefined;
-    readonly add: (extension: string, val: T) => void;
-}
-export function loadMimeType<T>(): IMimeType<T> {
-    const libRoot: string = getAppDir();
-    const absPath: string = _path.resolve(`${libRoot}/mime-types.json`);
-    assert(_fs.existsSync(absPath), `No mime-type found in ${libRoot}\nPlease re-install cwserver`);
-    const data: NodeJS.Dict<T> = Util.JSON.parse(_fs.readFileSync(absPath, "utf-8"));
-    return {
-        add: (extension: string, val: T): void => {
-            if (data[extension])
-                throw new Error(`This given extension (${extension}) already exists`);
-            data[extension] = val;
-            return void 0;
-        },
-        type: (extension: string): T | undefined => {
-            return data[extension];
+
+class MimeType {
+
+    private _data: Map<string, string>;
+
+    constructor() {
+        this._data = new Map();
+        this._loadSync();
+    }
+
+    public add(extension: string, value: string): void {
+        if (this._data.has(extension)) {
+            throw new Error(`This given extension (${extension}) already exists`);
+        }
+
+        this._data.set(extension, value);
+    }
+
+    public type(extension: string): string {
+        return this._data.get(extension);
+    }
+
+    private _loadSync(): void {
+        const libRoot: string = getAppDir();
+        const absPath: string = _path.resolve(`${libRoot}/mime-types.json`);
+        assert(_fs.existsSync(absPath), `No mime-type found in ${libRoot}\nPlease re-install cwserver`);
+        const data: NodeJS.Dict<string> = Util.JSON.parse(_fs.readFileSync(absPath, "utf-8"));
+        if (data) {
+            for (const prop in data) {
+                this._data.set(prop, data[prop]);
+            }
         }
     }
 }
+
+class MimeTypeStatic {
+    private static _instance: MimeType = null;
+    public static getInstance(): MimeType {
+        if (this._instance === null) {
+            this._instance = new MimeType();
+        }
+        return this._instance;
+    }
+}
+
+export const _mimeType = MimeTypeStatic.getInstance();
+
 function setCharset(mimeType: string): string {
     const text: string = mimeType.split(";")[0];
     if ((/^text\/|^application\/(javascript|json)/).test(text.toLowerCase())) {
@@ -51,13 +78,15 @@ function setCharset(mimeType: string): string {
     }
     return mimeType;
 }
+
 export function getMimeType(extension: string): string {
     extension = extension.replace(/^.*[\.\/\\]/gi, '').toLowerCase();
-    const mimeType: string | undefined = global.cw.HttpMime.type(extension);
+    const mimeType: string | undefined = _mimeType.type(extension);
     if (!mimeType)
         throw new Error(`Unsupported extension =>${extension}`);
     return setCharset(mimeType);
 }
+
 export function isValidExtension(extension: string): boolean {
-    return global.cw.HttpMime.type(extension) ? true : false;
+    return _mimeType.type(extension) ? true : false;
 }

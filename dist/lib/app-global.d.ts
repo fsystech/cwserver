@@ -1,29 +1,5 @@
-import { IApplication } from './server-core';
-import { IController } from './app-controller';
-import { ICwServer } from './server';
-import { IMimeType } from './http-mime-types';
-import { SandBox } from './app-template';
-type IViewRegister = (app: IApplication, controller: IController, server: ICwServer) => void;
-interface ICwGlobalServer {
-    /**
-     * Register new `view` module
-     * @param ev  Event name
-     * @param next View register function
-     */
-    on(ev: "register-view", next: IViewRegister): void;
-    emit(ev: "register-view", app: IApplication, controller: IController, server: ICwServer): void;
-}
-interface ICwGlobal {
-    isInitilized: boolean;
-    readonly HttpMime: IMimeType<string>;
-    readonly server: ICwGlobalServer;
-    readonly templateCtx: NodeJS.Dict<SandBox>;
-}
 declare global {
     namespace NodeJS {
-        interface Global {
-            cw: ICwGlobal;
-        }
         interface ProcessEnv {
             PORT?: string;
             SCRIPT?: "TS" | 'JS';
@@ -53,7 +29,6 @@ declare global {
     }
 }
 declare global {
-    var cw: ICwGlobal;
     /**
      * `cwserver` import script/assets from local resource. If you like to use `pkg` ({@see https://github.com/vercel/pkg }) compiler, please override this method at root.
      */

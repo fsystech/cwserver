@@ -69,6 +69,8 @@ const app_controller_1 = require("./app-controller");
 const encryption_1 = require("./encryption");
 const http_status_1 = require("./http-status");
 const logger_1 = require("./logger");
+const http_mime_types_1 = require("./http-mime-types");
+const app_view_1 = require("./app-view");
 // -------------------------------------------------------
 _a = (() => {
     const _curContext = {};
@@ -368,7 +370,7 @@ class SessionSecurity {
     }
     static getRemoteAddress(ip) {
         let ipPart = ip.substring(0, ip.lastIndexOf('.'));
-        if (!ipPart || ipPart.length === 0) {
+        if (!ipPart) {
             // assume local machine
             ipPart = "127.0.0";
         }
@@ -472,6 +474,17 @@ ${appRoot}\\www_public
         this._config.staticFile.tempPath = this.mapPath(this._config.staticFile.tempPath);
         this._log = new logger_1.ShadowLogger();
         return;
+    }
+    updateEncryption(serverEnc) {
+        if (this._encryption) {
+            delete this._encryption;
+        }
+        if (serverEnc) {
+            this._encryption = serverEnc;
+        }
+        else {
+            this._encryption = new ServerEncryption(this._config.encryptionKey);
+        }
     }
     getAppConfigName() {
         if (process.env.APP_CONFIG_NAME) {
@@ -781,13 +794,14 @@ ${appRoot}\\www_public
         return encryption_1.Encryption.encryptUri(str, this._config.encryptionKey);
     }
     addMimeType(extension, val) {
-        return global.cw.HttpMime.add(extension, val);
+        return http_mime_types_1._mimeType.add(extension, val);
     }
 }
 exports.CwServer = CwServer;
 function initilizeServer(appRoot, wwwName) {
-    if (global.cw.isInitilized)
+    if (app_view_1.AppView.isInitilized) {
         throw new Error("Server instance can initilize 1 time...");
+    }
     const _server = new CwServer(appRoot, wwwName);
     const _process = {
         render: (code, ctx, next, transfer) => {
@@ -912,7 +926,7 @@ function initilizeServer(appRoot, wwwName) {
         if (app_util_1.Util.isArrayLike(_server.config.views)) {
             _server.config.views.forEach(path => _importLocalAssets(path));
         }
-        global.cw.server.emit("register-view", _app, _controller, _server);
+        app_view_1.AppView.init(_app, _controller, _server);
         _controller.sort();
         _app.on("error", (req, res, err) => {
             if (res.isAlive) {
@@ -956,7 +970,7 @@ function initilizeServer(appRoot, wwwName) {
         return _app;
     }
     ;
-    global.cw.isInitilized = true;
+    app_view_1.AppView.isInitilized = true;
     return {
         init: initilize,
         get public() { return _server.public; },

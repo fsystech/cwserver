@@ -19,7 +19,47 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 Object.defineProperty(exports, "__esModule", { value: true });
-if (!global._importLocalAssets) {
-    global._importLocalAssets = (path) => require(path);
+exports.AppView = void 0;
+exports.registerView = registerView;
+class AppViewRegister {
+    get isInitilized() {
+        return this._isInitilized;
+    }
+    set isInitilized(value) {
+        this._isInitilized = value;
+    }
+    constructor() {
+        this._isInit = false;
+        this._evt = [];
+        this._isInitilized = false;
+    }
+    init(app, controller, server) {
+        if (this._isInit && this._evt.length === 0)
+            return;
+        this._isInit = true;
+        this._evt.forEach(handler => {
+            return handler(app, controller, server);
+        });
+        this._evt.length = 0;
+    }
+    add(next) {
+        if (this._isInit) {
+            throw new Error('After initialization "views", you could not register new view.');
+        }
+        this._evt.push(next);
+    }
 }
-//# sourceMappingURL=app-global.js.map
+class AppViewStatic {
+    static getInstance() {
+        if (this._instance === null) {
+            this._instance = new AppViewRegister();
+        }
+        return this._instance;
+    }
+}
+AppViewStatic._instance = null;
+exports.AppView = AppViewStatic.getInstance();
+function registerView(next) {
+    exports.AppView.add(next);
+}
+//# sourceMappingURL=app-view.js.map

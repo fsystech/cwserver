@@ -30,10 +30,10 @@ import { IContext } from './server';
 import * as fsw from './fsw';
 import { generateRandomString } from './app-util';
 import { platform } from 'node:os';
-import { FileInfoCacheHandler, IFileInfoCacheHandler } from './file-info';
+import { FileInfoCacheHandler, type IFileInfoCacheHandler } from './file-info';
+import { TemplateCtx, type SandBox, type SandBoxNext } from './app-template-ctx';
 const _isWin: boolean = platform() === "win32";
-type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
-export type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => void;
+
 interface IScriptTag {
     readonly lre: RegExp;
     readonly rre: RegExp;
@@ -400,18 +400,28 @@ export class TemplateCore {
     public static compile(
         str: string | undefined, next: TemplateNextFunc
     ): void {
+
         if (!str) {
             return process.nextTick(() => next({ str: "", err: new Error("No script found to compile....") }));
         }
+
         try {
+
             const sandBox: string = `${generateRandomString(30)}_thisNext`;
-            global.cw.templateCtx[sandBox] = templateNext;
+            TemplateCtx.setCtx(sandBox, templateNext);
+
             // bug fix by rajib chy on 8:16 PM 3/23/2021
             // Error: ctx.addError(ctx, ex) argument error
-            const script: _vm.Script = new _vm.Script(`cw.templateCtx.${sandBox} = async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n};`);
-            script.runInContext(_vm.createContext(global));
-            const func: SandBox | undefined = global.cw.templateCtx[sandBox];
-            delete global.cw.templateCtx[sandBox];
+            const script: _vm.Script = new _vm.Script(`cw.setCtx("${sandBox}", async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n});`);
+            
+            script.runInContext(_vm.createContext({
+                cw: TemplateCtx
+            }));
+
+            const func: SandBox | undefined = TemplateCtx.getCtx(sandBox);
+            
+            TemplateCtx.deleteCtx(sandBox);
+
             return process.nextTick(() => next({ str, isScript: true, sandBox: func }));
         } catch (e: any) {
             return process.nextTick(() => next({ str, err: e }));

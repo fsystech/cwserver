@@ -78,7 +78,7 @@ const node_url_1 = __importDefault(require("node:url"));
 const _zlib = __importStar(require("node:zlib"));
 const _mimeType = __importStar(require("./http-mime-types"));
 _a = (() => {
-    let _appVersion = '3.1.5';
+    let _appVersion = '4.1.1';
     const _readAppVersion = () => {
         const libRoot = (0, app_util_1.getAppDir)();
         const absPath = (0, node_path_1.resolve)(`${libRoot}/package.json`);

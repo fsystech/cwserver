@@ -19,7 +19,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 Object.defineProperty(exports, "__esModule", { value: true });
-if (!global._importLocalAssets) {
-    global._importLocalAssets = (path) => require(path);
+exports.TemplateCtx = void 0;
+class TemplateCtxHandler {
+    constructor() {
+        this._templateCtx = new Map();
+    }
+    getCtx(key) {
+        return this._templateCtx.get(key);
+    }
+    setCtx(key, sendBox) {
+        this._templateCtx.set(key, sendBox);
+    }
+    deleteCtx(key) {
+        return this._templateCtx.delete(key);
+    }
 }
-//# sourceMappingURL=app-global.js.map
+class ITemplateCtxStatic {
+    static getInstance() {
+        if (this._instance === null) {
+            this._instance = new TemplateCtxHandler();
+        }
+        return this._instance;
+    }
+}
+ITemplateCtxStatic._instance = null;
+exports.TemplateCtx = ITemplateCtxStatic.getInstance();
+//# sourceMappingURL=app-template-ctx.js.map

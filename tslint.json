@@ -11,7 +11,10 @@
     "one-variable-per-declaration": false,
     "forin": false,
     "no-namespace": true,
-    "radix": false
+    "radix": false,
+    "array-type": [false],
+    "no-empty": false,
+    "no-trailing-whitespace": false
   },
   "rulesDirectory": []
 }

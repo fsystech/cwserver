@@ -65,6 +65,7 @@ const fsw = __importStar(require("./fsw"));
 const app_util_1 = require("./app-util");
 const node_os_1 = require("node:os");
 const file_info_1 = require("./file-info");
+const app_template_ctx_1 = require("./app-template-ctx");
 const _isWin = (0, node_os_1.platform)() === "win32";
 function templateNext(ctx, next, isCompressed) {
     throw new Error("Method not implemented.");
@@ -387,13 +388,15 @@ class TemplateCore {
         }
         try {
             const sandBox = `${(0, app_util_1.generateRandomString)(30)}_thisNext`;
-            global.cw.templateCtx[sandBox] = templateNext;
+            app_template_ctx_1.TemplateCtx.setCtx(sandBox, templateNext);
             // bug fix by rajib chy on 8:16 PM 3/23/2021
             // Error: ctx.addError(ctx, ex) argument error
-            const script = new _vm.Script(`cw.templateCtx.${sandBox} = async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n};`);
-            script.runInContext(_vm.createContext(global));
-            const func = global.cw.templateCtx[sandBox];
-            delete global.cw.templateCtx[sandBox];
+            const script = new _vm.Script(`cw.setCtx("${sandBox}", async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n});`);
+            script.runInContext(_vm.createContext({
+                cw: app_template_ctx_1.TemplateCtx
+            }));
+            const func = app_template_ctx_1.TemplateCtx.getCtx(sandBox);
+            app_template_ctx_1.TemplateCtx.deleteCtx(sandBox);
             return process.nextTick(() => next({ str, isScript: true, sandBox: func }));
         }
         catch (e) {

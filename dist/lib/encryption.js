@@ -91,7 +91,6 @@ class Encryption {
         res.iv = crypto_js_1.default.enc.Hex.parse(this.utf8ToHex(res.oldKey));
         return res;
     }
-    ;
     static encrypt(plainText, inf) {
         if (!inf.key)
             throw new Error("Invalid iv and key....");

@@ -41,7 +41,7 @@ import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
 	ICwServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
 	socketInitilizer, getBodyParser, PayloadParser, HttpCache as _HttpCache,
-	HttpMimeHandler, Streamer, Encryption, SessionSecurity, Session
+	HttpMimeHandler, Streamer, Encryption, SessionSecurity, Session, registerView
 } from '../index';
 import { toString } from '../lib/app-static';
 import { decodeBodyBuffer } from '../lib/body-parser';
@@ -56,7 +56,7 @@ export function shouldBeError(next: () => void, printerr?: boolean): Error | voi
 	}
 };
 expect(toString(1)).toEqual("1");
-global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
+registerView((app: IApplication, controller: IController, server: ICwServer) => {
 	expect(shouldBeError(() => new SessionSecurity())).toBeInstanceOf(Error);
 	expect(SessionSecurity.getRemoteAddress("::1")).toEqual('127.0.0');
 	fsw.mkdirSync(server.config.staticFile.tempPath, "");
@@ -95,7 +95,8 @@ global.cw.server.on("register-view", (app: IApplication, controller: IController
 		return ctx.res.status(200).send();
 	});
 });
-global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
+
+registerView((app: IApplication, controller: IController, server: ICwServer) => {
 	expect(shouldBeError(() => { mimeHandler.getMimeType("NO_EXT"); })).toBeInstanceOf(Error);
 	const vDir: string = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
 	server.addVirtualDir("/vtest", vDir, (ctx: IContext): void => {
@@ -115,7 +116,8 @@ global.cw.server.on("register-view", (app: IApplication, controller: IController
 		});
 	})).toBeInstanceOf(Error);
 });
-global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
+
+registerView((app: IApplication, controller: IController, server: ICwServer) => {
 	const streamDir = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
 	server.addVirtualDir("/web-stream", streamDir, (ctx: IContext, requestParam?: IRequestParam): void => {
 		if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
@@ -141,7 +143,8 @@ global.cw.server.on("register-view", (app: IApplication, controller: IController
 		server.addVirtualDir("/:static-file", streamDir);
 	})).toBeInstanceOf(Error);
 });
-global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
+
+registerView((app: IApplication, controller: IController, server: ICwServer) => {
 	const downloadDir = server.mapPath("/upload/data/");
 	if (!fs.existsSync(downloadDir)) {
 		fsw.mkdirSync(server.mapPath("/"), "/upload/data/");
@@ -393,7 +396,8 @@ global.cw.server.on("register-view", (app: IApplication, controller: IController
 		});
 	});
 });
-global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
+
+registerView((app: IApplication, controller: IController, server: ICwServer) => {
 	controller
 		.get("/test-context", (ctx: IContext, requestParam?: IRequestParam): void => {
 			try {
@@ -574,7 +578,8 @@ global.cw.server.on("register-view", (app: IApplication, controller: IController
 		});
 
 });
-global.cw.server.on("register-view", (app: IApplication, controller: IController, server: ICwServer) => {
+
+registerView((app: IApplication, controller: IController, server: ICwServer) => {
 
 	{
 		const enc = server.encryption.encrypt("Hello World..");

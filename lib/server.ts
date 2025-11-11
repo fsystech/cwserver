@@ -42,6 +42,8 @@ import { Encryption, ICryptoInfo } from "./encryption";
 import { HttpStatus } from "./http-status";
 import { Logger, ILogger, ShadowLogger } from "./logger";
 import { IncomingHttpHeaders } from "node:http";
+import { _mimeType } from "./http-mime-types";
+import { AppView } from "./app-view";
 export type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 // ----------------------------------------------------------
@@ -180,6 +182,19 @@ export interface ICwServer {
 
     /** Initializes the server logger. */
     createLogger(): void;
+
+    /**
+     * Updates the current server-side encryption settings.
+     *
+     * If an existing encryption instance is present, it is removed first.
+     * When a new `serverEnc` object is provided, it will be assigned as the active encryption.
+     * Otherwise, a new {@link ServerEncryption} instance is created using the configured encryption key.
+     *
+     * @public
+     * @param {IServerEncryption} [serverEnc] - Optional custom encryption instance to apply.
+     * @returns {void}
+     */
+    updateEncryption(serverEnc?: IServerEncryption): void;
 
     /**
      * Validates if the provided context is valid.
@@ -704,7 +719,7 @@ export class SessionSecurity {
     }
     public static getRemoteAddress(ip: string): string {
         let ipPart: string = ip.substring(0, ip.lastIndexOf('.'));
-        if (!ipPart || ipPart.length === 0) {
+        if (!ipPart) {
             // assume local machine
             ipPart = "127.0.0";
         }
@@ -762,9 +777,11 @@ export class CwServer implements ICwServer {
     public get encryption(): IServerEncryption {
         return this._encryption;
     }
+
     public get errorPage(): { [x: string]: string; } {
         return this._errorPage;
     }
+
     constructor(appRoot: string, wwwName?: string) {
         this._port = 0; this._log = Object.create(null);
         if (!wwwName) {
@@ -817,34 +834,54 @@ ${appRoot}\\www_public
         this._log = new ShadowLogger();
         return;
     }
-    on: (ev: "shutdown", handler: () => void) => void;
-    addVirtualDir: (route: string, root: string, evt?: (ctx: IContext) => void) => void;
-    virtualInfo: (route: string) => { route: string; root: string; } | void;
-    getAppConfigName(): string {
+
+    public updateEncryption(serverEnc?: IServerEncryption): void {
+        if (this._encryption) {
+            delete this._encryption;
+        }
+
+        if (serverEnc) {
+            this._encryption = serverEnc;
+        } else {
+            this._encryption = new ServerEncryption(this._config.encryptionKey);
+        }
+    }
+
+    public on: (ev: "shutdown", handler: () => void) => void;
+    public addVirtualDir: (route: string, root: string, evt?: (ctx: IContext) => void) => void;
+    public virtualInfo: (route: string) => { route: string; root: string; } | void;
+    public getAppConfigName(): string {
         if (process.env.APP_CONFIG_NAME) {
             return process.env.APP_CONFIG_NAME;
         }
         return "app.config.json";
     }
-    isValidContext(ctx: IContext): boolean {
+
+    public isValidContext(ctx: IContext): boolean {
         return true;
     }
-    getRoot(): string {
+
+    public getRoot(): string {
         return this._root;
     }
-    parseMaxAge(maxAge: any): number {
+
+    public parseMaxAge(maxAge: any): number {
         return parseMaxAge(maxAge);
     }
-    getPublic(): string {
+
+    public getPublic(): string {
         return `${this._root}/${this._public}`;
     }
-    getPublicDirName(): string {
+
+    public getPublicDirName(): string {
         return this._public;
     }
-    init() {
+
+    public init() {
         this._isInitilized = true;
     }
-    implimentConfig(config: NodeJS.Dict<any>): void {
+
+    public implimentConfig(config: NodeJS.Dict<any>): void {
         if (typeof (this._config.bundler.reValidate) !== "boolean") {
             this._config.bundler.reValidate = true;
         }
@@ -876,7 +913,8 @@ ${appRoot}\\www_public
         }
         this._config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
     }
-    createLogger() {
+
+    public createLogger() {
         this._userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         if (typeof (this._log.dispose) === "function") {
             this._log.dispose();
@@ -887,7 +925,8 @@ ${appRoot}\\www_public
             this._log = new Logger(`./log/`, this._public, void 0, this._userInteractive, this._config.isDebug);
         }
     }
-    initilize(): void {
+
+    public initilize(): void {
         if (isDefined(this._config.database)) {
             if (!Util.isArrayLike<IDatabaseConfig>(this._config.database))
                 throw new Error("database cofig should be Array....");
@@ -932,17 +971,20 @@ ${appRoot}\\www_public
             this._config.views[index] = this.formatPath(path);
         });
     }
-    copyright(): string {
+
+    public copyright(): string {
         return '//\tCopyright (c) 2022 FSys Tech Ltd.\r\n';
     }
-    createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
+
+    public createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
         const context = getContext(this, req, res);
         context.path = req.path; context.root = context.path;
         context.next = next;
         context.extension = Util.getExtension(context.path) || "";
         return context;
     }
-    setDefaultProtectionHeader(res: IResponse): void {
+
+    public setDefaultProtectionHeader(res: IResponse): void {
         res.setHeader('x-timestamp', Date.now());
         res.setHeader('x-xss-protection', '1; mode=block');
         res.setHeader('x-content-type-options', 'nosniff');
@@ -957,7 +999,8 @@ ${appRoot}\\www_public
             }
         }
     }
-    parseSession(headers: IncomingHttpHeaders, cook: undefined | string[] | string | { [x: string]: any; }): ISession {
+
+    public parseSession(headers: IncomingHttpHeaders, cook: undefined | string[] | string | { [x: string]: any; }): ISession {
         if (!this._config.session.cookie || this._config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new Session();
@@ -973,7 +1016,8 @@ ${appRoot}\\www_public
         // return session;
         return session.parse(str);
     }
-    setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
+
+    public setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
         return ctx.res.cookie(
             this._config.session.cookie,
             Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {
@@ -984,7 +1028,8 @@ ${appRoot}\\www_public
             secure: this._config.session.isSecure
         }), true;
     }
-    passError(ctx: IContext): boolean {
+
+    public passError(ctx: IContext): boolean {
         if (!ctx.error) return false;
         if (!this._config.isDebug) {
             return ctx.res.status(500).send("Internal error occured. Please try again."), true;
@@ -993,7 +1038,8 @@ ${appRoot}\\www_public
         const msg: string = this.escape(ctx.error.replace(/\\/gi, "/").replace(this._rootregx, "$root").replace(this._publicregx, "$public/"));
         return ctx.res.status(500).send(`<pre>${msg}</pre>`), true;
     }
-    getErrorPath(statusCode: number, tryServer?: boolean): string | void {
+
+    public getErrorPath(statusCode: number, tryServer?: boolean): string | void {
         if (!HttpStatus.isErrorCode(statusCode)) {
             throw new Error(`Invalid http error status code ${statusCode}`);
         }
@@ -1012,7 +1058,8 @@ ${appRoot}\\www_public
         }
         throw new Error(`No error page found in app.config.json->errorPage[${cstatusCode}]`);
     }
-    transferRequest(ctx: IContext, path: string | number, status?: IResInfo): void {
+
+    public transferRequest(ctx: IContext, path: string | number, status?: IResInfo): void {
         if (!ctx) throw new Error("Invalid argument defined...");
         if (!ctx.isDisposed) {
             if (!status) status = HttpStatus.getResInfo(path, 200);
@@ -1055,10 +1102,12 @@ ${appRoot}\\www_public
             return ctx.res.render(ctx, nextPath, status);
         }
     }
-    mapPath(path: string): string {
+
+    public mapPath(path: string): string {
         return _path.resolve(`${this._root}/${this._public}/${path}`);
     }
-    pathToUrl(path: string): string {
+
+    public pathToUrl(path: string): string {
         if (!Util.getExtension(path)) return path;
         let index: number = path.indexOf(this._public);
         if (index === 0) return path;
@@ -1070,7 +1119,8 @@ ${appRoot}\\www_public
         index = path.lastIndexOf(".");
         return path.substring(0, index).replace(/\\/gi, "/");
     }
-    addError(ctx: IContext, ex: string | Error): IContext {
+
+    public addError(ctx: IContext, ex: string | Error): IContext {
         ctx.path = this.pathToUrl(ctx.path);
         if (!ctx.error) {
             ctx.error = `Error occured in ${ctx.path}`;
@@ -1091,7 +1141,8 @@ ${appRoot}\\www_public
             .replace(this._nodeModuleregx, "$engine/");
         return ctx;
     }
-    escape(unsafe?: string | null): string {
+
+    public escape(unsafe?: string | null): string {
         if (!unsafe) return "";
         return unsafe
             .replace(/&/gi, "&amp;")
@@ -1100,15 +1151,17 @@ ${appRoot}\\www_public
             .replace(/\r\n/gi, "<br/>")
             .replace(/\n/gi, "<br/>");
     }
-    formatPath(path: string, noCheck?: boolean): string {
+
+    public formatPath(path: string, noCheck?: boolean): string {
         return _formatPath(this, path, noCheck);
     }
-    createBundle(str: string): string {
+
+    public createBundle(str: string): string {
         if (!str) throw new Error("No string found to create bundle...")
         return Encryption.encryptUri(str, this._config.encryptionKey);
     }
-    addMimeType(extension: string, val: string): void {
-        return global.cw.HttpMime.add(extension, val);
+    public addMimeType(extension: string, val: string): void {
+        return _mimeType.add(extension, val);
     }
 }
 export interface IAppUtility {
@@ -1121,7 +1174,10 @@ export interface IAppUtility {
     readonly controller: IController;
 }
 export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility {
-    if (global.cw.isInitilized) throw new Error("Server instance can initilize 1 time...");
+    if (AppView.isInitilized) {
+        throw new Error("Server instance can initilize 1 time...");
+    }
+    
     const _server: CwServer = new CwServer(appRoot, wwwName);
     const _process = {
         render: (code: number | undefined, ctx: IContext, next: NextFunction, transfer?: boolean): any => {
@@ -1243,7 +1299,9 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         if (Util.isArrayLike(_server.config.views)) {
             _server.config.views.forEach(path => _importLocalAssets(path));
         }
-        global.cw.server.emit("register-view", _app, _controller, _server);
+
+        AppView.init(_app, _controller, _server);
+
         _controller.sort();
         _app.on("error", (req: IRequest, res: IResponse, err?: number | Error): void => {
             if (res.isAlive) {
@@ -1285,7 +1343,9 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _server.init();
         return _app;
     };
-    global.cw.isInitilized = true;
+
+    AppView.isInitilized = true;
+
     return {
         init: initilize,
         get public() { return _server.public; },

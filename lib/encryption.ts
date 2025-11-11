@@ -58,7 +58,7 @@ export class Encryption {
         res.key = CryptoJS.enc.Hex.parse(res.md5);
         res.iv = CryptoJS.enc.Hex.parse(this.utf8ToHex(res.oldKey));
         return res;
-    };
+    }
     public static encrypt(plainText: string, inf: ICryptoInfo): string {
         if (!inf.key) throw new Error("Invalid iv and key....");
         return CryptoJS.AES.encrypt(plainText, inf.key, { iv: inf.iv }).toString();

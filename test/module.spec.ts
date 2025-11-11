@@ -34,7 +34,8 @@ import { getAppDir } from '../lib/app-util';
 import { IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription } from '../lib/file-info';
 import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
 import {
-    IAppUtility, IContext
+    IAppUtility, IContext,
+    ServerEncryption
 } from '../lib/server';
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
@@ -61,6 +62,9 @@ const switchDefaultExt = (value: boolean) => {
     // @ts-ignore
     appUtility.controller._hasDefaultExt = value;
 }
+
+cwserver.readAppVersion();
+
 console.info(`Starting test for "cwserver" v${cwserver.appVersion}`);
 const createRequest = (method: string, url: string, ensure?: string): request.SuperAgentRequest => {
     expect(appIsLestening).toEqual(true);
@@ -478,8 +482,7 @@ describe("cwserver-view", () => {
     });
     it('should throw error (After initilize view, you should not register new veiw)', (done: Mocha.Done): void => {
         expect(shouldBeError(() => {
-            // tslint:disable-next-line: no-empty
-            global.cw.server.on("register-view", (_app, controller, server) => { });
+            cwserver.registerView((_app, controller, server) => { });
         })).toBeInstanceOf(Error);
         done();
     });
@@ -2237,6 +2240,15 @@ describe("cwserver-utility", () => {
                     throw e;
                 }
             })).toBeInstanceOf(Error);
+
+            expect(shouldBeError(() => {
+                const _server = appUtility.server;
+                // encryption set test
+                _server.updateEncryption();
+                _server.updateEncryption(new ServerEncryption(_server.config.encryptionKey));
+                return _server.encryption;
+            })).not.toBeInstanceOf(Error);
+
             expect(shouldBeError(() => {
                 try {
                     appUtility.server.config.database = [{

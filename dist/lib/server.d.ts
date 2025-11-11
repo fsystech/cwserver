@@ -140,6 +140,18 @@ export interface ICwServer {
     /** Initializes the server logger. */
     createLogger(): void;
     /**
+     * Updates the current server-side encryption settings.
+     *
+     * If an existing encryption instance is present, it is removed first.
+     * When a new `serverEnc` object is provided, it will be assigned as the active encryption.
+     * Otherwise, a new {@link ServerEncryption} instance is created using the configured encryption key.
+     *
+     * @public
+     * @param {IServerEncryption} [serverEnc] - Optional custom encryption instance to apply.
+     * @returns {void}
+     */
+    updateEncryption(serverEnc?: IServerEncryption): void;
+    /**
      * Validates if the provided context is valid.
      * @param {IContext} ctx - The context to validate.
      * @returns {boolean} `true` if valid, otherwise `false`.
@@ -432,6 +444,7 @@ export declare class CwServer implements ICwServer {
         [x: string]: string;
     };
     constructor(appRoot: string, wwwName?: string);
+    updateEncryption(serverEnc?: IServerEncryption): void;
     on: (ev: "shutdown", handler: () => void) => void;
     addVirtualDir: (route: string, root: string, evt?: (ctx: IContext) => void) => void;
     virtualInfo: (route: string) => {

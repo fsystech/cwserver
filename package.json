@@ -1,6 +1,6 @@
 {
   "name": "cwserver",
-  "version": "4.0.1",
+  "version": "4.1.1",
   "description": "A Complete NodeJS Web Server",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,8 +19,8 @@
     "clean": "node clean.js",
     "build": "node clean.js && tsc",
     "lint": "tslint --config tslint.json --project tsconfig.json",
-    "test:cov": "nyc node_modules/mocha/bin/_mocha --require ts-node/register test/env.ts --globals cw --check-leaks --recursive test/*.spec.ts",
-    "test:mocha": "mocha --require ts-node/register test/env.ts --globals cw --check-leaks --recursive test/*.spec.ts"
+    "test:cov": "nyc node_modules/mocha/bin/_mocha --require ts-node/register test/env.ts --check-leaks --recursive test/*.spec.ts",
+    "test:mocha": "mocha --require ts-node/register test/env.ts --check-leaks --recursive test/*.spec.ts"
   },
   "keywords": [
     "cwserver",

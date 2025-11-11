@@ -1,7 +1,6 @@
 import { IResInfo } from './app-static';
 import { IContext } from './server';
-type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
-export type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => void;
+import { type SandBox, type SandBoxNext } from './app-template-ctx';
 export type CompilerResult = {
     str: string;
     isScript?: boolean;

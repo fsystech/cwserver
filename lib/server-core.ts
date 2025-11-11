@@ -107,7 +107,7 @@ export interface IApplication {
 export const {
     appVersion, readAppVersion
 } = (() => {
-    let _appVersion: string = '3.1.5';
+    let _appVersion: string = '4.1.1';
     const _readAppVersion = (): string => {
         const libRoot: string = getAppDir();
         const absPath: string = resolve(`${libRoot}/package.json`);
