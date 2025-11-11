@@ -54,6 +54,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports._mimeType = void 0;
 exports.getMimeType = getMimeType;
+exports.stMimeType = stMimeType;
 exports.isValidExtension = isValidExtension;
 // 12:04 AM 6/19/2020
 // updated at 12:22 AM 11/12/2025
@@ -110,6 +111,9 @@ function getMimeType(extension) {
     if (!mimeType)
         throw new Error(`Unsupported extension =>${extension}`);
     return setCharset(mimeType);
+}
+function stMimeType(extension, value) {
+    return exports._mimeType.add(extension, value);
 }
 function isValidExtension(extension) {
     return exports._mimeType.type(extension) ? true : false;

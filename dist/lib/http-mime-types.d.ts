@@ -7,5 +7,6 @@ declare class MimeType {
 }
 export declare const _mimeType: MimeType;
 export declare function getMimeType(extension: string): string;
+export declare function stMimeType(extension: string, value: string): void;
 export declare function isValidExtension(extension: string): boolean;
 export {};

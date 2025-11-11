@@ -40,3 +40,4 @@ export { IPostedFileInfo, UploadFileInfo, IBodyParser } from './lib/body-parser'
 export { IWsClientInfo, ICwSocketServer, ICwSocketInfo, IOSocket } from './lib/ws';
 export { IoResult, QResult, QueryResult } from './lib/db-type';
 export { registerView } from './lib/app-view';
+export { getMimeType, stMimeType } from './lib/http-mime-types';
