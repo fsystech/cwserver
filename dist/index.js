@@ -52,7 +52,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stMimeType = exports.getMimeType = exports.registerView = exports.Session = exports.appVersion = exports.readAppVersion = exports.parseCookie = exports.App = exports.ServerEncryption = exports.SessionSecurity = exports.createProjectTemplate = exports.wsClient = exports.socketInitilizer = exports.Streamer = exports.fsw = exports.Util = exports.PayloadParser = exports.getBodyParser = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.HttpCache = exports.HttpMimeHandler = exports.Encryption = exports.initilizeServer = void 0;
+exports.setMimeType = exports.getMimeType = exports.registerView = exports.Session = exports.appVersion = exports.readAppVersion = exports.parseCookie = exports.App = exports.ServerEncryption = exports.SessionSecurity = exports.createProjectTemplate = exports.wsClient = exports.socketInitilizer = exports.Streamer = exports.fsw = exports.Util = exports.PayloadParser = exports.getBodyParser = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.HttpCache = exports.HttpMimeHandler = exports.Encryption = exports.initilizeServer = void 0;
 // 3:56 PM 5/9/2020
 // by rajib chy
 var server_1 = require("./lib/server");
@@ -95,5 +95,5 @@ var app_view_1 = require("./lib/app-view");
 Object.defineProperty(exports, "registerView", { enumerable: true, get: function () { return app_view_1.registerView; } });
 var http_mime_types_1 = require("./lib/http-mime-types");
 Object.defineProperty(exports, "getMimeType", { enumerable: true, get: function () { return http_mime_types_1.getMimeType; } });
-Object.defineProperty(exports, "stMimeType", { enumerable: true, get: function () { return http_mime_types_1.stMimeType; } });
+Object.defineProperty(exports, "setMimeType", { enumerable: true, get: function () { return http_mime_types_1.setMimeType; } });
 //# sourceMappingURL=index.js.map

@@ -87,7 +87,7 @@ export function getMimeType(extension: string): string {
     return setCharset(mimeType);
 }
 
-export function stMimeType(extension: string, value: string): void {
+export function setMimeType(extension: string, value: string): void {
     return _mimeType.add(extension, value);
 }
 
