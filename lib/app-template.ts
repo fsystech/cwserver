@@ -398,7 +398,8 @@ class TemplateParser {
 }
 export class TemplateCore {
     public static compile(
-        str: string | undefined, next: TemplateNextFunc
+        str: string | undefined, next: TemplateNextFunc,
+        vimCtx: NodeJS.Dict<any>
     ): void {
 
         if (!str) {
@@ -415,6 +416,7 @@ export class TemplateCore {
             const script: _vm.Script = new _vm.Script(`cw.setCtx("${sandBox}", async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n});`);
 
             script.runInContext(_vm.createContext({
+                ...vimCtx,
                 ...global,       // includes standard globals
                 Buffer,          // explicitly expose Buffer
                 cw: TemplateCtx, // Template context
@@ -508,7 +510,7 @@ export class TemplateCore {
             if (this.isScript(fstr)) {
                 return this.compile(this.parseScript(fstr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match: string): string => {
                     return match.replace(/<script runat="template-engine">/gi, "{%").replace(/<\/script>/gi, "%}");
-                })), next);
+                })), next, ctx.server.createVimContext());
             }
             return next({ str: fstr, isScript: false, isTemplate });
         });
@@ -651,7 +653,7 @@ class TemplateLink {
                             return ctx.handleError(result.err, () => {
                                 return next(result.sandBox || result.str);
                             });
-                        });
+                        }, ctx.server.createVimContext());
                     }
                     return next(data);
                 });
@@ -680,7 +682,7 @@ class TemplateLink {
                         return ctx.handleError(result.err, () => {
                             return this._hadleCacheResponse(ctx, status, result.sandBox || result.str);
                         });
-                    });
+                    }, ctx.server.createVimContext());
                 }
                 return this._hadleCacheResponse(ctx, status, _tw.cache[cacheKey].data);
             }

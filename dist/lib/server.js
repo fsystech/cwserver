@@ -475,6 +475,9 @@ ${appRoot}\\www_public
         this._log = new logger_1.ShadowLogger();
         return;
     }
+    createVimContext() {
+        return {};
+    }
     updateEncryption(serverEnc) {
         if (this._encryption) {
             delete this._encryption;

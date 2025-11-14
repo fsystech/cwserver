@@ -302,6 +302,12 @@ export interface ICwServer {
      */
     parseMaxAge(maxAge: any): number;
     /**
+     * Creates and returns a new Vim context object.
+     *
+     * @returns {NodeJS.Dict<any>} A newly created Vim context as a dictionary-like object.
+     */
+    createVimContext(): NodeJS.Dict<any>;
+    /**
      * Registers an event listener for server events.
      * @param {'shutdown'} ev - The event name.
      * @param {() => void} handler - The event handler function.
@@ -444,6 +450,7 @@ export declare class CwServer implements ICwServer {
         [x: string]: string;
     };
     constructor(appRoot: string, wwwName?: string);
+    createVimContext(): NodeJS.Dict<any>;
     updateEncryption(serverEnc?: IServerEncryption): void;
     on: (ev: "shutdown", handler: () => void) => void;
     addVirtualDir: (route: string, root: string, evt?: (ctx: IContext) => void) => void;

@@ -366,6 +366,13 @@ export interface ICwServer {
     parseMaxAge(maxAge: any): number;
 
     /**
+     * Creates and returns a new Vim context object.
+     *
+     * @returns {NodeJS.Dict<any>} A newly created Vim context as a dictionary-like object.
+     */
+    createVimContext(): NodeJS.Dict<any>;
+
+    /**
      * Registers an event listener for server events.
      * @param {'shutdown'} ev - The event name.
      * @param {() => void} handler - The event handler function.
@@ -409,9 +416,11 @@ export const {
         }
     };
 })();
+
 function isDefined<T>(a: T | null | undefined): a is T {
     return a !== null && a !== undefined;
 }
+
 function getEpoch(type: string, add: number, maxAge: string): number {
     switch (type) {
         case "M": return (add * 60 * 1000); // Minute
@@ -421,6 +430,7 @@ function getEpoch(type: string, add: number, maxAge: string): number {
         default: throw new Error(`Invalid maxAage format ${maxAge}`);
     }
 }
+
 function parseMaxAge(maxAge: any): number {
     if (typeof (maxAge) !== "string") throw new Error(`Invalid maxAage...`);
     let add: string = "", type: string = "";
@@ -435,6 +445,7 @@ function parseMaxAge(maxAge: any): number {
         throw new Error(`Invalid maxAage format ${maxAge}`);
     return getEpoch(type.toUpperCase(), parseInt(add), maxAge);
 }
+
 const _formatPath = (() => {
     const _exportPath = (server: ICwServer, path: string): string | void => {
         if (path === "root") return server.getRoot();
@@ -457,6 +468,7 @@ const _formatPath = (() => {
         return absPath;
     };
 })();
+
 export class ServerEncryption implements IServerEncryption {
     private cryptoInfo: ICryptoInfo;
     constructor(inf: ICryptoInfo) {
@@ -601,6 +613,7 @@ export class Context implements IContext {
         return id;
     }
 }
+
 export class ServerConfig implements IServerConfig {
     [key: string]: any;
     Author: string;
@@ -835,6 +848,10 @@ ${appRoot}\\www_public
         return;
     }
 
+    public createVimContext(): NodeJS.Dict<any> {
+        return {};
+    }
+    
     public updateEncryption(serverEnc?: IServerEncryption): void {
         if (this._encryption) {
             delete this._encryption;
@@ -1177,7 +1194,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
     if (AppView.isInitilized) {
         throw new Error("Server instance can initilize 1 time...");
     }
-    
+
     const _server: CwServer = new CwServer(appRoot, wwwName);
     const _process = {
         render: (code: number | undefined, ctx: IContext, next: NextFunction, transfer?: boolean): any => {

@@ -778,7 +778,7 @@ describe("cwserver-template-engine", () => {
         })).toBeInstanceOf(Error);
         TemplateCore.compile(void 0, (params: CompilerResult): void => {
             expect(params.err).toBeInstanceOf(Error);
-        });
+        }, appUtility.server.createVimContext());
         const filePath: string = path.resolve(`${appRoot}/${projectRoot}/template/invalid.html`);
         const tasks: (() => void)[] = [];
         const forward = (): void => {

@@ -235,6 +235,10 @@ export class BufferArray implements IBufferArray {
  */
 export interface ISession {
     /**
+     * Indicates is mobile app or not.
+     */
+    isMobileApp?: boolean;
+    /**
      * Indicates whether the user is authenticated.
      */
     isAuthenticated: boolean;
@@ -362,7 +366,7 @@ export class Session implements ISession {
             this._obj.userData = parseData(this._obj.userData);
         }
     }
-    
+
     /**
      * Converts the session data to a JSON string.
      * 

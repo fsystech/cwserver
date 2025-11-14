@@ -150,6 +150,10 @@ export declare class BufferArray implements IBufferArray {
  */
 export interface ISession {
     /**
+     * Indicates is mobile app or not.
+     */
+    isMobileApp?: boolean;
+    /**
      * Indicates whether the user is authenticated.
      */
     isAuthenticated: boolean;

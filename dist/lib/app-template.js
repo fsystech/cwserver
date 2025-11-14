@@ -382,7 +382,7 @@ class TemplateParser {
     }
 }
 class TemplateCore {
-    static compile(str, next) {
+    static compile(str, next, vimCtx) {
         if (!str) {
             return process.nextTick(() => next({ str: "", err: new Error("No script found to compile....") }));
         }
@@ -392,7 +392,7 @@ class TemplateCore {
             // bug fix by rajib chy on 8:16 PM 3/23/2021
             // Error: ctx.addError(ctx, ex) argument error
             const script = new _vm.Script(`cw.setCtx("${sandBox}", async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n});`);
-            script.runInContext(_vm.createContext(Object.assign(Object.assign({}, global), { // includes standard globals
+            script.runInContext(_vm.createContext(Object.assign(Object.assign(Object.assign({}, vimCtx), global), { // includes standard globals
                 Buffer, cw: app_template_ctx_1.TemplateCtx })));
             const func = app_template_ctx_1.TemplateCtx.getCtx(sandBox);
             app_template_ctx_1.TemplateCtx.deleteCtx(sandBox);
@@ -474,7 +474,7 @@ class TemplateCore {
             if (this.isScript(fstr)) {
                 return this.compile(this.parseScript(fstr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match) => {
                     return match.replace(/<script runat="template-engine">/gi, "{%").replace(/<\/script>/gi, "%}");
-                })), next);
+                })), next, ctx.server.createVimContext());
             }
             return next({ str: fstr, isScript: false, isTemplate });
         });
@@ -613,7 +613,7 @@ class TemplateLink {
                             return ctx.handleError(result.err, () => {
                                 return next(result.sandBox || result.str);
                             });
-                        });
+                        }, ctx.server.createVimContext());
                     }
                     return next(data);
                 });
@@ -641,7 +641,7 @@ class TemplateLink {
                         return ctx.handleError(result.err, () => {
                             return this._hadleCacheResponse(ctx, status, result.sandBox || result.str);
                         });
-                    });
+                    }, ctx.server.createVimContext());
                 }
                 return this._hadleCacheResponse(ctx, status, _tw.cache[cacheKey].data);
             }

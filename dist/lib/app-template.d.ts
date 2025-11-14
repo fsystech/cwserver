@@ -11,7 +11,7 @@ export type CompilerResult = {
 type TemplateNextFunc = (params: CompilerResult) => void;
 export declare function templateNext(ctx: IContext, next: SandBoxNext, isCompressed?: boolean): void;
 export declare class TemplateCore {
-    static compile(str: string | undefined, next: TemplateNextFunc): void;
+    static compile(str: string | undefined, next: TemplateNextFunc, vimCtx: NodeJS.Dict<any>): void;
     private static parseScript;
     private static isScript;
     static isTemplate(str: string): boolean;
