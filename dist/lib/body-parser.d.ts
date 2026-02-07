@@ -1,5 +1,6 @@
 import type { IRequest } from './request';
 import { type IDispose, type ErrorHandler } from './app-static';
+import { type IPostedFileInfo } from './posted-file-info';
 export type UploadFileInfo = {
     contentType: string;
     name: string;
@@ -13,20 +14,6 @@ export type FileInfo = {
     fileName: string;
     contentType: string;
 };
-export interface IPostedFileInfo extends IDispose {
-    changePath(path: string): void;
-    getContentDisposition(): string;
-    getName(): string;
-    getFileName(): string;
-    getContentType(): string;
-    saveAsSync(absPath: string): void;
-    saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void;
-    readSync(): Buffer;
-    read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
-    getTempPath(): string | undefined;
-    /** @deprecated since v2.0.3 - use `dispose` instead. */
-    clear(): void;
-}
 export interface IBodyParser extends IDispose {
     /** If you return true, this file will be skip */
     skipFile?: (fileInfo: IPostedFileInfo) => boolean;

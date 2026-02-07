@@ -20,19 +20,19 @@
 
 // 11:17 PM 5/5/2020
 // by rajib chy
-import { EventEmitter } from 'node:events';
+
 import { deprecate, TextDecoder } from 'node:util';
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
-// import Dicer from 'dicer';
 import { Dicer, PartStream } from './dicer';
-import { pipeline } from 'node:stream';
 import os from 'node:os';
 import destroy from 'destroy';
 import type { IRequest } from './request';
-import { toNumber, toString, BufferArray, type IDispose, type IBufferArray, type ErrorHandler } from './app-static';
+import { toNumber, toString, type IDispose, type ErrorHandler } from './app-static';
 import { Util } from './app-util';
 import * as fsw from './fsw';
+import { type IPostedFileInfo } from './posted-file-info';
+import { DataParser, type IDataParser } from './data-Parser';
 
 export type UploadFileInfo = {
     contentType: string;
@@ -40,35 +40,15 @@ export type UploadFileInfo = {
     fileName: string;
     contentDisposition: string;
     tempPath: string | undefined
-};
+}
+
 export type FileInfo = {
     contentDisposition: string;
     name: string;
     fileName: string;
     contentType: string;
 }
-export interface IPostedFileInfo extends IDispose {
-    changePath(path: string): void;
-    getContentDisposition(): string;
-    getName(): string;
-    getFileName(): string;
-    getContentType(): string;
-    saveAsSync(absPath: string): void;
-    saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void;
-    readSync(): Buffer;
-    read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
-    getTempPath(): string | undefined;
-    /** @deprecated since v2.0.3 - use `dispose` instead. */
-    clear(): void;
-}
-interface IMultipartDataReader extends IDispose {
-    readonly forceExit: boolean;
-    skipFile(fileInfo: IPostedFileInfo): boolean;
-    read(stream: PartStream, tempDir: string): void;
-    on(ev: "field", handler: (key: string, buff: string) => void): IMultipartDataReader;
-    on(ev: "file", handler: (file: IPostedFileInfo) => void): IMultipartDataReader;
-    on(ev: "end", handler: (err?: Error) => void): IMultipartDataReader;
-}
+
 export interface IBodyParser extends IDispose {
     /** If you return true, this file will be skip */
     skipFile?: (fileInfo: IPostedFileInfo) => boolean;
@@ -98,13 +78,7 @@ export interface IBodyParser extends IDispose {
     /** @deprecated since v2.0.3 - use `dispose` instead. */
     clear(): void;
 }
-function dispose<T extends IDispose>(data: T[]) {
-    while (true) {
-        const instance: T | undefined = data.shift();
-        if (!instance) break;
-        instance.dispose();
-    }
-}
+
 const incomingContentType: {
     APP_JSON: string;
     MULTIPART: string;
@@ -116,6 +90,7 @@ const incomingContentType: {
     RAW_TEXT: "text/plain",
     URL_ENCODE: "application/x-www-form-urlencoded"
 }
+
 enum ContentType {
     URL_ENCODE = 1,
     APP_JSON = 2,
@@ -123,306 +98,13 @@ enum ContentType {
     RAW_TEXT = 4,
     UNKNOWN = -1
 }
-function extractBetween(
-    data: string,
-    separator1: string,
-    separator2: string
-): string {
-    let result: string = "";
-    let start: number = 0;
-    let limit: number = 0;
-    start = data.indexOf(separator1);
-    if (start >= 0) {
-        start += separator1.length;
-        limit = data.indexOf(separator2, start);
-        if (limit > -1)
-            result = data.substring(start, limit);
-    }
-    return result;
-}
-class PostedFileInfo implements IPostedFileInfo {
-    private _fileInfo: FileInfo;
-    private _isMoved: boolean;
-    private _tempFile?: string;
-    private _isDisposed: boolean;
-    constructor(
-        disposition: string,
-        fname: string,
-        fileName: string,
-        fcontentType: string,
-        tempFile: string
-    ) {
-        this._fileInfo = {
-            contentDisposition: disposition,
-            name: fname,
-            fileName,
-            contentType: fcontentType
-        };
-        this._isMoved = false; this._isDisposed = false;
-        this._tempFile = tempFile;
-    }
-    public changePath(path: string): void {
-        this._tempFile = path;
-        this._isMoved = true;
-    }
-    public getTempPath(): string | undefined {
-        return this._tempFile;
-    }
-    public getContentDisposition(): string {
-        return this._fileInfo.contentDisposition;
-    }
-    public getName(): string {
-        return this._fileInfo.name;
-    }
-    public getFileName(): string {
-        return this._fileInfo.fileName;
-    }
-    public getContentType(): string {
-        return this._fileInfo.contentType;
-    }
-    private validate(arg: any): arg is string {
-        if (!this._tempFile || this._isMoved)
-            throw new Error("This file already moved or not created yet.");
-        return true;
-    }
-    public readSync(): Buffer {
-        if (!this._tempFile || this._isMoved)
-            throw new Error("This file already moved or not created yet.");
-        return _fs.readFileSync(this._tempFile);
-    }
-    public read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void {
-        if (this.validate(this._tempFile))
-            return _fs.readFile(this._tempFile, next);
-    }
-    public saveAsSync(absPath: string): void {
-        if (this.validate(this._tempFile)) {
-            _fs.copyFileSync(this._tempFile, absPath);
-            _fs.unlinkSync(this._tempFile);
-            delete this._tempFile;
-            this._isMoved = true;
-        }
-    }
-    public saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void {
-        if (this.validate(this._tempFile)) {
-            fsw.moveFile(this._tempFile, absPath, (err) => {
-                delete this._tempFile;
-                this._isMoved = true;
-                return next(err);
-            });
-        }
-    }
-    public dispose(): void {
-        if (this._isDisposed) return;
-        this._isDisposed = true;
-        if (!this._isMoved && this._tempFile) {
-            if (_fs.existsSync(this._tempFile))
-                _fs.unlinkSync(this._tempFile);
-        }
-        // @ts-ignore
-        delete this._fileInfo;
-        delete this._tempFile;
-    }
-    public clear(): void {
-        this.dispose();
-    }
-}
+
 const RE_BOUNDARY: RegExp = /^multipart\/.+?(?:; boundary=(?:(?:"(.+)")|(?:([^\s]+))))$/i;
-class MultipartDataReader extends EventEmitter implements IMultipartDataReader {
-    private _forceExit: boolean;
-    private _writeStream?: _fs.WriteStream;
-    private _isDisposed: boolean;
-    public get forceExit() {
-        return this._forceExit;
-    }
-    private destroy() {
-        if (this._writeStream && !this._writeStream.destroyed) {
-            destroy(this._writeStream);
-        }
-    }
-    private exit(reason: string): void {
-        this._forceExit = true;
-        this.emit("end", new Error(reason));
-    }
-    constructor() {
-        super();
-        this._isDisposed = false;
-        this._forceExit = false;
-    }
-    public skipFile(fileInfo: IPostedFileInfo): boolean {
-        return false;
-    }
-    public read(stream: PartStream, tempDir: string): void {
-        let
-            fieldName: string = "", fileName: string = "",
-            disposition: string = "", contentType: string = "",
-            isFile: boolean = false;
-        const body: IBufferArray = new BufferArray();
-        stream.on("header", (header: object): void => {
-            for (const [key, value] of Object.entries(header)) {
-                if (Util.isArrayLike<string>(value)) {
-                    const part: string | undefined = value[0];
-                    if (part) {
-                        if (key === "content-disposition") {
-                            if (part.indexOf("filename") > -1) {
-                                fileName = extractBetween(part, "filename=\"", "\"").trim();
-                                if (fileName.length === 0) {
-                                    return this.exit(`Unable to extract filename form given header: ${part}`);
-                                }
-                                fieldName = extractBetween(part, "name=\"", ";");
-                                isFile = true;
-                                disposition = part;
-                                continue;
-                            }
-                            fieldName = extractBetween(part, "name=\"", "\"");
-                            continue;
-                        }
-                        if (key === "content-type") {
-                            contentType = part.trim();
-                        }
-                    }
-                }
-            }
-            if (!isFile) {
-                return stream.on("data", (chunk: string | Buffer): void => {
-                    body.push(chunk);
-                }).on("end", () => {
-                    this.emit("field", fieldName, body.data.toString());
-                    body.dispose();
-                    this.emit("end");
-                }), void 0;
-            }
-            // no more needed body
-            body.dispose();
-            if (contentType.length > 0) {
-                const fileInfo = new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), _path.resolve(`${tempDir}/${Util.guid()}.temp`));
-                if (this.skipFile(fileInfo)) {
-                    stream.resume();
-                    this.emit("end");
-                    return;
-                }
-                const tempFile: string | void = fileInfo.getTempPath();
-                if (tempFile) {
-                    this._writeStream = pipeline(stream, _fs.createWriteStream(tempFile, { flags: 'a' }), (err: NodeJS.ErrnoException | null) => {
-                        this.destroy();
-                        this.emit("end", err);
-                    });
-                    this.emit("file", fileInfo);
-                }
-            } else {
-                return this.exit("Content type not found in requested file....");
-            }
-        });
-        return void 0;
-    }
-    public dispose() {
-        if (this._isDisposed) return;
-        this._isDisposed = true;
-        this.removeAllListeners();
-        this.destroy();
-        delete this._writeStream;
-        // @ts-ignore
-        delete this._forceExit;
-    }
-}
-interface IDataParser extends IDispose {
-    readonly files: IPostedFileInfo[];
-    readonly body: Buffer;
-    onRawData(buff: Buffer | string): void;
-    getRawData(encoding?: BufferEncoding): string;
-    onPart(
-        stream: PartStream,
-        next: (forceExit: boolean) => void,
-        skipFile?: (fileInfo: IPostedFileInfo) => boolean
-    ): void;
-    getError(): string | void;
-    getMultipartBody(): { [id: string]: string };
-}
-class DataParser implements IDataParser {
-    private _files: IPostedFileInfo[];
-    private _body: IBufferArray;
-    private _multipartBody: { [id: string]: string };
-    private _errors: (Error | NodeJS.ErrnoException)[];
-    private _tempDir: string;
-    private _readers: IMultipartDataReader[];
-    public get files(): IPostedFileInfo[] {
-        return this._files;
-    }
-    public get body(): Buffer {
-        return this._body.data;
-    }
-    constructor(
-        tempDir: string
-    ) {
-        this._errors = []; this._files = [];
-        this._body = new BufferArray();
-        this._readers = []; this._tempDir = tempDir;
-        this._multipartBody = {};
-    }
-    public onRawData(buff: Buffer | string): void {
-        this._body.push(buff);
-    }
-    public getRawData(encoding?: BufferEncoding): string {
-        let data = this._body.toString(encoding);
-        if (Object.keys(this._multipartBody).length > 0) {
-            for (const prop in this._multipartBody) {
-                data += '&' + prop + '=' + this._multipartBody[prop];
-            }
-        }
-        return data;
-    }
-    public getMultipartBody(): { [id: string]: string } {
-        return this._multipartBody;
-    }
-    public onPart(
-        stream: PartStream,
-        next: (forceExit: boolean) => void,
-        skipFile?: (fileInfo: IPostedFileInfo) => boolean
-    ): void {
-        const reader: IMultipartDataReader = new MultipartDataReader();
-        if (skipFile) {
-            reader.skipFile = skipFile;
-        }
-        reader.on("file", (file: IPostedFileInfo): void => {
-            return this._files.push(file), void 0;
-        });
-        reader.on("field", (key: string, data: string): void => {
-            this._multipartBody[key] = encodeURIComponent(data);
-        });
-        reader.on("end", (err?: Error): void => {
-            if (err) {
-                this._errors.push(err);
-            }
-            next(reader.forceExit);
-            return reader.dispose();
-        });
-        reader.read(stream, this._tempDir);
-        this._readers.push(reader);
-        return void 0;
-    }
-    public getError(): string | void {
-        if (this._errors.length > 0) {
-            let str: string = "";
-            for (const err of this._errors) {
-                str += err.message + "\n";
-            }
-            return str;
-        }
-    }
-    public dispose(): void {
-        dispose(this._readers);
-        dispose(this._files);
-        this._body.dispose();
-        // @ts-ignore
-        delete this._body; delete this._multipartBody;
-        if (this._errors) {
-            // @ts-ignore
-            delete this._errors;
-        }
-    }
-}
+
 function decode(str: string): string {
     return decodeURIComponent(str.replace(/\+/g, ' '));
 }
+
 export function decodeBodyBuffer(buff: Buffer): NodeJS.Dict<string> {
     const outObj: NodeJS.Dict<string> = {};
     const decoder: TextDecoder = new TextDecoder('utf-8');
@@ -436,7 +118,9 @@ export function decodeBodyBuffer(buff: Buffer): NodeJS.Dict<string> {
     }
     return outObj;
 }
+
 const MaxBuffLength: number = 1024 * 1024 * 20; // (20mb)
+
 class BodyParser implements IBodyParser {
     private _contentType: string;
     private _contentTypeEnum: ContentType;
@@ -632,8 +316,10 @@ class BodyParser implements IBodyParser {
         }
     }
     public parse(onReadEnd: (err?: Error) => void): void {
-        if (!this.isValidRequest())
+        if (!this.isValidRequest()) {
             return process.nextTick(() => onReadEnd(new Error("Invalid request defiend....")));
+        }
+
         if (
             this._contentTypeEnum === ContentType.APP_JSON ||
             this._contentTypeEnum === ContentType.URL_ENCODE ||
@@ -643,6 +329,7 @@ class BodyParser implements IBodyParser {
                 return process.nextTick(() => onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`)));
             }
         }
+
         if (
             this._contentTypeEnum === ContentType.URL_ENCODE ||
             this._contentTypeEnum === ContentType.APP_JSON ||
@@ -651,12 +338,15 @@ class BodyParser implements IBodyParser {
             this._req.on("data", (chunk: any): void => {
                 this._parser.onRawData(chunk);
             });
+
             this._req.on("end", () => {
                 this._isReadEnd = true;
                 return onReadEnd();
             });
+
             return;
         }
+
         const match: RegExpExecArray | null = RE_BOUNDARY.exec(this._contentType);
         if (match) {
             this._multipartParser = new Dicer({ boundary: match[1] || match[2] });
@@ -694,14 +384,16 @@ class BodyParser implements IBodyParser {
         this.dispose();
     }
 }
+
 /** @deprecated since v2.0.3 - use `getBodyParser` instead. */
 export const { PayloadParser } = (() => {
     return { PayloadParser: deprecate(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
 })();
+
 BodyParser.prototype.clear = deprecate(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
 BodyParser.prototype.readData = deprecate(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
 BodyParser.prototype.readDataAsync = deprecate(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
-PostedFileInfo.prototype.clear = deprecate(PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');
+
 export function getBodyParser(
     req: IRequest,
     tempDir?: string

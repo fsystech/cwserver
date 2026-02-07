@@ -60,26 +60,15 @@ exports.decodeBodyBuffer = decodeBodyBuffer;
 exports.getBodyParser = getBodyParser;
 // 11:17 PM 5/5/2020
 // by rajib chy
-const node_events_1 = require("node:events");
 const node_util_1 = require("node:util");
-const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
-// import Dicer from 'dicer';
 const dicer_1 = require("./dicer");
-const node_stream_1 = require("node:stream");
 const node_os_1 = __importDefault(require("node:os"));
 const destroy_1 = __importDefault(require("destroy"));
 const app_static_1 = require("./app-static");
 const app_util_1 = require("./app-util");
 const fsw = __importStar(require("./fsw"));
-function dispose(data) {
-    while (true) {
-        const instance = data.shift();
-        if (!instance)
-            break;
-        instance.dispose();
-    }
-}
+const data_Parser_1 = require("./data-Parser");
 const incomingContentType = {
     APP_JSON: "application/json",
     MULTIPART: "multipart/form-data",
@@ -94,265 +83,7 @@ var ContentType;
     ContentType[ContentType["RAW_TEXT"] = 4] = "RAW_TEXT";
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
 })(ContentType || (ContentType = {}));
-function extractBetween(data, separator1, separator2) {
-    let result = "";
-    let start = 0;
-    let limit = 0;
-    start = data.indexOf(separator1);
-    if (start >= 0) {
-        start += separator1.length;
-        limit = data.indexOf(separator2, start);
-        if (limit > -1)
-            result = data.substring(start, limit);
-    }
-    return result;
-}
-class PostedFileInfo {
-    constructor(disposition, fname, fileName, fcontentType, tempFile) {
-        this._fileInfo = {
-            contentDisposition: disposition,
-            name: fname,
-            fileName,
-            contentType: fcontentType
-        };
-        this._isMoved = false;
-        this._isDisposed = false;
-        this._tempFile = tempFile;
-    }
-    changePath(path) {
-        this._tempFile = path;
-        this._isMoved = true;
-    }
-    getTempPath() {
-        return this._tempFile;
-    }
-    getContentDisposition() {
-        return this._fileInfo.contentDisposition;
-    }
-    getName() {
-        return this._fileInfo.name;
-    }
-    getFileName() {
-        return this._fileInfo.fileName;
-    }
-    getContentType() {
-        return this._fileInfo.contentType;
-    }
-    validate(arg) {
-        if (!this._tempFile || this._isMoved)
-            throw new Error("This file already moved or not created yet.");
-        return true;
-    }
-    readSync() {
-        if (!this._tempFile || this._isMoved)
-            throw new Error("This file already moved or not created yet.");
-        return _fs.readFileSync(this._tempFile);
-    }
-    read(next) {
-        if (this.validate(this._tempFile))
-            return _fs.readFile(this._tempFile, next);
-    }
-    saveAsSync(absPath) {
-        if (this.validate(this._tempFile)) {
-            _fs.copyFileSync(this._tempFile, absPath);
-            _fs.unlinkSync(this._tempFile);
-            delete this._tempFile;
-            this._isMoved = true;
-        }
-    }
-    saveAs(absPath, next) {
-        if (this.validate(this._tempFile)) {
-            fsw.moveFile(this._tempFile, absPath, (err) => {
-                delete this._tempFile;
-                this._isMoved = true;
-                return next(err);
-            });
-        }
-    }
-    dispose() {
-        if (this._isDisposed)
-            return;
-        this._isDisposed = true;
-        if (!this._isMoved && this._tempFile) {
-            if (_fs.existsSync(this._tempFile))
-                _fs.unlinkSync(this._tempFile);
-        }
-        // @ts-ignore
-        delete this._fileInfo;
-        delete this._tempFile;
-    }
-    clear() {
-        this.dispose();
-    }
-}
 const RE_BOUNDARY = /^multipart\/.+?(?:; boundary=(?:(?:"(.+)")|(?:([^\s]+))))$/i;
-class MultipartDataReader extends node_events_1.EventEmitter {
-    get forceExit() {
-        return this._forceExit;
-    }
-    destroy() {
-        if (this._writeStream && !this._writeStream.destroyed) {
-            (0, destroy_1.default)(this._writeStream);
-        }
-    }
-    exit(reason) {
-        this._forceExit = true;
-        this.emit("end", new Error(reason));
-    }
-    constructor() {
-        super();
-        this._isDisposed = false;
-        this._forceExit = false;
-    }
-    skipFile(fileInfo) {
-        return false;
-    }
-    read(stream, tempDir) {
-        let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false;
-        const body = new app_static_1.BufferArray();
-        stream.on("header", (header) => {
-            for (const [key, value] of Object.entries(header)) {
-                if (app_util_1.Util.isArrayLike(value)) {
-                    const part = value[0];
-                    if (part) {
-                        if (key === "content-disposition") {
-                            if (part.indexOf("filename") > -1) {
-                                fileName = extractBetween(part, "filename=\"", "\"").trim();
-                                if (fileName.length === 0) {
-                                    return this.exit(`Unable to extract filename form given header: ${part}`);
-                                }
-                                fieldName = extractBetween(part, "name=\"", ";");
-                                isFile = true;
-                                disposition = part;
-                                continue;
-                            }
-                            fieldName = extractBetween(part, "name=\"", "\"");
-                            continue;
-                        }
-                        if (key === "content-type") {
-                            contentType = part.trim();
-                        }
-                    }
-                }
-            }
-            if (!isFile) {
-                return stream.on("data", (chunk) => {
-                    body.push(chunk);
-                }).on("end", () => {
-                    this.emit("field", fieldName, body.data.toString());
-                    body.dispose();
-                    this.emit("end");
-                }), void 0;
-            }
-            // no more needed body
-            body.dispose();
-            if (contentType.length > 0) {
-                const fileInfo = new PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), _path.resolve(`${tempDir}/${app_util_1.Util.guid()}.temp`));
-                if (this.skipFile(fileInfo)) {
-                    stream.resume();
-                    this.emit("end");
-                    return;
-                }
-                const tempFile = fileInfo.getTempPath();
-                if (tempFile) {
-                    this._writeStream = (0, node_stream_1.pipeline)(stream, _fs.createWriteStream(tempFile, { flags: 'a' }), (err) => {
-                        this.destroy();
-                        this.emit("end", err);
-                    });
-                    this.emit("file", fileInfo);
-                }
-            }
-            else {
-                return this.exit("Content type not found in requested file....");
-            }
-        });
-        return void 0;
-    }
-    dispose() {
-        if (this._isDisposed)
-            return;
-        this._isDisposed = true;
-        this.removeAllListeners();
-        this.destroy();
-        delete this._writeStream;
-        // @ts-ignore
-        delete this._forceExit;
-    }
-}
-class DataParser {
-    get files() {
-        return this._files;
-    }
-    get body() {
-        return this._body.data;
-    }
-    constructor(tempDir) {
-        this._errors = [];
-        this._files = [];
-        this._body = new app_static_1.BufferArray();
-        this._readers = [];
-        this._tempDir = tempDir;
-        this._multipartBody = {};
-    }
-    onRawData(buff) {
-        this._body.push(buff);
-    }
-    getRawData(encoding) {
-        let data = this._body.toString(encoding);
-        if (Object.keys(this._multipartBody).length > 0) {
-            for (const prop in this._multipartBody) {
-                data += '&' + prop + '=' + this._multipartBody[prop];
-            }
-        }
-        return data;
-    }
-    getMultipartBody() {
-        return this._multipartBody;
-    }
-    onPart(stream, next, skipFile) {
-        const reader = new MultipartDataReader();
-        if (skipFile) {
-            reader.skipFile = skipFile;
-        }
-        reader.on("file", (file) => {
-            return this._files.push(file), void 0;
-        });
-        reader.on("field", (key, data) => {
-            this._multipartBody[key] = encodeURIComponent(data);
-        });
-        reader.on("end", (err) => {
-            if (err) {
-                this._errors.push(err);
-            }
-            next(reader.forceExit);
-            return reader.dispose();
-        });
-        reader.read(stream, this._tempDir);
-        this._readers.push(reader);
-        return void 0;
-    }
-    getError() {
-        if (this._errors.length > 0) {
-            let str = "";
-            for (const err of this._errors) {
-                str += err.message + "\n";
-            }
-            return str;
-        }
-    }
-    dispose() {
-        dispose(this._readers);
-        dispose(this._files);
-        this._body.dispose();
-        // @ts-ignore
-        delete this._body;
-        delete this._multipartBody;
-        if (this._errors) {
-            // @ts-ignore
-            delete this._errors;
-        }
-    }
-}
 function decode(str) {
     return decodeURIComponent(str.replace(/\+/g, ' '));
 }
@@ -393,7 +124,7 @@ class BodyParser {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
         if (this._contentTypeEnum !== ContentType.UNKNOWN) {
-            this._parser = new DataParser(tempDir || node_os_1.default.tmpdir());
+            this._parser = new data_Parser_1.DataParser(tempDir || node_os_1.default.tmpdir());
             this._req = req;
         }
         else {
@@ -561,8 +292,9 @@ class BodyParser {
         };
     }
     parse(onReadEnd) {
-        if (!this.isValidRequest())
+        if (!this.isValidRequest()) {
             return process.nextTick(() => onReadEnd(new Error("Invalid request defiend....")));
+        }
         if (this._contentTypeEnum === ContentType.APP_JSON ||
             this._contentTypeEnum === ContentType.URL_ENCODE ||
             this._contentTypeEnum === ContentType.RAW_TEXT) {
@@ -629,7 +361,6 @@ exports.PayloadParser = (() => {
 BodyParser.prototype.clear = (0, node_util_1.deprecate)(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
 BodyParser.prototype.readData = (0, node_util_1.deprecate)(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
 BodyParser.prototype.readDataAsync = (0, node_util_1.deprecate)(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
-PostedFileInfo.prototype.clear = (0, node_util_1.deprecate)(PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');
 function getBodyParser(req, tempDir) {
     return new BodyParser(req, tempDir);
 }
