@@ -250,18 +250,23 @@ class BodyParser implements IBodyParser {
         };
         return forward();
     }
+    
     public getJson(): NodeJS.Dict<any> {
         this.isValidRequest();
+        
         if (this._contentTypeEnum === ContentType.APP_JSON) {
             return Util.JSON.parse(this._parser.getRawData());
         }
+
         if (this._contentTypeEnum === ContentType.RAW_TEXT) {
             throw new Error("Raw Text data found. It's can not transform to json.");
         }
+
         const outObj: NodeJS.Dict<string> = decodeBodyBuffer(this._parser.body);
         Util.extend(outObj, this._parser.getMultipartBody());
         return outObj;
     }
+
     public getData(): string {
         this.validate(false);
         return this._parser.getRawData();

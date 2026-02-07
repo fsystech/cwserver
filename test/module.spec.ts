@@ -183,7 +183,7 @@ describe("cwserver-core", () => {
             cwserver.initilizeServer(appRoot);
             // @ts-ignore
             AppView.init();// try re-init
-            
+
         })).toBeInstanceOf(Error);
         done();
     });
@@ -2002,13 +2002,31 @@ describe("cwserver-controller-reset", () => {
                 done();
             });
     });
-    it('test-raw-error', (done: Mocha.Done): void => {
+
+    it('404-error', (done: Mocha.Done): void => {
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/unknown`)
+            .end((err, res) => {
+                expect(err).toBeInstanceOf(Error);
+                expect(res.status).toBe(404);
+                done();
+            });
+    });
+
+    it('no-middlewares', (done: Mocha.Done): void => {
+
+        // NOTE:
+        // This is intentionally called here to simulate a misconfigured server state.
+        // If all handlers are cleared, the request pipeline has nothing to execute,
+        // so the framework should trigger its default error handling (500).
+
         app.clearHandler();
+
         getAgent()
             .get(`http://localhost:${appUtility.port}/response`)
             .end((err, res) => {
                 expect(err).toBeInstanceOf(Error);
-                expect(res.status).toBe(404);
+                expect(res.status).toBe(500); // no handlers available => internal error
                 done();
             });
     });

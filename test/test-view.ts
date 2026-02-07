@@ -176,7 +176,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 				try {
 					parser.getJson();
 				} catch (pe) {
-					console.log(pe);
+					// console.log(pe);
 				}
 				const text = parser.getData();
 				parser.dispose();

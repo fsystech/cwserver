@@ -1020,7 +1020,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
     }
 
     const _server: CwServer = new CwServer(appRoot, wwwName);
-    
+
     const _process = {
         render: (code: number | undefined, ctx: IContext, next: NextFunction, transfer?: boolean): any => {
             if (transfer && typeof (transfer) !== "boolean") {
@@ -1061,7 +1061,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             throw new Error("Server already initilized");
         }
 
-        const _app: IApplication = CwAppCore();
+        const _app: IApplication = CwAppCore(_server.config.isDebug);
 
         _server.on = (ev: "shutdown", handler: () => void): void => {
             _app.on(ev, handler);
@@ -1073,7 +1073,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 _server.log.success(`${req.method} ${req.path}`);
             }).on("response-end", (req: IRequest, res: IResponse): void => {
                 const ctx: IContext | undefined = _ctxManager.getMyContext(req.id);
-                
+
                 if (ctx && !ctx.isDisposed) {
                     if (res.statusCode && HttpStatus.isErrorCode(res.statusCode)) {
                         _server.log.error(`Send ${res.statusCode} ${ctx.path}`);
@@ -1162,6 +1162,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _controller.sort();
 
         _app.on("error", (req: IRequest, res: IResponse, err?: number | Error): void => {
+
             if (res.isAlive) {
                 const context: IContext = _process.createContext(req, res, res.sendIfError.bind(res));
                 if (!err) {
@@ -1176,7 +1177,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
             req.session = _server.parseSession(req.headers, req.cookies);
             SessionSecurity.isValidSession(req);
-            return process.nextTick(() => next());
+            return next();
         });
 
         _app.use((req: IRequest, res: IResponse, next: NextFunction) => {

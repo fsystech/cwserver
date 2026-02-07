@@ -22,53 +22,119 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRouteMatcher = getRouteMatcher;
 exports.pathToArray = pathToArray;
 exports.getRouteInfo = getRouteInfo;
-const pathRegx = new RegExp('/', "gi");
+const pathRegx = /\//g;
+/**
+ * Builds a route matcher object from a route definition string.
+ *
+ * This function converts an application route (e.g. `/user/:id`, `/files/*`)
+ * into a reusable matcher with `test`, `exec`, and optional `replace` support.
+ *
+ * Supported route features:
+ * - Static paths: `/tradeplus/launch`
+ * - Named parameters: `/user/:id`
+ * - Wildcards (only at end): `/assets/*`
+ * - Optional trailing slash matching
+ *
+ * Validation rules:
+ * - Route must NOT end with `/`
+ * - Only one `*` wildcard is allowed
+ * - Wildcard `*` must be the last character in the route
+ *
+ * Named parameters (`:param`) are captured as regex groups and later mapped
+ * by index to request path segments.
+ *
+ * When `rRepRegx` is enabled and the route has no named parameters, a secondary
+ * replace-regex is generated. This allows stripping the matched route prefix
+ * from the request path (useful for proxying or sub-routing).
+ *
+ * @param route
+ * Route definition string (example: `/mobile-chart/*`, `/user/:id`).
+ *
+ * @param rRepRegx
+ * When `true`, enables generation of a replacement regex used by `replace()`
+ * to remove the matched route prefix from a request path.
+ * This is only applied when the route contains no named parameters.
+ *
+ * @throws
+ * Throws an error if the route definition is invalid:
+ * - Trailing slash
+ * - Multiple wildcards
+ * - Wildcard not at the end
+ *
+ * @returns
+ * An `IRouteMatcher` object with:
+ * - `test(path)`    -> boolean route match
+ * - `exec(path)`    -> RegExp match result with capture groups
+ * - `replace(path)` -> path with matched prefix removed (if enabled)
+ */
 function getRouteMatcher(route, rRepRegx) {
-    if (route.charAt(route.length - 1) === '/') {
+    if (route.length === 0) {
+        throw new Error("Invalid route defined (empty route)");
+    }
+    if (route.charAt(route.length - 1) === "/") {
         throw new Error(`Invalid route defined ${route}`);
     }
-    const wildcardIndex = route.lastIndexOf("*");
-    if (wildcardIndex > -1) {
+    // validate wildcard
+    const wildcardIndex = route.indexOf("*");
+    if (wildcardIndex !== -1) {
         if (route.charAt(route.length - 1) !== "*") {
             throw new Error(`Invalid route defined ${route}`);
         }
-        const wmatch = route.match(/\*/gi);
-        if (wmatch && wmatch.length > 1) {
+        if (route.indexOf("*", wildcardIndex + 1) !== -1) {
             throw new Error(`Invalid route defined ${route}`);
         }
     }
     const croute = route
         .replace(pathRegx, "\\/")
-        .replace(/\*/gi, "(.*)")
-        .replace(/:([\s\S]+?)\/|:([\s\S]+?).*/gi, (str) => {
-        if (str.indexOf("\\/") > -1) {
-            return "(?:([^\/]+?))\\/";
-        }
-        return "(?:([^\/]+?))";
+        .replace(/\*/g, "(.*)")
+        .replace(/:([\s\S]+?)\/|:([\s\S]+?).*/g, (str) => {
+        return str.indexOf("\\/") > -1
+            ? "(?:([^\\/]+?))\\/"
+            : "(?:([^\\/]+?))";
     });
-    let repRegxStr;
+    let repRegx;
     if (rRepRegx === true && route.indexOf(":") < 0) {
-        const nRoute = route.substring(0, route.lastIndexOf("/")).replace(pathRegx, "\\/");
-        repRegxStr = `^${nRoute}\/?(?=\/|$)`;
+        const lastSlash = route.lastIndexOf("/");
+        if (lastSlash > 0) {
+            const nRoute = route.substring(0, lastSlash).replace(pathRegx, "\\/");
+            repRegx = new RegExp(`^${nRoute}\\/?(?=\\/|$)`, "i");
+        }
     }
-    const regx = `^${croute}\\/?$`;
-    // const tregx: RegExp = new RegExp( `^${croute}\\/?$`, "gi" );
+    const mainRegx = new RegExp(`^${croute}\\/?$`, "i");
     return {
         test(val) {
-            return new RegExp(regx, "gi").test(val);
+            return mainRegx.test(val);
         },
         exec(val) {
-            return new RegExp(regx, "gi").exec(val);
+            return mainRegx.exec(val);
         },
         replace(val) {
-            if (!repRegxStr)
+            if (!repRegx)
                 return val;
-            return val.replace(new RegExp(repRegxStr, "gi"), "");
+            return val.replace(repRegx, "");
         }
     };
 }
-// 2:07 AM 6/7/2020
+/**
+ * Splits a path string into individual non-empty segments and appends them into the target array.
+ *
+ * This helper is useful for normalizing URL paths or wildcard matches such as:
+ *  - "/a/b/c"  -> ["a", "b", "c"]
+ *  - "///a//b" -> ["a", "b"]
+ *
+ * Empty segments produced by consecutive slashes are ignored.
+ *
+ * @param pathStr
+ * The raw path string to split (example: "/tradeplus/launch").
+ *
+ * @param to
+ * Target array where extracted path segments will be appended.
+ *
+ * @returns
+ * This function does not return anything. It mutates the `to` array in-place.
+ */
 function pathToArray(pathStr, to) {
+    // 2:07 AM 6/7/2020
     const from = pathStr.split("/");
     for (const kv of from) {
         if (!kv || kv.length === 0)
@@ -76,68 +142,108 @@ function pathToArray(pathStr, to) {
         to.push(kv);
     }
 }
+/**
+ * Finds the first matching route layer for the given request path and HTTP method.
+ *
+ * This function scans the provided handler layer list and attempts to resolve
+ * the correct route handler based on:
+ *  - HTTP method matching (GET/POST/ANY)
+ *  - fast path segment checking (avoids regex if first segment mismatch)
+ *  - routeMatcher regular expression execution
+ *
+ * If a route is matched, it returns the matched layer and (if applicable)
+ * extracted route parameters.
+ *
+ * Route parameter extraction supports:
+ *  - named parameters (e.g. "/user/:id")
+ *  - wildcard segments (e.g. "/files/*")
+ *  - multi-segment captures (e.g. "/a/b/c")
+ *
+ * @template T The handler type stored inside the layer.
+ *
+ * @param reqPath
+ * The request path (example: "/tradeplus/launch").
+ * If empty, it is treated as "/".
+ *
+ * @param handlerInfos
+ * List of route/middleware layers containing matchers and handler functions.
+ *
+ * @param method
+ * Request method (example: "GET", "POST").
+ * If "ANY", method filtering is skipped and only the first regex match is returned.
+ *
+ * @returns
+ * Returns the matched route info including the layer and extracted request parameters,
+ * or `undefined` if no matching layer is found.
+ */
 function getRouteInfo(reqPath, handlerInfos, method) {
-    if (handlerInfos.length === 0)
-        return void 0;
-    if (reqPath.length === 0) {
+    var _a;
+    const len = handlerInfos.length;
+    if (len === 0)
+        return undefined;
+    if (!reqPath)
         reqPath = "/";
-    }
-    if (method === "ANY") {
-        const layer = handlerInfos.find(a => {
-            if (a.routeMatcher)
-                return a.routeMatcher.test(reqPath);
-            return false;
-        });
-        if (!layer)
-            return void 0;
-        return {
-            layer
-        };
-    }
-    const pathArray = reqPath.split("/");
-    for (const layer of handlerInfos) {
-        if (!layer.routeMatcher)
+    // Only split if needed
+    const reqParts = method === "ANY" ? null : reqPath.split("/");
+    for (let i = 0; i < len; i++) {
+        const layer = handlerInfos[i];
+        const matcher = layer.routeMatcher;
+        if (!matcher)
             continue;
-        if (layer.method !== "ANY") {
-            if (layer.method !== method)
+        // Method filter
+        if (method !== "ANY") {
+            const lm = layer.method;
+            if (lm && lm !== "ANY" && lm !== method)
                 continue;
         }
-        if (layer.pathArray.length > 0) {
-            if (layer.pathArray[1] !== "*" && layer.pathArray[1].indexOf(":") < 0 && pathArray[1] !== layer.pathArray[1])
-                continue;
-        }
-        if (!layer.routeMatcher.test(reqPath))
-            continue;
-        const rmatch = layer.routeMatcher.exec(reqPath);
-        if (rmatch) {
-            const requestParam = {
-                query: {},
-                match: []
-            };
-            let nextIndex = -1;
-            for (const mstr of rmatch) {
-                nextIndex++;
-                if (nextIndex === 0)
+        // Fast path check (avoid regex when possible)
+        if (reqParts && layer.pathArray && layer.pathArray.length > 1) {
+            const first = layer.pathArray[1];
+            if (first && first !== "*" && first.indexOf(":") < 0) {
+                if (reqParts[1] !== first)
                     continue;
-                if (mstr.indexOf("/") > -1) {
-                    pathToArray(mstr, requestParam.match);
-                    continue;
-                }
-                const curIndex = nextIndex;
-                nextIndex = layer.pathArray.findIndex((str, index) => index >= curIndex && str.indexOf(":") > -1);
-                if (nextIndex < 0) {
-                    requestParam.match.push(mstr);
-                    continue;
-                }
-                const part = layer.pathArray[nextIndex];
-                requestParam.query[part.replace(/:/gi, "")] = pathArray[nextIndex];
             }
-            return {
-                layer,
-                requestParam
-            };
         }
+        // exec() does matching + capture in one pass
+        const rmatch = matcher.exec(reqPath);
+        if (!rmatch)
+            continue;
+        // For method ANY, no param extraction needed
+        if (method === "ANY") {
+            return { layer };
+        }
+        const layerParts = (_a = layer.pathArray) !== null && _a !== void 0 ? _a : [];
+        const requestParam = { query: {}, match: [] };
+        // Precompute param indexes once (avoid findIndex inside loop)
+        let paramIndexes = null;
+        if (layerParts.length > 0) {
+            paramIndexes = [];
+            for (let p = 0; p < layerParts.length; p++) {
+                if (layerParts[p].indexOf(":") === 0)
+                    paramIndexes.push(p);
+            }
+        }
+        let paramPtr = 0;
+        for (let m = 1; m < rmatch.length; m++) {
+            const mstr = rmatch[m];
+            if (!mstr)
+                continue;
+            if (mstr.indexOf("/") !== -1) {
+                pathToArray(mstr, requestParam.match);
+                continue;
+            }
+            const idx = paramIndexes && paramPtr < paramIndexes.length
+                ? paramIndexes[paramPtr++]
+                : -1;
+            if (idx < 0) {
+                requestParam.match.push(mstr);
+                continue;
+            }
+            const key = layerParts[idx].slice(1); // remove ':'
+            requestParam.query[key] = reqParts[idx];
+        }
+        return { layer, requestParam };
     }
-    return void 0;
+    return undefined;
 }
 //# sourceMappingURL=app-router.js.map

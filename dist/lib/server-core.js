@@ -64,42 +64,59 @@ class Application extends node_events_1.EventEmitter {
     constructor(httpServer) {
         super();
         this._httpServer = httpServer;
-        this._appHandler = [];
-        this._prerequisitesHandler = [];
+        this._routes = [];
+        this._middlewares = [];
+        this._prerequisites = [];
         this._isRunning = false;
         this._connectionMap = new Map();
         this._connectionKey = 0;
     }
     clearHandler() {
-        if (this._appHandler.length > 0) {
-            this._appHandler.length = 0;
+        if (this._routes.length > 0) {
+            this._routes.length = 0;
         }
-        if (this._prerequisitesHandler.length > 0) {
-            this._prerequisitesHandler.length = 0;
+        if (this._middlewares.length > 0) {
+            this._middlewares.length = 0;
+        }
+        if (this._prerequisites.length > 0) {
+            this._prerequisites.length = 0;
         }
     }
+    /**
+     * Gracefully shuts down the HTTP server.
+     *
+     * This method:
+     * 1. Rejects immediately if the server is not running.
+     * 2. Stops accepting new connections.
+     * 3. Destroys all active sockets to prevent shutdown hang.
+     * 4. Resolves once the server emits the 'close' event.
+     *
+     * @returns {Promise<void>} Resolves when the server has fully shut down.
+     */
     _shutdown() {
-        let resolveTerminating;
-        let rejectTerminating;
-        const promise = new Promise((presolve, reject) => {
-            resolveTerminating = presolve;
-            rejectTerminating = reject;
-        });
-        if (!this._isRunning) {
-            setImmediate(() => {
-                rejectTerminating(new Error('Server not running....'));
-            });
-        }
-        else {
+        return new Promise((resolve, reject) => {
+            if (!this._isRunning) {
+                // Server already stopped
+                return setImmediate(() => reject(new Error('Server not running.')));
+            }
             this._isRunning = false;
-            this._httpServer.once('close', () => resolveTerminating());
-            this._httpServer.close();
-            // bug solved at 6:00 PM 12/13/2024
-            // this._httpServer.close().once('close', () => resolveTerminating());
-        }
-        this._destroyActiveSocket();
-        return promise;
+            // Destroy all active sockets first to prevent shutdown hang
+            this._destroyActiveSocket();
+            // Listen for server close event
+            this._httpServer.once('close', resolve);
+            // Stop the server
+            this._httpServer.close(err => {
+                if (err) {
+                    reject(err);
+                }
+            });
+            return void 0;
+        });
     }
+    /**
+     * Destroys all active sockets tracked in `_connectionMap`.
+     * This prevents shutdown from hanging due to lingering open connections.
+     */
     _destroyActiveSocket() {
         for (const socket of this._connectionMap.values()) {
             socket.destroy();
@@ -108,105 +125,218 @@ class Application extends node_events_1.EventEmitter {
     }
     shutdown(next) {
         this.emit('shutdown');
-        return this._shutdown().then(() => next()).catch((err) => next(err)), void 0;
+        this._shutdown()
+            .then(() => next())
+            .catch((err) => next(err));
     }
     shutdownAsync() {
         this.emit('shutdown');
         return this._shutdown();
     }
-    _handleRequest(req, res, handlers, next, isPrerequisites) {
-        if (handlers.length === 0)
+    /**
+     * Executes a list of handler layers sequentially (middleware / prerequisites / routes).
+     *
+     * This is the core request pipeline runner. It iterates through the provided handler list
+     * and invokes each handler in order until:
+     *  - a handler completes and calls `next()`
+     *  - an error is passed into `next(err)`
+     *  - the route handler is matched and executed (when `isMiddleware` is false)
+     *  - the handler chain is exhausted
+     *
+     * Routing behavior:
+     * - If `isMiddleware === true`, route resolution is skipped and handlers are executed normally.
+     * - If `isMiddleware === false`, the first matching route layer is resolved via `getRouteInfo()`
+     *   and executed once. After a route is executed, subsequent layers are skipped unless `next()`
+     *   continues the chain.
+     *
+     * Error handling:
+     * - If a handler throws synchronously, the error is emitted through `this.emit("error", ...)`.
+     * - If a handler passes an Error into `next(err)`, it is also emitted through `this.emit("error", ...)`.
+     *
+     * @param req
+     * Incoming request object.
+     *
+     * @param res
+     * Outgoing response object.
+     *
+     * @param handlers
+     * Handler layer list to execute.
+     *
+     * @param next
+     * Callback invoked when the chain finishes or no handler matches.
+     *
+     * @param isMiddleware
+     * When `true`, treats all handlers as prerequisites/middlewares and skips route matching logic.
+     * When `false`, enables route resolution and executes the matched route handler.
+     *
+     * @returns
+     * This method does not return a meaningful value. It drives the request pipeline execution.
+     */
+    _handleRequest(req, res, handlers, next, isMiddleware = true) {
+        var _a;
+        const len = handlers.length;
+        if (len === 0)
             return next();
-        let isRouted = false;
-        let count = 0;
-        const Loop = () => {
-            const inf = handlers[count];
-            if (!inf) {
-                return next();
+        let idx = 0;
+        // Resolve route only once (if not prerequisite mode)
+        const routeInfo = (!isMiddleware)
+            ? (0, app_router_1.getRouteInfo)(req.path, handlers, 'ANY')
+            : undefined;
+        if ((_a = routeInfo === null || routeInfo === void 0 ? void 0 : routeInfo.layer) === null || _a === void 0 ? void 0 : _a.routeMatcher) {
+            req.path = routeInfo.layer.routeMatcher.replace(req.path);
+        }
+        const _next = (err) => {
+            if (err instanceof Error) {
+                this.emit("error", req, res, err);
+                return;
             }
-            if (!inf.route || isPrerequisites === true) {
-                return inf.handler(req, res, _next);
-            }
-            if (isRouted) {
-                return process.nextTick(() => _next());
-            }
-            const routeInfo = (0, app_router_1.getRouteInfo)(req.path, handlers, 'ANY');
-            isRouted = true;
-            if (routeInfo) {
-                if (routeInfo.layer.routeMatcher) {
-                    req.path = routeInfo.layer.routeMatcher.replace(req.path);
+            while (idx < len) {
+                const layer = handlers[idx++];
+                if (!layer)
+                    break;
+                // middleware mode = ignore routing logic
+                if (!layer.route || isMiddleware === true) {
+                    try {
+                        return layer.handler(req, res, _next);
+                    }
+                    catch (e) {
+                        this.emit("error", req, res, e);
+                        return;
+                    }
                 }
-                try {
-                    return routeInfo.layer.handler(req, res, _next);
-                }
-                catch (e) {
-                    return this.emit('error', req, res, e), void 0;
+                // if routed layer exists, execute it only once
+                if (routeInfo && layer === routeInfo.layer) {
+                    try {
+                        return routeInfo.layer.handler(req, res, _next);
+                    }
+                    catch (e) {
+                        this.emit("error", req, res, e);
+                        return;
+                    }
                 }
             }
-            return process.nextTick(() => _next());
+            return next();
         };
-        const _next = (statusCode) => {
-            if (statusCode instanceof Error) {
-                return this.emit('error', req, res, statusCode), void 0;
-            }
-            count++;
-            return Loop();
-        };
-        return Loop();
+        return _next();
     }
+    /**
+     * Handles an incoming request by processing prerequisites, routes, and middlewares in order.
+     *
+     * Emits the 'error' event if:
+     * 1. Any prerequisite, route, or middleware throws an error.
+     * 2. No route matches the request.
+     *
+     * @param {IRequest} req - The incoming request object.
+     * @param {IResponse} res - The response object associated with the request.
+     */
     handleRequest(req, res) {
-        return this._handleRequest(req, res, this._prerequisitesHandler, (err) => {
-            return this._handleRequest(req, res, this._appHandler, (_err) => {
-                return this.emit('error', req, res, _err), void 0;
-            }, false);
-        }, true);
+        /**
+         * Emits an error for the current request/response.
+         *
+         * @param {Error} [err] - Optional error to emit. If undefined, a default "No route matched" error is emitted.
+         */
+        const onError = (err) => {
+            if (err) {
+                this.emit("error", req, res, err);
+                return;
+            }
+            // no handler matched
+            this.emit("error", req, res, new Error("No route matched"));
+        };
+        // Execute prerequisites first
+        this._handleRequest(req, res, this._prerequisites, (err) => {
+            if (err)
+                return onError(err);
+            // Execute route handlers next
+            this._handleRequest(req, res, this._routes, (err2) => {
+                if (err2)
+                    return onError(err2);
+                // Execute middlewares last
+                this._handleRequest(req, res, this._middlewares, (err3) => {
+                    return onError(err3);
+                });
+            }, false); // 'false' indicates this is not a middleware
+        });
     }
     prerequisites(handler) {
         if (typeof (handler) !== 'function') {
             throw new Error('handler should be function');
         }
-        return this._prerequisitesHandler.push({
-            handler, routeMatcher: void 0, pathArray: [], method: 'ANY', route: ''
-        }), this;
+        this._prerequisites.push({ handler });
+        return this;
     }
+    /**
+     * Registers a middleware or route handler.
+     *
+     * Overloads:
+     * 1. `use(handler)` – Registers a global middleware function executed for every request.
+     * 2. `use(route, handler)` – Registers a handler for a specific route.
+     * 3. `use(route, handler, isVirtual)` – Registers a handler for a specific route, optionally marking it as virtual.
+     *
+     * Examples:
+     * ```ts
+     * app.use((req, res) => { ... }); // middleware
+     * app.use('/home', (req, res) => { ... }); // route handler
+     * app.use('/api', (req, res) => { ... }, true); // virtual route handler
+     * ```
+     *
+     * @param {HandlerFunc | string} args[0] - Middleware function or route path.
+     * @param {HandlerFunc} [args[1]] - Handler function if first argument is a route path.
+     * @param {boolean} [args[2]] - Optional flag to mark route as virtual.
+     * @returns {IApplication} The application instance for chaining.
+     * @throws {Error} Throws if arguments are invalid or route contains unsupported symbols (e.g., `:`).
+     */
     use(...args) {
         const argtype0 = typeof (args[0]);
         const argtype1 = typeof (args[1]);
         if (argtype0 === 'function') {
-            return this._appHandler.push({
-                handler: args[0], routeMatcher: void 0,
-                pathArray: [], method: 'ANY', route: ''
-            }), this;
+            // Global middleware
+            this._middlewares.push({ handler: args[0] });
+            return this;
         }
         if (argtype0 === 'string' && argtype1 === 'function') {
+            // Route-specific handler
             const route = args[0];
             if (route.indexOf(':') > -1) {
                 throw new Error(`Unsupported symbol defined. ${route}`);
             }
             const isVirtual = typeof (args[2]) === 'boolean' ? args[2] : false;
-            return this._appHandler.push({
-                route,
-                handler: args[1],
-                routeMatcher: (0, app_router_1.getRouteMatcher)(route, isVirtual),
-                pathArray: [], method: 'ANY'
-            }), this;
+            this._routes.push({
+                route, handler: args[1],
+                routeMatcher: (0, app_router_1.getRouteMatcher)(route, isVirtual)
+            });
+            return this;
         }
-        throw new Error('Invalid arguments...');
+        throw new Error('Invalid arguments. Expected use(handler) or use(route, handler)');
     }
+    /**
+     * Starts the HTTP server and begins listening on the provided handle.
+     *
+     * This method:
+     * 1. Throws an error if the server is already running.
+     * 2. Starts listening on the provided port, path, or handle.
+     * 3. Marks the server as running once the listening event fires.
+     * 4. Registers each incoming connection in `_connectionMap` for tracking.
+     * 5. Removes connections from `_connectionMap` when they close.
+     *
+     * @param {number | string | undefined} handle - The port number, path, or handle for the server to listen on.
+     * @param {() => void} [listeningListener] - Optional callback invoked once the server starts listening.
+     * @returns {IApplication} Returns the application instance for chaining.
+     * @throws {Error} Throws if the server is already running.
+     */
     listen(handle, listeningListener) {
         if (this.isRunning) {
             throw new Error('Server already running....');
         }
         this._httpServer.listen(handle, () => {
             this._isRunning = true;
-            if (listeningListener) {
-                return listeningListener();
-            }
+            listeningListener === null || listeningListener === void 0 ? void 0 : listeningListener();
         });
+        // Track active connections for potential management or cleanup
         this._httpServer.on('connection', (socket) => {
             const connectionKey = String(++this._connectionKey);
             this._connectionMap.set(connectionKey, socket);
-            socket.on('close', () => {
+            socket.once('close', () => {
                 this._connectionMap.delete(connectionKey);
             });
         });
@@ -218,26 +348,51 @@ function setAppHeader(res) {
     res.setHeader('x-app-version', exports.appVersion);
     res.setHeader('x-powered-by', 'fsys.tech');
 }
-function App() {
+/**
+ * Creates a Node.js HTTP server with the provided request handler.
+ *
+ * @param {(req: any, res: any) => void} next - The request handler function called for each incoming request.
+ * @returns {Server} Returns an instance of Node.js HTTP Server.
+ */
+function _createServer(next) {
+    return (0, node_http_1.createServer)(next);
+}
+/**
+ * Initializes and returns the main application instance.
+ *
+ * This function performs the following steps:
+ * 1. Injects custom prototypes for Request and Response objects.
+ * 2. Creates an HTTP server and wraps it in the Application class.
+ * 3. Sets headers for every response and tracks response lifecycle.
+ * 4. Emits application-level events such as:
+ *    - 'request-begain' when a request starts (optional)
+ *    - 'response-end' when a response closes
+ *    - 'error' on any handler error
+ *
+ * @param {boolean} [useRequestBegain=true] - Whether to emit 'request-begain' for incoming requests.
+ * @returns {IApplication} The initialized Application instance.
+ */
+function App(useRequestBegain = true) {
+    // Ensure Request/Response prototypes are injected
     (0, inject_1.injectIncomingOutgoing)();
-    const app = new Application((0, node_http_1.createServer)((request, response) => {
-        const req = request; //Object.setPrototypeOf(request, Request.prototype);
-        const res = response; //Object.setPrototypeOf(response, Response.prototype);
+    const app = new Application(_createServer((request, response) => {
         try {
-            setAppHeader(res);
-            if (req.method) {
-                res.method = req.method;
+            setAppHeader(response);
+            if (request.method) {
+                response.method = request.method;
             }
-            res.on('close', (...args) => {
-                res.isAlive = false;
-                app.emit('response-end', req, res);
+            response.once('close', (...args) => {
+                response.isAlive = false;
+                app.emit('response-end', request, response);
             });
-            app.emit('request-begain', req);
-            app.handleRequest(req, res);
+            if (useRequestBegain) {
+                app.emit('request-begain', request);
+            }
+            app.handleRequest(request, response);
         }
         catch (e) {
             // Caught while prerequisites error happens
-            app.emit('error', req, res, e);
+            app.emit('error', request, response, e);
         }
     }));
     return app;

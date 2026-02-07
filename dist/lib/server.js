@@ -685,7 +685,7 @@ function initilizeServer(appRoot, wwwName) {
         if (_server.isInitilized) {
             throw new Error("Server already initilized");
         }
-        const _app = (0, server_core_1.App)();
+        const _app = (0, server_core_1.App)(_server.config.isDebug);
         _server.on = (ev, handler) => {
             _app.on(ev, handler);
         };
@@ -791,7 +791,7 @@ function initilizeServer(appRoot, wwwName) {
         _app.prerequisites((req, res, next) => {
             req.session = _server.parseSession(req.headers, req.cookies);
             SessionSecurity.isValidSession(req);
-            return process.nextTick(() => next());
+            return next();
         });
         _app.use((req, res, next) => {
             const context = _process.createContext(req, res, next);
