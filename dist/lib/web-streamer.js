@@ -18,13 +18,16 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Streamer = void 0;
 // 9:19 PM 5/8/2020
 // by rajib chy
 const node_fs_1 = require("node:fs");
 const node_stream_1 = require("node:stream");
-const destroy = require("destroy");
+const destroy_1 = __importDefault(require("destroy"));
 class Streamer {
     static stream(ctx, absPath, mimeType, fstat) {
         const total = fstat.size;
@@ -57,7 +60,7 @@ class Streamer {
             });
         }
         return (0, node_stream_1.pipeline)(openenedFile, ctx.res, (err) => {
-            destroy(openenedFile);
+            (0, destroy_1.default)(openenedFile);
             ctx.next(statusCode, false);
         }), void 0;
     }

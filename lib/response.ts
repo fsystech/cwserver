@@ -24,9 +24,9 @@
 import {
     OutgoingHttpHeaders, ServerResponse
 } from 'node:http';
-import { ToResponseTime, toString, IResInfo } from './app-static';
+import { toResponseTime, toString, type IResInfo } from './app-static';
 import { HttpStatus } from './http-status';
-import { IContext } from './server';
+import type { IContext } from './context';
 import { Template } from './app-template';
 import { Util } from './app-util';
 import * as _zlib from 'node:zlib';
@@ -70,36 +70,45 @@ export class Response extends ServerResponse implements IResponse {
     private _method: string | undefined;
     private _cleanSocket: boolean | undefined;
     private _statusCode: number | undefined;
+    
     // @ts-ignore
     public get statusCode() {
         return this._statusCode === undefined ? 0 : this._statusCode;
     }
+    
     public set statusCode(code: number) {
         if (!HttpStatus.isValidCode(code))
             throw new Error(`Invalid status code ${code}`);
         this._statusCode = code;
     }
+    
     public get cleanSocket() {
         if (this._cleanSocket === undefined) return false;
         return this._cleanSocket;
     }
+    
     public set cleanSocket(val: boolean) {
         this._cleanSocket = val;
     }
+    
     public get isAlive() {
         if (this._isAlive !== undefined) return this._isAlive;
         this._isAlive = true;
         return this._isAlive;
     }
+    
     public set isAlive(val: boolean) {
         this._isAlive = val;
     }
+    
     public get method() {
         return toString(this._method);
     }
+    
     public set method(val: string) {
         this._method = val;
     }
+    
     public noCache(): IResponse {
         const header: string | void = this.get('cache-control');
         if (header) {
@@ -111,6 +120,7 @@ export class Response extends ServerResponse implements IResponse {
         this.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');
         return this;
     }
+    
     public status(code: number, headers?: OutgoingHttpHeaders): IResponse {
         this.statusCode = code;
         if (headers) {
@@ -122,6 +132,7 @@ export class Response extends ServerResponse implements IResponse {
         }
         return this;
     }
+    
     public get(name: string): string | void {
         const val: number | string | string[] | undefined = this.getHeader(name);
         if (val) {
@@ -131,12 +142,15 @@ export class Response extends ServerResponse implements IResponse {
             return toString(val);
         }
     }
+    
     public set(field: string, value: number | string | string[]): IResponse {
         return this.setHeader(field, value), this;
     }
+    
     public type(extension: string): IResponse {
         return this.setHeader('Content-Type', _mimeType.getMimeType(extension)), this;
     }
+    
     public send(chunk?: any): void {
         if (this.headersSent) {
             throw new Error("If you use res.writeHead(), invoke res.end() instead of res.send()");
@@ -186,15 +200,19 @@ export class Response extends ServerResponse implements IResponse {
         this.set('Content-Length', len);
         return this.end(chunk), void 0;
     }
+    
     public asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse {
         return this.status(code, getCommonHeader(_mimeType.getMimeType("html"), contentLength, isGzip)), this;
     }
+    
     public asJSON(code: number, contentLength?: number, isGzip?: boolean): IResponse {
         return this.status(code, getCommonHeader(_mimeType.getMimeType('json'), contentLength, isGzip)), this;
     }
+    
     public render(ctx: IContext, path: string, status?: IResInfo): void {
         return Template.parse(ctx, path, status);
     }
+    
     public redirect(url: string, force?: boolean): void {
         if (force) {
             this.noCache();
@@ -203,6 +221,7 @@ export class Response extends ServerResponse implements IResponse {
             'Location': url
         }).end(), void 0;
     }
+    
     public cookie(name: string, val: string, options: CookieOptions): IResponse {
         let sCookie: number | string | string[] | undefined = this.getHeader('Set-Cookie');
         if (Array.isArray(sCookie)) {
@@ -213,6 +232,7 @@ export class Response extends ServerResponse implements IResponse {
         sCookie.push(createCookie(name, val, options));
         return this.setHeader('Set-Cookie', sCookie), this;
     }
+    
     public sendIfError(err?: any): boolean {
         if (!this.isAlive) return true;
         if (!err || !Util.isError(err)) return false;
@@ -221,17 +241,23 @@ export class Response extends ServerResponse implements IResponse {
         }).end(`Runtime Error: ${err.message}`);
         return true;
     }
+
     public json(body: NodeJS.Dict<any>, compress?: boolean, next?: (error: Error | null) => void): void {
+        
         const buffer: Buffer = Buffer.from(Util.JSON.stringify(body), "utf-8");
+
         if (typeof (compress) === 'boolean' && compress === true) {
+        
             return _zlib.gzip(buffer, (error: Error | null, buff: Buffer) => {
                 if (!this.sendIfError(error)) {
                     this.asJSON(200, buff.length, true).end(buff);
                 }
             }), void 0;
         }
+
         return this.asJSON(200, buffer.length).end(buffer), void 0;
     }
+
     public dispose(): void {
         delete this._method;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
@@ -264,9 +290,9 @@ function createCookie(name: string, val: string, options: CookieOptions): string
         str += ';Path=/';
     }
     if (options.expires && !options.maxAge)
-        str += `;Expires=${ToResponseTime(options.expires)}`;
+        str += `;Expires=${toResponseTime(options.expires)}`;
     if (options.maxAge && !options.expires)
-        str += `;Expires=${ToResponseTime(Date.now() + options.maxAge)}`;
+        str += `;Expires=${toResponseTime(Date.now() + options.maxAge)}`;
     if (options.secure)
         str += '; Secure';
     if (options.httpOnly)

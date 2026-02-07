@@ -169,7 +169,7 @@ class Controller {
             if (ctx.server.config.defaultDoc.indexOf(fileName) > -1)
                 return ctx.next(404);
             if (http_status_1.HttpStatus.isErrorFileName(fileName /*401*/)) {
-                return ctx.transferRequest((0, app_static_1.ToNumber)(fileName));
+                return ctx.transferRequest((0, app_static_1.toNumber)(fileName));
             }
             const path = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
             return this._fileInfo.exists(path, (exists, url) => {

@@ -34,9 +34,7 @@ import { IResponse } from '../lib/response';
 import { parseCookie, parseUrl, getClientIp, escapePath } from '../lib/help';
 
 import { IController } from '../lib/app-controller';
-import {
-	disposeContext, getMyContext, removeContext
-} from '../lib/server';
+import { _ctxManager } from '../lib/context';
 import { HttpCache } from '../lib/http-cache';
 
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
@@ -426,9 +424,9 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 					throw new Error("test exception...");
 				});
 				mCtx.transferError = _transferError;
-				removeContext("10101");
-				getMyContext("10101");
-				removeContext("1010");
+				_ctxManager.removeContext("10101");
+				_ctxManager.getMyContext("10101");
+				_ctxManager.removeContext("1010");
 				mCtx.dispose();
 				mCtx.transferError(new Error("Test"));
 				mCtx.handleError(null, () => {
@@ -556,11 +554,11 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 			ctx.next(undefined, true);
 			server.config.isDebug = true;
 			// expect(server.passError(ctx)).toBeTruthy();
-			disposeContext(ctx);
+			_ctxManager.disposeContext(ctx);
 			ctx.addError(new Error("Error Test"));
-			disposeContext(ctx);
-			removeContext("12");
-			getMyContext("12");
+			_ctxManager.disposeContext(ctx);
+			_ctxManager.removeContext("12");
+			_ctxManager.getMyContext("12");
 		})
 		.get('/task/:id/*', (ctx: IContext, requestParam?: IRequestParam): void => {
 			return ctx.res.json({ reqPath: ctx.path, servedFrom: "/task/:id/*", q: requestParam });

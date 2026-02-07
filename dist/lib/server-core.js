@@ -25,12 +25,12 @@ exports.App = App;
 // 2:40 PM 5/7/2020
 // by rajib chy
 require("./app-global");
+const node_path_1 = require("node:path");
 const node_http_1 = require("node:http");
 const node_events_1 = require("node:events");
 const app_router_1 = require("./app-router");
 const app_util_1 = require("./app-util");
 const fs_1 = require("fs");
-const node_path_1 = require("node:path");
 const inject_1 = require("./inject");
 _a = (() => {
     let _appVersion = '4.1.1';
@@ -162,8 +162,9 @@ class Application extends node_events_1.EventEmitter {
         }, true);
     }
     prerequisites(handler) {
-        if (typeof (handler) !== 'function')
-            throw new Error('handler should be function....');
+        if (typeof (handler) !== 'function') {
+            throw new Error('handler should be function');
+        }
         return this._prerequisitesHandler.push({
             handler, routeMatcher: void 0, pathArray: [], method: 'ANY', route: ''
         }), this;

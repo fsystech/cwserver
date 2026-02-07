@@ -1,6 +1,6 @@
 import './app-global';
 import { Server } from 'node:http';
-import { IRequestParam } from './app-router';
+import { type IRequestParam } from './app-router';
 import { type IRequest } from './request';
 import { type IResponse } from './response';
 type onError = (req: IRequest, res: IResponse, err?: Error | number) => void;

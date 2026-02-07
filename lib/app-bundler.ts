@@ -26,11 +26,12 @@ import * as _zlib from 'node:zlib';
 import { Encryption } from './encryption';
 import { HttpCache, IChangeHeader } from './http-cache';
 import { IApplication } from './server-core';
-import { ICwServer, IContext } from './server';
-import { IController } from './app-controller';
+import type { ICwServer } from './server';
+import type { IController } from './app-controller';
 import { Util } from './app-util';
-import { IBufferArray, BufferArray } from './app-static';
-import { FileInfoCacheHandler, IFileInfoCacheHandler, IFileDescription } from './file-info';
+import type { IContext } from './context';
+import { type IBufferArray, BufferArray } from './app-static';
+import { FileInfoCacheHandler, type IFileInfoCacheHandler, type IFileDescription } from './file-info';
 const _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
 enum ContentType {
     JS = 0,

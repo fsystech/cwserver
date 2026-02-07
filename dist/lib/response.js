@@ -265,9 +265,9 @@ function createCookie(name, val, options) {
         str += ';Path=/';
     }
     if (options.expires && !options.maxAge)
-        str += `;Expires=${(0, app_static_1.ToResponseTime)(options.expires)}`;
+        str += `;Expires=${(0, app_static_1.toResponseTime)(options.expires)}`;
     if (options.maxAge && !options.expires)
-        str += `;Expires=${(0, app_static_1.ToResponseTime)(Date.now() + options.maxAge)}`;
+        str += `;Expires=${(0, app_static_1.toResponseTime)(Date.now() + options.maxAge)}`;
     if (options.secure)
         str += '; Secure';
     if (options.httpOnly)

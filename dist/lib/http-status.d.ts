@@ -1,4 +1,4 @@
-import { IResInfo } from './app-static';
+import type { IResInfo } from './app-static';
 export type Dict<T> = {
     [K in string | number]: T | undefined;
 };

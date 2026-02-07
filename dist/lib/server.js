@@ -51,9 +51,8 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CwServer = exports.SessionSecurity = exports.ServerConfig = exports.Context = exports.ServerEncryption = exports.getMyContext = exports.getContext = exports.removeContext = exports.disposeContext = void 0;
+exports.CwServer = exports.SessionSecurity = exports.ServerConfig = exports.ServerEncryption = void 0;
 exports.initilizeServer = initilizeServer;
 // 10:13 PM 5/2/2020
 // by rajib chy
@@ -72,41 +71,7 @@ const http_status_1 = require("./http-status");
 const logger_1 = require("./logger");
 const http_mime_types_1 = require("./http-mime-types");
 const app_view_1 = require("./app-view");
-// -------------------------------------------------------
-_a = (() => {
-    const _curContext = {};
-    return {
-        disposeContext(ctx) {
-            const reqId = ctx.dispose();
-            if (reqId) {
-                if (_curContext[reqId]) {
-                    delete _curContext[reqId];
-                }
-            }
-            return void 0;
-        },
-        getMyContext(id) {
-            const ctx = _curContext[id];
-            if (!ctx)
-                return undefined;
-            return ctx;
-        },
-        removeContext(id) {
-            const ctx = _curContext[id];
-            if (!ctx)
-                return;
-            (0, exports.disposeContext)(ctx);
-            return void 0;
-        },
-        getContext(server, req, res) {
-            if (_curContext[req.id])
-                return _curContext[req.id];
-            const context = new Context(server, req, res);
-            _curContext[req.id] = context;
-            return context;
-        }
-    };
-})(), exports.disposeContext = _a.disposeContext, exports.removeContext = _a.removeContext, exports.getContext = _a.getContext, exports.getMyContext = _a.getMyContext;
+const context_1 = require("./context");
 function isDefined(a) {
     return a !== null && a !== undefined;
 }
@@ -186,126 +151,6 @@ class ServerEncryption {
     }
 }
 exports.ServerEncryption = ServerEncryption;
-class Context {
-    get isDisposed() {
-        return this._isDisposed;
-    }
-    get res() {
-        return this._res;
-    }
-    get req() {
-        return this._req;
-    }
-    get session() {
-        return this._req.session;
-    }
-    get server() {
-        return this._server;
-    }
-    get next() {
-        if (!this._isDisposed && this._next)
-            return this._next;
-        return (code, transfer) => {
-            if (this._isDisposed)
-                return;
-            // Unreachable....
-            console.warn('Warning: `context already disposed or "next" function doesn\'t set yet`');
-        };
-    }
-    set next(val) {
-        this._next = val;
-    }
-    constructor(server, req, res) {
-        this._isDisposed = false;
-        this.error = void 0;
-        this.path = "";
-        this.root = "";
-        this._res = res;
-        this._req = req;
-        this._server = server;
-        this.extension = "";
-        this.errorPage = "";
-        this.errorCode = 0;
-    }
-    addError(err) {
-        if (!this._isDisposed) {
-            this._server.addError(this, err);
-        }
-    }
-    transferError(err) {
-        if (!this._isDisposed) {
-            this._server.addError(this, err);
-            return this._server.transferRequest(this, 500);
-        }
-    }
-    handleError(err, next) {
-        if (!this._isDisposed && !this._res.headersSent) {
-            if (app_util_1.Util.isError(err)) {
-                return this.transferError(err);
-            }
-            try {
-                return next();
-            }
-            catch (e) {
-                return this.transferError(e);
-            }
-        }
-        // Nothing to do, context destroyed or response header already been sent
-    }
-    redirect(url, force) {
-        if (!this._isDisposed) {
-            this._res.status(302).redirect(url, force);
-        }
-        return this;
-    }
-    write(chunk) {
-        if (!this._isDisposed) {
-            return this._res.write(chunk), void 0;
-        }
-    }
-    transferRequest(path) {
-        if (!this._isDisposed) {
-            return this._server.transferRequest(this, path);
-        }
-    }
-    signOut() {
-        if (!this._isDisposed) {
-            this._res.cookie(this._server.config.session.cookie, "", {
-                expires: -1
-            });
-        }
-        return this;
-    }
-    setSession(loginId, roleId, userData) {
-        if (!this._isDisposed) {
-            this._server.setSession(this, loginId, roleId, userData);
-        }
-        return this;
-    }
-    dispose() {
-        if (this._isDisposed)
-            return void 0;
-        this._isDisposed = true;
-        delete this._next;
-        const id = this._req.id;
-        // @ts-ignore
-        delete this._server;
-        delete this.path;
-        // @ts-ignore
-        this._res.dispose();
-        delete this._res;
-        // @ts-ignore
-        this._req.dispose();
-        delete this._req;
-        // @ts-ignore
-        delete this.extension;
-        delete this.root;
-        delete this.servedFrom;
-        delete this.error;
-        return id;
-    }
-}
-exports.Context = Context;
 class ServerConfig {
     constructor() {
         this.Author = "FSys Tech Ltd.";
@@ -613,7 +458,7 @@ ${appRoot}\\www_public
         return '//\tCopyright (c) 2022 FSys Tech Ltd.\r\n';
     }
     createContext(req, res, next) {
-        const context = (0, exports.getContext)(this, req, res);
+        const context = context_1._ctxManager.getContext(this, req, res);
         context.path = req.path;
         context.root = context.path;
         context.next = next;
@@ -848,7 +693,7 @@ function initilizeServer(appRoot, wwwName) {
             _app.on("request-begain", (req) => {
                 _server.log.success(`${req.method} ${req.path}`);
             }).on("response-end", (req, res) => {
-                const ctx = (0, exports.getMyContext)(req.id);
+                const ctx = context_1._ctxManager.getMyContext(req.id);
                 if (ctx && !ctx.isDisposed) {
                     if (res.statusCode && http_status_1.HttpStatus.isErrorCode(res.statusCode)) {
                         _server.log.error(`Send ${res.statusCode} ${ctx.path}`);
@@ -857,12 +702,12 @@ function initilizeServer(appRoot, wwwName) {
                         _server.log.success(`Send ${res.statusCode} ${ctx.path}`);
                     }
                 }
-                return (0, exports.removeContext)(req.id);
+                return context_1._ctxManager.removeContext(req.id);
             });
         }
         else {
             _app.on("response-end", (req, res) => {
-                return (0, exports.removeContext)(req.id);
+                return context_1._ctxManager.removeContext(req.id);
             });
         }
         const _virtualDir = [];

@@ -21,16 +21,19 @@
 // 2:40 PM 5/7/2020
 // by rajib chy
 import './app-global';
+import { resolve } from 'node:path';
+import * as _zlib from 'node:zlib';
 import {
     createServer,
     Server, IncomingMessage, ServerResponse
 } from 'node:http';
 import { EventEmitter } from 'node:events';
-import { IRequestParam, ILayerInfo, IRouteInfo, getRouteInfo, getRouteMatcher } from './app-router';
+import {
+    getRouteInfo, getRouteMatcher,
+    type IRequestParam, type ILayerInfo, type IRouteInfo
+} from './app-router';
 import { Util, assert, getAppDir } from './app-util';
 import { existsSync, readFileSync } from 'fs';
-import { resolve } from 'node:path';
-import * as _zlib from 'node:zlib';
 import * as _mimeType from './http-mime-types';
 import { Socket } from 'node:net';
 import { Request, type IRequest } from './request';
@@ -84,18 +87,22 @@ class Application extends EventEmitter implements IApplication {
     private _httpServer: Server;
     private _connectionKey: number;
     private _connectionMap: Map<string, Socket>;
-    public get version() {
-        return appVersion;
-    }
-    public get httpServer() {
-        return this._httpServer;
-    }
     private _appHandler: ILayerInfo<HandlerFunc>[];
     private _prerequisitesHandler: ILayerInfo<HandlerFunc>[];
     private _isRunning: boolean;
-    public get isRunning() {
+
+    public get version(): string {
+        return appVersion;
+    }
+
+    public get httpServer(): Server {
+        return this._httpServer;
+    }
+
+    public get isRunning(): boolean {
         return this._isRunning;
     }
+
     constructor(httpServer: Server) {
         super();
         this._httpServer = httpServer;
@@ -105,6 +112,7 @@ class Application extends EventEmitter implements IApplication {
         this._connectionMap = new Map();
         this._connectionKey = 0;
     }
+
     public clearHandler(): void {
         if (this._appHandler.length > 0) {
             this._appHandler.length = 0;
@@ -113,6 +121,7 @@ class Application extends EventEmitter implements IApplication {
             this._prerequisitesHandler.length = 0;
         }
     }
+
     private _shutdown(): Promise<void> {
 
         let resolveTerminating: (value?: void | PromiseLike<void> | undefined) => void;
@@ -226,8 +235,11 @@ class Application extends EventEmitter implements IApplication {
     }
 
     public prerequisites(handler: HandlerFunc): IApplication {
-        if (typeof (handler) !== 'function')
-            throw new Error('handler should be function....');
+        
+        if (typeof (handler) !== 'function') {
+            throw new Error('handler should be function');
+        }
+
         return this._prerequisitesHandler.push({
             handler, routeMatcher: void 0, pathArray: [], method: 'ANY', route: ''
         }), this;

@@ -21,8 +21,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResInfo = exports.Session = exports.BufferArray = void 0;
 exports.toString = toString;
-exports.ToNumber = ToNumber;
-exports.ToResponseTime = ToResponseTime;
+exports.toNumber = toNumber;
+exports.toResponseTime = toResponseTime;
 /**
  * Class implementing a buffer array with dynamic buffer management.
  */
@@ -313,7 +313,7 @@ function toString(val) {
         return "";
     return typeof (val) === "string" ? val : String(val);
 }
-function ToNumber(obj) {
+function toNumber(obj) {
     if (!obj)
         return 0;
     if (typeof (obj) === "number")
@@ -359,7 +359,7 @@ const dfm = (t) => {
     t += 1;
     return _map.month[t];
 };
-function ToResponseTime(timestamp) {
+function toResponseTime(timestamp) {
     // Thu, 01 May 2020 23:34:07 GMT
     let date;
     if (timestamp) {

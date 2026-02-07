@@ -24,14 +24,15 @@ import * as _fs from 'node:fs';
 import * as _path from 'node:path';
 import * as _zlib from 'node:zlib';
 import { pipeline } from 'node:stream';
-import destroy = require('destroy');
+import destroy from 'destroy';
 import * as _mimeType from './http-mime-types';
-import { IContext } from './server';
-import { HttpCache, IChangeHeader } from './http-cache';
+import type { IContext } from './context';
+import { HttpCache, type IChangeHeader } from './http-cache';
 import { Streamer } from './web-streamer';
 import { Encryption } from './encryption';
 import { Util } from './app-util';
-import { FileInfoCacheHandler, IFileInfoCacheHandler, IFileDescription } from './file-info';
+import { FileInfoCacheHandler, type IFileInfoCacheHandler, type IFileDescription } from './file-info';
+
 export interface IHttpMimeHandler {
     render(ctx: IContext, maybeDir?: string): void;
     getMimeType(extension: string): string;

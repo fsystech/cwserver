@@ -24,8 +24,9 @@ import {
     Stats, ReadStream, createReadStream as fsCreateReadStream
 } from 'node:fs';
 import { pipeline } from 'node:stream';
-import destroy = require('destroy');
-import { IContext } from './server';
+import destroy from 'destroy';
+import type { IContext } from './context';
+
 export class Streamer {
     public static stream(
         ctx: IContext, absPath: string,

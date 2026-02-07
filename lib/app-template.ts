@@ -25,13 +25,14 @@ import * as _vm from 'node:vm';
 import * as _zlib from 'node:zlib';
 import * as _path from 'node:path';
 import { HttpStatus } from './http-status';
-import { IResInfo, IDispose } from './app-static';
-import { IContext } from './server';
+import type { IResInfo, IDispose } from './app-static';
+import type { IContext } from './context';
 import * as fsw from './fsw';
 import { generateRandomString } from './app-util';
 import { platform } from 'node:os';
 import { FileInfoCacheHandler, type IFileInfoCacheHandler } from './file-info';
 import { TemplateCtx, type SandBox, type SandBoxNext } from './app-template-ctx';
+
 const _isWin: boolean = platform() === "win32";
 
 interface IScriptTag {

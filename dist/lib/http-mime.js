@@ -51,6 +51,9 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HttpMimeHandler = void 0;
 // 9:22 PM 5/4/2020
@@ -59,7 +62,7 @@ const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
 const _zlib = __importStar(require("node:zlib"));
 const node_stream_1 = require("node:stream");
-const destroy = require("destroy");
+const destroy_1 = __importDefault(require("destroy"));
 const _mimeType = __importStar(require("./http-mime-types"));
 const http_cache_1 = require("./http-cache");
 const web_streamer_1 = require("./web-streamer");
@@ -188,8 +191,8 @@ class MimeHandler {
                 const rstream = _fs.createReadStream(absPath);
                 const wstream = _fs.createWriteStream(cachePath);
                 return (0, node_stream_1.pipeline)(rstream, createGzip(), wstream, (gzipErr) => {
-                    destroy(rstream);
-                    destroy(wstream);
+                    (0, destroy_1.default)(rstream);
+                    (0, destroy_1.default)(wstream);
                     return ctx.handleError(gzipErr, () => {
                         return this._fileInfo.stat(cachePath, (cdesc) => {
                             return ctx.handleError(null, () => {
@@ -226,7 +229,7 @@ class MimeHandler {
             });
             const rstream = _fs.createReadStream(absPath);
             return (0, node_stream_1.pipeline)(rstream, createGzip(), ctx.res, (gzipErr) => {
-                destroy(rstream);
+                (0, destroy_1.default)(rstream);
             }), void 0;
         }
         ctx.res.status(200, {
@@ -252,7 +255,7 @@ class MimeHandler {
             ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
             const rstream = _fs.createReadStream(absPath);
             return (0, node_stream_1.pipeline)(rstream, createGzip(), ctx.res, (gzipErr) => {
-                destroy(rstream);
+                (0, destroy_1.default)(rstream);
             }), void 0;
         }
         ctx.res.status(200, { 'Content-Type': mimeType });

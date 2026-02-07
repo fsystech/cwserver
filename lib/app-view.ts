@@ -20,9 +20,9 @@
 
 // 12:25 AM 11/12/2025
 // by rajib chy
+import type { ICwServer } from './server';
 import type { IApplication } from './server-core';
 import type { IController } from './app-controller';
-import type { ICwServer } from './server';
 
 export type ViewRegisterFunc = (app: IApplication, controller: IController, server: ICwServer) => void;
 export interface IAppViewRegister {
@@ -48,11 +48,9 @@ class AppViewRegister implements IAppViewRegister {
         this._isInitilized = value;
     }
 
-    constructor() { }
-
     public init(app: IApplication, controller: IController, server: ICwServer): void {
 
-        if (this._isInit && this._evt.length === 0) return;
+        if (this._isInit || this._evt.length === 0) return;
 
         this._isInit = true;
 
@@ -62,10 +60,13 @@ class AppViewRegister implements IAppViewRegister {
 
         this._evt.length = 0;
     }
+
     public add(next: ViewRegisterFunc): void {
+
         if (this._isInit) {
             throw new Error('After initialization "views", you could not register new view.');
         }
+
         this._evt.push(next);
     }
 }

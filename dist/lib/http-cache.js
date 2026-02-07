@@ -47,8 +47,8 @@ class HttpCache {
      */
     static writeCacheHeader(res, obj, cacheHeader) {
         if (obj.lastChangeTime) {
-            res.setHeader('last-modified', (0, app_static_1.ToResponseTime)(obj.lastChangeTime));
-            res.setHeader('expires', (0, app_static_1.ToResponseTime)(cacheHeader.maxAge + Date.now()));
+            res.setHeader('last-modified', (0, app_static_1.toResponseTime)(obj.lastChangeTime));
+            res.setHeader('expires', (0, app_static_1.toResponseTime)(cacheHeader.maxAge + Date.now()));
         }
         if (obj.etag) {
             res.setHeader('ETag', obj.etag);

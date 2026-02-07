@@ -8,34 +8,8 @@ import { type IController } from './app-controller';
 import { type ICryptoInfo } from "./encryption";
 import { ILogger } from "./logger";
 import { IncomingHttpHeaders } from "node:http";
-export type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
+import { type IContext } from "./context";
 export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
-export interface IContext {
-    readonly isDisposed: boolean;
-    error?: string;
-    errorPage: string;
-    errorCode: number;
-    readonly res: IResponse;
-    readonly req: IRequest;
-    path: string;
-    extension: string;
-    root: string;
-    readonly session: ISession;
-    servedFrom?: string;
-    readonly server: ICwServer;
-    next: CtxNext;
-    redirect(url: string, force?: boolean): IContext;
-    transferRequest(toPath: string | number): void;
-    write(chunk: Buffer | string | number | boolean | {
-        [key: string]: any;
-    }): void;
-    addError(err: NodeJS.ErrnoException | Error): void;
-    transferError(err: NodeJS.ErrnoException | Error): void;
-    handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
-    setSession(loginId: string, roleId: string, userData: any): IContext;
-    signOut(): IContext;
-    dispose(): string | void;
-}
 export interface IServerEncryption {
     encrypt(plainText: string): string;
     decrypt(encryptedText: string): string;
@@ -317,7 +291,6 @@ export interface ICwServer {
     on(ev: "shutdown", handler: () => void): void;
 }
 export type IViewHandler = (app: IApplication, controller: IController, server: ICwServer) => void;
-export declare const disposeContext: (ctx: IContext) => void, removeContext: (id: string) => void, getContext: (server: ICwServer, req: IRequest, res: IResponse) => IContext, getMyContext: (id: string) => IContext | undefined;
 export declare class ServerEncryption implements IServerEncryption {
     private cryptoInfo;
     constructor(inf: ICryptoInfo);
@@ -327,39 +300,6 @@ export declare class ServerEncryption implements IServerEncryption {
     decryptFromHex(encryptedText: string): string;
     encryptUri(plainText: string): string;
     decryptUri(encryptedText: string): string;
-}
-export declare class Context implements IContext {
-    private _isDisposed;
-    get isDisposed(): boolean;
-    error?: string;
-    errorPage: string;
-    errorCode: number;
-    private _res;
-    private _req;
-    get res(): IResponse;
-    get req(): IRequest;
-    path: string;
-    extension: string;
-    root: string;
-    get session(): ISession;
-    servedFrom?: string;
-    private _server;
-    get server(): ICwServer;
-    private _next?;
-    get next(): CtxNext;
-    set next(val: CtxNext);
-    constructor(server: ICwServer, req: IRequest, res: IResponse);
-    addError(err: NodeJS.ErrnoException | Error): void;
-    transferError(err: NodeJS.ErrnoException | Error): void;
-    handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
-    redirect(url: string, force?: boolean): IContext;
-    write(chunk: Buffer | string | number | boolean | {
-        [key: string]: any;
-    }): void;
-    transferRequest(path: string | number): void;
-    signOut(): IContext;
-    setSession(loginId: string, roleId: string, userData: any): IContext;
-    dispose(): string | void;
 }
 export declare class ServerConfig implements IServerConfig {
     [key: string]: any;

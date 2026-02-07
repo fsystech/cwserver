@@ -1,5 +1,6 @@
-import { IHttpMimeHandler } from './http-mime';
-import { IContext, AppHandler } from './server';
+import type { IHttpMimeHandler } from './http-mime';
+import { AppHandler } from './server';
+import type { IContext } from './context';
 export interface IController {
     readonly httpMimeHandler: IHttpMimeHandler;
     any(route: string, next: AppHandler): IController;

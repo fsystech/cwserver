@@ -20,11 +20,11 @@
 
 // 9:01 PM 5/2/2020
 // by rajib chy
-import { IContext } from './server';
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
 import { pipeline } from 'node:stream';
-import destroy = require('destroy');
+import type { IContext } from './context';
+import destroy from 'destroy';
 import { isExists } from './fsw';
 
 function _isPlainObject(obj: any): obj is { [x: string]: any; } {

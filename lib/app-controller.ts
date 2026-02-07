@@ -21,15 +21,17 @@
 // 11:16 PM 5/2/2020
 // by rajib chy
 import { HttpMimeHandler } from './http-mime';
-import { IHttpMimeHandler } from './http-mime';
-import { IContext, AppHandler } from './server';
+import type { IHttpMimeHandler } from './http-mime';
+import { AppHandler } from './server';
+import type { IContext } from './context';
 import { HttpStatus } from './http-status';
-import { ToNumber } from './app-static';
+import { toNumber } from './app-static';
 import {
     getRouteMatcher, getRouteInfo,
-    ILayerInfo, IRouteInfo
+    type ILayerInfo, type IRouteInfo
 } from './app-router';
-import { FileInfoCacheHandler, IFileInfoCacheHandler } from './file-info';
+import { FileInfoCacheHandler, type IFileInfoCacheHandler } from './file-info';
+
 export interface IController {
     readonly httpMimeHandler: IHttpMimeHandler;
     any(route: string, next: AppHandler): IController;
@@ -212,7 +214,7 @@ export class Controller implements IController {
             if (!fileName) return ctx.next(404);
             if (ctx.server.config.defaultDoc.indexOf(fileName) > -1) return ctx.next(404);
             if (HttpStatus.isErrorFileName(fileName /*401*/)) {
-                return ctx.transferRequest(ToNumber(fileName));
+                return ctx.transferRequest(toNumber(fileName));
             }
             const path: string = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
             return this._fileInfo.exists(path, (exists: boolean, url: string): void => {

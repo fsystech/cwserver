@@ -1,6 +1,6 @@
+import type { ICwServer } from './server';
 import type { IApplication } from './server-core';
 import type { IController } from './app-controller';
-import type { ICwServer } from './server';
 export type ViewRegisterFunc = (app: IApplication, controller: IController, server: ICwServer) => void;
 export interface IAppViewRegister {
     /**
@@ -17,7 +17,6 @@ declare class AppViewRegister implements IAppViewRegister {
     private _isInitilized;
     get isInitilized(): boolean;
     set isInitilized(value: boolean);
-    constructor();
     init(app: IApplication, controller: IController, server: ICwServer): void;
     add(next: ViewRegisterFunc): void;
 }

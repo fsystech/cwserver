@@ -44,33 +44,10 @@ import { Logger, ILogger, ShadowLogger } from "./logger";
 import { IncomingHttpHeaders } from "node:http";
 import { _mimeType } from "./http-mime-types";
 import { AppView } from "./app-view";
-export type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
+import { _ctxManager, type IContext } from "./context";
+
 export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
-// ----------------------------------------------------------
-export interface IContext {
-    readonly isDisposed: boolean;
-    error?: string;
-    errorPage: string;
-    errorCode: number;
-    readonly res: IResponse;
-    readonly req: IRequest;
-    path: string;
-    extension: string;
-    root: string;
-    readonly session: ISession;
-    servedFrom?: string;
-    readonly server: ICwServer;
-    next: CtxNext;
-    redirect(url: string, force?: boolean): IContext;
-    transferRequest(toPath: string | number): void;
-    write(chunk: Buffer | string | number | boolean | { [key: string]: any }): void;
-    addError(err: NodeJS.ErrnoException | Error): void;
-    transferError(err: NodeJS.ErrnoException | Error): void;
-    handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
-    setSession(loginId: string, roleId: string, userData: any): IContext;
-    signOut(): IContext;
-    dispose(): string | void;
-}
+
 export interface IServerEncryption {
     encrypt(plainText: string): string;
     decrypt(encryptedText: string): string;
@@ -381,41 +358,6 @@ export interface ICwServer {
 }
 
 export type IViewHandler = (app: IApplication, controller: IController, server: ICwServer) => void;
-// -------------------------------------------------------
-export const {
-    disposeContext, removeContext,
-    getContext, getMyContext
-} = (() => {
-    const _curContext: { [key: string]: IContext } = {};
-    return {
-        disposeContext(ctx: IContext): void {
-            const reqId: string | void = ctx.dispose();
-            if (reqId) {
-                if (_curContext[reqId]) {
-                    delete _curContext[reqId];
-                }
-            }
-            return void 0;
-        },
-        getMyContext(id: string): IContext | undefined {
-            const ctx: IContext = _curContext[id];
-            if (!ctx) return undefined;
-            return ctx;
-        },
-        removeContext(id: string): void {
-            const ctx: IContext = _curContext[id];
-            if (!ctx) return;
-            disposeContext(ctx);
-            return void 0;
-        },
-        getContext(server: ICwServer, req: IRequest, res: IResponse): IContext {
-            if (_curContext[req.id]) return _curContext[req.id];
-            const context: IContext = new Context(server, req, res);
-            _curContext[req.id] = context;
-            return context;
-        }
-    };
-})();
 
 function isDefined<T>(a: T | null | undefined): a is T {
     return a !== null && a !== undefined;
@@ -493,126 +435,7 @@ export class ServerEncryption implements IServerEncryption {
         return Encryption.decryptUri(encryptedText, this.cryptoInfo);
     }
 }
-export class Context implements IContext {
-    private _isDisposed: boolean;
-    public get isDisposed(): boolean {
-        return this._isDisposed;
-    }
-    public error?: string;
-    public errorPage: string;
-    public errorCode: number;
-    private _res: IResponse;
-    private _req: IRequest;
-    public get res(): IResponse {
-        return this._res;
-    }
-    public get req(): IRequest {
-        return this._req;
-    }
-    public path: string;
-    public extension: string;
-    public root: string;
-    public get session(): ISession {
-        return this._req.session;
-    }
-    public servedFrom?: string;
-    private _server: ICwServer;
-    public get server(): ICwServer {
-        return this._server;
-    }
-    private _next?: CtxNext;
-    public get next(): CtxNext {
-        if (!this._isDisposed && this._next) return this._next;
-        return (code?: number, transfer?: boolean): void => {
-            if (this._isDisposed) return;
-            // Unreachable....
-            console.warn('Warning: `context already disposed or "next" function doesn\'t set yet`');
-        };
-    }
-    public set next(val: CtxNext) {
-        this._next = val;
-    }
-    constructor(
-        server: ICwServer,
-        req: IRequest,
-        res: IResponse
-    ) {
-        this._isDisposed = false;
-        this.error = void 0; this.path = ""; this.root = "";
-        this._res = res; this._req = req; this._server = server;
-        this.extension = ""; this.errorPage = ""; this.errorCode = 0;
-    }
-    addError(err: NodeJS.ErrnoException | Error): void {
-        if (!this._isDisposed) {
-            this._server.addError(this, err)
-        }
-    }
-    transferError(err: NodeJS.ErrnoException | Error): void {
-        if (!this._isDisposed) {
-            this._server.addError(this, err);
-            return this._server.transferRequest(this, 500);
-        }
-    }
-    handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void {
-        if (!this._isDisposed && !this._res.headersSent) {
-            if (Util.isError(err)) {
-                return this.transferError(err);
-            }
-            try {
-                return next();
-            } catch (e: any) {
-                return this.transferError(e);
-            }
-        }
-        // Nothing to do, context destroyed or response header already been sent
-    }
-    redirect(url: string, force?: boolean): IContext {
-        if (!this._isDisposed) {
-            this._res.status(302).redirect(url, force);
-        }
-        return this;
-    }
-    write(chunk: Buffer | string | number | boolean | { [key: string]: any }): void {
-        if (!this._isDisposed) {
-            return this._res.write(chunk), void 0;
-        }
-    }
-    transferRequest(path: string | number): void {
-        if (!this._isDisposed) {
-            return this._server.transferRequest(this, path);
-        }
-    }
-    signOut(): IContext {
-        if (!this._isDisposed) {
-            this._res.cookie(this._server.config.session.cookie, "", {
-                expires: -1
-            });
-        }
-        return this;
-    }
-    setSession(loginId: string, roleId: string, userData: any): IContext {
-        if (!this._isDisposed) {
-            this._server.setSession(this, loginId, roleId, userData);
-        }
-        return this;
-    }
-    dispose(): string | void {
-        if (this._isDisposed) return void 0;
-        this._isDisposed = true;
-        delete this._next;
-        const id: string = this._req.id;
-        // @ts-ignore
-        delete this._server; delete this.path;
-        // @ts-ignore
-        this._res.dispose(); delete this._res;
-        // @ts-ignore
-        this._req.dispose(); delete this._req;
-        // @ts-ignore
-        delete this.extension; delete this.root;
-        delete this.servedFrom; delete this.error;
-        return id;
-    }
-}
+
 
 export class ServerConfig implements IServerConfig {
     [key: string]: any;
@@ -994,7 +817,7 @@ ${appRoot}\\www_public
     }
 
     public createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
-        const context = getContext(this, req, res);
+        const context = _ctxManager.getContext(this, req, res);
         context.path = req.path; context.root = context.path;
         context.next = next;
         context.extension = Util.getExtension(context.path) || "";
@@ -1190,12 +1013,14 @@ export interface IAppUtility {
     readonly server: ICwServer;
     readonly controller: IController;
 }
+
 export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility {
     if (AppView.isInitilized) {
         throw new Error("Server instance can initilize 1 time...");
     }
 
     const _server: CwServer = new CwServer(appRoot, wwwName);
+    
     const _process = {
         render: (code: number | undefined, ctx: IContext, next: NextFunction, transfer?: boolean): any => {
             if (transfer && typeof (transfer) !== "boolean") {
@@ -1225,11 +1050,13 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             return _context;
         }
     }
+
     const _controller: IController = new Controller(
         _server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false
     );
+
     function initilize(): IApplication {
-        
+
         if (_server.isInitilized) {
             throw new Error("Server already initilized");
         }
@@ -1241,11 +1068,12 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         };
 
         if (_server.config.isDebug) {
-            
+
             _app.on("request-begain", (req: IRequest): void => {
                 _server.log.success(`${req.method} ${req.path}`);
             }).on("response-end", (req: IRequest, res: IResponse): void => {
-                const ctx: IContext | undefined = getMyContext(req.id);
+                const ctx: IContext | undefined = _ctxManager.getMyContext(req.id);
+                
                 if (ctx && !ctx.isDisposed) {
                     if (res.statusCode && HttpStatus.isErrorCode(res.statusCode)) {
                         _server.log.error(`Send ${res.statusCode} ${ctx.path}`);
@@ -1253,13 +1081,18 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                         _server.log.success(`Send ${res.statusCode} ${ctx.path}`);
                     }
                 }
-                return removeContext(req.id);
+
+                return _ctxManager.removeContext(req.id);
             });
+
         } else {
+
             _app.on("response-end", (req: IRequest, res: IResponse): void => {
-                return removeContext(req.id);
+                return _ctxManager.removeContext(req.id);
             });
+
         }
+
         const _virtualDir: { [x: string]: string; }[] = [];
         _server.virtualInfo = (route: string): { route: string; root: string; } | void => {
             const v = _virtualDir.find((a) => a.route === route);

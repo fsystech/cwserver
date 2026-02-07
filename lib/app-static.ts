@@ -484,7 +484,7 @@ export function toString(val: any): string {
     if (!val) return "";
     return typeof (val) === "string" ? val : String(val);
 }
-export function ToNumber(obj: any): number {
+export function toNumber(obj: any): number {
     if (!obj) return 0;
     if (typeof (obj) === "number") return obj;
     if (isNaN(obj)) return 0;
@@ -522,15 +522,18 @@ const dfo = (t: number): string => {
     t = t === 0 ? 1 : t;
     return _map.day[t];
 };
+
 const dfon = (t: number): any => {
     t = t === 0 ? 1 : t;
     return t <= 9 ? "0" + t : t;
 };
+
 const dfm = (t: number): string => {
     t += 1;
     return _map.month[t];
 };
-export function ToResponseTime(timestamp?: number | Date): string {
+
+export function toResponseTime(timestamp?: number | Date): string {
     // Thu, 01 May 2020 23:34:07 GMT
     let date: Date;
     if (timestamp) {

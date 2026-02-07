@@ -22,19 +22,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppView = void 0;
 exports.registerView = registerView;
 class AppViewRegister {
+    constructor() {
+        this._isInit = false;
+        this._evt = [];
+        this._isInitilized = false;
+    }
     get isInitilized() {
         return this._isInitilized;
     }
     set isInitilized(value) {
         this._isInitilized = value;
     }
-    constructor() {
-        this._isInit = false;
-        this._evt = [];
-        this._isInitilized = false;
-    }
     init(app, controller, server) {
-        if (this._isInit && this._evt.length === 0)
+        if (this._isInit || this._evt.length === 0)
             return;
         this._isInit = true;
         this._evt.forEach(handler => {

@@ -1,5 +1,5 @@
-import { IResInfo } from './app-static';
-import { IContext } from './server';
+import type { IResInfo } from './app-static';
+import type { IContext } from './context';
 import { type SandBox, type SandBoxNext } from './app-template-ctx';
 export type CompilerResult = {
     str: string;

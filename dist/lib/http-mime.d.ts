@@ -1,4 +1,4 @@
-import { IContext } from './server';
+import type { IContext } from './context';
 export interface IHttpMimeHandler {
     render(ctx: IContext, maybeDir?: string): void;
     getMimeType(extension: string): string;

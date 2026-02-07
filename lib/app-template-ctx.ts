@@ -18,10 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import { IContext } from "./server";
-
 // 11:43 PM 11/11/2025
 // by rajib chy
+
+import type { IContext } from "./context";
 
 export type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
 export type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => void;

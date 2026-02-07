@@ -20,8 +20,8 @@
 
 // 9:10 PM 5/2/2020
 // by rajib chy
-import { IResInfo } from './app-static';
-import { ResInfo, ToNumber } from './app-static';
+import type { IResInfo } from './app-static';
+import { ResInfo, toNumber } from './app-static';
 import { HttpStatusCode } from './http-status-code';
 export type Dict<T> = { [K in string | number]: T | undefined };
 type GroupType = { type: string, error: boolean };
@@ -64,7 +64,7 @@ export class HttpStatus {
         if (index < 0) return outStatusCode;
         const code = file.substring(0, index);
         // check is valid server status code here...
-        statusCode = ToNumber(code);
+        statusCode = toNumber(code);
         if (statusCode === 0) return outStatusCode;
         return statusCode;
     }
@@ -72,7 +72,7 @@ export class HttpStatus {
         return HttpStatusCode[statusCode] ? true : false;
     }
     static getResInfo(path: string | number, code: any): IResInfo {
-        code = ToNumber(code);
+        code = toNumber(code);
         const out: IResInfo = new ResInfo();
         out.code = typeof (path) === "number" ? path : this.fromPath(path, code);
         out.isValid = false;
@@ -94,7 +94,7 @@ export class HttpStatus {
         if (/^\d*$/.test(name) === false) return false;
         const inf: GroupType | undefined = _group[name.charAt(0)];
         if (!inf || (inf && inf.error === false)) return false;
-        const statusCode: number = ToNumber(name);
+        const statusCode: number = toNumber(name);
         return this.isValidCode(statusCode);
     }
     static isErrorCode(code: any): boolean {

@@ -51,16 +51,21 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Util = void 0;
 exports.assert = assert;
 exports.getLibRoot = getLibRoot;
 exports.getAppDir = getAppDir;
 exports.generateRandomString = generateRandomString;
+// 9:01 PM 5/2/2020
+// by rajib chy
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
 const node_stream_1 = require("node:stream");
-const destroy = require("destroy");
+const destroy_1 = __importDefault(require("destroy"));
 const fsw_1 = require("./fsw");
 function _isPlainObject(obj) {
     if (obj === null || obj === undefined)
@@ -183,7 +188,7 @@ class Util {
             const statusCode = ctx.res.statusCode;
             const openenedFile = _fs.createReadStream(absPath);
             return (0, node_stream_1.pipeline)(openenedFile, ctx.res, (err) => {
-                destroy(openenedFile);
+                (0, destroy_1.default)(openenedFile);
                 ctx.next(statusCode);
             }), void 0;
         });

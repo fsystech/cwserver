@@ -1,6 +1,6 @@
 import { OutgoingHttpHeaders, ServerResponse } from 'node:http';
-import { IResInfo } from './app-static';
-import { IContext } from './server';
+import { type IResInfo } from './app-static';
+import type { IContext } from './context';
 type CookieOptions = {
     maxAge?: number;
     signed?: boolean;

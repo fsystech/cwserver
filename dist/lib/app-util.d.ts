@@ -1,4 +1,4 @@
-import { IContext } from './server';
+import type { IContext } from './context';
 export declare function assert(condition: any, expr: string): void;
 export declare function getLibRoot(): string;
 export declare function getAppDir(): string;

@@ -1,5 +1,5 @@
 import type { IRequest } from './request';
-import { IDispose, ErrorHandler } from './app-static';
+import { type IDispose, type ErrorHandler } from './app-static';
 export type UploadFileInfo = {
     contentType: string;
     name: string;

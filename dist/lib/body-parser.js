@@ -68,7 +68,7 @@ const _path = __importStar(require("node:path"));
 const dicer_1 = require("./dicer");
 const node_stream_1 = require("node:stream");
 const node_os_1 = __importDefault(require("node:os"));
-const destroy = require("destroy");
+const destroy_1 = __importDefault(require("destroy"));
 const app_static_1 = require("./app-static");
 const app_util_1 = require("./app-util");
 const fsw = __importStar(require("./fsw"));
@@ -192,7 +192,7 @@ class MultipartDataReader extends node_events_1.EventEmitter {
     }
     destroy() {
         if (this._writeStream && !this._writeStream.destroyed) {
-            destroy(this._writeStream);
+            (0, destroy_1.default)(this._writeStream);
         }
     }
     exit(reason) {
@@ -376,7 +376,7 @@ class BodyParser {
         this._part = [];
         this._maxBuffLength = MaxBuffLength;
         this._contentType = (0, app_static_1.toString)(req.get("content-type"));
-        this._contentLength = (0, app_static_1.ToNumber)(req.get("content-length"));
+        this._contentLength = (0, app_static_1.toNumber)(req.get("content-length"));
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
         }
@@ -608,7 +608,7 @@ class BodyParser {
         }
         if (this._multipartParser) {
             this._req.unpipe(this._multipartParser);
-            destroy(this._multipartParser);
+            (0, destroy_1.default)(this._multipartParser);
             delete this._multipartParser;
         }
         // @ts-ignore

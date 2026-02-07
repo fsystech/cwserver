@@ -32,11 +32,12 @@ import { HttpStatus } from "../lib/http-status";
 import * as cwserver from '../index';
 import { getAppDir } from '../lib/app-util';
 import { IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription } from '../lib/file-info';
-import { Session, ToNumber, ToResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
+import { Session, toNumber, toResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
 import {
-    IAppUtility, IContext,
+    IAppUtility,
     ServerEncryption
 } from '../lib/server';
+import type { IContext } from '../lib/context';
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
 } from '../lib/app-router';
@@ -50,6 +51,7 @@ import { TemplateCore, templateNext, CompilerResult } from '../lib/app-template'
 import { shouldBeError } from "./test-view";
 import { promisify } from 'util';
 import destroy from 'destroy';
+import { AppView } from '../lib/app-view';
 const sleep = promisify(setTimeout);
 let app: IApplication;
 const appRoot: string = process.env.SCRIPT === "TS" ? path.join(path.resolve(__dirname, '..'), "/dist/test/") : __dirname;
@@ -179,6 +181,9 @@ describe("cwserver-core", () => {
     it("initilize server throw error (projectRoot not provided)", (done: Mocha.Done): void => {
         expect(shouldBeError(() => {
             cwserver.initilizeServer(appRoot);
+            // @ts-ignore
+            AppView.init();// try re-init
+            
         })).toBeInstanceOf(Error);
         done();
     });
@@ -2151,10 +2156,10 @@ describe("cwserver-utility", () => {
         expect(HttpStatus.isErrorFileName("9077")).toBeFalsy();
         expect(HttpStatus.isValidCode(45510)).toEqual(false);
         expect(HttpStatus.statusCode).toBeInstanceOf(Object);
-        expect(ToNumber(null)).toEqual(0);
-        expect(ToResponseTime()).toBeDefined();
-        expect(ToResponseTime(new Date("2020-01-01").getTime())).toBeDefined();
-        expect(ToResponseTime(new Date("2020-01-05").getTime())).toBeDefined();
+        expect(toNumber(null)).toEqual(0);
+        expect(toResponseTime()).toBeDefined();
+        expect(toResponseTime(new Date("2020-01-01").getTime())).toBeDefined();
+        expect(toResponseTime(new Date("2020-01-05").getTime())).toBeDefined();
         expect(shouldBeError(() => {
             cwserver.Encryption.encrypt("nothing", {
                 oldKey: "",
@@ -2259,6 +2264,7 @@ describe("cwserver-utility", () => {
                     throw e;
                 }
             })).toBeInstanceOf(Error);
+
             expect(shouldBeError(() => {
                 try {
                     appUtility.server.config.database = [{

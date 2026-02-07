@@ -49,6 +49,7 @@ declare global {
         }
     }
 }
+
 declare global {
     /**
      * `cwserver` import script/assets from local resource. If you like to use `pkg` ({@see https://github.com/vercel/pkg }) compiler, please override this method at root.

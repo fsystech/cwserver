@@ -289,5 +289,5 @@ export declare class ResInfo implements IResInfo {
     constructor();
 }
 export declare function toString(val: any): string;
-export declare function ToNumber(obj: any): number;
-export declare function ToResponseTime(timestamp?: number | Date): string;
+export declare function toNumber(obj: any): number;
+export declare function toResponseTime(timestamp?: number | Date): string;

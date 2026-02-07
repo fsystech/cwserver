@@ -22,7 +22,8 @@
 // by rajib chy
 import { IncomingHttpHeaders } from 'node:http';
 import type { IResponse } from './response';
-import { ToResponseTime } from './app-static';
+import { toResponseTime } from './app-static';
+
 export type IChangeHeader = {
     sinceModify?: number | void;
     etag?: string;
@@ -59,8 +60,8 @@ export class HttpCache {
         }
     ): void {
         if (obj.lastChangeTime) {
-            res.setHeader('last-modified', ToResponseTime(obj.lastChangeTime));
-            res.setHeader('expires', ToResponseTime(cacheHeader.maxAge + Date.now()));
+            res.setHeader('last-modified', toResponseTime(obj.lastChangeTime));
+            res.setHeader('expires', toResponseTime(cacheHeader.maxAge + Date.now()));
         }
         if (obj.etag) {
             res.setHeader('ETag', obj.etag);

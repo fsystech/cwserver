@@ -28,12 +28,12 @@ import * as _path from 'node:path';
 import { Dicer, PartStream } from './dicer';
 import { pipeline } from 'node:stream';
 import os from 'node:os';
-import destroy = require('destroy');
+import destroy from 'destroy';
 import type { IRequest } from './request';
-
-import { ToNumber, toString, IDispose, IBufferArray, BufferArray, ErrorHandler } from './app-static';
+import { toNumber, toString, BufferArray, type IDispose, type IBufferArray, type ErrorHandler } from './app-static';
 import { Util } from './app-util';
 import * as fsw from './fsw';
+
 export type UploadFileInfo = {
     contentType: string;
     name: string;
@@ -455,7 +455,7 @@ class BodyParser implements IBodyParser {
     ) {
         this._isDisposed = false; this._part = []; this._maxBuffLength = MaxBuffLength;
         this._contentType = toString(req.get("content-type"));
-        this._contentLength = ToNumber(req.get("content-length"));
+        this._contentLength = toNumber(req.get("content-length"));
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
         } else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1) {
