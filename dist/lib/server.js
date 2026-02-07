@@ -59,6 +59,7 @@ exports.initilizeServer = initilizeServer;
 // by rajib chy
 const app_static_1 = require("./app-static");
 const server_core_1 = require("./server-core");
+const help_1 = require("./help");
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
 const fsw = __importStar(require("./fsw"));
@@ -638,7 +639,7 @@ ${appRoot}\\www_public
         if (!this._config.session.cookie || this._config.session.cookie.length === 0)
             throw Error("You are unable to add session without session config. see your app_config.json");
         const session = new app_static_2.Session();
-        const cookies = (0, server_core_1.parseCookie)(cook);
+        const cookies = (0, help_1.parseCookie)(cook);
         const value = cookies[this._config.session.cookie];
         if (!value)
             return session;

@@ -64,11 +64,14 @@ export function getRouteMatcher(route: string, rRepRegx?: boolean): IRouteMatche
             }
             return "(?:([^\/]+?))";
         });
+
     let repRegxStr: string | void;
+
     if (rRepRegx === true && route.indexOf(":") < 0) {
         const nRoute: string = route.substring(0, route.lastIndexOf("/")).replace(pathRegx, "\\/");
         repRegxStr = `^${nRoute}\/?(?=\/|$)`;
     }
+    
     const regx: string = `^${croute}\\/?$`;
     // const tregx: RegExp = new RegExp( `^${croute}\\/?$`, "gi" );
     return {

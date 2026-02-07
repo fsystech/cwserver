@@ -29,7 +29,7 @@ import { Dicer, PartStream } from './dicer';
 import { pipeline } from 'node:stream';
 import os from 'node:os';
 import destroy = require('destroy');
-import { IRequest } from './server-core';
+import type { IRequest } from './request';
 
 import { ToNumber, toString, IDispose, IBufferArray, BufferArray, ErrorHandler } from './app-static';
 import { Util } from './app-util';

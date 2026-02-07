@@ -40,8 +40,11 @@ import {
 import {
     IRequestParam, getRouteInfo, ILayerInfo, getRouteMatcher, pathToArray
 } from '../lib/app-router';
-import { IApplication, App, IRequest, IResponse, NextFunction } from '../lib/server-core';
+import { IApplication, App, NextFunction } from '../lib/server-core';
+import type { IRequest } from '../lib/request';
+import type { IResponse } from '../lib/response';
 import { assert, Util } from '../lib/app-util';
+import { injectPrototype, parseIp } from '../lib/help';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/schema-validator';
 import { TemplateCore, templateNext, CompilerResult } from '../lib/app-template';
 import { shouldBeError } from "./test-view";
@@ -2019,6 +2022,51 @@ describe("cwserver-utility", () => {
             return {};
         }
     })();
+    it("test-session", function (done: Mocha.Done) {
+        const session = new Session();
+        expect(session.getData("roleId")).toBeUndefined();
+
+        session.parse({ roleId: "Admin,User" });
+
+        expect(session.getData("roleId")).toBeDefined();
+        expect(session.getData("roleId", 'unknown')).toBeUndefined();
+        expect(session.toJson()).toBeDefined();
+        expect(session.isInRole("Admin")).toBeTruthy();
+        expect(session.isInRole("User")).toBeTruthy();
+
+        session.updateData("testKey", { "key": "ok" });
+
+        expect(session.getData("testKey", 'key')).toBeDefined();
+        expect(session.getData("xtestKey", 'unknown')).toBeUndefined();
+        expect(Util.extend({}, () => session, true)).toBeInstanceOf(Object);
+
+        session.clear();
+
+        session.parse({ roleId: ["Admin"] });
+        session.parse({ loginId: "admin", userData: { "data": 1 } });
+
+        expect(session.isInRole("Admin")).toBeFalsy();
+        expect(session.userData).toBeDefined();
+
+        session.clear();
+
+        expect(session.toJson()).toBeDefined();
+        expect(session.isInRole("Admin")).toBeFalsy();
+        expect(session.getData("roleId")).toBeUndefined();
+        session.isAuthenticated = false;
+
+        expect(session.isAuthenticated).toBeFalsy();
+        expect(session.loginId).toBeUndefined();
+        expect(session.userData).toBeUndefined();
+        expect(session.ipPart).toBeUndefined();
+        expect(session.roleId).toBeUndefined();
+
+        expect(parseIp("::ffff:127.0.0.1")).toBeDefined();
+
+        injectPrototype(Session, Session);
+
+        done();
+    })
     it("test-app-utility", function (done: Mocha.Done) {
         const slogger = new cwserver.ShadowLogger();
         slogger.newLine();
@@ -2141,9 +2189,6 @@ describe("cwserver-utility", () => {
             Util.throwIfError(new Error("Error test..."));
         })).toBeInstanceOf(Error);
         expect(Util.extend({}, Session.prototype)).toBeInstanceOf(Object);
-        expect(Util.extend({}, () => {
-            return new Session();
-        }, true)).toBeInstanceOf(Object);
         expect(Util.extend({}, { "__proto__": "__no_proto__", "constructor"() { return {}; } })).toBeInstanceOf(Object);
         expect(Util.extend({}, { "__proto__": "__no_proto__", "constructor"() { return {}; } }, true)).toBeInstanceOf(Object);
         expect(shouldBeError(() => {

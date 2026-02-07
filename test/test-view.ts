@@ -27,10 +27,12 @@ import * as fsw from '../lib/fsw';
 import {
 	IRequestParam
 } from '../lib/app-router';
-import {
-	IApplication, IRequest, IResponse, NextFunction,
-	parseCookie, parseUrl, getClientIp, escapePath
-} from '../lib/server-core';
+
+import { IApplication, NextFunction } from '../lib/server-core';
+import { IRequest } from '../lib/request';
+import { IResponse } from '../lib/response';
+import { parseCookie, parseUrl, getClientIp, escapePath } from '../lib/help';
+
 import { IController } from '../lib/app-controller';
 import {
 	disposeContext, getMyContext, removeContext
@@ -670,6 +672,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 				console.log(ctx.session);
 				return ctx.next(401, true);
 			}
+
 			ctx.signOut().redirect("/", true).next(302, true);
 		})
 		.any('/redirect', (ctx: IContext, requestParam?: IRequestParam): void => {

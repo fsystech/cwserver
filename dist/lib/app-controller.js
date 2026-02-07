@@ -27,35 +27,20 @@ const http_status_1 = require("./http-status");
 const app_static_1 = require("./app-static");
 const app_router_1 = require("./app-router");
 const file_info_1 = require("./file-info");
-const routeTable = {
-    any: {},
-    get: {},
-    post: {},
-    router: []
-};
-// 1:16 AM 6/7/2020
-const fireHandler = (ctx) => {
-    if (routeTable.router.length === 0)
-        return false;
-    const routeInfo = (0, app_router_1.getRouteInfo)(ctx.path, routeTable.router, ctx.req.method || "GET");
-    if (!routeInfo) {
-        return false;
-    }
-    return routeInfo.layer.handler(ctx, routeInfo.requestParam), true;
-};
-const getFileName = (path) => {
+function getFileName(path) {
     const index = path.lastIndexOf("/");
     if (index < 0)
         return void 0;
     return path.substring(index + 1);
-};
-const _deleteRouter = (skip, router) => {
-    for (const prop in router) {
-        if (skip.some(a => prop.indexOf(a) > -1))
-            continue;
-        delete router[prop];
+}
+function _deleteRouter(skip, router) {
+    const re = new RegExp(skip.join('|'));
+    for (const [key] of router) {
+        if (!re.test(key)) {
+            router.delete(key);
+        }
     }
-};
+}
 /**
  * Create duplicate `route` error message
  * @param method `route` group
@@ -70,41 +55,45 @@ class Controller {
         return this._httpMimeHandler;
     }
     constructor(hasDefaultExt) {
+        this._routeTable = { any: new Map(), get: new Map(), post: new Map(), router: [] };
         this._fileInfo = new file_info_1.FileInfoCacheHandler();
         this._httpMimeHandler = new http_mime_1.HttpMimeHandler();
         this._hasDefaultExt = hasDefaultExt;
     }
     reset() {
-        // @ts-ignore
-        delete routeTable.get;
-        delete routeTable.post;
-        // @ts-ignore
-        delete routeTable.any;
-        delete routeTable.router;
-        routeTable.get = {};
-        routeTable.post = {};
-        routeTable.any = {};
-        routeTable.router = [];
+        this._routeTable.get.clear();
+        this._routeTable.post.clear();
+        this._routeTable.any.clear();
+        this._routeTable.router.length = 0;
+    }
+    fireHandler(ctx) {
+        if (this._routeTable.router.length === 0)
+            return false;
+        const routeInfo = (0, app_router_1.getRouteInfo)(ctx.path, this._routeTable.router, ctx.req.method || "GET");
+        if (!routeInfo) {
+            return false;
+        }
+        return routeInfo.layer.handler(ctx, routeInfo.requestParam), true;
     }
     delete(...args) {
         if (args.length === 0)
             return this.reset();
-        _deleteRouter(args, routeTable.get);
-        _deleteRouter(args, routeTable.post);
-        _deleteRouter(args, routeTable.any);
-        return routeTable.router = routeTable.router.filter((a) => {
+        _deleteRouter(args, this._routeTable.get);
+        _deleteRouter(args, this._routeTable.post);
+        _deleteRouter(args, this._routeTable.any);
+        this._routeTable.router = this._routeTable.router.filter((a) => {
             if (args.some(skp => a.route.indexOf(skp) > -1))
                 return true;
             return false;
-        }), void 0;
+        });
     }
     get(route, next) {
-        if (routeTable.get[route])
+        if (this._routeTable.get.has(route))
             throw new Error(_createDRM('get', route));
-        if (routeTable.any[route])
+        if (this._routeTable.any.has(route))
             throw new Error(_createDRM('get', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
-            routeTable.router.push({
+            this._routeTable.router.push({
                 method: "GET",
                 handler: next,
                 route,
@@ -112,15 +101,16 @@ class Controller {
                 routeMatcher: (0, app_router_1.getRouteMatcher)(route)
             });
         }
-        return routeTable.get[route] = next, this;
+        this._routeTable.get.set(route, next);
+        return this;
     }
     post(route, next) {
-        if (routeTable.post[route])
+        if (this._routeTable.post.has(route))
             throw new Error(_createDRM('post', route));
-        if (routeTable.any[route])
+        if (this._routeTable.any.has(route))
             throw new Error(_createDRM('post', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
-            routeTable.router.push({
+            this._routeTable.router.push({
                 method: "POST",
                 handler: next,
                 route,
@@ -128,17 +118,18 @@ class Controller {
                 routeMatcher: (0, app_router_1.getRouteMatcher)(route)
             });
         }
-        return routeTable.post[route] = next, this;
+        this._routeTable.post.set(route, next);
+        return this;
     }
     any(route, next) {
-        if (routeTable.post[route])
+        if (this._routeTable.post.has(route))
             throw new Error(_createDRM('post', route));
-        if (routeTable.get[route])
+        if (this._routeTable.get.has(route))
             throw new Error(_createDRM('get', route));
-        if (routeTable.any[route])
+        if (this._routeTable.any.has(route))
             throw new Error(_createDRM('any', route));
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
-            routeTable.router.push({
+            this._routeTable.router.push({
                 method: "ANY",
                 handler: next,
                 route,
@@ -146,7 +137,8 @@ class Controller {
                 routeMatcher: (0, app_router_1.getRouteMatcher)(route)
             });
         }
-        return routeTable.any[route] = next, this;
+        this._routeTable.any.set(route, next);
+        return this;
     }
     passDefaultDoc(ctx) {
         let index = -1;
@@ -194,10 +186,11 @@ class Controller {
         return ctx.next(404);
     }
     processGet(ctx) {
-        if (routeTable.get[ctx.req.path]) {
-            return routeTable.get[ctx.req.path](ctx);
+        const handler = this._routeTable.get.get(ctx.path);
+        if (handler) {
+            return handler(ctx);
         }
-        if (fireHandler(ctx))
+        if (this.fireHandler(ctx))
             return void 0;
         if (ctx.extension) {
             if (this._hasDefaultExt
@@ -215,16 +208,19 @@ class Controller {
         return this.sendDefaultDoc(ctx);
     }
     processPost(ctx) {
-        if (routeTable.post[ctx.req.path]) {
-            return routeTable.post[ctx.req.path](ctx);
+        const handler = this._routeTable.post.get(ctx.path);
+        if (handler) {
+            return handler(ctx);
         }
-        if (fireHandler(ctx))
+        if (this.fireHandler(ctx))
             return void 0;
         return ctx.next(404);
     }
     processAny(ctx) {
-        if (routeTable.any[ctx.path])
-            return routeTable.any[ctx.req.path](ctx);
+        const handler = this._routeTable.any.get(ctx.path);
+        if (handler) {
+            return handler(ctx);
+        }
         if (ctx.req.method === "POST")
             return this.processPost(ctx);
         if (ctx.req.method === "GET")
@@ -232,29 +228,26 @@ class Controller {
         return ctx.next(404);
     }
     remove(path) {
-        let found = false;
-        if (routeTable.any[path]) {
-            delete routeTable.any[path];
-            found = true;
+        let found = 0;
+        if (this._routeTable.any.delete(path)) {
+            found++;
         }
-        else if (routeTable.post[path]) {
-            delete routeTable.post[path];
-            found = true;
+        else if (this._routeTable.post.delete(path)) {
+            found++;
         }
-        else if (routeTable.get[path]) {
-            delete routeTable.get[path];
-            found = true;
+        else if (this._routeTable.get.delete(path)) {
+            found++;
         }
-        if (!found)
+        if (found === 0)
             return false;
-        const index = routeTable.router.findIndex(r => r.route === path);
+        const index = this._routeTable.router.findIndex(r => r.route === path);
         if (index > -1) {
-            routeTable.router.splice(index, 1);
+            this._routeTable.router.splice(index, 1);
         }
         return true;
     }
     sort() {
-        return routeTable.router = routeTable.router.sort((a, b) => {
+        return this._routeTable.router = this._routeTable.router.sort((a, b) => {
             return a.route.length - b.route.length;
         }), void 0;
     }

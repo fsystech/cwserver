@@ -21,7 +21,7 @@
 // 1:47 AM 5/5/2020
 // by rajib chy
 import { IncomingHttpHeaders } from 'node:http';
-import { IResponse } from './server-core';
+import type { IResponse } from './response';
 import { ToResponseTime } from './app-static';
 export type IChangeHeader = {
     sinceModify?: number | void;

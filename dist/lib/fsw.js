@@ -114,8 +114,13 @@ exports.moveFileAsync = moveFileAsync;
 // by rajib chy
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
-const _fsRmdir = typeof (_fs.rm) === "function" ? _fs.rm : _fs.rmdir;
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
+function _fsRmdir(path, options, callback) {
+    if (typeof (_fs.rm) === "function") {
+        return _fs.rm(path, options, callback);
+    }
+    return _fs.rmdir(path, callback);
+}
 function stat(path, next) {
     return _fs.stat(path, (err, stats) => {
         if (err)

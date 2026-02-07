@@ -23,22 +23,22 @@
 import {
     ISession, IResInfo, toString
 } from "./app-static";
-import { IRequestParam } from './app-router';
+import { type IRequestParam } from './app-router';
 import {
-    NextFunction, IApplication,
-    IRequest, IResponse,
-    App as CwAppCore, parseCookie as cookieParser,
-    appVersion
+    NextFunction, type IApplication, App as CwAppCore, appVersion
 } from './server-core';
+import type { IRequest } from "./request";
+import type { IResponse } from "./response";
+import { parseCookie as cookieParser } from "./help";
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
 import * as fsw from './fsw';
 import { Util, getAppDir } from './app-util';
 import { Schema } from './schema-validator';
 import { Session } from './app-static';
-import { ICwDatabaseType } from './db-type';
-import { Controller, IController } from './app-controller';
-import { Encryption, ICryptoInfo } from "./encryption";
+import type { ICwDatabaseType } from './db-type';
+import { Controller, type IController } from './app-controller';
+import { Encryption, type ICryptoInfo } from "./encryption";
 import { HttpStatus } from "./http-status";
 import { Logger, ILogger, ShadowLogger } from "./logger";
 import { IncomingHttpHeaders } from "node:http";
@@ -851,7 +851,7 @@ ${appRoot}\\www_public
     public createVimContext(): NodeJS.Dict<any> {
         return {};
     }
-    
+
     public updateEncryption(serverEnc?: IServerEncryption): void {
         if (this._encryption) {
             delete this._encryption;
@@ -1229,14 +1229,19 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false
     );
     function initilize(): IApplication {
+        
         if (_server.isInitilized) {
             throw new Error("Server already initilized");
         }
+
         const _app: IApplication = CwAppCore();
+
         _server.on = (ev: "shutdown", handler: () => void): void => {
             _app.on(ev, handler);
         };
+
         if (_server.config.isDebug) {
+            
             _app.on("request-begain", (req: IRequest): void => {
                 _server.log.success(`${req.method} ${req.path}`);
             }).on("response-end", (req: IRequest, res: IResponse): void => {
@@ -1309,10 +1314,12 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 root
             }), void 0;
         };
+
         if (_server.config.bundler && _server.config.bundler.enable) {
             const { Bundler } = require("./app-bundler");
             Bundler.Init(_app, _controller, _server);
         }
+
         if (Util.isArrayLike(_server.config.views)) {
             _server.config.views.forEach(path => _importLocalAssets(path));
         }
@@ -1320,6 +1327,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         AppView.init(_app, _controller, _server);
 
         _controller.sort();
+
         _app.on("error", (req: IRequest, res: IResponse, err?: number | Error): void => {
             if (res.isAlive) {
                 const context: IContext = _process.createContext(req, res, res.sendIfError.bind(res));
@@ -1331,11 +1339,13 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 }
             }
         });
+
         _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
             req.session = _server.parseSession(req.headers, req.cookies);
             SessionSecurity.isValidSession(req);
             return process.nextTick(() => next());
         });
+
         _app.use((req: IRequest, res: IResponse, next: NextFunction) => {
             const context: IContext = _process.createContext(req, res, next);
             const reqPath: string = req.path;
@@ -1357,7 +1367,9 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 return _server.transferRequest(_server.addError(context, ex), 500);
             }
         });
+
         _server.init();
+
         return _app;
     };
 

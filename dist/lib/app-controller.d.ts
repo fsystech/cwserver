@@ -17,8 +17,10 @@ export declare class Controller implements IController {
     private _fileInfo;
     private _hasDefaultExt;
     get httpMimeHandler(): IHttpMimeHandler;
+    private _routeTable;
     constructor(hasDefaultExt: boolean);
     reset(): void;
+    private fireHandler;
     delete(...args: string[]): void;
     get(route: string, next: AppHandler): IController;
     post(route: string, next: AppHandler): IController;

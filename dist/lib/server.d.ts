@@ -1,9 +1,11 @@
 import { ISession, IResInfo } from "./app-static";
-import { IRequestParam } from './app-router';
-import { NextFunction, IApplication, IRequest, IResponse } from './server-core';
-import { ICwDatabaseType } from './db-type';
-import { IController } from './app-controller';
-import { ICryptoInfo } from "./encryption";
+import { type IRequestParam } from './app-router';
+import { NextFunction, type IApplication } from './server-core';
+import type { IRequest } from "./request";
+import type { IResponse } from "./response";
+import type { ICwDatabaseType } from './db-type';
+import { type IController } from './app-controller';
+import { type ICryptoInfo } from "./encryption";
 import { ILogger } from "./logger";
 import { IncomingHttpHeaders } from "node:http";
 export type CtxNext = (code?: number | undefined, transfer?: boolean) => void;

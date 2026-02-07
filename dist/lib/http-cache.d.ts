@@ -1,5 +1,5 @@
 import { IncomingHttpHeaders } from 'node:http';
-import { IResponse } from './server-core';
+import type { IResponse } from './response';
 export type IChangeHeader = {
     sinceModify?: number | void;
     etag?: string;

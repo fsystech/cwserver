@@ -22,9 +22,20 @@
 // by rajib chy
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
+import type { PathLike, RmOptions, NoParamCallback } from 'node:fs';
 import { ErrorHandler } from './app-static';
-const _fsRmdir = typeof (_fs.rm) === "function" ? _fs.rm : _fs.rmdir;
+
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
+
+function _fsRmdir(path: PathLike, options: RmOptions, callback: NoParamCallback) {
+
+    if (typeof (_fs.rm) === "function") {
+        return _fs.rm(path, options, callback);
+    }
+
+    return _fs.rmdir(path, callback);
+}
+
 export function stat(
     path: string,
     next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void

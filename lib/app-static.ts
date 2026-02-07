@@ -359,7 +359,7 @@ export class Session implements ISession {
      * @param {Function} parseData - A function that processes the data and returns a dictionary.
      * @param {string} [prop] - An optional property name to apply the parsing function to. If not provided, `userData` is used.
      */
-    parseUserData(parseData: (data: any) => NodeJS.Dict<any>, prop?: string): void {
+    public parseUserData(parseData: (data: any) => NodeJS.Dict<any>, prop?: string): void {
         if (prop) {
             this._obj[prop] = parseData(this._obj[prop]);
         } else {
@@ -372,7 +372,7 @@ export class Session implements ISession {
      * 
      * @returns A JSON string representing the session.
      */
-    toJson(): string {
+    public toJson(): string {
         if (!this._obj) return '{}';
         return JSON.stringify(this._obj);
     }
@@ -383,7 +383,7 @@ export class Session implements ISession {
      * @param roleId The role identifier to check.
      * @returns True if the user has the specified role; otherwise, false.
      */
-    isInRole(roleId: string): boolean {
+    public isInRole(roleId: string): boolean {
         if (!this._obj) return false;
         if (this._obj.roleId === roleId) return true;
         return this._obj.roleIds.includes(roleId);
@@ -399,7 +399,7 @@ export class Session implements ISession {
      * @param data A JSON string or an object representing session data.
      * @returns The updated session instance.
      */
-    parse(data: string | any): ISession {
+    public parse(data: string | any): ISession {
 
         if (typeof data === 'string') {
             try {
@@ -415,8 +415,15 @@ export class Session implements ISession {
                 this._obj.roleId = this._obj.roleIds[0];
                 delete this._obj.roleId;
             } else {
-                this._obj.roleIds = [];
+
+                if (this._obj.roleId) {
+                    this._obj.roleIds = this._obj.roleId.split(',');
+                    this._obj.roleId = this._obj.roleIds[0];
+                } else {
+                    this._obj.roleIds = [];
+                }
             }
+
             this._obj.isAuthenticated = true;
         } catch { }
 
@@ -430,14 +437,16 @@ export class Session implements ISession {
      * @param prop An optional property to access within the stored data.
      * @returns The value associated with the key, or undefined if not found.
      */
-    getData(key: string, prop?: string): any {
+    public getData(key: string, prop?: string): any {
         if (!this._obj) return undefined;
         if (!prop) {
             return this._obj[key];
         }
+        
         const value = this._obj[key];
         if (!value) return undefined;
-        return value[key];
+
+        return value[prop];
     }
 
     /**
@@ -446,17 +455,18 @@ export class Session implements ISession {
      * @param key The key of the data to update.
      * @param obj The new object data to store under the specified key.
      */
-    updateData(key: string, obj: NodeJS.Dict<any>): void {
+    public updateData(key: string, obj: NodeJS.Dict<any>): void {
         this._obj[key] = { ...obj };
     }
 
     /**
      * Clears the session data, effectively resetting the session.
      */
-    clear(): void {
+    public clear(): void {
         delete this._obj;
     }
 }
+
 export class ResInfo implements IResInfo {
     code: number;
     isValid: boolean;

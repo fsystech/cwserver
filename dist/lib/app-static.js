@@ -249,7 +249,13 @@ class Session {
                 delete this._obj.roleId;
             }
             else {
-                this._obj.roleIds = [];
+                if (this._obj.roleId) {
+                    this._obj.roleIds = this._obj.roleId.split(',');
+                    this._obj.roleId = this._obj.roleIds[0];
+                }
+                else {
+                    this._obj.roleIds = [];
+                }
             }
             this._obj.isAuthenticated = true;
         }
@@ -272,7 +278,7 @@ class Session {
         const value = this._obj[key];
         if (!value)
             return undefined;
-        return value[key];
+        return value[prop];
     }
     /**
      * Updates a value in the session data.

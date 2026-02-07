@@ -26,10 +26,12 @@ import * as _path from 'node:path';
 import { pipeline } from 'node:stream';
 import destroy = require('destroy');
 import { isExists } from './fsw';
+
 function _isPlainObject(obj: any): obj is { [x: string]: any; } {
     if (obj === null || obj === undefined) return false;
     return typeof (obj) === 'object' && Object.prototype.toString.call(obj) === "[object Object]";
 }
+
 function _extend(destination: any, source: any): any {
     if (!_isPlainObject(destination) || !_isPlainObject(source))
         throw new TypeError(`Invalid arguments defined. Arguments should be Object instance. destination type ${typeof (destination)} and source type ${typeof (source)}`);
@@ -43,6 +45,7 @@ function _extend(destination: any, source: any): any {
     }
     return destination;
 }
+
 function _deepExtend(destination: any, source: any): any {
     if (typeof (source) === "function") source = source();
     if (!_isPlainObject(destination) || !_isPlainObject(source))
@@ -61,6 +64,7 @@ function _deepExtend(destination: any, source: any): any {
     }
     return destination;
 }
+
 export function assert(condition: any, expr: string) {
     const condType = typeof (condition);
     if (condType === "string") {
@@ -70,15 +74,18 @@ export function assert(condition: any, expr: string) {
     if (!condition)
         throw new Error(`Assertion failed: ${expr}`);
 }
+
 export function getLibRoot(): string {
     return _path.resolve(__dirname, process.env.SCRIPT === "TS" ? '..' : '../..');
 }
+
 export function getAppDir(): string {
     if (process.pkg) {
         return `${process.cwd()}/lib/cwserver/`;
     }
     return getLibRoot();
 }
+
 export function generateRandomString(num: number): string {
     const
         charset: string = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -88,6 +95,7 @@ export function generateRandomString(num: number): string {
     }
     return result;
 }
+
 class JSONW {
     static parse(text: any, reviver?: (this: any, key: string, value: any) => any): any {
         if (typeof (text) !== "string") return text;
@@ -101,7 +109,9 @@ class JSONW {
         return JSON.stringify(value, replacer, space);
     }
 }
+
 export class Util {
+
     public static guid(): string {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c: string) => {
             const r = Math.random() * 16 | 0;
@@ -109,31 +119,39 @@ export class Util {
             return v.toString(16);
         });
     }
+
     public static readonly JSON = JSONW;
+
     public static extend<T>(destination: T, source: any, deep?: boolean): T {
         if (deep === true)
             return _deepExtend(destination, source);
         return _extend(destination, source);
     }
+
     public static clone<T>(source: T): T {
         return _extend({}, source);
     }
+
     /** Checks whether the specified value is an object. true if the value is an object; false otherwise. */
     public static isPlainObject(obj?: any): obj is { [x: string]: any; } {
         return _isPlainObject(obj);
     }
+
     /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise. */
     public static isArrayLike<T>(obj?: any): obj is T[] {
         if (obj === null || obj === undefined) return false;
         const result = Object.prototype.toString.call(obj);
         return result === "[object NodeList]" || result === "[object Array]" ? true : false;
     }
+
     public static isError(obj: any): obj is Error {
         return obj === null || !obj ? false : Object.prototype.toString.call(obj) === "[object Error]";
     }
+
     public static throwIfError(obj: any): void {
         if (this.isError(obj)) throw obj;
     }
+
     public static pipeOutputStream(absPath: string, ctx: IContext): void {
         return ctx.handleError(null, () => {
             const statusCode: number = ctx.res.statusCode;
@@ -144,6 +162,7 @@ export class Util {
             }), void 0;
         });
     }
+
     public static sendResponse(
         ctx: IContext, reqPath: string, contentType?: string
     ): void {
@@ -155,6 +174,7 @@ export class Util {
             });
         });
     }
+
     public static getExtension(reqPath: string): string | void {
         const index = reqPath.lastIndexOf(".");
         if (index > 0) {

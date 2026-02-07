@@ -52,7 +52,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.setMimeType = exports.getMimeType = exports.registerView = exports.Session = exports.appVersion = exports.readAppVersion = exports.parseCookie = exports.App = exports.ServerEncryption = exports.SessionSecurity = exports.createProjectTemplate = exports.wsClient = exports.socketInitilizer = exports.Streamer = exports.fsw = exports.Util = exports.PayloadParser = exports.getBodyParser = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.HttpCache = exports.HttpMimeHandler = exports.Encryption = exports.initilizeServer = void 0;
+exports.setMimeType = exports.getMimeType = exports.registerView = exports.Session = exports.parseCookie = exports.appVersion = exports.readAppVersion = exports.App = exports.ServerEncryption = exports.SessionSecurity = exports.createProjectTemplate = exports.wsClient = exports.socketInitilizer = exports.Streamer = exports.fsw = exports.Util = exports.PayloadParser = exports.getBodyParser = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.HttpCache = exports.HttpMimeHandler = exports.Encryption = exports.initilizeServer = void 0;
 // 3:56 PM 5/9/2020
 // by rajib chy
 var server_1 = require("./lib/server");
@@ -86,9 +86,10 @@ Object.defineProperty(exports, "SessionSecurity", { enumerable: true, get: funct
 Object.defineProperty(exports, "ServerEncryption", { enumerable: true, get: function () { return server_2.ServerEncryption; } });
 var server_core_1 = require("./lib/server-core");
 Object.defineProperty(exports, "App", { enumerable: true, get: function () { return server_core_1.App; } });
-Object.defineProperty(exports, "parseCookie", { enumerable: true, get: function () { return server_core_1.parseCookie; } });
 Object.defineProperty(exports, "readAppVersion", { enumerable: true, get: function () { return server_core_1.readAppVersion; } });
 Object.defineProperty(exports, "appVersion", { enumerable: true, get: function () { return server_core_1.appVersion; } });
+var help_1 = require("./lib/help");
+Object.defineProperty(exports, "parseCookie", { enumerable: true, get: function () { return help_1.parseCookie; } });
 var app_static_1 = require("./lib/app-static");
 Object.defineProperty(exports, "Session", { enumerable: true, get: function () { return app_static_1.Session; } });
 var app_view_1 = require("./lib/app-view");
