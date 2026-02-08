@@ -142,6 +142,7 @@ export const {
 class Application extends EventEmitter implements IApplication {
     private _httpServer: Server;
     private _connectionKey: number;
+    private _useRequestBegain: boolean;
     private _connectionMap: Map<string, Socket>;
     private _routes: ILayerInfo<HandlerFunc>[];
     private _middlewares: ILayerInfo<HandlerFunc>[];
@@ -160,9 +161,13 @@ class Application extends EventEmitter implements IApplication {
         return this._isRunning;
     }
 
-    constructor(httpServer: Server) {
+    constructor(useRequestBegain: boolean = true) {
         super();
-        this._httpServer = httpServer;
+        this._onNewRequest = this._onNewRequest.bind(this);
+
+        this._useRequestBegain = useRequestBegain;
+
+        this._httpServer = _createServer(this._onNewRequest);
 
         this._routes = [];
         this._middlewares = [];
@@ -363,7 +368,7 @@ class Application extends EventEmitter implements IApplication {
      * @param {IRequest} req - The incoming request object.
      * @param {IResponse} res - The response object associated with the request.
      */
-    public handleRequest(req: IRequest, res: IResponse): void {
+    private _handleNewRequest(req: IRequest, res: IResponse): void {
 
         /**
          * Emits an error for the current request/response.
@@ -501,23 +506,38 @@ class Application extends EventEmitter implements IApplication {
 
         return this;
     }
-}
 
-function setAppHeader(res: Response) {
-    res.setHeader('server', 'FSys Frontend');
-    res.setHeader('x-app-version', appVersion);
-    res.setHeader('x-powered-by', 'fsys.tech');
-}
+    private _setAppHeader(res: Response) {
+        res.setHeader('server', 'FSys Frontend');
+        res.setHeader('x-app-version', appVersion);
+        res.setHeader('x-powered-by', 'fsys.tech');
+    }
 
+    private _onNewRequest(request: Request, response: Response): void {
+        try {
 
-/**
- * Creates a Node.js HTTP server with the provided request handler.
- *
- * @param {(req: any, res: any) => void} next - The request handler function called for each incoming request.
- * @returns {Server} Returns an instance of Node.js HTTP Server.
- */
-function _createServer(next: (req: any, res: any) => void): Server {
-    return createServer(next);
+            this._setAppHeader(response);
+
+            if (request.method) {
+                response.method = request.method;
+            }
+
+            response.once('close', (...args: any[]): void => {
+                response.isAlive = false;
+                this.emit('response-end', request, response);
+            });
+
+            if (this._useRequestBegain) {
+                this.emit('request-begain', request);
+            }
+
+            this._handleNewRequest(request, response);
+
+        } catch (e) {
+            // Caught while prerequisites error happens
+            this.emit('error', request, response, e);
+        }
+    }
 }
 
 /**
@@ -540,32 +560,15 @@ export function App(useRequestBegain: boolean = true): IApplication {
     // Ensure Request/Response prototypes are injected
     injectIncomingOutgoing();
 
-    const app: Application = new Application(_createServer((request: Request, response: Response) => {
+    return new Application(useRequestBegain);
+}
 
-        try {
-
-            setAppHeader(response);
-
-            if (request.method) {
-                response.method = request.method;
-            }
-
-            response.once('close', (...args: any[]): void => {
-                response.isAlive = false;
-                app.emit('response-end', request, response);
-            });
-
-            if (useRequestBegain) {
-                app.emit('request-begain', request);
-            }
-
-            app.handleRequest(request, response);
-
-        } catch (e) {
-            // Caught while prerequisites error happens
-            app.emit('error', request, response, e);
-        }
-    }));
-
-    return app;
+/**
+ * Creates a Node.js HTTP server with the provided request handler.
+ *
+ * @param {(req: any, res: any) => void} next - The request handler function called for each incoming request.
+ * @returns {Server} Returns an instance of Node.js HTTP Server.
+ */
+function _createServer(next: (req: any, res: any) => void): Server {
+    return createServer(next);
 }

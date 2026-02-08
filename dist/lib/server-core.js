@@ -61,9 +61,11 @@ class Application extends node_events_1.EventEmitter {
     get isRunning() {
         return this._isRunning;
     }
-    constructor(httpServer) {
+    constructor(useRequestBegain = true) {
         super();
-        this._httpServer = httpServer;
+        this._onNewRequest = this._onNewRequest.bind(this);
+        this._useRequestBegain = useRequestBegain;
+        this._httpServer = _createServer(this._onNewRequest);
         this._routes = [];
         this._middlewares = [];
         this._prerequisites = [];
@@ -229,7 +231,7 @@ class Application extends node_events_1.EventEmitter {
      * @param {IRequest} req - The incoming request object.
      * @param {IResponse} res - The response object associated with the request.
      */
-    handleRequest(req, res) {
+    _handleNewRequest(req, res) {
         /**
          * Emits an error for the current request/response.
          *
@@ -342,20 +344,31 @@ class Application extends node_events_1.EventEmitter {
         });
         return this;
     }
-}
-function setAppHeader(res) {
-    res.setHeader('server', 'FSys Frontend');
-    res.setHeader('x-app-version', exports.appVersion);
-    res.setHeader('x-powered-by', 'fsys.tech');
-}
-/**
- * Creates a Node.js HTTP server with the provided request handler.
- *
- * @param {(req: any, res: any) => void} next - The request handler function called for each incoming request.
- * @returns {Server} Returns an instance of Node.js HTTP Server.
- */
-function _createServer(next) {
-    return (0, node_http_1.createServer)(next);
+    _setAppHeader(res) {
+        res.setHeader('server', 'FSys Frontend');
+        res.setHeader('x-app-version', exports.appVersion);
+        res.setHeader('x-powered-by', 'fsys.tech');
+    }
+    _onNewRequest(request, response) {
+        try {
+            this._setAppHeader(response);
+            if (request.method) {
+                response.method = request.method;
+            }
+            response.once('close', (...args) => {
+                response.isAlive = false;
+                this.emit('response-end', request, response);
+            });
+            if (this._useRequestBegain) {
+                this.emit('request-begain', request);
+            }
+            this._handleNewRequest(request, response);
+        }
+        catch (e) {
+            // Caught while prerequisites error happens
+            this.emit('error', request, response, e);
+        }
+    }
 }
 /**
  * Initializes and returns the main application instance.
@@ -375,26 +388,15 @@ function _createServer(next) {
 function App(useRequestBegain = true) {
     // Ensure Request/Response prototypes are injected
     (0, inject_1.injectIncomingOutgoing)();
-    const app = new Application(_createServer((request, response) => {
-        try {
-            setAppHeader(response);
-            if (request.method) {
-                response.method = request.method;
-            }
-            response.once('close', (...args) => {
-                response.isAlive = false;
-                app.emit('response-end', request, response);
-            });
-            if (useRequestBegain) {
-                app.emit('request-begain', request);
-            }
-            app.handleRequest(request, response);
-        }
-        catch (e) {
-            // Caught while prerequisites error happens
-            app.emit('error', request, response, e);
-        }
-    }));
-    return app;
+    return new Application(useRequestBegain);
+}
+/**
+ * Creates a Node.js HTTP server with the provided request handler.
+ *
+ * @param {(req: any, res: any) => void} next - The request handler function called for each incoming request.
+ * @returns {Server} Returns an instance of Node.js HTTP Server.
+ */
+function _createServer(next) {
+    return (0, node_http_1.createServer)(next);
 }
 //# sourceMappingURL=server-core.js.map

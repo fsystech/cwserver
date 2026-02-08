@@ -44,7 +44,7 @@ export type IRouteInfo<T> = {
     requestParam?: IRequestParam;
 }
 
-const pathRegx = /\//g;
+const pathRegx: RegExp = /\//g;
 
 /**
  * Builds a route matcher object from a route definition string.
