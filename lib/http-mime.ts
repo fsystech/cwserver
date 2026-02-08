@@ -38,15 +38,17 @@ export interface IHttpMimeHandler {
     getMimeType(extension: string): string;
     isValidExtension(extension: string): boolean;
 }
+
 type MemCacheInfo = {
     readonly cfileSize: number;
     readonly gizipData: Buffer;
     readonly lastChangeTime: number;
-};
-const _mamCache: { [x: string]: MemCacheInfo; } = {};
+}
+
 interface ITaskDeff {
     cache: boolean; ext: string; gzip: boolean
 }
+
 // "exe", "zip", "doc", "docx", "pdf", "ppt", "pptx", "gz"
 const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "exe", gzip: false },
@@ -62,17 +64,21 @@ const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "htm", gzip: false },
     { cache: false, ext: "wjsx", gzip: false }
 ];
+
 function createGzip(): _zlib.Gzip {
     return _zlib.createGzip({ level: _zlib.constants.Z_BEST_COMPRESSION });
 }
+
 class MimeHandler {
-    static _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
-    static getCachePath(ctx: IContext): string {
+    private static _mamCache: Map<string, MemCacheInfo> = new Map();
+    private static _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
+
+    private static getCachePath(ctx: IContext): string {
         const path: string = _path.join(ctx.server.config.staticFile.tempPath, Encryption.toMd5(ctx.path));
-        // const path: string = `${ctx.server.config.staticFile.tempPath}\\${Encryption.toMd5(ctx.path)}`;
         return _path.resolve(`${path}.${ctx.extension}.cache`);
     }
-    static _sendFromMemCache(ctx: IContext, mimeType: string, dataInfo: MemCacheInfo): void {
+
+    private static _sendFromMemCache(ctx: IContext, mimeType: string, dataInfo: MemCacheInfo): void {
         const reqCacheHeader: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
         const etag: string = HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
         ctx.res.setHeader('x-served-from', 'mem-cache');
@@ -92,27 +98,32 @@ class MimeHandler {
                 return process.nextTick(() => ctx.next(304));
             }
         }
+
         HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime: dataInfo.lastChangeTime,
             etag: HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
         }, ctx.server.config.cacheHeader);
+
         ctx.res.status(200, {
             'Content-Type': mimeType,
             'Content-Encoding': 'gzip'
         });
+
         return ctx.res.end(dataInfo.gizipData), ctx.next(200);
     }
-    static _holdCache(cachePath: string, lastChangeTime: number, size: number): void {
-        if (_mamCache[cachePath]) return;
+
+    private static _holdCache(cachePath: string, lastChangeTime: number, size: number): void {
+        if (this._mamCache.has(cachePath)) return;
         setImmediate(() => {
-            _mamCache[cachePath] = {
+            this._mamCache.set(cachePath, {
                 lastChangeTime,
                 cfileSize: size,
                 gizipData: _fs.readFileSync(cachePath)
-            };
+            });
         });
     }
-    static servedFromServerFileCache(
+
+    private static servedFromServerFileCache(
         ctx: IContext, absPath: string, mimeType: string,
         fstat: _fs.Stats, cachePath: string
     ): void {
@@ -175,59 +186,77 @@ class MimeHandler {
                     return ctx.handleError(gzipErr, (): void => {
                         return this._fileInfo.stat(cachePath, (cdesc: IFileDescription) => {
                             return ctx.handleError(null, (): void => {
+
                                 if (!cdesc.stats) {
                                     ctx.next(404, true);
                                     return;
                                 }
+
                                 lastChangeTime = cdesc.stats.mtime.getTime();
+
                                 HttpCache.writeCacheHeader(ctx.res, {
                                     lastChangeTime,
                                     etag: HttpCache.getEtag(lastChangeTime, cdesc.stats.size)
                                 }, ctx.server.config.cacheHeader);
+
                                 ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
+
                                 if (useFullOptimization && cachePath) {
                                     this._holdCache(cachePath, lastChangeTime, cdesc.stats.size);
                                 }
+
                                 return Util.pipeOutputStream(cachePath, ctx);
                             });
+
                         }, true);
                     });
                 });
             });
         });
     }
-    static servedNoChache(
+
+    private static servedNoChache(
         ctx: IContext, absPath: string,
         mimeType: string, isGzip: boolean,
         size: number
     ): void {
+
         HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime: void 0,
             etag: void 0
         }, { maxAge: 0, serverRevalidate: true });
+
         if (ctx.server.config.staticFile.compression && isGzip) {
+
             ctx.res.status(200, {
                 'Content-Type': mimeType,
                 'Content-Encoding': 'gzip'
             });
+
             const rstream: _fs.ReadStream = _fs.createReadStream(absPath);
+
             return pipeline(rstream, createGzip(), ctx.res, (gzipErr: NodeJS.ErrnoException | null) => {
                 destroy(rstream);
             }), void 0;
         }
+
         ctx.res.status(200, {
             'Content-Type': mimeType, 'Content-Length': size
         });
+
         return Util.pipeOutputStream(absPath, ctx);
     }
-    static servedFromFile(
+
+    private static servedFromFile(
         ctx: IContext, absPath: string,
         mimeType: string, isGzip: boolean,
         fstat: _fs.Stats
     ): void {
+
         const reqCachHeader: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
         const lastChangeTime: number = fstat.mtime.getTime();
         const curEtag: string = HttpCache.getEtag(lastChangeTime, fstat.size);
+
         if (
             (reqCachHeader.etag && reqCachHeader.etag === curEtag) ||
             (reqCachHeader.sinceModify && reqCachHeader.sinceModify === lastChangeTime)
@@ -236,38 +265,50 @@ class MimeHandler {
             ctx.res.status(304, { 'Content-Type': mimeType }).send();
             return process.nextTick(() => ctx.next(304));
         }
+
         HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime,
             etag: curEtag
         }, ctx.server.config.cacheHeader);
+
         if (ctx.server.config.staticFile.compression && isGzip) {
+
             ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
             const rstream: _fs.ReadStream = _fs.createReadStream(absPath);
             return pipeline(rstream, createGzip(), ctx.res, (gzipErr: NodeJS.ErrnoException | null) => {
                 destroy(rstream);
             }), void 0;
         }
+
         ctx.res.status(200, { 'Content-Type': mimeType });
         return Util.pipeOutputStream(absPath, ctx);
     }
+
     static _render(
         ctx: IContext, mimeType: string, absPath: string,
         stat: _fs.Stats, cachePath: string
     ): void {
+
         ctx.req.setSocketNoDelay(true);
+
         if (ctx.path.indexOf('favicon.ico') > -1) {
+
             HttpCache.writeCacheHeader(ctx.res, {
                 lastChangeTime: void 0, etag: void 0
             }, {
                 maxAge: ctx.server.config.cacheHeader.maxAge,
                 serverRevalidate: false
             });
+
             ctx.res.status(200, { 'Content-Type': mimeType });
+
             return Util.pipeOutputStream(absPath, ctx);
         }
+
         if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
             return Streamer.stream(ctx, absPath, mimeType, stat);
         }
+
         let noCache: boolean = false;
         const taskDeff: ITaskDeff | undefined = TaskDeff.find(a => a.ext === ctx.extension);
         let isGzip: boolean = (!ctx.server.config.staticFile.compression ? false : HttpCache.isAcceptedEncoding(ctx.req.headers, "gzip"));
@@ -290,17 +331,22 @@ class MimeHandler {
         }
         return this.servedFromServerFileCache(ctx, absPath, mimeType, stat, cachePath);
     }
-    static render(
+
+    public static render(
         ctx: IContext, mimeType: string,
         maybeDir?: string
     ): void {
         const cachePath: string | void = ctx.server.config.staticFile.fileCache ? this.getCachePath(ctx) : undefined;
         const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
+
         if (cachePath) {
-            if (useFullOptimization && _mamCache[cachePath]) {
-                return this._sendFromMemCache(ctx, mimeType, _mamCache[cachePath]);
+            if (useFullOptimization && this._mamCache.has(cachePath)) {
+                return this._sendFromMemCache(
+                    ctx, mimeType, this._mamCache.get(cachePath)
+                );
             }
         }
+
         const absPath: string = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
         return this._fileInfo.stat(absPath, (desc: IFileDescription): void => {
             return ctx.handleError(null, () => {
@@ -310,18 +356,25 @@ class MimeHandler {
         });
     }
 }
+
 export class HttpMimeHandler implements IHttpMimeHandler {
-    getMimeType(extension: string): string {
+    public getMimeType(extension: string): string {
         return _mimeType.getMimeType(extension);
     }
-    isValidExtension(extension: string): boolean {
+
+    public isValidExtension(extension: string): boolean {
         return _mimeType.isValidExtension(extension);
     }
-    render(ctx: IContext, maybeDir?: string): void {
+
+    public render(ctx: IContext, maybeDir?: string): void {
+
         if (!_mimeType.isValidExtension(ctx.extension)) {
             return ctx.transferRequest(404);
         }
-        return MimeHandler.render(ctx, _mimeType.getMimeType(ctx.extension), maybeDir);
+
+        return MimeHandler.render(
+            ctx, _mimeType.getMimeType(ctx.extension), maybeDir
+        );
     }
 }
 // 11:38 PM 5/4/2020

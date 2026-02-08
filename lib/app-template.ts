@@ -42,6 +42,7 @@ interface IScriptTag {
     l: string;
     r: string;
 }
+
 interface IParserInfo {
     line: string;
     tag: string;
@@ -50,29 +51,32 @@ interface IParserInfo {
     startTageName?: string;
     isLastTag: boolean;
 }
+
 interface ITag {
     script: IScriptTag;
     write: IScriptTag;
 }
+
 interface IScriptParser extends IDispose {
     tag: ITag;
     startTage(parserInfo: IParserInfo): void;
     endTage(parserInfo: IParserInfo): void;
 }
+
 export type CompilerResult = {
     str: string; isScript?: boolean; isTemplate?: boolean;
     sandBox?: SandBox,
     err?: NodeJS.ErrnoException | Error | null
-};
+}
+
 type TemplateNextFunc = (params: CompilerResult) => void;
+
 export function templateNext(
     ctx: IContext, next: SandBoxNext, isCompressed?: boolean
 ): void {
-    throw new Error("Method not implemented.");
+    throw new Error("Function not implemented.");
 }
-const _tw: { cache: { [x: string]: any } } = {
-    cache: {}
-}
+
 class ParserInfo implements IParserInfo {
     public line: string;
     public tag: string;
@@ -535,8 +539,11 @@ function canReadFileCache(ctx: IContext, filePath: string, cachePath: string, ne
     });
 }
 class TemplateLink {
+    private static _tw: Map<string, any> = new Map();
+
     private static processResponse(status: IResInfo): SandBoxNext {
         return (ctx: IContext, body: string, isCompressed?: boolean): void => {
+
             if (isCompressed && isCompressed === true) {
                 return _zlib.gzip(Buffer.from(body), (error: Error | null, buff: Buffer) => {
                     return ctx.handleError(error, () => {
@@ -547,6 +554,7 @@ class TemplateLink {
                     });
                 });
             }
+
             return ctx.handleError(null, () => {
                 return ctx.res.type("html").noCache().status(status.code, {
                     'Content-Length': Buffer.byteLength(body)
@@ -554,6 +562,7 @@ class TemplateLink {
             });
         }
     }
+
     public static tryLive(ctx: IContext, path: string, status: IResInfo): void {
         return _fileInfo.exists(path, (exists: boolean, url: string): void => {
             if (!exists) return ctx.next(404);
@@ -577,32 +586,40 @@ class TemplateLink {
             });
         });
     }
+
     private static _getCacheMape(str: string): string {
         return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
+
     private static _tryMemCache(
         ctx: IContext,
         path: string,
         status: IResInfo,
         next: (func: SandBox | string) => void
     ): void {
+
         const key = this._getCacheMape(path);
-        const cache = _tw.cache[key];
+        const cache = this._tw.get(key);
+
         if (cache) return process.nextTick(() => next(cache));
+
         return _fileInfo.exists(path, (exists: boolean, url: string): void => {
             if (!exists) return ctx.next(404);
             return _fs.readFile(url, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
                 return ctx.handleError(err, (): void => {
                     return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
                         return ctx.handleError(result.err, () => {
-                            _tw.cache[key] = result.sandBox || result.str;
-                            return next(_tw.cache[key]);
+                            const ox = result.sandBox || result.str;
+
+                            this._tw.set(key, ox);
+                            return next(ox);
                         });
                     });
                 })
             });
         });
     }
+
     public static tryMemCache(ctx: IContext, path: string, status: IResInfo): void {
         return this._tryMemCache(ctx, path, status, (func: SandBox | string): void => {
             if (typeof (func) === "function") {
@@ -611,6 +628,7 @@ class TemplateLink {
             return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
         });
     }
+
     private static _tryFileCacheOrLive(
         ctx: IContext,
         cacheKey: string,
@@ -626,10 +644,10 @@ class TemplateLink {
                         return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
                             return ctx.handleError(result.err, () => {
                                 if (useFullOptimization) {
-                                    _tw.cache[cacheKey] = {
+                                    this._tw.set(cacheKey, {
                                         data: result.str,
                                         isScriptTemplate: result.isScript
-                                    };
+                                    });
                                 }
                                 return _fs.writeFile(cachePath, result.str, (werr: NodeJS.ErrnoException | null) => {
                                     return ctx.handleError(werr, () => {
@@ -645,9 +663,9 @@ class TemplateLink {
                 return ctx.handleError(err, (): void => {
                     const isScript: boolean = TemplateCore.isScriptTemplate(data);
                     if (useFullOptimization) {
-                        _tw.cache[cacheKey] = {
+                        this._tw.set(cacheKey, {
                             data, isScriptTemplate: isScript
-                        };
+                        });
                     }
                     if (isScript) {
                         return TemplateCore.compile(data, (result: CompilerResult): void => {
@@ -661,6 +679,7 @@ class TemplateLink {
             });
         });
     }
+
     private static _hadleCacheResponse(ctx: IContext, status: IResInfo, func: string | SandBox): void {
         if (typeof (func) === "function") {
             try {
@@ -671,23 +690,29 @@ class TemplateLink {
         }
         return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
     }
+
     public static tryFileCacheOrLive(
         ctx: IContext, path: string, status: IResInfo
     ): void {
+
         const cacheKey: string = this._getCacheMape(path);
+
         if (ctx.server.config.useFullOptimization) {
-            if (_tw.cache[cacheKey]) {
+            const val = this._tw.get(cacheKey);
+
+            if (val) {
                 ctx.res.setHeader('x-served-from', 'mem-cache');
-                if (_tw.cache[cacheKey].isScriptTemplate) {
-                    return TemplateCore.compile(_tw.cache[cacheKey].data, (result: CompilerResult): void => {
+                if (val.isScriptTemplate) {
+                    return TemplateCore.compile(val.data, (result: CompilerResult): void => {
                         return ctx.handleError(result.err, () => {
                             return this._hadleCacheResponse(ctx, status, result.sandBox || result.str);
                         });
                     }, ctx.server.createVimContext());
                 }
-                return this._hadleCacheResponse(ctx, status, _tw.cache[cacheKey].data);
+                return this._hadleCacheResponse(ctx, status, val.data);
             }
         }
+        
         return _fileInfo.exists(path, (exists: boolean, filePath: string) => {
             ctx.handleError(null, () => {
                 if (!exists) return ctx.next(404);
@@ -696,6 +721,7 @@ class TemplateLink {
         });
     }
 }
+
 export class Template {
     public static parse(ctx: IContext, path: string, status?: IResInfo): void {
         if (!status) status = HttpStatus.getResInfo(path, 200);

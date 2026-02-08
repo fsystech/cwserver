@@ -23,7 +23,7 @@
 import './app-global';
 import { resolve } from 'node:path';
 import * as _zlib from 'node:zlib';
-import { createServer, Server } from 'node:http';
+import { createServer as createHttp1Server, Server } from 'node:http';
 import { EventEmitter } from 'node:events';
 import {
     getRouteInfo, getRouteMatcher,
@@ -570,5 +570,5 @@ export function App(useRequestBegain: boolean = true): IApplication {
  * @returns {Server} Returns an instance of Node.js HTTP Server.
  */
 function _createServer(next: (req: any, res: any) => void): Server {
-    return createServer(next);
+    return createHttp1Server(next);
 }

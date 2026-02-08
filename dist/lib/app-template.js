@@ -68,11 +68,8 @@ const file_info_1 = require("./file-info");
 const app_template_ctx_1 = require("./app-template-ctx");
 const _isWin = (0, node_os_1.platform)() === "win32";
 function templateNext(ctx, next, isCompressed) {
-    throw new Error("Method not implemented.");
+    throw new Error("Function not implemented.");
 }
-const _tw = {
-    cache: {}
-};
 class ParserInfo {
     constructor() {
         this.line = "";
@@ -549,7 +546,7 @@ class TemplateLink {
     }
     static _tryMemCache(ctx, path, status, next) {
         const key = this._getCacheMape(path);
-        const cache = _tw.cache[key];
+        const cache = this._tw.get(key);
         if (cache)
             return process.nextTick(() => next(cache));
         return _fileInfo.exists(path, (exists, url) => {
@@ -559,8 +556,9 @@ class TemplateLink {
                 return ctx.handleError(err, () => {
                     return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
                         return ctx.handleError(result.err, () => {
-                            _tw.cache[key] = result.sandBox || result.str;
-                            return next(_tw.cache[key]);
+                            const ox = result.sandBox || result.str;
+                            this._tw.set(key, ox);
+                            return next(ox);
                         });
                     });
                 });
@@ -585,10 +583,10 @@ class TemplateLink {
                         return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
                             return ctx.handleError(result.err, () => {
                                 if (useFullOptimization) {
-                                    _tw.cache[cacheKey] = {
+                                    this._tw.set(cacheKey, {
                                         data: result.str,
                                         isScriptTemplate: result.isScript
-                                    };
+                                    });
                                 }
                                 return _fs.writeFile(cachePath, result.str, (werr) => {
                                     return ctx.handleError(werr, () => {
@@ -604,9 +602,9 @@ class TemplateLink {
                 return ctx.handleError(err, () => {
                     const isScript = TemplateCore.isScriptTemplate(data);
                     if (useFullOptimization) {
-                        _tw.cache[cacheKey] = {
+                        this._tw.set(cacheKey, {
                             data, isScriptTemplate: isScript
-                        };
+                        });
                     }
                     if (isScript) {
                         return TemplateCore.compile(data, (result) => {
@@ -634,16 +632,17 @@ class TemplateLink {
     static tryFileCacheOrLive(ctx, path, status) {
         const cacheKey = this._getCacheMape(path);
         if (ctx.server.config.useFullOptimization) {
-            if (_tw.cache[cacheKey]) {
+            const val = this._tw.get(cacheKey);
+            if (val) {
                 ctx.res.setHeader('x-served-from', 'mem-cache');
-                if (_tw.cache[cacheKey].isScriptTemplate) {
-                    return TemplateCore.compile(_tw.cache[cacheKey].data, (result) => {
+                if (val.isScriptTemplate) {
+                    return TemplateCore.compile(val.data, (result) => {
                         return ctx.handleError(result.err, () => {
                             return this._hadleCacheResponse(ctx, status, result.sandBox || result.str);
                         });
                     }, ctx.server.createVimContext());
                 }
-                return this._hadleCacheResponse(ctx, status, _tw.cache[cacheKey].data);
+                return this._hadleCacheResponse(ctx, status, val.data);
             }
         }
         return _fileInfo.exists(path, (exists, filePath) => {
@@ -655,6 +654,7 @@ class TemplateLink {
         });
     }
 }
+TemplateLink._tw = new Map();
 class Template {
     static parse(ctx, path, status) {
         if (!status)

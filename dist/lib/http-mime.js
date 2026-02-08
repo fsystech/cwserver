@@ -69,7 +69,6 @@ const web_streamer_1 = require("./web-streamer");
 const encryption_1 = require("./encryption");
 const app_util_1 = require("./app-util");
 const file_info_1 = require("./file-info");
-const _mamCache = {};
 // "exe", "zip", "doc", "docx", "pdf", "ppt", "pptx", "gz"
 const TaskDeff = [
     { cache: false, ext: "exe", gzip: false },
@@ -91,7 +90,6 @@ function createGzip() {
 class MimeHandler {
     static getCachePath(ctx) {
         const path = _path.join(ctx.server.config.staticFile.tempPath, encryption_1.Encryption.toMd5(ctx.path));
-        // const path: string = `${ctx.server.config.staticFile.tempPath}\\${Encryption.toMd5(ctx.path)}`;
         return _path.resolve(`${path}.${ctx.extension}.cache`);
     }
     static _sendFromMemCache(ctx, mimeType, dataInfo) {
@@ -125,14 +123,14 @@ class MimeHandler {
         return ctx.res.end(dataInfo.gizipData), ctx.next(200);
     }
     static _holdCache(cachePath, lastChangeTime, size) {
-        if (_mamCache[cachePath])
+        if (this._mamCache.has(cachePath))
             return;
         setImmediate(() => {
-            _mamCache[cachePath] = {
+            this._mamCache.set(cachePath, {
                 lastChangeTime,
                 cfileSize: size,
                 gizipData: _fs.readFileSync(cachePath)
-            };
+            });
         });
     }
     static servedFromServerFileCache(ctx, absPath, mimeType, fstat, cachePath) {
@@ -302,8 +300,8 @@ class MimeHandler {
         const cachePath = ctx.server.config.staticFile.fileCache ? this.getCachePath(ctx) : undefined;
         const useFullOptimization = ctx.server.config.useFullOptimization;
         if (cachePath) {
-            if (useFullOptimization && _mamCache[cachePath]) {
-                return this._sendFromMemCache(ctx, mimeType, _mamCache[cachePath]);
+            if (useFullOptimization && this._mamCache.has(cachePath)) {
+                return this._sendFromMemCache(ctx, mimeType, this._mamCache.get(cachePath));
             }
         }
         const absPath = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
@@ -316,6 +314,7 @@ class MimeHandler {
         });
     }
 }
+MimeHandler._mamCache = new Map();
 MimeHandler._fileInfo = new file_info_1.FileInfoCacheHandler();
 class HttpMimeHandler {
     getMimeType(extension) {
