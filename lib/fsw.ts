@@ -25,6 +25,8 @@ import * as _path from 'node:path';
 import type { PathLike, RmOptions, NoParamCallback } from 'node:fs';
 import { ErrorHandler } from './app-static';
 
+const _fsp = _fs.promises;
+
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
 
 function _fsRmdir(path: PathLike, options: RmOptions, callback: NoParamCallback) {
@@ -36,52 +38,72 @@ function _fsRmdir(path: PathLike, options: RmOptions, callback: NoParamCallback)
     return _fs.rmdir(path, callback);
 }
 
+export async function statAsync(path: string): Promise<_fs.Stats> {
+    return await _fsp.stat(path);
+}
+
 export function stat(
     path: string,
-    next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void
+    next: (err?: NodeJS.ErrnoException, stat?: _fs.Stats) => void
 ): void {
-    return _fs.stat(path, (err: NodeJS.ErrnoException | null, stats: _fs.Stats) => {
-        if (err) return next(err);
-        return next(null, stats);
-    });
+    statAsync(path).then(rs => next(null, rs)).catch(ex => next(ex));
 }
+
 function isSameDrive(src: string, dest: string): boolean {
     const aroot: string = _path.parse(src).root;
     const broot: string = _path.parse(dest).root;
     return aroot.substring(0, aroot.indexOf(":")) === broot.substring(0, broot.indexOf(":"));
 }
+
+/** Move file async */
+export async function moveFileAsync(
+    src: string, dest: string, force: boolean = false
+): Promise<boolean> {
+
+    if (force !== true && isSameDrive(src, dest)) {
+        return await _fsp.rename(src, dest), true;
+    }
+
+    await _fsp.copyFile(src, dest);
+    await _fsp.unlink(src);
+
+    return true;
+}
+
 export function moveFile(
     src: string, dest: string,
-    next: (err: NodeJS.ErrnoException | null) => void,
+    next: (err?: NodeJS.ErrnoException) => void,
     force?: boolean
 ): void {
-    if (force !== true && isSameDrive(src, dest)) {
-        return _fs.rename(src, dest, (err: NodeJS.ErrnoException | null): void => {
-            return next(err);
-        });
-    }
-    return _fs.copyFile(src, dest, (err: NodeJS.ErrnoException | null): void => {
-        if (err) return next(err);
-        return _fs.unlink(src, (uerr: NodeJS.ErrnoException | null): void => {
-            return next(uerr);
-        });
-    });
+
+    moveFileAsync(src, dest, force).then(
+        () => next()
+    ).catch((ex) => next(ex));
+
 }
+
+export async function compareFileAsync(a: string, b: string): Promise<boolean> {
+
+    const [astat, bstat] = await Promise.all([
+        _fsp.stat(a),
+        _fsp.stat(b)
+    ]);
+
+    return astat.mtime.getTime() > bstat.mtime.getTime();
+}
+
 /** compareFile a stat.mtime > b stat.mtime */
 export function compareFile(
     a: string, b: string,
-    next: (err: NodeJS.ErrnoException | null, changed: boolean) => void,
+    next: (err?: NodeJS.ErrnoException, changed?: boolean) => void,
     errHandler: ErrorHandler
 ): void {
-    return _fs.stat(a, (err: NodeJS.ErrnoException | null, astat: _fs.Stats) => {
-        return errHandler(err, () => {
-            return _fs.stat(b, (serr: NodeJS.ErrnoException | null, bstat: _fs.Stats) => {
-                return errHandler(serr, () => {
-                    return next(null, astat.mtime.getTime() > bstat.mtime.getTime());
-                });
-            });
-        });
-    });
+
+    compareFileAsync(a, b).then(
+        r => errHandler(null, () => next(null, r))
+    ).catch(
+        ex => errHandler(ex, () => next(ex))
+    );
 }
 /** compareFileSync a stat.mtime > b stat.mtime */
 export function compareFileSync(a: string, b: string): boolean {
@@ -90,103 +112,160 @@ export function compareFileSync(a: string, b: string): boolean {
     if (astat.mtime.getTime() > bstat.mtime.getTime()) return true;
     return false;
 }
+
 export function isExists(
     path: string,
     next: (exists: boolean, url: string) => void
 ): void {
-    const url = _path.resolve(path);
-    return _fs.stat(url, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
-        return next(err ? false : true, url);
+
+    isExistsAsync(path).then(rs => {
+        return next(rs.exists, rs.url)
     });
 }
-export function isExistsAsync(path: string): Promise<{ exists: boolean, url: string }> {
+
+export async function isExistsAsync(path: string): Promise<{ exists: boolean, url: string }> {
+
     const url = _path.resolve(path);
-    return new Promise((resolve) => {
-        _fs.stat(url, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
-            return resolve({ exists: err ? false : true, url });
-        })
-    })
+
+    try {
+        await _fsp.stat(url);
+        return { exists: true, url }
+
+    } catch (ex) {
+        return { exists: false, url }
+    }
 }
+
+export async function readJsonAsync<T>(
+    absPath: string
+) {
+
+    const data: Buffer = await _fsp.readFile(absPath);
+
+    return JSON.parse(
+        data.toString("utf8").replace(/^\uFEFF/, '')
+    );
+}
+
 export function readJson<T>(
     absPath: string,
-    next: (err: NodeJS.ErrnoException | null, json: NodeJS.Dict<T> | void) => void,
+    next: (err?: NodeJS.ErrnoException, json?: NodeJS.Dict<T>) => void,
     errHandler: ErrorHandler
 ): void {
-    return _fs.readFile(absPath, (err: NodeJS.ErrnoException | null, data: Buffer) => {
-        return errHandler(err, () => {
-            try {
-                return next(null, JSON.parse(data.toString("utf8").replace(/^\uFEFF/, '')));
-            } catch (e: any) {
-                return next(e);
-            }
-        });
-    });
+
+    readJsonAsync(absPath).then(rs => {
+        errHandler(null, () => next(null, rs));
+    }).catch(ex => errHandler(ex, () => next(ex)));
 }
-export function readJsonSync<T>(absPath: string): NodeJS.Dict<T> | void {
-    const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
+
+export function readJsonSync<T>(absPath: string): NodeJS.Dict<T> {
+
     try {
+
+        const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(
+            /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, ""
+        ).replace(/^\s*$(?:\r\n?|\n)/gm, "");
+
         return JSON.parse(jsonstr);
-    } catch (e) {
-        return void 0;
+
+    } catch {
+        return null;
     }
 }
-function mkdirCheckAndCreate(
-    errHandler: ErrorHandler,
-    fnext: (done: boolean) => void,
-    path?: string
-) {
-    if (!path) return process.nextTick(() => fnext(true));
-    return _fs.stat(path, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
-        if (!err) return fnext(false);
-        return _fs.mkdir(path, (merr: NodeJS.ErrnoException | null): void => {
-            return errHandler(merr, () => {
-                fnext(false);
-            });
-        });
-    });
+
+async function mkdirCheckAndCreateAsync(path: string) {
+    if (!path)
+        return false;
+
+    try {
+        await _fsp.stat(path);
+        return true;
+    } catch {
+        try {
+            await _fsp.mkdir(path);
+            return true;
+        } catch { }
+    }
+
+    return false;
 }
-export function mkdir(
+
+export async function mkdirAsyncx(
     rootDir: string,
-    targetDir: string,
-    next: (err: NodeJS.ErrnoException | null) => void,
-    errHandler: ErrorHandler
-): void {
-    if (rootDir.length === 0) {
-        return process.nextTick(() => next(new Error("Argument missing...")));
+    targetDir?: string
+): Promise<void> {
+
+    if (!rootDir || rootDir.length === 0) {
+        throw new Error("Argument missing...");
     }
+
     let fullPath: string = "";
     let sep: string = "";
+
     if (targetDir && targetDir.length > 0) {
-        if (targetDir.charAt(0) === '.') return next(new Error("No need to defined start point...."));
+
+        if (targetDir.charAt(0) === '.')
+            new Error("No need to defined start point....");
+
         fullPath = _path.join(rootDir, targetDir);
         sep = "/";
+
     } else {
+
         fullPath = _path.resolve(rootDir);
         // so we've to start form drive:\
         targetDir = fullPath;
         sep = _path.sep;
         rootDir = _path.isAbsolute(targetDir) ? sep : '';
+
     }
-    return _fs.stat(fullPath, (err: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
-        if (!err) {
-            return next(stats.isDirectory() ? null : new Error("Invalid path found..."));
-        }
-        if (_path.parse(fullPath).ext) return next(new Error("Directory should be end without extension...."));
-        const tobeCreate: string[] = [];
-        targetDir.split(sep).reduce((parentDir: string, childDir: string): string => {
-            const curDir: string = _path.resolve(parentDir, childDir);
-            tobeCreate.push(curDir);
-            return curDir;
-        }, rootDir);
-        function doNext(done: boolean): void {
-            if (done) {
-                return next(null);
-            }
-            return mkdirCheckAndCreate(errHandler, doNext, tobeCreate.shift());
-        }
-        return doNext(false);
-    });
+
+    let rootState: _fs.Stats = null;
+
+    try {
+        rootState = await _fsp.stat(fullPath);
+
+        if (rootState.isDirectory())
+            return;
+
+    } catch { }
+
+    if (rootState !== null) {
+        throw new Error("Invalid path found...");
+    }
+
+    if (_path.parse(fullPath).ext)
+        throw new Error("Directory should be end without extension....");
+
+    const tobeCreate: string[] = [];
+    targetDir.split(sep).reduce((parentDir: string, childDir: string): string => {
+        const curDir: string = _path.resolve(parentDir, childDir);
+        tobeCreate.push(curDir);
+        return curDir;
+    }, rootDir);
+
+    for (const part of tobeCreate) {
+        await mkdirCheckAndCreateAsync(part);
+    }
+
 }
+
+export function mkdir(
+    rootDir: string,
+    targetDir: string,
+    next: (err?: NodeJS.ErrnoException) => void,
+    errHandler: ErrorHandler
+): void {
+
+    mkdirAsyncx(
+        rootDir, targetDir
+    ).then(
+        () => errHandler(null, () => next(null))
+    ).catch(
+        ex => errHandler(ex, () => next(ex))
+    );
+}
+
 export function mkdirSync(rootDir: string, targetDir?: string): boolean {
     if (rootDir.length === 0) return false;
     let fullPath: string = "";
@@ -216,6 +295,7 @@ export function mkdirSync(rootDir: string, targetDir?: string): boolean {
     }, rootDir);
     return _fs.existsSync(fullPath);
 }
+
 export function rmdir(
     path: string,
     next: (err: NodeJS.ErrnoException | null) => void,
@@ -248,6 +328,7 @@ export function rmdir(
         });
     });
 }
+
 export function rmdirSync(path: string): void {
     if (!_fs.existsSync(path)) return;
     const stats: _fs.Stats = _fs.statSync(path);
@@ -262,6 +343,7 @@ export function rmdirSync(path: string): void {
         _fs.unlinkSync(path);
     }
 }
+
 export function unlink(
     path: string,
     next: (err: NodeJS.ErrnoException | null) => void
@@ -304,6 +386,7 @@ export function copyFileSync(src: string, dest: string): void {
         _fs.unlinkSync(dest);
     _fs.copyFileSync(src, dest);
 }
+
 export function copyDir(
     src: string,
     dest: string,
@@ -339,6 +422,7 @@ export function copyDir(
         });
     });
 }
+
 export function copyDirSync(src: string, dest: string): void {
     if (!_fs.existsSync(src)) return;
     const stats: _fs.Stats = _fs.statSync(src);
@@ -355,16 +439,13 @@ export function copyDirSync(src: string, dest: string): void {
         _fs.copyFileSync(src, dest);
     }
 }
+
 /** Async */
 /** opendir async */
 export async function opendirAsync(absolute: string): Promise<_fs.Dir> {
-    return new Promise((resolve, reject) => {
-        return _fs.opendir(absolute, (err, dir) => {
-            if (err) return reject(err);
-            return resolve(dir);
-        });
-    })
+    return await _fsp.opendir(absolute);
 }
+
 /** Get all file(s) async from given directory */
 export async function* getFilesAsync(dir: string, recursive?: boolean): AsyncGenerator<string> {
     for await (const d of await opendirAsync(dir)) {
@@ -376,47 +457,29 @@ export async function* getFilesAsync(dir: string, recursive?: boolean): AsyncGen
         else if (d.isFile()) yield entry;
     }
 }
+
 /** unlink Async */
 export async function unlinkAsync(absolute: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        return _fs.unlink(absolute, (err) => {
-            if (err) return reject(err);
-            return resolve();
-        });
-    });
+    await _fsp.unlink(absolute);
 }
+
 /** WriteFile Async */
 export async function writeFileAsync(absolute: string, data: string | Buffer): Promise<void> {
-    return new Promise(async (resolve, reject) => {
-        _fs.writeFile(absolute, data, { flag: 'w' }, (err) => {
-            if (err) return reject(err);
-            return resolve();
-        });
-    });
+    await _fsp.writeFile(absolute, data, { flag: 'w' });
 }
 
 /** Make Dir Async */
 export async function mkdirAsync(errHandler: ErrorHandler, rootDir: string, targetDir: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-        mkdir(rootDir, targetDir, (err) => {
-            return resolve(true);
-        }, errHandler);
-    });
+    try {
+        await mkdirAsyncx(rootDir, targetDir);
+    } catch (ex) {
+        errHandler(
+            ex as any, () => { }
+        )
+    }
 }
+
 /** Check File or Dir is exists */
 export async function existsAsync(path: string): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-        return isExists(path, (exists) => {
-            resolve(exists);
-        });
-    });
-}
-/** Move file async */
-export async function moveFileAsync(src: string, dest: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-        return moveFile(src, dest, (err) => {
-            if (err) return reject(err);
-            resolve(true);
-        }, true);
-    });
+    return (await isExistsAsync(path)).exists;
 }

@@ -31,6 +31,7 @@ import * as fsw from '../lib/fsw';
 import { HttpStatus } from "../lib/http-status";
 import * as cwserver from '../index';
 import { getAppDir } from '../lib/app-util';
+// import FormData from "form-data";
 import { IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription } from '../lib/file-info';
 import { Session, toNumber, toResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
 import {
@@ -141,7 +142,7 @@ describe("cwserver-core", () => {
     });
     it("initilize server throw error (mismatch between given appRoot and config.hostInfo.root)", (done: Mocha.Done): void => {
         const root: string = path.resolve(`${appRoot}/ewww`); // path.resolve( appRoot, "/ewww" );
-        fsw.mkdir(appRoot, "/ewww/config", (err: NodeJS.ErrnoException | null): void => {
+        fsw.mkdir(appRoot, "/ewww/config", (err?: NodeJS.ErrnoException): void => {
             expect(err).not.toBeInstanceOf(Error);
             expect(fs.existsSync(root)).toEqual(true);
             const filePath: string = path.resolve(root + "/config/app.config.json");
@@ -1411,7 +1412,79 @@ describe("cwserver-post", () => {
             });
     });
 });
+
+
 describe("cwserver-multipart-body-parser", () => {
+
+    it('multipart-urlencoded', function (done: Mocha.Done) {
+        const req: request.SuperAgentRequest = getAgent()
+            .post(`http://localhost:${appUtility.port}/form-data`);
+        req.field('token', "9256");
+
+        req.end((err, res) => {
+            expect(err).not.toBeInstanceOf(Error);
+            expect(res.status).toBe(200);
+            toBeApplicationJson(res.header["content-type"]);
+            done();
+        });
+    });
+
+    it('multipart-invalid-formdata', function (done: Mocha.Done) {
+        const form = new FormData();
+
+        form.append("username", "fsys");
+        form.append("age", "41");
+
+        const res = fetch(
+            `http://localhost:${appUtility.port}/form-data`,
+            {
+                method: "POST",
+                body: form,
+                headers: {
+                    'content-type': 'multipart/form-data'
+                }
+            }
+        );
+
+        res.then(r => {
+            assert(!r.ok, "Invalid Form Data");
+
+            r.text().then(o => {
+                done();
+            });
+
+        }).catch(ex => {
+            throw ex;
+        });
+    });
+
+    it('multipart-formdata', function (done: Mocha.Done) {
+        const form = new FormData();
+
+        form.append("username", "fsys");
+        form.append("age", "41");
+
+        const res = fetch(
+            `http://localhost:${appUtility.port}/form-data`,
+            {
+                method: "POST",
+                body: form
+            }
+        );
+
+        res.then(r => {
+            assert(r.ok, "Invalid Form Data");
+
+            r.json().then(o => {
+                expect(o).toBeInstanceOf(Object);
+                done();
+            });
+
+        }).catch(ex => {
+            throw ex;
+        });
+    });
+
     it('multipart-file-skip-test', function (done: Mocha.Done) {
         this.timeout(5000);
         const req: request.SuperAgentRequest = getAgent()
@@ -2251,12 +2324,12 @@ describe("cwserver-utility", () => {
             buff.dispose();
         })();
         (() => {
-            fsw.moveFile(`${logDir}/temp/nofile.lg`, "./", (err: NodeJS.ErrnoException | null) => {
+            fsw.moveFile(`${logDir}/temp/nofile.lg`, "./", (err?: NodeJS.ErrnoException) => {
                 expect(err).toBeInstanceOf(Error);
                 const leargeFile: string = appUtility.server.mapPath("/web/large.bin");
                 fsw.stat(leargeFile, (serr, stat) => {
                     expect(serr).not.toBeInstanceOf(Error);
-                    fsw.moveFile(leargeFile, `${leargeFile}.not`, (errz: NodeJS.ErrnoException | null) => {
+                    fsw.moveFile(leargeFile, `${leargeFile}.not`, (errz?: NodeJS.ErrnoException) => {
                         fsw.stat(leargeFile, (snerr, stat) => {
                             expect(snerr).toBeInstanceOf(Error);
                             done();
@@ -2839,27 +2912,27 @@ describe("cwserver-fsw", () => {
         const filePath: string = path.resolve(root + "/config/app.config.json");
         fs.writeFile(filePath, JSON.stringify({ name: "FSys Tech Ltd." }), (err: NodeJS.ErrnoException | null): void => {
             assert(err === null, "test-fsw->fs.writeFile");
-            fsw.readJson(filePath, (jerr: NodeJS.ErrnoException | null, json: { [id: string]: any } | void) => {
+            fsw.readJson(filePath, (jerr?: NodeJS.ErrnoException, json?: { [id: string]: any } | void) => {
                 assert(jerr === null, "test-fsw->fsw.readJson");
                 expect(json).toBeInstanceOf(Object);
                 fs.writeFileSync(filePath, "INVALID_JSON");
-                fsw.readJson(filePath, (jnerr: NodeJS.ErrnoException | null, njson: { [id: string]: any } | void) => {
+                fsw.readJson(filePath, (jnerr?: NodeJS.ErrnoException, njson?: { [id: string]: any } | void) => {
                     assert(jnerr !== null, "test-fsw->fsw.readJson-jnerr");
                     expect(njson).toBeUndefined();
-                    fsw.mkdir("", "", (derr: NodeJS.ErrnoException | null) => {
+                    fsw.mkdir("", "", (derr?: NodeJS.ErrnoException) => {
                         expect(derr).toBeInstanceOf(Error);
                     }, handleError);
-                    fsw.mkdir(root, ".", (derr: NodeJS.ErrnoException | null) => {
+                    fsw.mkdir(root, ".", (derr?: NodeJS.ErrnoException) => {
                         expect(derr).toBeInstanceOf(Error);
                     }, handleError);
-                    fsw.mkdir(filePath, "", (mderr: NodeJS.ErrnoException | null) => {
+                    fsw.mkdir(filePath, "", (mderr?: NodeJS.ErrnoException) => {
                         expect(mderr).toBeInstanceOf(Error);
                         fsw.copyDir(path.join(root, "/noton/"), path.resolve(`${appRoot}/cwww`), (crderr: NodeJS.ErrnoException | null) => {
                             expect(crderr).toBeInstanceOf(Error);
                         }, handleError);
                         fsw.copyDir(root, path.resolve(`${appRoot}/cwww`), (ncrderr: NodeJS.ErrnoException | null) => {
                             expect(ncrderr).not.toBeInstanceOf(Error);
-                            fsw.mkdir(root, "/my.json", (rderr: NodeJS.ErrnoException | null) => {
+                            fsw.mkdir(root, "/my.json", (rderr?: NodeJS.ErrnoException) => {
                                 expect(rderr).toBeInstanceOf(Error);
                                 fsw.copyFile(filePath, root, (crderr: NodeJS.ErrnoException | null) => {
                                     expect(crderr).toBeInstanceOf(Error);

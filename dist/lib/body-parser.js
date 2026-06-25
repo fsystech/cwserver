@@ -51,6 +51,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -173,21 +182,15 @@ class BodyParser {
             return pf.saveAsSync(_path.resolve(`${outdir}/${app_util_1.Util.guid()}_${pf.getFileName()}`));
         });
     }
+    saveAsAsync(outdir) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.validate(true);
+            yield fsw.mkdirAsyncx(outdir);
+            yield Promise.all(this._parser.files.map(pf => pf.saveAsAsync(_path.resolve(`${outdir}/${app_util_1.Util.guid()}_${pf.getFileName()}`))));
+        });
+    }
     saveAs(outdir, next, errorHandler) {
-        this.validate(true);
-        return fsw.mkdir(outdir, "", (err) => {
-            return errorHandler(err, () => {
-                return this.getFiles((file, done) => {
-                    if (!file || !done)
-                        return next(null);
-                    return file.saveAs(_path.resolve(`${outdir}/${app_util_1.Util.guid()}_${file.getFileName()}`), (serr) => {
-                        return errorHandler(serr, () => {
-                            return done();
-                        });
-                    });
-                });
-            });
-        }, errorHandler);
+        this.saveAsAsync(outdir).then(() => next(null)).catch(ex => errorHandler(ex, next));
     }
     getUploadFileInfo() {
         this.validate(true);
@@ -315,16 +318,21 @@ class BodyParser {
             return;
         }
         const match = RE_BOUNDARY.exec(this._contentType);
-        if (match) {
-            this._multipartParser = new dicer_1.Dicer({ boundary: match[1] || match[2] });
-            this._multipartParser.on("part", this.onPart(onReadEnd));
-            this._multipartParser.on("finish", () => {
-                this._isReadEnd = true;
-                return this.tryFinish(onReadEnd);
+        if (!match) {
+            return process.nextTick(() => {
+                onReadEnd(new Error(`Invalid or incomplete Content-Type header: ${this._contentType}`));
             });
-            this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
-            this._req.pipe(this._multipartParser);
         }
+        this._multipartParser = new dicer_1.Dicer({
+            boundary: match[1] || match[2]
+        });
+        this._multipartParser.on("part", this.onPart(onReadEnd));
+        this._multipartParser.on("finish", () => {
+            this._isReadEnd = true;
+            return this.tryFinish(onReadEnd);
+        });
+        this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
+        this._req.pipe(this._multipartParser);
     }
     readData(onReadEnd) {
         return this.parse(onReadEnd);

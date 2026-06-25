@@ -65,7 +65,8 @@ declare class BodyParser implements IBodyParser {
     isValidRequest(): boolean;
     private validate;
     saveAsSync(outdir: string): void;
-    saveAs(outdir: string, next: (err: Error | NodeJS.ErrnoException | null) => void, errorHandler: ErrorHandler): void;
+    saveAsAsync(outdir: string): Promise<void>;
+    saveAs(outdir: string, next: (err?: Error | NodeJS.ErrnoException) => void, errorHandler: ErrorHandler): void;
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync(next: (file: IPostedFileInfo) => void): void;
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;

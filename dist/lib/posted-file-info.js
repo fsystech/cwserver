@@ -51,12 +51,22 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostedFileInfo = void 0;
 // 10:11 PM 2/7/2026
 // by rajib chy
 const _fs = __importStar(require("node:fs"));
 const fsw = __importStar(require("./fsw"));
+const _fsp = _fs.promises;
 class PostedFileInfo {
     constructor(disposition, fname, fileName, fcontentType, tempFile) {
         this._fileInfo = {
@@ -94,30 +104,50 @@ class PostedFileInfo {
         return true;
     }
     readSync() {
-        if (!this._tempFile || this._isMoved)
-            throw new Error("This file already moved or not created yet.");
+        if (!this.validate(this._tempFile))
+            return null;
         return _fs.readFileSync(this._tempFile);
     }
     read(next) {
-        if (this.validate(this._tempFile))
-            return _fs.readFile(this._tempFile, next);
+        if (!this.validate(this._tempFile))
+            return;
+        return _fs.readFile(this._tempFile, next);
+    }
+    readAsync() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.validate(this._tempFile))
+                return null;
+            return yield _fsp.readFile(this._tempFile);
+        });
     }
     saveAsSync(absPath) {
-        if (this.validate(this._tempFile)) {
-            _fs.copyFileSync(this._tempFile, absPath);
-            _fs.unlinkSync(this._tempFile);
+        if (!this.validate(this._tempFile))
+            return;
+        _fs.copyFileSync(this._tempFile, absPath);
+        _fs.unlinkSync(this._tempFile);
+        delete this._tempFile;
+        this._isMoved = true;
+    }
+    saveAsAsync(absPath) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.validate(this._tempFile))
+                return;
+            try {
+                yield fsw.moveFileAsync(this._tempFile, absPath);
+            }
+            catch (_a) { }
             delete this._tempFile;
             this._isMoved = true;
-        }
+        });
     }
     saveAs(absPath, next) {
-        if (this.validate(this._tempFile)) {
-            fsw.moveFile(this._tempFile, absPath, (err) => {
-                delete this._tempFile;
-                this._isMoved = true;
-                return next(err);
-            });
-        }
+        if (!this.validate(this._tempFile))
+            return;
+        fsw.moveFile(this._tempFile, absPath, (err) => {
+            delete this._tempFile;
+            this._isMoved = true;
+            return next(err);
+        });
     }
     dispose() {
         if (this._isDisposed)

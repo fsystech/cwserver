@@ -1,8 +1,13 @@
-import { Writable as WritableStream, Readable as ReadableStream } from "stream";
+import Stream, { Writable as WritableStream, Readable as ReadableStream } from "stream";
 export declare class PartStream extends ReadableStream {
     constructor(config: any);
     _read(n: number): void;
 }
+type DicerConfig = {
+    readonly partHwm?: number;
+    readonly boundary?: string;
+    readonly headerFirst?: boolean;
+} & Stream.WritableOptions;
 export declare class Dicer extends WritableStream {
     private _events;
     private _partOpts;
@@ -21,12 +26,13 @@ export declare class Dicer extends WritableStream {
     private _part;
     private _headerFirst;
     private _bparser;
-    constructor(cfg: any);
+    constructor(cfg: DicerConfig);
     emit(ev: string | symbol, ...args: any[]): boolean;
     _write(data: Buffer, encoding: string, cb: () => void): void;
     reset(): void;
     setBoundary(boundary: string): void;
-    _onInfo(isMatch: boolean, data: Buffer, start: number, end: number): void;
-    _ignore(): void;
-    _unpause(): void;
+    private _onInfo;
+    private _ignore;
+    private _unpause;
 }
+export {};

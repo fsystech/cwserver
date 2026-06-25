@@ -25,6 +25,8 @@ import * as _path from 'node:path';
 import * as fsw from './fsw';
 import type { IDispose } from './app-static';
 
+const _fsp = _fs.promises;
+
 export type FileInfo = {
     contentDisposition: string;
     name: string;
@@ -39,8 +41,10 @@ export interface IPostedFileInfo extends IDispose {
     getFileName(): string;
     getContentType(): string;
     saveAsSync(absPath: string): void;
+    saveAsAsync(absPath: string): Promise<void>;
     saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void;
     readSync(): Buffer;
+    readAsync(): Promise<Buffer>;
     read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
     getTempPath(): string | undefined;
     /** @deprecated since v2.0.3 - use `dispose` instead. */
@@ -101,42 +105,71 @@ export class PostedFileInfo implements IPostedFileInfo {
     }
 
     public readSync(): Buffer {
-        if (!this._tempFile || this._isMoved)
-            throw new Error("This file already moved or not created yet.");
+        if (!this.validate(this._tempFile))
+            return null;
+
         return _fs.readFileSync(this._tempFile);
     }
 
     public read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void {
-        if (this.validate(this._tempFile))
-            return _fs.readFile(this._tempFile, next);
+        if (!this.validate(this._tempFile))
+            return;
+
+        return _fs.readFile(this._tempFile, next);
+    }
+
+    public async readAsync(): Promise<Buffer> {
+        if (!this.validate(this._tempFile))
+            return null;
+
+        return await _fsp.readFile(this._tempFile)
     }
 
     public saveAsSync(absPath: string): void {
-        if (this.validate(this._tempFile)) {
-            _fs.copyFileSync(this._tempFile, absPath);
-            _fs.unlinkSync(this._tempFile);
-            delete this._tempFile;
-            this._isMoved = true;
-        }
+        if (!this.validate(this._tempFile))
+            return;
+
+        _fs.copyFileSync(this._tempFile, absPath);
+        _fs.unlinkSync(this._tempFile);
+        delete this._tempFile;
+        this._isMoved = true;
+    }
+
+    public async saveAsAsync(absPath: string): Promise<void> {
+        if (!this.validate(this._tempFile))
+            return;
+
+        try {
+            await fsw.moveFileAsync(this._tempFile, absPath);
+        } catch { }
+
+        delete this._tempFile;
+
+        this._isMoved = true;
     }
 
     public saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void {
-        if (this.validate(this._tempFile)) {
-            fsw.moveFile(this._tempFile, absPath, (err) => {
-                delete this._tempFile;
-                this._isMoved = true;
-                return next(err);
-            });
-        }
+        if (!this.validate(this._tempFile))
+            return;
+
+        fsw.moveFile(this._tempFile, absPath, (err) => {
+            delete this._tempFile;
+            this._isMoved = true;
+            return next(err);
+        });
     }
 
     public dispose(): void {
-        if (this._isDisposed) return;
+        if (this._isDisposed)
+            return;
+
         this._isDisposed = true;
+
         if (!this._isMoved && this._tempFile) {
             if (_fs.existsSync(this._tempFile))
                 _fs.unlinkSync(this._tempFile);
         }
+
         // @ts-ignore
         delete this._fileInfo;
         delete this._tempFile;

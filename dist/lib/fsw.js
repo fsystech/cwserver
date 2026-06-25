@@ -86,14 +86,19 @@ var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _ar
     function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.statAsync = statAsync;
 exports.stat = stat;
+exports.moveFileAsync = moveFileAsync;
 exports.moveFile = moveFile;
+exports.compareFileAsync = compareFileAsync;
 exports.compareFile = compareFile;
 exports.compareFileSync = compareFileSync;
 exports.isExists = isExists;
 exports.isExistsAsync = isExistsAsync;
+exports.readJsonAsync = readJsonAsync;
 exports.readJson = readJson;
 exports.readJsonSync = readJsonSync;
+exports.mkdirAsyncx = mkdirAsyncx;
 exports.mkdir = mkdir;
 exports.mkdirSync = mkdirSync;
 exports.rmdir = rmdir;
@@ -109,11 +114,11 @@ exports.unlinkAsync = unlinkAsync;
 exports.writeFileAsync = writeFileAsync;
 exports.mkdirAsync = mkdirAsync;
 exports.existsAsync = existsAsync;
-exports.moveFileAsync = moveFileAsync;
 // 5:17 PM 6/15/2020
 // by rajib chy
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
+const _fsp = _fs.promises;
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
 function _fsRmdir(path, options, callback) {
     if (typeof (_fs.rm) === "function") {
@@ -121,43 +126,45 @@ function _fsRmdir(path, options, callback) {
     }
     return _fs.rmdir(path, callback);
 }
-function stat(path, next) {
-    return _fs.stat(path, (err, stats) => {
-        if (err)
-            return next(err);
-        return next(null, stats);
+function statAsync(path) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield _fsp.stat(path);
     });
+}
+function stat(path, next) {
+    statAsync(path).then(rs => next(null, rs)).catch(ex => next(ex));
 }
 function isSameDrive(src, dest) {
     const aroot = _path.parse(src).root;
     const broot = _path.parse(dest).root;
     return aroot.substring(0, aroot.indexOf(":")) === broot.substring(0, broot.indexOf(":"));
 }
+/** Move file async */
+function moveFileAsync(src_1, dest_1) {
+    return __awaiter(this, arguments, void 0, function* (src, dest, force = false) {
+        if (force !== true && isSameDrive(src, dest)) {
+            return yield _fsp.rename(src, dest), true;
+        }
+        yield _fsp.copyFile(src, dest);
+        yield _fsp.unlink(src);
+        return true;
+    });
+}
 function moveFile(src, dest, next, force) {
-    if (force !== true && isSameDrive(src, dest)) {
-        return _fs.rename(src, dest, (err) => {
-            return next(err);
-        });
-    }
-    return _fs.copyFile(src, dest, (err) => {
-        if (err)
-            return next(err);
-        return _fs.unlink(src, (uerr) => {
-            return next(uerr);
-        });
+    moveFileAsync(src, dest, force).then(() => next()).catch((ex) => next(ex));
+}
+function compareFileAsync(a, b) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const [astat, bstat] = yield Promise.all([
+            _fsp.stat(a),
+            _fsp.stat(b)
+        ]);
+        return astat.mtime.getTime() > bstat.mtime.getTime();
     });
 }
 /** compareFile a stat.mtime > b stat.mtime */
 function compareFile(a, b, next, errHandler) {
-    return _fs.stat(a, (err, astat) => {
-        return errHandler(err, () => {
-            return _fs.stat(b, (serr, bstat) => {
-                return errHandler(serr, () => {
-                    return next(null, astat.mtime.getTime() > bstat.mtime.getTime());
-                });
-            });
-        });
-    });
+    compareFileAsync(a, b).then(r => errHandler(null, () => next(null, r))).catch(ex => errHandler(ex, () => next(ex)));
 }
 /** compareFileSync a stat.mtime > b stat.mtime */
 function compareFileSync(a, b) {
@@ -168,92 +175,105 @@ function compareFileSync(a, b) {
     return false;
 }
 function isExists(path, next) {
-    const url = _path.resolve(path);
-    return _fs.stat(url, (err, stats) => {
-        return next(err ? false : true, url);
+    isExistsAsync(path).then(rs => {
+        return next(rs.exists, rs.url);
     });
 }
 function isExistsAsync(path) {
-    const url = _path.resolve(path);
-    return new Promise((resolve) => {
-        _fs.stat(url, (err, stats) => {
-            return resolve({ exists: err ? false : true, url });
-        });
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = _path.resolve(path);
+        try {
+            yield _fsp.stat(url);
+            return { exists: true, url };
+        }
+        catch (ex) {
+            return { exists: false, url };
+        }
+    });
+}
+function readJsonAsync(absPath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const data = yield _fsp.readFile(absPath);
+        return JSON.parse(data.toString("utf8").replace(/^\uFEFF/, ''));
     });
 }
 function readJson(absPath, next, errHandler) {
-    return _fs.readFile(absPath, (err, data) => {
-        return errHandler(err, () => {
-            try {
-                return next(null, JSON.parse(data.toString("utf8").replace(/^\uFEFF/, '')));
-            }
-            catch (e) {
-                return next(e);
-            }
-        });
-    });
+    readJsonAsync(absPath).then(rs => {
+        errHandler(null, () => next(null, rs));
+    }).catch(ex => errHandler(ex, () => next(ex)));
 }
 function readJsonSync(absPath) {
-    const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
     try {
+        const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
         return JSON.parse(jsonstr);
     }
-    catch (e) {
-        return void 0;
+    catch (_a) {
+        return null;
     }
 }
-function mkdirCheckAndCreate(errHandler, fnext, path) {
-    if (!path)
-        return process.nextTick(() => fnext(true));
-    return _fs.stat(path, (err, stats) => {
-        if (!err)
-            return fnext(false);
-        return _fs.mkdir(path, (merr) => {
-            return errHandler(merr, () => {
-                fnext(false);
-            });
-        });
+function mkdirCheckAndCreateAsync(path) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!path)
+            return false;
+        try {
+            yield _fsp.stat(path);
+            return true;
+        }
+        catch (_a) {
+            try {
+                yield _fsp.mkdir(path);
+                return true;
+            }
+            catch (_b) { }
+        }
+        return false;
     });
 }
-function mkdir(rootDir, targetDir, next, errHandler) {
-    if (rootDir.length === 0) {
-        return process.nextTick(() => next(new Error("Argument missing...")));
-    }
-    let fullPath = "";
-    let sep = "";
-    if (targetDir && targetDir.length > 0) {
-        if (targetDir.charAt(0) === '.')
-            return next(new Error("No need to defined start point...."));
-        fullPath = _path.join(rootDir, targetDir);
-        sep = "/";
-    }
-    else {
-        fullPath = _path.resolve(rootDir);
-        // so we've to start form drive:\
-        targetDir = fullPath;
-        sep = _path.sep;
-        rootDir = _path.isAbsolute(targetDir) ? sep : '';
-    }
-    return _fs.stat(fullPath, (err, stats) => {
-        if (!err) {
-            return next(stats.isDirectory() ? null : new Error("Invalid path found..."));
+function mkdirAsyncx(rootDir, targetDir) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!rootDir || rootDir.length === 0) {
+            throw new Error("Argument missing...");
+        }
+        let fullPath = "";
+        let sep = "";
+        if (targetDir && targetDir.length > 0) {
+            if (targetDir.charAt(0) === '.')
+                new Error("No need to defined start point....");
+            fullPath = _path.join(rootDir, targetDir);
+            sep = "/";
+        }
+        else {
+            fullPath = _path.resolve(rootDir);
+            // so we've to start form drive:\
+            targetDir = fullPath;
+            sep = _path.sep;
+            rootDir = _path.isAbsolute(targetDir) ? sep : '';
+        }
+        let rootState = null;
+        try {
+            rootState = yield _fsp.stat(fullPath);
+            if (rootState.isDirectory())
+                return;
+        }
+        catch (_a) { }
+        if (rootState !== null) {
+            throw new Error("Invalid path found...");
         }
         if (_path.parse(fullPath).ext)
-            return next(new Error("Directory should be end without extension...."));
+            throw new Error("Directory should be end without extension....");
         const tobeCreate = [];
         targetDir.split(sep).reduce((parentDir, childDir) => {
             const curDir = _path.resolve(parentDir, childDir);
             tobeCreate.push(curDir);
             return curDir;
         }, rootDir);
-        function doNext(done) {
-            if (done) {
-                return next(null);
-            }
-            return mkdirCheckAndCreate(errHandler, doNext, tobeCreate.shift());
+        for (const part of tobeCreate) {
+            yield mkdirCheckAndCreateAsync(part);
         }
-        return doNext(false);
     });
+}
+function mkdir(rootDir, targetDir, next, errHandler) {
+    mkdirAsyncx(rootDir, targetDir).then(() => errHandler(null, () => next(null))).catch(ex => errHandler(ex, () => next(ex)));
 }
 function mkdirSync(rootDir, targetDir) {
     if (rootDir.length === 0)
@@ -418,13 +438,7 @@ function copyDirSync(src, dest) {
 /** opendir async */
 function opendirAsync(absolute) {
     return __awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve, reject) => {
-            return _fs.opendir(absolute, (err, dir) => {
-                if (err)
-                    return reject(err);
-                return resolve(dir);
-            });
-        });
+        return yield _fsp.opendir(absolute);
     });
 }
 /** Get all file(s) async from given directory */
@@ -457,57 +471,30 @@ function getFilesAsync(dir, recursive) {
 /** unlink Async */
 function unlinkAsync(absolute) {
     return __awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve, reject) => {
-            return _fs.unlink(absolute, (err) => {
-                if (err)
-                    return reject(err);
-                return resolve();
-            });
-        });
+        yield _fsp.unlink(absolute);
     });
 }
 /** WriteFile Async */
 function writeFileAsync(absolute, data) {
     return __awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-            _fs.writeFile(absolute, data, { flag: 'w' }, (err) => {
-                if (err)
-                    return reject(err);
-                return resolve();
-            });
-        }));
+        yield _fsp.writeFile(absolute, data, { flag: 'w' });
     });
 }
 /** Make Dir Async */
 function mkdirAsync(errHandler, rootDir, targetDir) {
     return __awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve, reject) => {
-            mkdir(rootDir, targetDir, (err) => {
-                return resolve(true);
-            }, errHandler);
-        });
+        try {
+            yield mkdirAsyncx(rootDir, targetDir);
+        }
+        catch (ex) {
+            errHandler(ex, () => { });
+        }
     });
 }
 /** Check File or Dir is exists */
 function existsAsync(path) {
     return __awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve, reject) => {
-            return isExists(path, (exists) => {
-                resolve(exists);
-            });
-        });
-    });
-}
-/** Move file async */
-function moveFileAsync(src, dest) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve, reject) => {
-            return moveFile(src, dest, (err) => {
-                if (err)
-                    return reject(err);
-                resolve(true);
-            }, true);
-        });
+        return (yield isExistsAsync(path)).exists;
     });
 }
 //# sourceMappingURL=fsw.js.map

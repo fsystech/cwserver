@@ -140,6 +140,7 @@ class BodyParser implements IBodyParser {
         this._isDisposed = false; this._part = []; this._maxBuffLength = MaxBuffLength;
         this._contentType = toString(req.get("content-type"));
         this._contentLength = toNumber(req.get("content-length"));
+
         if (this._contentType.indexOf(incomingContentType.MULTIPART) > -1) {
             this._contentTypeEnum = ContentType.MULTIPART;
         } else if (this._contentType.indexOf(incomingContentType.URL_ENCODE) > -1) {
@@ -151,6 +152,7 @@ class BodyParser implements IBodyParser {
         } else {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
+
         if (this._contentTypeEnum !== ContentType.UNKNOWN) {
             this._parser = new DataParser(tempDir || os.tmpdir());
             this._req = req;
@@ -158,8 +160,10 @@ class BodyParser implements IBodyParser {
             this._parser = Object.create(null);
             this._req = Object.create(null);
         }
+
         this._isReadEnd = false;
     }
+
     public setMaxBuffLength(length: number): IBodyParser {
         if (length > MaxBuffLength || length <= 0)
             throw new Error(`Max buff length should be between ${MaxBuffLength} and non zero`);
@@ -192,33 +196,41 @@ class BodyParser implements IBodyParser {
             return;
         }
     }
+
     public saveAsSync(outdir: string): void {
         this.validate(true);
+
         if (!fsw.mkdirSync(outdir))
             throw new Error(`Invalid outdir dir ${outdir}`);
+
         return this._parser.files.forEach(pf => {
             return pf.saveAsSync(_path.resolve(`${outdir}/${Util.guid()}_${pf.getFileName()}`));
         });
     }
+
+    public async saveAsAsync(outdir: string) {
+        this.validate(true);
+
+        await fsw.mkdirAsyncx(outdir);
+
+        await Promise.all(this._parser.files.map(
+            pf => pf.saveAsAsync(_path.resolve(`${outdir}/${Util.guid()}_${pf.getFileName()}`))
+        ));
+    }
+
     public saveAs(
         outdir: string,
-        next: (err: Error | NodeJS.ErrnoException | null) => void,
+        next: (err?: Error | NodeJS.ErrnoException) => void,
         errorHandler: ErrorHandler
     ): void {
-        this.validate(true);
-        return fsw.mkdir(outdir, "", (err: NodeJS.ErrnoException | null): void => {
-            return errorHandler(err, () => {
-                return this.getFiles((file?: IPostedFileInfo, done?: () => void): void => {
-                    if (!file || !done) return next(null);
-                    return file.saveAs(_path.resolve(`${outdir}/${Util.guid()}_${file.getFileName()}`), (serr: Error | NodeJS.ErrnoException | null): void => {
-                        return errorHandler(serr, () => {
-                            return done();
-                        });
-                    });
-                });
-            });
-        }, errorHandler);
+
+        this.saveAsAsync(outdir).then(
+            () => next(null)
+        ).catch(
+            ex => errorHandler(ex, next)
+        );
     }
+
     public getUploadFileInfo(): UploadFileInfo[] {
         this.validate(true);
         const data: UploadFileInfo[] = [];
@@ -233,10 +245,12 @@ class BodyParser implements IBodyParser {
         });
         return data;
     }
+
     public getFilesSync(next: (file: IPostedFileInfo) => void): void {
         this.validate(true);
         return this._parser.files.forEach(pf => next(pf));
     }
+
     public getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void {
         this.validate(true);
         let index: number = -1;
@@ -250,10 +264,10 @@ class BodyParser implements IBodyParser {
         };
         return forward();
     }
-    
+
     public getJson(): NodeJS.Dict<any> {
         this.isValidRequest();
-        
+
         if (this._contentTypeEnum === ContentType.APP_JSON) {
             return Util.JSON.parse(this._parser.getRawData());
         }
@@ -274,6 +288,7 @@ class BodyParser implements IBodyParser {
     public readDataAsync(): Promise<void> {
         return this.parseSync();
     }
+
     public parseSync(): Promise<void> {
         return new Promise((resolve, reject) => {
             this.parse((err?: Error): void => {
@@ -282,33 +297,56 @@ class BodyParser implements IBodyParser {
             });
         });
     }
+
     private tryFinish(onReadEnd: (err?: Error) => void): void {
-        if (!this._isReadEnd || this._part.length > 0) return void 0;
+        if (!this._isReadEnd || this._part.length > 0)
+            return void 0;
+
         const error: string | void = this._parser.getError();
-        if (error) return onReadEnd(new Error(error));
+
+        if (error)
+            return onReadEnd(new Error(error));
+
         return onReadEnd();
     }
+
     private skipPart(stream: PartStream): void {
         stream.resume();
     }
+
     private onPart(onReadEnd: (err?: Error) => void): (stream: PartStream) => void {
         return (stream: PartStream): void => {
+
             this._part.push(1);
+
             this._parser.onPart(stream, (forceExit: boolean): void => {
+
                 if (forceExit) {
+
                     this._part.length = 0;
                     this.skipPart(stream);
+
                     if (this._multipartParser) {
-                        this._multipartParser.removeListener('part', this.onPart);
-                        this._multipartParser.on("part", this.skipPart)
+
+                        this._multipartParser.removeListener(
+                            'part', this.onPart
+                        );
+
+                        this._multipartParser.on(
+                            "part", this.skipPart
+                        )
                     }
+
                 } else {
                     this._part.shift();
                 }
+
                 return this.tryFinish(onReadEnd);
+
             }, this.skipFile);
         }
     }
+
     private finalEvent(ev: "close" | "error", onReadEnd: (err?: Error) => void): (err?: Error) => void {
         return (err?: Error) => {
             if (ev === "close") {
@@ -352,18 +390,38 @@ class BodyParser implements IBodyParser {
             return;
         }
 
-        const match: RegExpExecArray | null = RE_BOUNDARY.exec(this._contentType);
-        if (match) {
-            this._multipartParser = new Dicer({ boundary: match[1] || match[2] });
-            this._multipartParser.on("part", this.onPart(onReadEnd));
-            this._multipartParser.on("finish", (): void => {
-                this._isReadEnd = true;
-                return this.tryFinish(onReadEnd);
+        const match: RegExpExecArray | null = RE_BOUNDARY.exec(
+            this._contentType
+        );
+
+        if (!match) {
+            return process.nextTick(() => {
+                onReadEnd(new Error(
+                    `Invalid or incomplete Content-Type header: ${this._contentType}`
+                ));
             });
-            this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
-            this._req.pipe(this._multipartParser);
         }
+
+        this._multipartParser = new Dicer({
+            boundary: match[1] || match[2]
+        });
+
+        this._multipartParser.on(
+            "part", this.onPart(onReadEnd)
+        );
+
+        this._multipartParser.on("finish", (): void => {
+            this._isReadEnd = true;
+            return this.tryFinish(onReadEnd);
+        });
+
+        this._multipartParser.on(
+            "error", this.finalEvent("error", onReadEnd)
+        );
+
+        this._req.pipe(this._multipartParser);
     }
+
     public readData(onReadEnd: (err?: Error) => void): void {
         return this.parse(onReadEnd);
     }

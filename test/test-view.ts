@@ -289,6 +289,15 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 			return server.transferRequest(ctx, 500);
 		}
 		// throw new Error( "Should not here..." );
+	}).post('/form-data', async _ctx => {
+		const parser: IBodyParser = getBodyParser(_ctx.req);
+		try {
+			console.log(_ctx.req.get("content-type"));
+			await parser.parseSync();
+			_ctx.res.status(200).json(parser.getJson());
+		} catch (ex) {
+			_ctx.transferError(ex as any);
+		}
 	}).post('/upload-skip', async (ctx: IContext, requestParam?: IRequestParam): Promise<void> => {
 		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
 		parser.skipFile = (fileInfo) => {

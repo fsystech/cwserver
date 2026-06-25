@@ -81,16 +81,21 @@ export class DataParser implements IDataParser {
         next: (forceExit: boolean) => void,
         skipFile?: (fileInfo: IPostedFileInfo) => boolean
     ): void {
+
         const reader: IMultipartDataReader = new MultipartDataReader();
+
         if (skipFile) {
             reader.skipFile = skipFile;
         }
+
         reader.on("file", (file: IPostedFileInfo): void => {
             return this._files.push(file), void 0;
         });
+
         reader.on("field", (key: string, data: string): void => {
             this._multipartBody[key] = encodeURIComponent(data);
         });
+
         reader.on("end", (err?: Error): void => {
             if (err) {
                 this._errors.push(err);
@@ -98,10 +103,14 @@ export class DataParser implements IDataParser {
             next(reader.forceExit);
             return reader.dispose();
         });
+
         reader.read(stream, this._tempDir);
+
         this._readers.push(reader);
+
         return void 0;
     }
+    
     public getError(): string | void {
         if (this._errors.length > 0) {
             let str: string = "";

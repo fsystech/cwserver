@@ -1,9 +1,13 @@
 import * as _fs from 'node:fs';
 import { ErrorHandler } from './app-static';
-export declare function stat(path: string, next: (err?: NodeJS.ErrnoException | null, stat?: _fs.Stats) => void): void;
-export declare function moveFile(src: string, dest: string, next: (err: NodeJS.ErrnoException | null) => void, force?: boolean): void;
+export declare function statAsync(path: string): Promise<_fs.Stats>;
+export declare function stat(path: string, next: (err?: NodeJS.ErrnoException, stat?: _fs.Stats) => void): void;
+/** Move file async */
+export declare function moveFileAsync(src: string, dest: string, force?: boolean): Promise<boolean>;
+export declare function moveFile(src: string, dest: string, next: (err?: NodeJS.ErrnoException) => void, force?: boolean): void;
+export declare function compareFileAsync(a: string, b: string): Promise<boolean>;
 /** compareFile a stat.mtime > b stat.mtime */
-export declare function compareFile(a: string, b: string, next: (err: NodeJS.ErrnoException | null, changed: boolean) => void, errHandler: ErrorHandler): void;
+export declare function compareFile(a: string, b: string, next: (err?: NodeJS.ErrnoException, changed?: boolean) => void, errHandler: ErrorHandler): void;
 /** compareFileSync a stat.mtime > b stat.mtime */
 export declare function compareFileSync(a: string, b: string): boolean;
 export declare function isExists(path: string, next: (exists: boolean, url: string) => void): void;
@@ -11,9 +15,11 @@ export declare function isExistsAsync(path: string): Promise<{
     exists: boolean;
     url: string;
 }>;
-export declare function readJson<T>(absPath: string, next: (err: NodeJS.ErrnoException | null, json: NodeJS.Dict<T> | void) => void, errHandler: ErrorHandler): void;
-export declare function readJsonSync<T>(absPath: string): NodeJS.Dict<T> | void;
-export declare function mkdir(rootDir: string, targetDir: string, next: (err: NodeJS.ErrnoException | null) => void, errHandler: ErrorHandler): void;
+export declare function readJsonAsync<T>(absPath: string): Promise<any>;
+export declare function readJson<T>(absPath: string, next: (err?: NodeJS.ErrnoException, json?: NodeJS.Dict<T>) => void, errHandler: ErrorHandler): void;
+export declare function readJsonSync<T>(absPath: string): NodeJS.Dict<T>;
+export declare function mkdirAsyncx(rootDir: string, targetDir?: string): Promise<void>;
+export declare function mkdir(rootDir: string, targetDir: string, next: (err?: NodeJS.ErrnoException) => void, errHandler: ErrorHandler): void;
 export declare function mkdirSync(rootDir: string, targetDir?: string): boolean;
 export declare function rmdir(path: string, next: (err: NodeJS.ErrnoException | null) => void, errHandler: ErrorHandler): void;
 export declare function rmdirSync(path: string): void;
@@ -35,5 +41,3 @@ export declare function writeFileAsync(absolute: string, data: string | Buffer):
 export declare function mkdirAsync(errHandler: ErrorHandler, rootDir: string, targetDir: string): Promise<any>;
 /** Check File or Dir is exists */
 export declare function existsAsync(path: string): Promise<boolean>;
-/** Move file async */
-export declare function moveFileAsync(src: string, dest: string): Promise<any>;

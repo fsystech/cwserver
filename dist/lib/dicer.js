@@ -46,6 +46,7 @@ const MAX_HEADER_SIZE = 80 * 1024; // From node's http_parser
 class HeaderParser extends stream_1.EventEmitter {
     constructor(cfg) {
         super();
+        this.ss = null;
         this.nread = 0;
         this.npairs = 0;
         this.buffer = '';
@@ -104,9 +105,8 @@ class HeaderParser extends stream_1.EventEmitter {
         const len = lines.length;
         let h;
         for (let i = 0; i < len; ++i) { // eslint-disable-line no-var
-            if (lines[i].length === 0) {
+            if (lines[i].length === 0)
                 continue;
-            }
             if (lines[i][0] === '\t' || lines[i][0] === ' ') {
                 // folded header content
                 // RFC2822 says to just remove the CRLF and not the whitespace following
@@ -143,12 +143,6 @@ class HeaderParser extends stream_1.EventEmitter {
 const DASH = 45;
 const B_ONEDASH = Buffer.from('-');
 const B_CRLF = Buffer.from('\r\n');
-const EMPTY_FN = () => {
-    // nothing to do
-};
-function _toAny(obj) {
-    return obj;
-}
 class Dicer extends stream_1.Writable {
     constructor(cfg) {
         super(cfg);
@@ -162,8 +156,8 @@ class Dicer extends stream_1.Writable {
         this._realFinish = false;
         this._ignoreData = false;
         this._justMatched = false;
-        this._part = _toAny(null);
-        this._bparser = _toAny(null);
+        this._part = null;
+        this._bparser = null;
         if (!cfg || (!cfg.headerFirst && typeof cfg.boundary !== 'string'))
             throw new TypeError('Boundary required');
         if (typeof cfg.boundary === 'string') {
@@ -229,7 +223,8 @@ class Dicer extends stream_1.Writable {
             }
             const r = this._hparser.push(data);
             if (!this._inHeader && typeof (r) === 'number' && r < data.length) {
-                data = data.slice(r);
+                //data = data.slice(r);
+                data = Buffer.from(Uint8Array.prototype.slice.call(data, r));
             }
             else {
                 return cb();
@@ -379,5 +374,6 @@ class Dicer extends stream_1.Writable {
     }
 }
 exports.Dicer = Dicer;
+function EMPTY_FN() { }
 /// [/Dicer]
 //# sourceMappingURL=dicer.js.map
