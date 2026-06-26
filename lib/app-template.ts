@@ -491,6 +491,7 @@ export class TemplateCore {
         if (index < 0) return false;
         return str.substring(0, index).indexOf("__cw_template_script__") > -1;
     }
+
     private static _run(
         ctx: IContext,
         appRoot: string,
@@ -505,6 +506,7 @@ export class TemplateCore {
         }
         return process.nextTick(() => fnext(str, false));
     }
+
     public static run(
         ctx: IContext,
         appRoot: string,
@@ -521,6 +523,7 @@ export class TemplateCore {
         });
     }
 }
+
 function canReadFileCache(ctx: IContext, filePath: string, cachePath: string, next: (readCache: boolean) => void): void {
     return _fileInfo.exists(cachePath, (exists: boolean): void => {
         if (!exists) return next(false);
@@ -659,6 +662,7 @@ class TemplateLink {
                     });
                 });
             }
+            
             return _fs.readFile(cachePath, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
                 return ctx.handleError(err, (): void => {
                     const isScript: boolean = TemplateCore.isScriptTemplate(data);
@@ -701,7 +705,9 @@ class TemplateLink {
             const val = this._tw.get(cacheKey);
 
             if (val) {
+
                 ctx.res.setHeader('x-served-from', 'mem-cache');
+
                 if (val.isScriptTemplate) {
                     return TemplateCore.compile(val.data, (result: CompilerResult): void => {
                         return ctx.handleError(result.err, () => {
@@ -709,10 +715,11 @@ class TemplateLink {
                         });
                     }, ctx.server.createVimContext());
                 }
+
                 return this._hadleCacheResponse(ctx, status, val.data);
             }
         }
-        
+
         return _fileInfo.exists(path, (exists: boolean, filePath: string) => {
             ctx.handleError(null, () => {
                 if (!exists) return ctx.next(404);
@@ -724,14 +731,20 @@ class TemplateLink {
 
 export class Template {
     public static parse(ctx: IContext, path: string, status?: IResInfo): void {
-        if (!status) status = HttpStatus.getResInfo(path, 200);
+
+        if (!status)
+            status = HttpStatus.getResInfo(path, 200);
+
         ctx.servedFrom = ctx.server.pathToUrl(path);
+
         if (!ctx.server.config.template.cache) {
             return TemplateLink.tryLive(ctx, path, status);
         }
+
         if (ctx.server.config.template.cache && ctx.server.config.template.cacheType === "MEM") {
             return TemplateLink.tryMemCache(ctx, path, status);
         }
+
         return TemplateLink.tryFileCacheOrLive(ctx, path, status);
     }
 }

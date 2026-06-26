@@ -22,11 +22,14 @@
 // by rajib chy
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
+const _fsp = _fs.promises;
+
 export interface IFileDescription {
     readonly url: string;
     readonly exists: boolean;
     readonly stats?: _fs.Stats;
 }
+
 export class FileDescription implements IFileDescription {
     private _url: string;
     private _exists: boolean;
@@ -46,37 +49,86 @@ export class FileDescription implements IFileDescription {
 }
 export interface IFileInfoCacheHandler {
     rmove(path: string): boolean;
-    stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
-    exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
+
+    stat(
+        path: string, next: (desc: IFileDescription) => void, force?: boolean
+    ): void;
+
+    statAsync(
+        path: string, force?: boolean
+    ): Promise<IFileDescription>;
+
+    existsAsync(
+        path: string, force?: boolean
+    ): Promise<{ exists: boolean, url: string }>;
+
+    exists(
+        path: string, next: (exists: boolean, url: string) => void, force?: boolean
+    ): void;
 }
 export class FileInfoCacheHandler implements IFileInfoCacheHandler {
-    private _pathCache: NodeJS.Dict<FileDescription>;
+
+    private _pathCache: Map<string, FileDescription>;
+
     constructor() {
-        this._pathCache = {};
+        this._pathCache = new Map();
     }
-    rmove(path: string): boolean {
-        if (this._pathCache[path]) {
-            delete this._pathCache[path];
-            return true;
-        }
-        return false;
+
+    public rmove(path: string): boolean {
+        return this._pathCache.delete(path);
     }
-    stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void {
+
+    public async statAsync(path: string, force?: boolean): Promise<IFileDescription> {
         if (!force) {
-            const info = this._pathCache[path];
-            if (info) return process.nextTick(() => next(info));
+            const info = this._pathCache.get(path);
+            if (info) return info;
         }
+
         const url = _path.resolve(path);
-        _fs.stat(url, (serr?: NodeJS.ErrnoException | null, stat?: _fs.Stats): void => {
-            const exists: boolean = serr ? false : true;
-            const desc = new FileDescription(exists, url, stat);
-            this._pathCache[path] = desc;
-            return next(desc);
-        });
+
+        try {
+            const stat = await _fsp.stat(url);
+
+            const desc = new FileDescription(
+                true, url, stat
+            );
+
+            this._pathCache.set(path, desc);
+
+            return desc;
+        } catch {
+
+            const desc = new FileDescription(
+                false, url, null
+            );
+
+            this._pathCache.set(path, desc);
+
+            return desc;
+        }
     }
-    exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void {
-        this.stat(path, (desc: IFileDescription) => {
+
+    public stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void {
+        this.statAsync(path, force).then(next);
+    }
+
+    public async existsAsync(
+        path: string, force?: boolean
+    ): Promise<{ exists: boolean, url: string }> {
+        const desc = await this.statAsync(path, force);
+
+        return {
+            url: desc.url,
+            exists: desc.exists
+        }
+    }
+
+    public exists(
+        path: string, next: (exists: boolean, url: string) => void, force?: boolean
+    ): void {
+
+        this.existsAsync(path, force).then(desc => {
             return next(desc.exists, desc.url);
-        }, force);
+        });
     }
 }

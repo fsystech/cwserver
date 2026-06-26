@@ -16,12 +16,22 @@ export declare class FileDescription implements IFileDescription {
 export interface IFileInfoCacheHandler {
     rmove(path: string): boolean;
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
+    statAsync(path: string, force?: boolean): Promise<IFileDescription>;
+    existsAsync(path: string, force?: boolean): Promise<{
+        exists: boolean;
+        url: string;
+    }>;
     exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
 }
 export declare class FileInfoCacheHandler implements IFileInfoCacheHandler {
     private _pathCache;
     constructor();
     rmove(path: string): boolean;
+    statAsync(path: string, force?: boolean): Promise<IFileDescription>;
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
+    existsAsync(path: string, force?: boolean): Promise<{
+        exists: boolean;
+        url: string;
+    }>;
     exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
 }

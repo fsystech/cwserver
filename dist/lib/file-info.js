@@ -51,12 +51,22 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileInfoCacheHandler = exports.FileDescription = void 0;
 // 10:56 AM 8/1/2022
 // by rajib chy
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
+const _fsp = _fs.promises;
 class FileDescription {
     get url() {
         return this._url;
@@ -76,33 +86,48 @@ class FileDescription {
 exports.FileDescription = FileDescription;
 class FileInfoCacheHandler {
     constructor() {
-        this._pathCache = {};
+        this._pathCache = new Map();
     }
     rmove(path) {
-        if (this._pathCache[path]) {
-            delete this._pathCache[path];
-            return true;
-        }
-        return false;
+        return this._pathCache.delete(path);
+    }
+    statAsync(path, force) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!force) {
+                const info = this._pathCache.get(path);
+                if (info)
+                    return info;
+            }
+            const url = _path.resolve(path);
+            try {
+                const stat = yield _fsp.stat(url);
+                const desc = new FileDescription(true, url, stat);
+                this._pathCache.set(path, desc);
+                return desc;
+            }
+            catch (_a) {
+                const desc = new FileDescription(false, url, null);
+                this._pathCache.set(path, desc);
+                return desc;
+            }
+        });
     }
     stat(path, next, force) {
-        if (!force) {
-            const info = this._pathCache[path];
-            if (info)
-                return process.nextTick(() => next(info));
-        }
-        const url = _path.resolve(path);
-        _fs.stat(url, (serr, stat) => {
-            const exists = serr ? false : true;
-            const desc = new FileDescription(exists, url, stat);
-            this._pathCache[path] = desc;
-            return next(desc);
+        this.statAsync(path, force).then(next);
+    }
+    existsAsync(path, force) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const desc = yield this.statAsync(path, force);
+            return {
+                url: desc.url,
+                exists: desc.exists
+            };
         });
     }
     exists(path, next, force) {
-        this.stat(path, (desc) => {
+        this.existsAsync(path, force).then(desc => {
             return next(desc.exists, desc.url);
-        }, force);
+        });
     }
 }
 exports.FileInfoCacheHandler = FileInfoCacheHandler;
