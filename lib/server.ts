@@ -722,14 +722,18 @@ ${appRoot}\\www_public
     }
 
     public implimentConfig(config: NodeJS.Dict<any>): void {
+
         if (typeof (this._config.bundler.reValidate) !== "boolean") {
             this._config.bundler.reValidate = true;
         }
+
         if (!config.encryptionKey)
             throw new Error("Security risk... encryption key required....");
+
         if (!Util.isArrayLike<string>(config.hiddenDirectory)) {
             throw new Error('hidden_directory should be Array...');
         }
+
         if (process.env.IISNODE_VERSION && process.env.PORT) {
             this._port = process.env.PORT;
         } else {
@@ -737,7 +741,9 @@ ${appRoot}\\www_public
                 throw new Error('Listener port required...');
             this._port = this._config.hostInfo.port;
         }
+
         this._config.encryptionKey = Encryption.updateCryptoKeyIV(config.encryptionKey);
+
         if (this._config.session) {
             if (!this._config.session.key)
                 throw new Error("Security risk... Session encryption key required....");
@@ -748,9 +754,11 @@ ${appRoot}\\www_public
                 throw new Error(`Invalid maxAage format ${config.session.maxAge}. maxAge should "1d|1h|1m" formatted...`);
             this._config.session.maxAge = parseMaxAge(config.session.maxAge);
         }
+
         if (!this._config.cacheHeader) {
             throw new Error("cacheHeader information required...");
         }
+
         this._config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
     }
 
@@ -1157,9 +1165,10 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             _server.config.views.forEach(path => _importLocalAssets(path));
         }
 
-        AppView.init(_app, _controller, _server);
-
-        _controller.sort();
+        _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
+            req.session = _server.parseSession(req.headers, req.cookies);
+            return next();
+        });
 
         _app.on("error", (req: IRequest, res: IResponse, err?: number | Error): void => {
 
@@ -1174,30 +1183,39 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             }
         });
 
-        _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
-            req.session = _server.parseSession(req.headers, req.cookies);
-            return next();
-        });
+        AppView.init(_app, _controller, _server);
+
+        _controller.sort();
 
         _app.use((req: IRequest, res: IResponse, next: NextFunction) => {
+
             const context: IContext = _process.createContext(req, res, next);
             const reqPath: string = req.path;
+
             if (_server.config.hiddenDirectory.some((a) => {
                 return reqPath.substring(0, a.length) === a;
             })) {
                 _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`);
                 return _server.transferRequest(context, 404);
             }
+
             if (reqPath.indexOf('$root') > -1 || reqPath.indexOf('$public') > -1) {
                 _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`);
                 return _server.transferRequest(context, 404);
             }
+
             try {
+
                 if (_server.isValidContext(context)) {
                     return _controller.processAny(context);
                 }
+
             } catch (ex: any) {
-                return _server.transferRequest(_server.addError(context, ex), 500);
+
+                return _server.transferRequest(
+                    _server.addError(context, ex), 500
+                );
+
             }
         });
 

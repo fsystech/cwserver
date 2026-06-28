@@ -775,8 +775,10 @@ function initilizeServer(appRoot, wwwName) {
         if (app_util_1.Util.isArrayLike(_server.config.views)) {
             _server.config.views.forEach(path => _importLocalAssets(path));
         }
-        app_view_1.AppView.init(_app, _controller, _server);
-        _controller.sort();
+        _app.prerequisites((req, res, next) => {
+            req.session = _server.parseSession(req.headers, req.cookies);
+            return next();
+        });
         _app.on("error", (req, res, err) => {
             if (res.isAlive) {
                 const context = _process.createContext(req, res, res.sendIfError.bind(res));
@@ -788,10 +790,8 @@ function initilizeServer(appRoot, wwwName) {
                 }
             }
         });
-        _app.prerequisites((req, res, next) => {
-            req.session = _server.parseSession(req.headers, req.cookies);
-            return next();
-        });
+        app_view_1.AppView.init(_app, _controller, _server);
+        _controller.sort();
         _app.use((req, res, next) => {
             const context = _process.createContext(req, res, next);
             const reqPath = req.path;
