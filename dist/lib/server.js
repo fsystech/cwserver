@@ -790,7 +790,6 @@ function initilizeServer(appRoot, wwwName) {
         });
         _app.prerequisites((req, res, next) => {
             req.session = _server.parseSession(req.headers, req.cookies);
-            SessionSecurity.isValidSession(req);
             return next();
         });
         _app.use((req, res, next) => {

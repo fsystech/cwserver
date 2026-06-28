@@ -662,7 +662,10 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 			return ctx.next(404);
 		})
 		.get('/is-authenticate', (ctx: IContext, requestParam?: IRequestParam): void => {
-			if (!ctx.req.query.loginId) return ctx.next(401);
+			if (!ctx.req.query.loginId)
+				return ctx.next(401);
+			
+			SessionSecurity.isValidSession(ctx.req);
 			const olPart = ctx.req.session.ipPart;
 			// @ts-ignore
 			ctx.req.session._obj.ipPart = undefined;

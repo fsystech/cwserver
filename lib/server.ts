@@ -1176,7 +1176,6 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
         _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
             req.session = _server.parseSession(req.headers, req.cookies);
-            SessionSecurity.isValidSession(req);
             return next();
         });
 
