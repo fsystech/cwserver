@@ -204,7 +204,7 @@ class ContextManager {
     }
 
     public disposeContext(ctx: IContext): void {
-        const reqId: string | void = ctx.dispose();
+        const reqId = ctx.dispose();
 
         if (reqId) {
             this._contexts.delete(reqId);
@@ -217,7 +217,7 @@ class ContextManager {
     }
 
     public removeContext(id: string): void {
-        const ctx: IContext = this._contexts.get(id);
+        const ctx = this._contexts.get(id);
 
         if (ctx) {
             this.disposeContext(ctx);

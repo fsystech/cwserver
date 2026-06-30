@@ -168,6 +168,13 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 		}
 	}).post('/post-text-data', (ctx: IContext) => {
 		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
+
+		try {
+			ctx.server.createBundle("");
+		} catch (e) {
+			expect(e).toBeInstanceOf(Error);
+		}
+
 		try {
 			if (!parser.isRawData()) {
 				throw new Error("Invalid conent type found");
@@ -446,6 +453,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 				mCtx.transferRequest(0);
 				mCtx.signOut();
 				mCtx.setSession("Test", "Test", {});
+				
 				const nctx: IContext = server.createContext(ctx.req, ctx.res, ctx.next);
 				nctx.path = "/not-found/404/";
 				nctx.req.path = "/not-found/404/";
@@ -664,7 +672,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 		.get('/is-authenticate', (ctx: IContext, requestParam?: IRequestParam): void => {
 			if (!ctx.req.query.loginId)
 				return ctx.next(401);
-			
+
 			SessionSecurity.isValidSession(ctx.req);
 			const olPart = ctx.req.session.ipPart;
 			// @ts-ignore

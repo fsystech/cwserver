@@ -23,7 +23,8 @@
 // by rajib chy
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
-import { assert, getAppDir, Util } from './app-util';
+import { assert, getAppDir } from './app-util';
+import { readJsonSync } from './fsw';
 
 class MimeType {
 
@@ -35,6 +36,7 @@ class MimeType {
     }
 
     public add(extension: string, value: string): void {
+
         if (this._data.has(extension)) {
             throw new Error(`This given extension (${extension}) already exists`);
         }
@@ -47,15 +49,28 @@ class MimeType {
     }
 
     private _loadSync(): void {
-        const libRoot: string = getAppDir();
-        const absPath: string = _path.resolve(`${libRoot}/mime-types.json`);
-        assert(_fs.existsSync(absPath), `No mime-type found in ${libRoot}\nPlease re-install cwserver`);
-        const data: NodeJS.Dict<string> = Util.JSON.parse(_fs.readFileSync(absPath, "utf-8"));
-        if (data) {
-            for (const prop in data) {
-                this._data.set(prop, data[prop]);
-            }
+
+        const absPath = _path.resolve(
+            getAppDir(),
+            "mime-types.json"
+        );
+
+        assert(
+            _fs.existsSync(absPath),
+            `No mime-type found in ${absPath}\nPlease re-install cwserver`
+        );
+
+        const data = readJsonSync<Record<string, string>>(absPath);
+
+        if (!data) {
+            return;
         }
+
+        if (this._data.size) {
+            throw new Error("Mime type pre-add is not allowed.");
+        }
+
+        this._data = new Map(Object.entries(data));
     }
 }
 
@@ -72,20 +87,32 @@ class MimeTypeStatic {
 export const _mimeType = MimeTypeStatic.getInstance();
 
 function setCharset(mimeType: string): string {
-    const text: string = mimeType.split(";")[0];
-    if ((/^text\/|^application\/(javascript|json)/).test(text.toLowerCase())) {
+    const type = mimeType.toLowerCase();
+
+    if (
+        !type.includes("charset=") &&
+        (/^text\/|^application\/(javascript|json)/).test(type)
+    ) {
         return `${mimeType}; charset=UTF-8`;
     }
+
     return mimeType;
 }
 
 export function getMimeType(extension: string): string {
-    extension = extension.replace(/^.*[\.\/\\]/gi, '').toLowerCase();
-    const mimeType: string | undefined = _mimeType.type(extension);
-    if (!mimeType)
-        throw new Error(`Unsupported extension =>${extension}`);
+    const ext = extension
+        .replace(/^.*[./\\]/, "")
+        .toLowerCase();
+
+    const mimeType = _mimeType.type(ext);
+
+    if (!mimeType) {
+        throw new Error(`Unsupported extension => ${ext}`);
+    }
+
     return setCharset(mimeType);
 }
+
 
 export function setMimeType(extension: string, value: string): void {
     return _mimeType.add(extension, value);

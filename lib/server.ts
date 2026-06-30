@@ -387,42 +387,80 @@ function getEpoch(type: string, add: number, maxAge: string): number {
     }
 }
 
-function parseMaxAge(maxAge: any): number {
-    if (typeof (maxAge) !== "string") throw new Error(`Invalid maxAage...`);
-    let add: string = "", type: string = "";
-    for (const part of maxAge) {
-        if (/^\d$/.test(part)) {
-            if (type.length > 0) throw new Error(`Invalid maxAage format ${maxAge}`);
-            add += part; continue;
-        }
-        type += part;
+function parseMaxAge(maxAge: unknown): number {
+    if (typeof maxAge !== "string") {
+        throw new Error("Invalid maxAge...");
     }
-    if (type.length === 0 || add.length === 0)
-        throw new Error(`Invalid maxAage format ${maxAge}`);
-    return getEpoch(type.toUpperCase(), parseInt(add), maxAge);
+
+    const match = /^(\d+)([a-zA-Z]+)$/.exec(maxAge);
+
+    if (!match) {
+        throw new Error(
+            `Invalid maxAge format ${maxAge}`
+        );
+    }
+
+    const [, value, type] = match;
+
+    return getEpoch(
+        type.toUpperCase(),
+        Number(value),
+        maxAge
+    );
 }
 
 const _formatPath = (() => {
-    const _exportPath = (server: ICwServer, path: string): string | void => {
-        if (path === "root") return server.getRoot();
-        if (path === "public") return server.getPublicDirName();
-        return undefined;
-    }
-    return (server: ICwServer, path: string, noCheck?: boolean): string => {
-        if (/\$/gi.test(path) === false) return path;
-        const absPath: string = _path.resolve(path.replace(/\$.+?\//gi, (m) => {
-            m = m.replace(/\$/gi, "").replace(/\//gi, "");
-            const epath: string | void = _exportPath(server, m.replace(/\$/gi, "").replace(/\//gi, ""));
-            if (!epath) {
-                throw new Error(`Invalid key ${m}`);
-            }
-            return `${epath}/`;
-        }));
-        if (noCheck === true) return absPath;
-        if (!_fs.existsSync(absPath))
-            throw new Error(`No file found\r\nPath:${absPath}\r\Request Path:${path}`);
-        return absPath;
+
+    const exportPath = (
+        server: ICwServer,
+        key: string
+    ): string => {
+
+        switch (key) {
+            case "root":
+                return server.getRoot();
+
+            case "public":
+                return server.getPublicDirName();
+
+            default:
+                throw new Error(
+                    `Invalid key ${key}`
+                );
+        }
     };
+
+
+    return (
+        server: ICwServer,
+        path: string,
+        noCheck = false
+    ): string => {
+
+        if (!path.includes("$")) {
+            return path;
+        }
+
+        const resolved = _path.resolve(
+            path.replace(
+                /\$([^/]+)\//g,
+                (_, key) => `${exportPath(server, key)}/`
+            )
+        );
+
+        if (noCheck) {
+            return resolved;
+        }
+
+        if (!_fs.existsSync(resolved)) {
+            throw new Error(
+                `No file found\r\nPath: ${resolved}\r\nRequest Path: ${path}`
+            );
+        }
+
+        return resolved;
+    };
+
 })();
 
 export class ServerEncryption implements IServerEncryption {
@@ -633,56 +671,149 @@ export class CwServer implements ICwServer {
     }
 
     constructor(appRoot: string, wwwName?: string) {
-        this._port = 0; this._log = Object.create(null);
+        this._port = 0;
+        this._log = Object.create(null);
+
         if (!wwwName) {
             if (process.env.IISNODE_VERSION) {
-                throw new Error(`
-web.config error.\r\nInvalid web.config defined.
-Behind the <configuration> tag in your web.config add this
-  <appSettings>
-    <add key="your-iis-app-pool-id" value="your-app-root" />
-  </appSettings>
-your-app-root | directory name should be exists here
-${appRoot}\\www_public
-` );
+                throw new Error(
+                    `web.config error.
+    
+    Invalid web.config defined.
+    Behind the <configuration> tag in your web.config add this
+    
+    <appSettings>
+        <add key="your-iis-app-pool-id" value="your-app-root" />
+    </appSettings>
+    
+    your-app-root | directory name should be exists here:
+    ${appRoot}\\www_public`
+                );
             }
-            throw new Error(`Argument missing.\r\ne.g. node server my_app_root.\r\nApp Root like your application root directory name...\r\nWhich should be exists here\r\n${appRoot}\\my_app_root`);
+
+            throw new Error(
+                `Argument missing.
+    
+    Example:
+    node server my_app_root.
+    
+    App Root should exist here:
+    ${appRoot}\\my_app_root`
+            );
         }
+
         this._root = appRoot;
-        this._public = wwwName.toString().trim();
+        this._public = wwwName.trim();
+
         this._config = new ServerConfig();
         this._db = Object.create(null);
-        const absPath: string = _path.resolve(`${this._root}/${this._public}/config/${this.getAppConfigName()}`);
-        if (!_fs.existsSync(absPath)) throw new Error(`No config file found in ${absPath}`);
-        const config: NodeJS.Dict<any> | void = fsw.readJsonSync<IServerConfig>(absPath);
-        if (!config) throw new Error(`Invalid config file defined.\r\nConfig: ${absPath}`);
-        Schema.Validate(config);
-        if (this._public !== config.hostInfo.root) {
-            throw new Error(`Server ready for App Root: ${this._public}.\r\nBut host_info root path is ${config.hostInfo.root}.\r\nApp Root like your application root directory name...`);
+
+        const configPath = _path.resolve(
+            this._root,
+            this._public,
+            "config",
+            this.getAppConfigName()
+        );
+
+        if (!_fs.existsSync(configPath)) {
+            throw new Error(
+                `No config file found in ${configPath}`
+            );
         }
-        const libRoot: string = getAppDir();
+
+        const config =
+            fsw.readJsonSync<IServerConfig>(configPath);
+
+        if (!config) {
+            throw new Error(
+                `Invalid config file defined.\r\nConfig: ${configPath}`
+            );
+        }
+
+        Schema.Validate(config);
+
+        if (this._public !== config.hostInfo.root) {
+            throw new Error(
+                `Server ready for App Root: ${this._public}.
+    But host_info root path is ${config.hostInfo.root}.`
+            );
+        }
+
+
+        const libRoot = getAppDir();
+
         this._errorPage = {
-            "404": _path.resolve(`${libRoot}/dist/error_page/404.html`),
-            "401": _path.resolve(`${libRoot}/dist/error_page/401.html`),
-            "500": _path.resolve(`${libRoot}/dist/error_page/500.html`)
+            "404": _path.resolve(
+                libRoot,
+                "dist/error_page/404.html"
+            ),
+            "401": _path.resolve(
+                libRoot,
+                "dist/error_page/401.html"
+            ),
+            "500": _path.resolve(
+                libRoot,
+                "dist/error_page/500.html"
+            )
         };
-        Util.extend(this._config, config, true);
+
+
+        Util.extend(
+            this._config,
+            config,
+            true
+        );
+
         this.implimentConfig(config);
-        this._publicregx = new RegExp(`${this._public}/`, "gi");
-        this._rootregx = new RegExp(this._root.replace(/\\/gi, '/'), "gi");
-        // this.preRegx = new RegExp("<pre[^>]*>", "gi"); // /<pre[^>]*>/gi
-        this._nodeModuleregx = new RegExp(`${this._root.replace(/\\/gi, '/').replace(/\/dist/gi, "")}/node_modules/`, "gi");
+
+
+        const normalizedRoot = this._root.replace(/\\/g, "/");
+
+        this._publicregx =
+            new RegExp(`${this._public}/`, "i");
+
+        this._rootregx =
+            new RegExp(normalizedRoot, "i");
+
+        this._nodeModuleregx =
+            new RegExp(
+                `${normalizedRoot.replace(/\/dist/i, "")}/node_modules/`,
+                "i"
+            );
+
+
         this._userInteractive = false;
+
         this.initilize();
-        this._encryption = new ServerEncryption(this._config.encryptionKey);
-        fsw.mkdirSync(this.getPublic(), "/web/temp/cache/");
+
+        this._encryption =
+            new ServerEncryption(
+                this._config.encryptionKey
+            );
+
+        fsw.mkdirSync(
+            this.getPublic(),
+            "/web/temp/cache/"
+        );
+
+
         this.on = Object.create(null);
         this.addVirtualDir = Object.create(null);
         this.virtualInfo = Object.create(null);
-        this._config.bundler.tempPath = this.mapPath(this._config.bundler.tempPath);
-        this._config.staticFile.tempPath = this.mapPath(this._config.staticFile.tempPath);
+
+
+        this._config.bundler.tempPath =
+            this.mapPath(
+                this._config.bundler.tempPath
+            );
+
+        this._config.staticFile.tempPath =
+            this.mapPath(
+                this._config.staticFile.tempPath
+            );
+
+
         this._log = new ShadowLogger();
-        return;
     }
 
     public createVimContext(): NodeJS.Dict<any> {
@@ -737,50 +868,83 @@ ${appRoot}\\www_public
 
     public implimentConfig(config: NodeJS.Dict<any>): void {
 
-        if (typeof (this._config.bundler.reValidate) !== "boolean") {
+        if (typeof this._config.bundler.reValidate !== "boolean") {
             this._config.bundler.reValidate = true;
         }
 
-        if (!config.encryptionKey)
-            throw new Error("Security risk... encryption key required....");
+        if (!config.encryptionKey) {
+            throw new Error(
+                "Security risk... encryption key required...."
+            );
+        }
 
         if (!Util.isArrayLike<string>(config.hiddenDirectory)) {
-            throw new Error('hidden_directory should be Array...');
+            throw new Error(
+                "hidden_directory should be Array..."
+            );
         }
 
-        if (process.env.IISNODE_VERSION && process.env.PORT) {
-            this._port = process.env.PORT;
-        } else {
-            if (!this._config.hostInfo.port)
-                throw new Error('Listener port required...');
-            this._port = this._config.hostInfo.port;
+        const port =
+            process.env.IISNODE_VERSION && process.env.PORT
+                ? process.env.PORT
+                : this._config.hostInfo.port;
+
+        if (!port) {
+            throw new Error(
+                "Listener port required..."
+            );
         }
 
-        this._config.encryptionKey = Encryption.updateCryptoKeyIV(config.encryptionKey);
+        this._port = port;
 
-        if (this._config.session) {
-            if (!this._config.session.key)
-                throw new Error("Security risk... Session encryption key required....");
-            this._config.session.key = Encryption.updateCryptoKeyIV(config.session.key);
-            if (!this._config.session.maxAge)
-                config.session.maxAge = "1d";
-            if (typeof (config.session.maxAge) !== "string")
-                throw new Error(`Invalid maxAage format ${config.session.maxAge}. maxAge should "1d|1h|1m" formatted...`);
-            this._config.session.maxAge = parseMaxAge(config.session.maxAge);
+        this._config.encryptionKey =
+            Encryption.updateCryptoKeyIV(config.encryptionKey);
+
+
+        const session = this._config.session;
+
+        if (session) {
+
+            if (!session.key) {
+                throw new Error(
+                    "Security risk... Session encryption key required...."
+                );
+            }
+
+            session.key =
+                Encryption.updateCryptoKeyIV(config.session.key);
+
+            const maxAge = config.session.maxAge ?? "1d";
+
+            if (typeof maxAge !== "string") {
+                throw new Error(
+                    `Invalid maxAge format ${maxAge}. maxAge should "1d|1h|1m" formatted...`
+                );
+            }
+
+            session.maxAge = parseMaxAge(maxAge);
         }
 
-        if (!this._config.cacheHeader) {
-            throw new Error("cacheHeader information required...");
+
+        const cacheHeader = this._config.cacheHeader;
+
+        if (!cacheHeader) {
+            throw new Error(
+                "cacheHeader information required..."
+            );
         }
 
-        this._config.cacheHeader.maxAge = parseMaxAge(config.cacheHeader.maxAge);
+        cacheHeader.maxAge =
+            parseMaxAge(config.cacheHeader.maxAge);
     }
 
     public createLogger() {
         this._userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
+
         if (typeof (this._log.dispose) === "function") {
             this._log.dispose();
         }
+
         if (!this._config.isDebug) {
             this._log = new ShadowLogger();
         } else {
@@ -789,93 +953,185 @@ ${appRoot}\\www_public
     }
 
     public initilize(): void {
-        if (isDefined(this._config.database)) {
-            if (!Util.isArrayLike<IDatabaseConfig>(this._config.database))
-                throw new Error("database cofig should be Array....");
-            this._config.database.forEach((conf: IDatabaseConfig): void => {
-                if (!conf.module) throw new Error("database module name requeired.");
-                if (this._db[conf.module]) throw new Error(`database module ${conf.module} already exists.`);
-                if (!conf.path) throw new Error(`No path defined for module ${conf.module}`);
-                conf.path = this.formatPath(conf.path);
-                this._db[conf.module] = new (_importLocalAssets(conf.path))(conf.dbConn);
+        const database = this._config.database;
+
+        if (isDefined(database)) {
+
+            if (!Util.isArrayLike<IDatabaseConfig>(database)) {
+                throw new Error("database config should be Array....");
+            }
+
+            database.forEach((conf: IDatabaseConfig): void => {
+                if (!conf.module) {
+                    throw new Error("database module name required.");
+                }
+
+                if (this._db[conf.module]) {
+                    throw new Error(
+                        `database module ${conf.module} already exists.`
+                    );
+                }
+
+                if (!conf.path) {
+                    throw new Error(
+                        `No path defined for module ${conf.module}`
+                    );
+                }
+
+                const path = this.formatPath(conf.path);
+
+                this._db[conf.module] =
+                    new (_importLocalAssets(path))(conf.dbConn);
             });
         }
-        if (!this._config.errorPage || (Util.isPlainObject(this._config.errorPage) && Object.keys(this._config.errorPage).length === 0)) {
-            if (!this._config.errorPage) this._config.errorPage = {};
-            for (const property in this._errorPage) {
-                if (!Object.hasOwnProperty.call(this._config.errorPage, property)) {
-                    this._config.errorPage[property] = this._errorPage[property];
-                }
-            }
+
+        if (!this._config.errorPage)
+            this._config.errorPage = {};
+
+        if (Util.isPlainObject(this._config.errorPage) === false)
+            throw new Error("errorPage property should be Object.");
+
+        if (Object.keys(this._config.errorPage).length === 0) {
+
+            Object.assign(
+                this._config.errorPage,
+                this._errorPage
+            );
+
         } else {
-            if (Util.isPlainObject(this._config.errorPage) === false)
-                throw new Error("errorPage property should be Object.");
-            for (const property in this._config.errorPage) {
-                if (Object.hasOwnProperty.call(this._config.errorPage, property)) {
-                    const path: string | undefined = this._config.errorPage[property];
-                    if (path) {
-                        const code: number = parseInt(property);
-                        const statusCode: number = HttpStatus.fromPath(path, code);
-                        if (!statusCode || statusCode !== code || !HttpStatus.isErrorCode(statusCode)) {
-                            throw new Error(`Invalid Server/Client error page... ${path} and code ${code}}`);
-                        }
-                        this._config.errorPage[property] = this.formatPath(path);
-                    }
+
+            for (const [property, value] of Object.entries(this._config.errorPage)) {
+
+                if (!value) {
+                    continue;
                 }
-            }
-            for (const property in this._errorPage) {
-                if (!Object.hasOwnProperty.call(this._config.errorPage, property)) {
-                    this._config.errorPage[property] = this._errorPage[property];
+
+                const code = Number(property);
+                const statusCode = HttpStatus.fromPath(
+                    value,
+                    code
+                );
+
+                if (
+                    statusCode !== code ||
+                    !HttpStatus.isErrorCode(statusCode)
+                ) {
+                    throw new Error(
+                        `Invalid Server/Client error page... ${value} and code ${code}`
+                    );
                 }
+
+                this._config.errorPage[property] =
+                    this.formatPath(value);
             }
+
+            Object.assign(
+                this._config.errorPage,
+                Object.fromEntries(
+                    Object.entries(this._errorPage)
+                        .filter(([key]) =>
+                            !this._config.errorPage[key]
+                        )
+                )
+            );
         }
-        this._config.views.forEach((path: string, index: number) => {
-            this._config.views[index] = this.formatPath(path);
-        });
+
+
+        this._config.views = this._config.views.map(
+            path => this.formatPath(path)
+        );
     }
 
     public copyright(): string {
         return '//\tCopyright (c) 2022 FSys Tech Ltd.\r\n';
     }
 
-    public createContext(req: IRequest, res: IResponse, next: NextFunction): IContext {
-        const context = _ctxManager.getContext(this, req, res);
+    public createContext(
+        req: IRequest,
+        res: IResponse,
+        next: NextFunction
+    ): IContext {
+
+        const context = _ctxManager.getContext(
+            this, req, res
+        );
+
         context.path = req.path; context.root = context.path;
         context.next = next;
+
         context.extension = Util.getExtension(context.path) || "";
+
         return context;
     }
 
+
     public setDefaultProtectionHeader(res: IResponse): void {
-        res.setHeader('x-timestamp', Date.now());
-        res.setHeader('x-xss-protection', '1; mode=block');
-        res.setHeader('x-content-type-options', 'nosniff');
-        res.setHeader('x-frame-options', 'sameorigin');
+        const headers: Record<string, string | number> = {
+            "x-timestamp": Date.now(),
+            "x-xss-protection": "1; mode=block",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "SAMEORIGIN",
+
+            // Prevent leaking referrer information
+            "referrer-policy": "strict-origin-when-cross-origin",
+
+            // Disable unnecessary browser features
+            "permissions-policy":
+                "camera=(), microphone=(), geolocation=(), payment=()",
+
+            // Modern cross-origin protection
+            "cross-origin-opener-policy": "same-origin",
+            "cross-origin-resource-policy": "same-origin",
+        };
+
         if (this._config.hostInfo.frameAncestors) {
-            res.setHeader('content-security-policy', `frame-ancestors ${this._config.hostInfo.frameAncestors}`);
+            headers["content-security-policy"] =
+                `frame-ancestors ${this._config.hostInfo.frameAncestors}`;
         }
+
         if (this._config.session.isSecure) {
-            res.setHeader('strict-transport-security', 'max-age=31536000; includeSubDomains; preload');
-            if (this._config.hostInfo.hostName && this._config.hostInfo.hostName.length > 0) {
-                res.setHeader('expect-ct', `max-age=0, report-uri="https://${this._config.hostInfo.hostName}/report/?ct=browser&version=${appVersion}`);
+            headers["strict-transport-security"] =
+                "max-age=31536000; includeSubDomains; preload";
+
+            const host = this._config.hostInfo.hostName;
+
+            if (host) {
+                headers["expect-ct"] =
+                    `max-age=0, report-uri="https://${host}/report/?ct=browser&version=${appVersion}`;
             }
+        }
+
+        for (const [key, value] of Object.entries(headers)) {
+            res.setHeader(key, value);
         }
     }
 
     public parseSession(headers: IncomingHttpHeaders, cook: undefined | string[] | string | { [x: string]: any; }): ISession {
-        if (!this._config.session.cookie || this._config.session.cookie.length === 0)
-            throw Error("You are unable to add session without session config. see your app_config.json");
+        if (
+            !this._config.session.cookie ||
+            this._config.session.cookie.length === 0
+        ) {
+            throw Error(
+                "You are unable to add session without session config. see your app_config.json"
+            );
+        }
+
         const session = new Session();
-        const cookies: NodeJS.Dict<string> = cookieParser(cook);
-        const value: string | undefined = cookies[this._config.session.cookie];
-        if (!value) return session;
-        const str: string = Encryption.decryptFromHex(value, this._config.session.key);
+
+        const cookies = cookieParser(cook);
+        const value = cookies[this._config.session.cookie];
+
+        if (!value)
+            return session;
+
+        const str: string = Encryption.decryptFromHex(
+            value, this._config.session.key
+        );
+
         if (!str) {
             return session;
         }
-        // Util.extend(session, Util.JSON.parse(str));
-        // session.isAuthenticated = true;
-        // return session;
+
         return session.parse(str);
     }
 
@@ -883,93 +1139,163 @@ ${appRoot}\\www_public
         // nothing to do
     }
 
-    public setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
-        return ctx.res.cookie(
-            this._config.session.cookie,
-            Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {
-                loginId, roleId, userData
-            }), this._config.session.key), {
+    public setSession(
+        ctx: IContext,
+        loginId: string,
+        roleId: string,
+        userData: any
+    ): boolean {
+
+        const token = Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {
+            loginId, roleId, userData
+        }), this._config.session.key);
+
+        ctx.res.cookie(
+            this._config.session.cookie, token, {
             maxAge: this._config.session.maxAge,
             httpOnly: true,
             secure: this._config.session.isSecure
-        }), true;
+        });
+
+        return true;
     }
 
     public passError(ctx: IContext): boolean {
-        if (!ctx.error)
+        if (!ctx.error) {
             return false;
+        }
 
         if (!this._config.isDebug) {
-            return ctx.res.status(500).send("Internal error occured. Please try again."), true;
+            ctx.res
+                .status(500)
+                .send("Internal error occurred. Please try again.");
+
+            return true;
         }
 
-        // ctx.error.replace(this.preRegx, "")
-        const msg: string = this.escape(ctx.error.replace(/\\/gi, "/").replace(this._rootregx, "$root").replace(this._publicregx, "$public/"));
-        return ctx.res.status(500).send(`<pre>${msg}</pre>`), true;
+        const message = this.escape(
+            ctx.error
+                .replace(/\\/g, "/")
+                .replace(this._rootregx, "$root")
+                .replace(this._publicregx, "$public/")
+        );
+
+        ctx.res
+            .status(500)
+            .send(`<pre>${message}</pre>`);
+
+        return true;
     }
 
-    public getErrorPath(statusCode: number, tryServer?: boolean): string | void {
+    public getErrorPath(
+        statusCode: number,
+        tryServer: boolean = false
+    ): string | undefined {
+
         if (!HttpStatus.isErrorCode(statusCode)) {
-            throw new Error(`Invalid http error status code ${statusCode}`);
+            throw new Error(
+                `Invalid http error status code ${statusCode}`
+            );
         }
-        const cstatusCode: string = String(statusCode);
+
+        const code = String(statusCode);
+
         if (tryServer) {
-            if (this._errorPage[cstatusCode]) {
-                return this._errorPage[cstatusCode];
-            }
-            return void 0;
+            return this._errorPage[code];
         }
-        if (this._config.errorPage[cstatusCode]) {
-            return this._config.errorPage[cstatusCode];
+
+        if (this._config.errorPage[code]) {
+            return this._config.errorPage[code];
         }
-        if (this._errorPage[cstatusCode]) {
-            return this._errorPage[cstatusCode];
+
+        if (this._errorPage[code]) {
+            return this._errorPage[code];
         }
-        throw new Error(`No error page found in app.config.json->errorPage[${cstatusCode}]`);
+
+        throw new Error(
+            `No error page found in app.config.json->errorPage[${code}]`
+        );
     }
 
-    public transferRequest(ctx: IContext, path: string | number, status?: IResInfo): void {
-        if (!ctx) throw new Error("Invalid argument defined...");
-        if (!ctx.isDisposed) {
-            if (!status) status = HttpStatus.getResInfo(path, 200);
-            if (!status.isErrorCode && typeof (path) !== "string") {
-                throw new Error("Path should be string...");
-            }
-            if (status.isErrorCode) {
-                if (ctx.req.get('x-requested-with') === 'XMLHttpRequest') {
-                    return ctx.res.status(status.code).type("text").noCache().send(`${ctx.req.method} : ${ctx.req.path} ${status.description}\n${ctx.error}`);
-                }
-            }
-            let nextPath: string | void;
-            let tryServer: boolean = false;
-            if (status.isErrorCode) {
-                ctx.res.noCache();
-                if (status.isInternalErrorCode && ctx.errorPage.indexOf("\\dist\\error_page\\500") > -1) {
-                    return this.passError(ctx), void 0;
-                }
-                if (status.code === ctx.errorCode) {
-                    tryServer = true;
-                } else {
-                    ctx.errorCode = status.code;
-                }
-            }
-            nextPath = typeof (path) === "string" ? path : this.getErrorPath(path, tryServer);
-            if (!nextPath) {
-                return this.passError(ctx), void 0;
-            }
-            if (status.isErrorCode && status.isInternalErrorCode === false) {
-                this.addError(ctx, `${status.code} ${status.description}`);
-            }
-            if (status.isErrorCode) {
-                ctx.errorPage = _path.resolve(nextPath);
-                if (ctx.errorPage.indexOf("\\dist\\error_page\\") > -1) {
-                    ctx.path = `/cwserver/error_page/${status.code}`;
-                } else {
-                    ctx.path = `/error/${status.code}`;
-                }
-            }
-            return ctx.res.render(ctx, nextPath, status);
+    public transferRequest(
+        ctx: IContext,
+        path: string | number,
+        status?: IResInfo
+    ): void {
+
+        if (!ctx) {
+            throw new Error("Invalid argument defined...");
         }
+
+        if (ctx.isDisposed) {
+            return;
+        }
+
+        status ??= HttpStatus.getResInfo(path, 200);
+
+        if (!status.isErrorCode && typeof path !== "string") {
+            throw new Error("Path should be string...");
+        }
+
+        if (
+            status.isErrorCode &&
+            ctx.req.get("x-requested-with") === "XMLHttpRequest"
+        ) {
+            return ctx.res
+                .status(status.code)
+                .type("text")
+                .noCache()
+                .send(
+                    `${ctx.req.method} : ${ctx.req.path} ${status.description}\n${ctx.error}`
+                );
+        }
+
+        let tryServer = false;
+
+        if (status.isErrorCode) {
+            ctx.res.noCache();
+
+            if (
+                status.isInternalErrorCode &&
+                ctx.errorPage.includes("\\dist\\error_page\\500")
+            ) {
+                this.passError(ctx);
+                return;
+            }
+
+            tryServer = status.code === ctx.errorCode;
+
+            if (!tryServer) {
+                ctx.errorCode = status.code;
+            }
+        }
+
+        const nextPath =
+            typeof path === "string"
+                ? path
+                : this.getErrorPath(path, tryServer);
+
+        if (!nextPath) {
+            this.passError(ctx);
+            return;
+        }
+
+        if (status.isErrorCode && !status.isInternalErrorCode) {
+            this.addError(
+                ctx,
+                `${status.code} ${status.description}`
+            );
+        }
+
+        if (status.isErrorCode) {
+            ctx.errorPage = _path.resolve(nextPath);
+
+            ctx.path = ctx.errorPage.includes("\\dist\\error_page\\")
+                ? `/cwserver/error_page/${status.code}`
+                : `/error/${status.code}`;
+        }
+
+        ctx.res.render(ctx, nextPath, status);
     }
 
     public mapPath(path: string): string {
@@ -1000,24 +1326,20 @@ ${appRoot}\\www_public
     public addError(ctx: IContext, ex: string | Error): IContext {
         ctx.path = this.pathToUrl(ctx.path);
 
-        if (!ctx.error) {
-            ctx.error = `Error occured in ${ctx.path}`;
-        } else {
-            ctx.error += `\r\n\r\nNext Error occured in ${ctx.path}`;
-        }
+        ctx.error = ctx.error
+            ? `${ctx.error}\r\n\r\nNext error occurred in ${ctx.path}`
+            : `Error occurred in ${ctx.path}`;
 
-        if (!this._config.isDebug)
+        if (!this._config.isDebug) {
             return ctx;
-
-        if (typeof (ex) === "string") {
-            ctx.error += " " + ex;
-        } else {
-            ctx.error += "\r\n" + ex.message;
-            ctx.error += "\r\n" + ex.stack;
         }
+
+        ctx.error += typeof ex === "string"
+            ? ` ${ex}`
+            : `\r\n${ex.message}\r\n${ex.stack ?? ""}`;
 
         ctx.error = ctx.error
-            .replace(/\\/gi, '/')
+            .replace(/\\/g, "/")
             .replace(this._rootregx, "$root")
             .replace(this._publicregx, "$public/")
             .replace(this._nodeModuleregx, "$engine/");
@@ -1071,6 +1393,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
     const _server: CwServer = new CwServer(appRoot, wwwName);
 
     const _process = {
+
         render: (code: number | undefined, ctx: IContext, next: NextFunction, transfer?: boolean): any => {
             if (transfer && typeof (transfer) !== "boolean") {
                 throw new Error("transfer argument should be ?boolean....");
@@ -1086,13 +1409,14 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             }
             return _server.transferRequest(ctx, code);
         },
+
         createContext: (req: IRequest, res: IResponse, next: NextFunction): IContext => {
-            
+
             const _context = _server.createContext(req, res, next);
             const _next = _context.next;
 
             _context.next = (code?: number | undefined, transfer?: boolean): any => {
-                
+
                 if (_context.isDisposed) {
                     console.warn('Warning: `context already disposed`. Cannot access disposed object.');
                     return;
@@ -1126,14 +1450,16 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             _app.on("request-begain", (req: IRequest): void => {
                 _server.log.success(`${req.method} ${req.path}`);
             }).on("response-end", (req: IRequest, res: IResponse): void => {
-                const ctx: IContext | undefined = _ctxManager.getMyContext(req.id);
 
+                const ctx = _ctxManager.getMyContext(req.id);
                 if (ctx && !ctx.isDisposed) {
+
                     if (res.statusCode && HttpStatus.isErrorCode(res.statusCode)) {
                         _server.log.error(`Send ${res.statusCode} ${ctx.path}`);
                     } else {
                         _server.log.success(`Send ${res.statusCode} ${ctx.path}`);
                     }
+
                 }
 
                 return _ctxManager.removeContext(req.id);
@@ -1148,58 +1474,130 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         }
 
         const _virtualDir: { [x: string]: string; }[] = [];
+
         _server.virtualInfo = (route: string): { route: string; root: string; } | void => {
-            const v = _virtualDir.find((a) => a.route === route);
-            if (!v) return void 0;
+            const v = _virtualDir.find(
+                a => a.route === route
+            );
+
+            if (!v)
+                return;
+
             return {
                 route: v.route,
                 root: v.root
             };
         };
-        _server.addVirtualDir = (route: string, root: string, evt?: (ctx: IContext) => void): void => {
-            if (route.indexOf(":") > -1 || route.indexOf("*") > -1)
+
+        _server.addVirtualDir = (
+            route: string,
+            root: string,
+            evt?: (ctx: IContext) => void
+        ): void => {
+
+            if (route.includes(":") || route.includes("*")) {
                 throw new Error(`Unsupported symbol defined. ${route}`);
-            const neRoute = route;
-            if (_virtualDir.some((a) => a.route === neRoute))
-                throw new Error(`You already add this virtual route ${route}`);
-            route += route.charAt(route.length - 1) !== "/" ? "/" : "";
-            route += "*";
-            const _processHandler = (req: IRequest, res: IResponse, next: NextFunction, forWord: (ctx: IContext) => void): void => {
-                const _ctx: IContext = _server.createContext(req, res, next);
-                const _next: NextFunction = next;
-                _ctx.next = (code?: number | undefined, transfer?: boolean): any => {
-                    if (!code || code === 200) return;
-                    return _process.render(code, _ctx, _next, transfer);
-                }
-                if (!_server.isValidContext(_ctx)) {
+            }
+
+            const originalRoute = route;
+
+            if (_virtualDir.some(item => item.route === originalRoute)) {
+                throw new Error(`You already added this virtual route ${route}`);
+            }
+
+            const virtualRoute = `${route.replace(/\/?$/, "/")}*`;
+
+            const processHandler = (
+                req: IRequest,
+                res: IResponse,
+                next: NextFunction,
+                handler: (ctx: IContext) => void
+            ): void => {
+
+                const ctx = _server.createContext(req, res, next);
+
+                ctx.next = (
+                    code?: number,
+                    transfer?: boolean
+                ): any => {
+                    if (!code || code === 200) {
+                        return;
+                    }
+
+                    return _process.render(
+                        code,
+                        ctx,
+                        next,
+                        transfer
+                    );
+                };
+
+                if (!_server.isValidContext(ctx)) {
                     return;
                 }
-                return fsw.isExists(`${root}/${_ctx.path}`, (exists: boolean, url: string): void => {
-                    if (!exists) return _ctx.next(404);
-                    return forWord(_ctx);
-                });
-            };
-            if (!evt || typeof (evt) !== "function") {
-                _app.use(route, (req: IRequest, res: IResponse, next: NextFunction) => {
-                    _processHandler(req, res, next, (ctx: IContext): void => {
-                        if (_server.config.mimeType.indexOf(ctx.extension) > -1) {
-                            return _controller.httpMimeHandler.render(ctx, root);
+
+                fsw.isExists(
+                    `${root}/${ctx.path}`,
+                    (exists: boolean): void => {
+                        if (!exists) {
+                            return ctx.next(404);
                         }
-                        return ctx.next(404);
-                    });
-                }, true);
+
+                        return handler(ctx);
+                    }
+                );
+            };
+
+            if (typeof evt !== "function") {
+
+                _app.use(
+                    virtualRoute,
+                    (req, res, next) => {
+                        processHandler(
+                            req,
+                            res,
+                            next,
+                            ctx => {
+                                if (_server.config.mimeType.includes(ctx.extension)) {
+                                    return _controller.httpMimeHandler.render(
+                                        ctx,
+                                        root
+                                    );
+                                }
+
+                                return ctx.next(404);
+                            }
+                        );
+                    },
+                    true
+                );
+
             } else {
-                _app.use(route, (req: IRequest, res: IResponse, next: NextFunction) => {
-                    _processHandler(req, res, next, (ctx: IContext): void => {
-                        _server.log.success(`Send ${200} ${route}${req.path}`);
-                        return evt(ctx);
-                    });
-                }, true);
+
+                _app.use(
+                    virtualRoute,
+                    (req, res, next) => {
+                        processHandler(
+                            req,
+                            res,
+                            next,
+                            ctx => {
+                                _server.log.success(
+                                    `Send 200 ${virtualRoute}${req.path}`
+                                );
+
+                                return evt(ctx);
+                            }
+                        );
+                    },
+                    true
+                );
             }
-            return _virtualDir.push({
-                route: neRoute,
+
+            _virtualDir.push({
+                route: originalRoute,
                 root
-            }), void 0;
+            });
         };
 
         if (_server.config.bundler && _server.config.bundler.enable) {
@@ -1221,10 +1619,15 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _app.on("error", (req: IRequest, res: IResponse, err?: number | Error): void => {
 
             if (res.isAlive) {
-                const context: IContext = _process.createContext(req, res, res.sendIfError.bind(res));
+
+                const context: IContext = _process.createContext(
+                    req, res, res.sendIfError.bind(res)
+                );
+
                 if (!err) {
                     return context.transferRequest(404);
                 }
+
                 if (err instanceof Error) {
                     return context.transferError(err);
                 }
@@ -1235,39 +1638,49 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
         _controller.sort();
 
+
         _app.use((req: IRequest, res: IResponse, next: NextFunction) => {
+            const context = _process.createContext(
+                req, res, next
+            );
 
-            const context: IContext = _process.createContext(req, res, next);
-            const reqPath: string = req.path;
-            const hiddenDirectory = _server.config.hiddenDirectory;
+            const reqPath = req.path;
 
-            if (hiddenDirectory.some((a) => {
-                return reqPath.substring(0, a.length) === a;
-            })) {
-                _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`);
+            const isHidden = _server.config.hiddenDirectory.some(
+                dir => reqPath.startsWith(dir)
+            );
+
+            if (isHidden) {
+                _server.log.write(
+                    `Trying to access Hidden directory. Remote Address ${req.ip} Send 404 ${req.path}`
+                );
+
                 return _server.transferRequest(context, 404);
             }
 
-            if (reqPath.indexOf('$root') > -1 || reqPath.indexOf('$public') > -1) {
-                _server.log.write(`Trying to access directly reserved keyword ( $root | $public ). Remote Adress ${req.ip} Send 404 ${req.path}`);
+            if (reqPath.includes("$root") || reqPath.includes("$public")) {
+
+                _server.log.write(
+                    `Trying to access directly reserved keyword ($root | $public). Remote Address ${req.ip} Send 404 ${req.path}`
+                );
+
                 return _server.transferRequest(context, 404);
             }
 
             try {
-
-                if (_server.isValidContext(context)) {
-                    return _controller.processAny(context);
+                if (!_server.isValidContext(context)) {
+                    return;
                 }
 
+                return _controller.processAny(context);
+
             } catch (ex: any) {
-
                 return _server.transferRequest(
-                    _server.addError(context, ex), 500
+                    _server.addError(context, ex),
+                    500
                 );
-
             }
         });
-
         _server.init();
 
         return _app;

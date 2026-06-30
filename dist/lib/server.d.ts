@@ -432,7 +432,7 @@ export declare class CwServer implements ICwServer {
     onClearSession(ctx: IContext): void;
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
     passError(ctx: IContext): boolean;
-    getErrorPath(statusCode: number, tryServer?: boolean): string | void;
+    getErrorPath(statusCode: number, tryServer?: boolean): string | undefined;
     transferRequest(ctx: IContext, path: string | number, status?: IResInfo): void;
     mapPath(path: string): string;
     pathToUrl(path: string): string;

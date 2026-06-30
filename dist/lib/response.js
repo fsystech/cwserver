@@ -202,15 +202,12 @@ class Response extends node_http_1.ServerResponse {
         }).end(), void 0;
     }
     cookie(name, val, options) {
-        let sCookie = this.getHeader('Set-Cookie');
-        if (Array.isArray(sCookie)) {
-            this.removeHeader('Set-Cookie');
-        }
-        else {
-            sCookie = [];
-        }
-        sCookie.push(createCookie(name, val, options));
-        return this.setHeader('Set-Cookie', sCookie), this;
+        const existing = this.getHeader('Set-Cookie');
+        this.setHeader('Set-Cookie', [
+            ...(Array.isArray(existing) ? existing : []),
+            createCookie(name, val, options)
+        ]);
+        return this;
     }
     sendIfError(err) {
         if (!this.isAlive)

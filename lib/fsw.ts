@@ -158,7 +158,7 @@ export function readJson<T>(
     }).catch(ex => errHandler(ex, () => next(ex)));
 }
 
-export function readJsonSync<T>(absPath: string): NodeJS.Dict<T> {
+export function readJsonSync<T>(absPath: string): T {
 
     try {
 

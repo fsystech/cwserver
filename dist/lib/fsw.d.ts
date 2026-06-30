@@ -17,7 +17,7 @@ export declare function isExistsAsync(path: string): Promise<{
 }>;
 export declare function readJsonAsync<T>(absPath: string): Promise<any>;
 export declare function readJson<T>(absPath: string, next: (err?: NodeJS.ErrnoException, json?: NodeJS.Dict<T>) => void, errHandler: ErrorHandler): void;
-export declare function readJsonSync<T>(absPath: string): NodeJS.Dict<T>;
+export declare function readJsonSync<T>(absPath: string): T;
 export declare function mkdirAsyncx(rootDir: string, targetDir?: string): Promise<void>;
 export declare function mkdir(rootDir: string, targetDir: string, next: (err?: NodeJS.ErrnoException) => void, errHandler: ErrorHandler): void;
 export declare function mkdirSync(rootDir: string, targetDir?: string): boolean;
