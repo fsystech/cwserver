@@ -25,7 +25,10 @@ import * as _path from 'node:path';
 import { pipeline } from 'node:stream';
 import type { IContext } from './context';
 import destroy from 'destroy';
-import { isExists } from './fsw';
+import { promisify } from "node:util";
+import { isExistsAsync } from './fsw';
+
+const pipelineAsync = promisify(pipeline);
 
 function _isPlainObject(obj: any): obj is { [x: string]: any; } {
     if (obj === null || obj === undefined) return false;
@@ -152,27 +155,47 @@ export class Util {
         if (this.isError(obj)) throw obj;
     }
 
-    public static pipeOutputStream(absPath: string, ctx: IContext): void {
-        return ctx.handleError(null, () => {
-            const statusCode: number = ctx.res.statusCode;
-            const openenedFile: _fs.ReadStream = _fs.createReadStream(absPath);
-            return pipeline(openenedFile, ctx.res, (err: NodeJS.ErrnoException | null) => {
-                destroy(openenedFile);
-                ctx.next(statusCode);
-            }), void 0;
-        });
+    public static async pipeOutputStreamAsync(absPath: string, ctx: IContext): Promise<void> {
+        if (ctx.isDisposed)
+            return;
+
+        const statusCode = ctx.res.statusCode;
+        const openenedFile: _fs.ReadStream = _fs.createReadStream(absPath);
+
+        try {
+
+            await pipelineAsync(openenedFile, ctx.res);
+            if (ctx.isDisposed)
+                return;
+            
+            ctx.next(statusCode);
+
+        } catch (ex: any) {
+            ctx.transferError(ex);
+        } finally {
+            destroy(openenedFile);
+        }
     }
 
-    public static sendResponse(
+    public static async sendResponseAsync(
         ctx: IContext, reqPath: string, contentType?: string
-    ): void {
-        return isExists(reqPath, (exists: boolean, url: string): void => {
-            return ctx.handleError(null, () => {
-                if (!exists) return ctx.next(404, true);
-                ctx.res.status(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
-                return this.pipeOutputStream(url, ctx);
-            });
+    ): Promise<void> {
+
+        const e = await isExistsAsync(reqPath);
+        if (ctx.isDisposed)
+            return;
+
+        if (!e.exists) {
+            return ctx.next(404, true);
+        }
+
+        ctx.res.status(200, {
+            'Content-Type': contentType || 'text/html; charset=UTF-8'
         });
+
+        return await this.pipeOutputStreamAsync(
+            e.url, ctx
+        );
     }
 
     public static getExtension(reqPath: string): string | void {

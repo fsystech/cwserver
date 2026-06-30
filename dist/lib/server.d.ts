@@ -1,4 +1,4 @@
-import { ISession, IResInfo } from "./app-static";
+import { IResInfo } from "./app-static";
 import { type IRequestParam } from './app-router';
 import { NextFunction, type IApplication } from './server-core';
 import type { IRequest } from "./request";
@@ -9,6 +9,7 @@ import { type ICryptoInfo } from "./encryption";
 import { ILogger } from "./logger";
 import { IncomingHttpHeaders } from "node:http";
 import { type IContext } from "./context";
+import { type ISession } from "./session";
 export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 export interface IServerEncryption {
     encrypt(plainText: string): string;

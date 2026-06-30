@@ -22,10 +22,10 @@
 // by rajib chy
 import { Encryption } from './encryption';
 import { ICwServer } from './server';
-import { ISession } from './app-static';
 import { Util } from './app-util';
 import { EventEmitter } from 'node:events';
 import { Server } from 'node:http';
+import type { ISession } from './session';
 /** [socket.io blueprint] */
 export interface IOSocket extends EventEmitter {
     nsp: object;

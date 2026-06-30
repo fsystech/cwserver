@@ -20,8 +20,8 @@ export declare class Util {
     static isArrayLike<T>(obj?: any): obj is T[];
     static isError(obj: any): obj is Error;
     static throwIfError(obj: any): void;
-    static pipeOutputStream(absPath: string, ctx: IContext): void;
-    static sendResponse(ctx: IContext, reqPath: string, contentType?: string): void;
+    static pipeOutputStreamAsync(absPath: string, ctx: IContext): Promise<void>;
+    static sendResponseAsync(ctx: IContext, reqPath: string, contentType?: string): Promise<void>;
     static getExtension(reqPath: string): string | void;
 }
 export {};

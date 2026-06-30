@@ -51,6 +51,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -66,7 +75,9 @@ const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
 const node_stream_1 = require("node:stream");
 const destroy_1 = __importDefault(require("destroy"));
+const node_util_1 = require("node:util");
 const fsw_1 = require("./fsw");
+const pipelineAsync = (0, node_util_1.promisify)(node_stream_1.pipeline);
 function _isPlainObject(obj) {
     if (obj === null || obj === undefined)
         return false;
@@ -183,24 +194,38 @@ class Util {
         if (this.isError(obj))
             throw obj;
     }
-    static pipeOutputStream(absPath, ctx) {
-        return ctx.handleError(null, () => {
+    static pipeOutputStreamAsync(absPath, ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (ctx.isDisposed)
+                return;
             const statusCode = ctx.res.statusCode;
             const openenedFile = _fs.createReadStream(absPath);
-            return (0, node_stream_1.pipeline)(openenedFile, ctx.res, (err) => {
-                (0, destroy_1.default)(openenedFile);
+            try {
+                yield pipelineAsync(openenedFile, ctx.res);
+                if (ctx.isDisposed)
+                    return;
                 ctx.next(statusCode);
-            }), void 0;
+            }
+            catch (ex) {
+                ctx.transferError(ex);
+            }
+            finally {
+                (0, destroy_1.default)(openenedFile);
+            }
         });
     }
-    static sendResponse(ctx, reqPath, contentType) {
-        return (0, fsw_1.isExists)(reqPath, (exists, url) => {
-            return ctx.handleError(null, () => {
-                if (!exists)
-                    return ctx.next(404, true);
-                ctx.res.status(200, { 'Content-Type': contentType || 'text/html; charset=UTF-8' });
-                return this.pipeOutputStream(url, ctx);
+    static sendResponseAsync(ctx, reqPath, contentType) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const e = yield (0, fsw_1.isExistsAsync)(reqPath);
+            if (ctx.isDisposed)
+                return;
+            if (!e.exists) {
+                return ctx.next(404, true);
+            }
+            ctx.res.status(200, {
+                'Content-Type': contentType || 'text/html; charset=UTF-8'
             });
+            return yield this.pipeOutputStreamAsync(e.url, ctx);
         });
     }
     static getExtension(reqPath) {

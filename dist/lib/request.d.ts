@@ -1,6 +1,6 @@
 import { IncomingMessage } from 'node:http';
-import { ISession } from './app-static';
 import { UrlWithParsedQuery } from 'node:url';
+import type { ISession } from './session';
 type ParsedUrlQuery = {
     [key: string]: string | string[] | undefined;
 };

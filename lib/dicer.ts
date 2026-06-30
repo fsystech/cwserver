@@ -297,7 +297,7 @@ export class Dicer extends WritableStream {
 
             if (!this._inHeader && typeof (r) === 'number' && r < data.length) {
 
-                //data = data.slice(r);
+                // data = data.slice(r);
 
                 data = Buffer.from(
                     Uint8Array.prototype.slice.call(data, r)

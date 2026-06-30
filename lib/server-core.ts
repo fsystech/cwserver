@@ -21,7 +21,7 @@
 // 2:40 PM 5/7/2020
 // by rajib chy
 import './app-global';
-import { resolve } from 'node:path';
+import * as _path from 'node:path';
 import * as _zlib from 'node:zlib';
 import { createServer as createHttp1Server, Server } from 'node:http';
 import { EventEmitter } from 'node:events';
@@ -37,7 +37,7 @@ import { Request, type IRequest } from './request';
 import { Response, type IResponse } from './response';
 import { injectIncomingOutgoing } from './inject';
 
-type onError = (req: IRequest, res: IResponse, err?: Error | number) => void;
+type onErrorFunc = (req: IRequest, res: IResponse, err?: Error | number) => void;
 export type NextFunction = (err?: any) => void;
 export type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunction, requestParam?: IRequestParam) => void;
 
@@ -112,7 +112,7 @@ export interface IApplication {
     shutdownAsync(): Promise<void>;
     on(ev: 'request-begain', handler: (req: IRequest) => void): IApplication;
     on(ev: 'response-end', handler: (req: IRequest, res: IResponse) => void): IApplication;
-    on(ev: 'error', handler: onError): IApplication;
+    on(ev: 'error', handler: onErrorFunc): IApplication;
     on(ev: 'shutdown', handler: () => void): IApplication;
     listen(handle: any, listeningListener?: () => void): IApplication;
 }
@@ -122,10 +122,10 @@ export const {
 } = (() => {
     let _appVersion: string = '4.1.1';
     const _readAppVersion = (): string => {
-        const libRoot: string = getAppDir();
-        const absPath: string = resolve(`${libRoot}/package.json`);
+        const libRoot = getAppDir();
+        const absPath = _path.resolve(`${libRoot}/package.json`);
         assert(existsSync(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
-        const data: string = readFileSync(absPath, "utf-8");
+        const data = readFileSync(absPath, "utf-8");
         _appVersion = Util.JSON.parse(data).version;
         return _appVersion;
     }
@@ -375,7 +375,7 @@ class Application extends EventEmitter implements IApplication {
          *
          * @param {Error} [err] - Optional error to emit. If undefined, a default "No route matched" error is emitted.
          */
-        const onError = (err?: Error): void => {
+        const handleRouteError = (err?: Error): void => {
 
             if (err) {
                 this.emit("error", req, res, err);
@@ -383,19 +383,19 @@ class Application extends EventEmitter implements IApplication {
             }
             // no handler matched
             this.emit("error", req, res, new Error("No route matched"));
-        };
+        }
 
         // Execute prerequisites first
         this._handleRequest(req, res, this._prerequisites, (err?: Error): void => {
-            if (err) return onError(err);
+            if (err) return handleRouteError(err);
 
             // Execute route handlers next
             this._handleRequest(req, res, this._routes, (err2?: Error): void => {
-                if (err2) return onError(err2);
+                if (err2) return handleRouteError(err2);
 
                 // Execute middlewares last
                 this._handleRequest(req, res, this._middlewares, (err3?: Error): void => {
-                    return onError(err3);
+                    return handleRouteError(err3);
                 });
 
             }, false); // 'false' indicates this is not a middleware

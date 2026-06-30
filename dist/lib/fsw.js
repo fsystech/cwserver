@@ -238,7 +238,7 @@ function mkdirAsyncx(rootDir, targetDir) {
         let sep = "";
         if (targetDir && targetDir.length > 0) {
             if (targetDir.charAt(0) === '.')
-                new Error("No need to defined start point....");
+                throw new Error("No need to defined start point....");
             fullPath = _path.join(rootDir, targetDir);
             sep = "/";
         }

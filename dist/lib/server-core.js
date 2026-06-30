@@ -18,6 +18,39 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.readAppVersion = exports.appVersion = void 0;
@@ -25,7 +58,7 @@ exports.App = App;
 // 2:40 PM 5/7/2020
 // by rajib chy
 require("./app-global");
-const node_path_1 = require("node:path");
+const _path = __importStar(require("node:path"));
 const node_http_1 = require("node:http");
 const node_events_1 = require("node:events");
 const app_router_1 = require("./app-router");
@@ -36,7 +69,7 @@ _a = (() => {
     let _appVersion = '4.1.1';
     const _readAppVersion = () => {
         const libRoot = (0, app_util_1.getAppDir)();
-        const absPath = (0, node_path_1.resolve)(`${libRoot}/package.json`);
+        const absPath = _path.resolve(`${libRoot}/package.json`);
         (0, app_util_1.assert)((0, fs_1.existsSync)(absPath), `No package.json found in ${libRoot}\nplease re-install cwserver`);
         const data = (0, fs_1.readFileSync)(absPath, "utf-8");
         _appVersion = app_util_1.Util.JSON.parse(data).version;
@@ -237,7 +270,7 @@ class Application extends node_events_1.EventEmitter {
          *
          * @param {Error} [err] - Optional error to emit. If undefined, a default "No route matched" error is emitted.
          */
-        const onError = (err) => {
+        const handleRouteError = (err) => {
             if (err) {
                 this.emit("error", req, res, err);
                 return;
@@ -248,14 +281,14 @@ class Application extends node_events_1.EventEmitter {
         // Execute prerequisites first
         this._handleRequest(req, res, this._prerequisites, (err) => {
             if (err)
-                return onError(err);
+                return handleRouteError(err);
             // Execute route handlers next
             this._handleRequest(req, res, this._routes, (err2) => {
                 if (err2)
-                    return onError(err2);
+                    return handleRouteError(err2);
                 // Execute middlewares last
                 this._handleRequest(req, res, this._middlewares, (err3) => {
-                    return onError(err3);
+                    return handleRouteError(err3);
                 });
             }, false); // 'false' indicates this is not a middleware
         });

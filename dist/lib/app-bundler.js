@@ -51,6 +51,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Bundler = exports.__moduleName = void 0;
 // 4:48 PM 5/3/2020
@@ -63,30 +72,28 @@ const http_cache_1 = require("./http-cache");
 const app_util_1 = require("./app-util");
 const app_static_1 = require("./app-static");
 const file_info_1 = require("./file-info");
-const _fileInfo = new file_info_1.FileInfoCacheHandler();
+const node_util_1 = require("node:util");
+const _fsp = _fs.promises;
+const gzipAsync = (0, node_util_1.promisify)(_zlib.gzip);
 var ContentType;
 (function (ContentType) {
     ContentType[ContentType["JS"] = 0] = "JS";
     ContentType[ContentType["CSS"] = 1] = "CSS";
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
 })(ContentType || (ContentType = {}));
-const _mamCache = {};
-const responseWriteGzip = (ctx, buff, cte) => {
-    ctx.res.status(200, {
-        'Content-Type': Bundlew.getResContentType(cte),
-        'Content-Encoding': 'gzip'
-    });
-    const compressor = _zlib.createGzip({ level: _zlib.constants.Z_BEST_COMPRESSION });
-    compressor.pipe(ctx.res);
-    compressor.end(buff.data);
-    buff.dispose();
-    return compressor.on("end", () => {
-        compressor.unpipe(ctx.res);
-        ctx.next(200);
-    }), void 0;
-};
+class Bundel {
+    static init() {
+        if (this.cache)
+            return;
+        this.cache = new Map();
+        this.fi = new file_info_1.FileInfoCacheHandler();
+    }
+}
+Bundel.cache = null;
+Bundel.fi = null;
+Bundel.init();
 class Bundlew {
-    static getResContentType(ctEnum) {
+    static getResponseContentType(ctEnum) {
         if (ctEnum === ContentType.JS)
             return "application/x-javascript; charset=utf-8";
         return "text/css";
@@ -99,10 +106,7 @@ class Bundlew {
         return ContentType.UNKNOWN;
     }
     static getCachePath(server, str, ctEnum, cacheKey) {
-        // const dir = ctx.server.mapPath( `/web/temp/` );
         let fileName = `${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${encryption_1.Encryption.toMd5(str)}`;
-        // let path: string = _path.join(server.config.bundler.tempPath, `${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${Encryption.toMd5(str)}`);
-        // let path: string = `${ctx.server.config.bundler.tempPath}\\${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${Encryption.toMd5(str)}`;
         if (ctEnum === ContentType.JS) {
             fileName = `${fileName}.js.cache`;
         }
@@ -114,124 +118,114 @@ class Bundlew {
             cachpath: _path.join(server.config.bundler.tempPath, fileName)
         };
     }
-    static getBundleInfo(server, str, lastChangeTime, hasCacheFile, next) {
-        const result = [];
-        if (hasCacheFile && !server.config.bundler.reValidate) {
-            return process.nextTick(() => next(result, null));
-        }
-        const lchangeTime = typeof (lastChangeTime) === "number" ? lastChangeTime : 0;
-        const files = str.split(",");
-        const forword = () => {
-            try {
-                const _name = files.shift();
-                if (!_name)
-                    return next(result, null);
-                let fname = _name;
-                let iCwn = false;
-                if (fname.indexOf("|") > 0) {
-                    const spl = fname.split("|");
-                    fname = spl[0];
-                    if (spl[1] === "__owner__")
-                        iCwn = true;
-                    spl.length = 0;
-                }
-                if (/\$/gi.test(fname) === false) {
-                    fname = `$root/$public/${fname}`;
-                }
-                let absolute = "";
-                if (/\$virtual/gi.test(fname)) {
-                    absolute = _path.resolve(fname.replace(/\$.+?\//gi, (m) => {
-                        const vinfo = server.virtualInfo(`/${m.split("_")[1].replace("/", "")}`);
-                        if (!vinfo)
-                            throw new Error(`No virtual info found for ${fname}`);
-                        return `${vinfo.root}/`;
-                    }));
-                }
-                else {
-                    absolute = server.formatPath(fname, true);
-                }
-                return _fileInfo.stat(absolute, (desc) => {
-                    if (!desc.exists || !desc.stats)
-                        return next([], new Error(`No file found\r\nPath:${absolute}\r\nName:${fname}`));
-                    const changeTime = desc.stats.mtime.getTime();
-                    fname = fname.replace(/\$.+?\//gi, "");
-                    if (fname.charAt(0) !== '/') {
-                        fname = `/${fname}`;
-                    }
-                    result.push({
-                        name: fname,
-                        absolute,
-                        changeTime,
-                        isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
-                        iCwn
-                    });
-                    return forword();
-                });
+    static getFileInfoAsync(server, file, lchangeTime) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let fname = file;
+            let iCwn = false;
+            if (fname.indexOf("|") > 0) {
+                const spl = fname.split("|");
+                fname = spl[0];
+                if (spl[1] === "__owner__")
+                    iCwn = true;
+                spl.length = 0;
             }
-            catch (e) {
-                return next([], e);
+            if (/\$/gi.test(fname) === false) {
+                fname = `$root/$public/${fname}`;
             }
-        };
-        return forword();
-    }
-    static readBuffer(ctx, files, copyright, next) {
-        const out = new app_static_1.BufferArray();
-        let istr = _getInfo();
-        files.forEach((inf, index) => {
-            istr += `// ${index + 1}==>${inf.name}\r\n`;
+            let absolute = "";
+            if (/\$virtual/gi.test(fname)) {
+                absolute = _path.resolve(fname.replace(/\$.+?\//gi, (m) => {
+                    const vinfo = server.virtualInfo(`/${m.split("_")[1].replace("/", "")}`);
+                    if (!vinfo)
+                        throw new Error(`No virtual info found for ${fname}`);
+                    return `${vinfo.root}/`;
+                }));
+            }
+            else {
+                absolute = server.formatPath(fname, true);
+            }
+            const desc = yield Bundel.fi.statAsync(absolute);
+            if (!desc.exists || !desc.stats)
+                throw new Error(`No file found\r\nPath:${absolute}\r\nName:${fname}`);
+            const changeTime = desc.stats.mtime.getTime();
+            fname = fname.replace(/\$.+?\//gi, "");
+            if (fname.charAt(0) !== '/') {
+                fname = `/${fname}`;
+            }
+            return {
+                name: fname,
+                absolute,
+                changeTime,
+                isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
+                iCwn
+            };
         });
-        istr += "// Generated on- " + new Date().toString() + "\r\n";
-        out.push(Buffer.from(istr));
-        const copyBuff = Buffer.from(copyright);
-        const forward = () => {
-            const inf = files.shift();
-            if (!inf) {
-                return process.nextTick(() => next(out));
+    }
+    static getBundleInfoAsync(server, str, lastChangeTime, hasCacheFile) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (hasCacheFile && !server.config.bundler.reValidate) {
+                return [];
             }
-            out.push(Buffer.from(`\r\n// ${inf.name}\r\n`));
-            if (inf.iCwn === true) {
-                out.push(copyBuff);
-                if (inf.name.indexOf(".min.") < 0) {
-                    return _fs.readFile(inf.absolute, "utf8", (err, data) => {
-                        return ctx.handleError(err, () => {
-                            out.push(Buffer.from(data.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, ""))); /** Replace Comment and empty line */
-                            return forward();
-                        });
-                    });
+            const lchangeTime = typeof (lastChangeTime) === "number" ? lastChangeTime : 0;
+            const files = str.split(",");
+            return yield Promise.all(files.map((file) => __awaiter(this, void 0, void 0, function* () {
+                return yield this.getFileInfoAsync(server, file, lchangeTime);
+            })));
+        });
+    }
+    static readBufferAsync(ctx, files, copyright) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const out = new app_static_1.BufferArray();
+            let istr = _getInfo();
+            for (let index = 0, l = files.length; index < l; index++) {
+                const inf = files[index];
+                istr += `// ${index + 1}==>${inf.name}\r\n`;
+            }
+            istr += "// Generated on- " + new Date().toString() + "\r\n";
+            out.push(Buffer.from(istr));
+            const copyBuff = Buffer.from(copyright);
+            for (const inf of files) {
+                if (ctx.isDisposed)
+                    return null;
+                out.push(`\r\n// ${inf.name}\r\n`);
+                if (inf.iCwn === true) {
+                    out.push(copyBuff);
+                    if (!inf.name.includes(".min.")) {
+                        const data = yield _fsp.readFile(inf.absolute, "utf8");
+                        out.push(Buffer.from(data.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, ""))); /** Replace Comment and empty line */
+                        continue;
+                    }
                 }
+                out.push(yield _fsp.readFile(inf.absolute));
             }
-            return _fs.readFile(inf.absolute, (err, buffer) => {
-                return ctx.handleError(err, () => {
-                    out.push(buffer);
-                    return forward();
-                });
-            });
-        };
-        return forward();
+            return out;
+        });
     }
     static decryptFilePath(server, ctx, str) {
         str = server.encryption.decryptUri(str);
         if (str.length === 0) {
             return ctx.next(404), void 0;
         }
-        str = str.replace(/\r\n/gi, "").replace(/\s+/g, "");
-        return str;
+        return str.replace(/\r\n/gi, "").replace(/\s+/g, "");
     }
-    static createMemmory(server, ctx, isGzip) {
-        const ct = ctx.req.query.ct;
-        const str = ctx.req.query.g;
-        if (!str || !ct) {
-            return ctx.next(404);
-        }
-        const cte = this.getContentType(ct.toString());
-        if (cte === ContentType.UNKNOWN)
-            return ctx.next(404);
-        const desc = this.decryptFilePath(server, ctx, str.toString());
-        if (!desc)
-            return;
-        const cngHander = http_cache_1.HttpCache.getChangedHeader(ctx.req.headers);
-        return this.getBundleInfo(server, desc.toString(), cngHander.sinceModify, false, (files, err) => {
-            return ctx.handleError(err, () => {
+    static createMemmoryAsync(server, ctx, isGzip) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const ct = ctx.req.query.ct;
+            const str = ctx.req.query.g;
+            if (!str || !ct) {
+                return ctx.next(404);
+            }
+            const cte = this.getContentType(ct.toString());
+            if (cte === ContentType.UNKNOWN)
+                return ctx.next(404);
+            const desc = this.decryptFilePath(server, ctx, str.toString());
+            if (!desc)
+                return;
+            const cngHander = http_cache_1.HttpCache.getChangedHeader(ctx.req.headers);
+            try {
+                const files = yield this.getBundleInfoAsync(server, desc.toString(), cngHander.sinceModify, false);
+                if (ctx.isDisposed)
+                    return;
                 let hasChanged = true;
                 if (cngHander.sinceModify) {
                     hasChanged = files.some(a => a.isChange === true);
@@ -240,25 +234,29 @@ class Bundlew {
                     lastChangeTime: Date.now()
                 }, server.config.cacheHeader);
                 if (!hasChanged) {
-                    ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) });
-                    return ctx.res.end(), ctx.next(304);
+                    ctx.res.status(304, { 'Content-Type': this.getResponseContentType(cte) });
+                    return ctx.res.end(), void 0;
                 }
-                return this.readBuffer(ctx, files, server.copyright(), (buffer) => {
-                    ctx.req.setSocketNoDelay(true);
-                    if (isGzip === false || !server.config.bundler.compress) {
-                        ctx.res.status(200, {
-                            'Content-Type': this.getResContentType(cte),
-                            'Content-Length': buffer.length
-                        });
-                        return ctx.res.end(buffer.data), buffer.dispose(), ctx.next(200);
-                    }
-                    return responseWriteGzip(ctx, buffer, cte);
-                });
-            });
+                const buffer = yield this.readBufferAsync(ctx, files, server.copyright());
+                if (buffer == null || ctx.isDisposed)
+                    return;
+                ctx.req.setSocketNoDelay(true);
+                if (isGzip === false || !server.config.bundler.compress) {
+                    ctx.res.status(200, {
+                        'Content-Type': this.getResponseContentType(cte),
+                        'Content-Length': buffer.length
+                    });
+                    return ctx.res.end(buffer.data), buffer.dispose();
+                }
+                return _responseWriteGzip(ctx, buffer, cte);
+            }
+            catch (ex) {
+                ctx.transferError(ex);
+            }
         });
     }
     static _sendFromMemCache(ctx, cte, dataInfo) {
-        const etag = dataInfo.cfileSize !== 0 ? http_cache_1.HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize) : void 0;
+        const etag = dataInfo.cfileSize !== 0 ? http_cache_1.HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize) : undefined;
         const cngHander = http_cache_1.HttpCache.getChangedHeader(ctx.req.headers);
         ctx.res.setHeader('x-served-from', 'mem-cache');
         if (cngHander.etag || cngHander.sinceModify) {
@@ -266,15 +264,15 @@ class Bundlew {
             if (etag && cngHander.etag) {
                 if (cngHander.etag === etag) {
                     http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
-                    ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
-                    return ctx.next(304);
+                    ctx.res.status(304, { 'Content-Type': this.getResponseContentType(cte) }).send();
+                    return;
                 }
                 exit = true;
             }
             if (cngHander.sinceModify && !exit) {
                 http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
-                ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
-                return ctx.next(304);
+                ctx.res.status(304, { 'Content-Type': this.getResponseContentType(cte) }).send();
+                return;
             }
         }
         http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
@@ -282,7 +280,7 @@ class Bundlew {
             etag: http_cache_1.HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize)
         }, ctx.server.config.cacheHeader);
         ctx.res.status(200, {
-            'Content-Type': this.getResContentType(cte),
+            'Content-Type': this.getResponseContentType(cte),
             'Content-Length': dataInfo.cfileSize
         });
         if (ctx.server.config.bundler.compress) {
@@ -290,160 +288,156 @@ class Bundlew {
         }
         return ctx.res.end(dataInfo.bundleData), ctx.next(200);
     }
-    // private static _getCacheMape(str: string): string {
-    //     return str.replace(/\\/gi, "_").replace(/-/gi, "_");
-    // }
-    static _holdCache(cacheKey, cachePath, lastChangeTime, size) {
-        if (_mamCache[cacheKey])
-            return;
-        setImmediate(() => {
-            _mamCache[cacheKey] = {
+    static _holdCacheAsync(cacheKey, cachePath, lastChangeTime, size) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (Bundel.cache.has(cacheKey))
+                return;
+            const data = yield _fsp.readFile(cachePath);
+            Bundel.cache.set(cacheKey, {
                 lastChangeTime,
                 cfileSize: size,
-                bundleData: _fs.readFileSync(cachePath)
-            };
+                bundleData: data
+            });
         });
     }
-    static createServerFileCache(server, ctx) {
-        const cacheKey = ctx.req.query.ck;
-        const ct = ctx.req.query.ct;
-        const str = ctx.req.query.g;
-        if (!str || !cacheKey || !ct) {
-            return ctx.next(404);
-        }
-        const cte = this.getContentType(ct.toString());
-        if (cte === ContentType.UNKNOWN)
-            return ctx.next(404);
-        const desc = this.decryptFilePath(server, ctx, str.toString());
-        if (!desc)
-            return;
-        const useFullOptimization = server.config.useFullOptimization;
-        const { cachpath, memCacheKey } = this.getCachePath(server, desc.toString(), cte, cacheKey.toString());
-        // const memCacheKey: string = this._getCacheMape(fileName);
-        if (useFullOptimization && _mamCache[memCacheKey]) {
-            return this._sendFromMemCache(ctx, cte, _mamCache[memCacheKey]);
-        }
-        const cngHander = http_cache_1.HttpCache.getChangedHeader(ctx.req.headers);
-        return _fileInfo.stat(cachpath, (fdesc) => {
-            const existsCachFile = fdesc.exists;
-            return ctx.handleError(null, () => {
-                let lastChangeTime = 0;
-                let cfileSize = 0;
-                if (existsCachFile && fdesc.stats) {
+    static createServerFileCacheAsync(server, ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const cacheKey = ctx.req.query.ck;
+            const ct = ctx.req.query.ct;
+            const str = ctx.req.query.g;
+            if (!str || !cacheKey || !ct) {
+                return ctx.next(404);
+            }
+            const cte = this.getContentType(ct.toString());
+            if (cte === ContentType.UNKNOWN)
+                return ctx.next(404);
+            const desc = this.decryptFilePath(server, ctx, str.toString());
+            if (!desc)
+                return;
+            const useFullOptimization = server.config.useFullOptimization;
+            const { cachpath, memCacheKey } = this.getCachePath(server, desc.toString(), cte, cacheKey.toString());
+            if (useFullOptimization && Bundel.cache.has(memCacheKey)) {
+                return this._sendFromMemCache(ctx, cte, Bundel.cache.get(memCacheKey));
+            }
+            const cngHander = http_cache_1.HttpCache.getChangedHeader(ctx.req.headers);
+            try {
+                const fdesc = yield Bundel.fi.statAsync(cachpath);
+                if (ctx.isDisposed)
+                    return;
+                let lastChangeTime = 0, cfileSize = 0;
+                if (fdesc.exists && fdesc.stats) {
                     cfileSize = fdesc.stats.size;
                     lastChangeTime = fdesc.stats.mtime.getTime();
                 }
-                return this.getBundleInfo(server, desc.toString(), lastChangeTime, existsCachFile, (files, ierr) => {
-                    return ctx.handleError(ierr, () => {
-                        let hasChanged = true;
-                        if (existsCachFile) {
-                            hasChanged = files.some(a => a.isChange === true);
+                const files = yield this.getBundleInfoAsync(server, desc.toString(), lastChangeTime, fdesc.exists);
+                if (ctx.isDisposed)
+                    return;
+                let hasChanged = true;
+                if (fdesc.exists) {
+                    hasChanged = files.some(a => a.isChange === true);
+                }
+                const etag = cfileSize !== 0 ? http_cache_1.HttpCache.getEtag(lastChangeTime, cfileSize) : undefined;
+                if (!hasChanged && fdesc.exists && (cngHander.etag || cngHander.sinceModify)) {
+                    let exit = false;
+                    if (etag && cngHander.etag) {
+                        if (cngHander.etag === etag) {
+                            http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
+                            ctx.res.status(304, { 'Content-Type': this.getResponseContentType(cte) }).send();
+                            return ctx.next(304);
                         }
-                        const etag = cfileSize !== 0 ? http_cache_1.HttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
-                        if (!hasChanged && existsCachFile && (cngHander.etag || cngHander.sinceModify)) {
-                            let exit = false;
-                            if (etag && cngHander.etag) {
-                                if (cngHander.etag === etag) {
-                                    http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
-                                    ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
-                                    return ctx.next(304);
-                                }
-                                exit = true;
-                            }
-                            if (cngHander.sinceModify && !exit) {
-                                http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
-                                ctx.res.status(304, { 'Content-Type': this.getResContentType(cte) }).send();
-                                return ctx.next(304);
-                            }
-                        }
-                        if (!hasChanged && existsCachFile) {
-                            http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
-                                lastChangeTime,
-                                etag: http_cache_1.HttpCache.getEtag(lastChangeTime, cfileSize)
-                            }, server.config.cacheHeader);
-                            ctx.res.status(200, {
-                                'Content-Type': this.getResContentType(cte),
-                                'Content-Length': cfileSize,
-                                'x-served-from': 'file-cache'
-                            });
-                            if (server.config.bundler.compress) {
-                                ctx.res.setHeader('Content-Encoding', 'gzip');
-                            }
-                            if (useFullOptimization) {
-                                this._holdCache(memCacheKey, cachpath, lastChangeTime, cfileSize);
-                            }
-                            return app_util_1.Util.pipeOutputStream(cachpath, ctx);
-                        }
-                        return this.readBuffer(ctx, files, server.copyright(), (buffer) => {
-                            if (!server.config.bundler.compress) {
-                                return _fs.writeFile(cachpath, buffer.data, (werr) => {
-                                    return ctx.handleError(werr, () => {
-                                        return _fileInfo.stat(cachpath, (edesc) => {
-                                            return ctx.handleError(null, () => {
-                                                if (!edesc.stats)
-                                                    return ctx.next(404);
-                                                lastChangeTime = edesc.stats.mtime.getTime();
-                                                http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
-                                                    lastChangeTime,
-                                                    etag: http_cache_1.HttpCache.getEtag(lastChangeTime, edesc.stats.size)
-                                                }, server.config.cacheHeader);
-                                                ctx.res.status(200, {
-                                                    'Content-Type': this.getResContentType(cte),
-                                                    'Content-Length': buffer.length
-                                                });
-                                                if (useFullOptimization) {
-                                                    _mamCache[memCacheKey] = {
-                                                        lastChangeTime,
-                                                        cfileSize: edesc.stats.size,
-                                                        bundleData: buffer.data
-                                                    };
-                                                }
-                                                ctx.res.end(buffer.data);
-                                                buffer.dispose();
-                                                return ctx.next(200);
-                                            });
-                                        }, true);
-                                    });
-                                });
-                            }
-                            return _zlib.gzip(buffer.data, (error, buff) => {
-                                buffer.dispose();
-                                return ctx.handleError(error, () => {
-                                    return _fs.writeFile(cachpath, buff, (err) => {
-                                        return ctx.handleError(err, () => {
-                                            return _fileInfo.stat(cachpath, (edesc) => {
-                                                return ctx.handleError(null, () => {
-                                                    if (!edesc.stats)
-                                                        return ctx.next(404);
-                                                    lastChangeTime = edesc.stats.mtime.getTime();
-                                                    http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
-                                                        lastChangeTime,
-                                                        etag: http_cache_1.HttpCache.getEtag(lastChangeTime, edesc.stats.size)
-                                                    }, server.config.cacheHeader);
-                                                    ctx.res.status(200, {
-                                                        'Content-Type': this.getResContentType(cte),
-                                                        'Content-Encoding': 'gzip',
-                                                        'Content-Length': buff.length
-                                                    });
-                                                    if (useFullOptimization) {
-                                                        _mamCache[memCacheKey] = {
-                                                            lastChangeTime,
-                                                            cfileSize: edesc.stats.size,
-                                                            bundleData: buff
-                                                        };
-                                                    }
-                                                    ctx.res.end(buff);
-                                                    ctx.next(200);
-                                                });
-                                            }, true);
-                                        });
-                                    });
-                                });
-                            });
-                        });
+                        exit = true;
+                    }
+                    if (cngHander.sinceModify && !exit) {
+                        http_cache_1.HttpCache.writeCacheHeader(ctx.res, {}, server.config.cacheHeader);
+                        ctx.res.status(304, { 'Content-Type': this.getResponseContentType(cte) }).send();
+                        return ctx.next(304);
+                    }
+                }
+                if (!hasChanged && fdesc.exists) {
+                    http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
+                        lastChangeTime,
+                        etag: http_cache_1.HttpCache.getEtag(lastChangeTime, cfileSize)
+                    }, server.config.cacheHeader);
+                    ctx.res.status(200, {
+                        'Content-Type': this.getResponseContentType(cte),
+                        'Content-Length': cfileSize,
+                        'x-served-from': 'file-cache'
                     });
+                    if (server.config.bundler.compress) {
+                        ctx.res.setHeader('Content-Encoding', 'gzip');
+                    }
+                    yield app_util_1.Util.pipeOutputStreamAsync(cachpath, ctx);
+                    if (useFullOptimization) {
+                        yield this._holdCacheAsync(memCacheKey, cachpath, lastChangeTime, cfileSize);
+                    }
+                    return;
+                }
+                const buffer = yield this.readBufferAsync(ctx, files, server.copyright());
+                if (ctx.isDisposed)
+                    return;
+                if (!server.config.bundler.compress) {
+                    yield _fsp.writeFile(cachpath, buffer.data);
+                    if (ctx.isDisposed)
+                        return;
+                    const cdesc = yield Bundel.fi.statAsync(cachpath, true);
+                    if (ctx.isDisposed)
+                        return;
+                    if (!cdesc.stats)
+                        return ctx.next(404);
+                    lastChangeTime = cdesc.stats.mtime.getTime();
+                    http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
+                        lastChangeTime,
+                        etag: http_cache_1.HttpCache.getEtag(lastChangeTime, cdesc.stats.size)
+                    }, server.config.cacheHeader);
+                    ctx.res.status(200, {
+                        'Content-Type': this.getResponseContentType(cte),
+                        'Content-Length': buffer.length
+                    });
+                    if (useFullOptimization) {
+                        Bundel.cache.set(memCacheKey, {
+                            lastChangeTime,
+                            cfileSize: cdesc.stats.size,
+                            bundleData: buffer.data
+                        });
+                    }
+                    ctx.res.end(buffer.data);
+                    buffer.dispose();
+                    return;
+                }
+                const gbuff = yield gzipAsync(buffer.data);
+                buffer.dispose();
+                if (ctx.isDisposed)
+                    return;
+                yield _fsp.writeFile(cachpath, gbuff);
+                if (ctx.isDisposed)
+                    return;
+                const edesc = yield Bundel.fi.statAsync(cachpath, true);
+                if (ctx.isDisposed)
+                    return;
+                if (!edesc.stats)
+                    return ctx.next(404);
+                lastChangeTime = edesc.stats.mtime.getTime();
+                http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
+                    lastChangeTime,
+                    etag: http_cache_1.HttpCache.getEtag(lastChangeTime, edesc.stats.size)
+                }, server.config.cacheHeader);
+                ctx.res.status(200, {
+                    'Content-Type': this.getResponseContentType(cte),
+                    'Content-Encoding': 'gzip',
+                    'Content-Length': gbuff.length
                 });
-            });
+                if (useFullOptimization) {
+                    Bundel.cache.set(memCacheKey, {
+                        lastChangeTime,
+                        bundleData: gbuff,
+                        cfileSize: edesc.stats.size
+                    });
+                }
+                ctx.res.end(gbuff);
+            }
+            catch (ex) {
+                ctx.transferError(ex);
+            }
         });
     }
 }
@@ -451,16 +445,37 @@ class Bundlew {
 exports.__moduleName = "Bundler";
 class Bundler {
     static Init(app, controller, server) {
-        controller.get(server.config.bundler.route, (ctx) => {
+        controller.get(server.config.bundler.route, (ctx) => __awaiter(this, void 0, void 0, function* () {
             const isGzip = http_cache_1.HttpCache.isAcceptedEncoding(ctx.req.headers, "gzip");
-            if (!isGzip || server.config.bundler.fileCache === false)
-                return Bundlew.createMemmory(server, ctx, isGzip);
-            return Bundlew.createServerFileCache(server, ctx);
-        });
+            if (!isGzip || server.config.bundler.fileCache === false) {
+                yield Bundlew.createMemmoryAsync(server, ctx, isGzip);
+            }
+            else {
+                yield Bundlew.createServerFileCacheAsync(server, ctx);
+            }
+        }));
     }
 }
 exports.Bundler = Bundler;
 function _getInfo() {
     return '// Cw "Combiner"\r\n// Copyright (c) 2022 FSys Tech Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
+}
+function _responseWriteGzip(ctx, buff, cte) {
+    ctx.res.status(200, {
+        'Content-Type': Bundlew.getResponseContentType(cte),
+        'Content-Encoding': 'gzip'
+    });
+    const compressor = _zlib.createGzip({
+        level: _zlib.constants.Z_BEST_COMPRESSION
+    });
+    compressor.pipe(ctx.res);
+    compressor.end(buff.data);
+    buff.dispose();
+    compressor.on("end", () => {
+        if (ctx.isDisposed)
+            return;
+        compressor.unpipe(ctx.res);
+        ctx.next(200);
+    });
 }
 //# sourceMappingURL=app-bundler.js.map

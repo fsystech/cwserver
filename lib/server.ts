@@ -21,7 +21,7 @@
 // 10:13 PM 5/2/2020
 // by rajib chy
 import {
-    ISession, IResInfo, toString
+    IResInfo, toString
 } from "./app-static";
 import { type IRequestParam } from './app-router';
 import {
@@ -35,7 +35,6 @@ import * as _path from 'node:path';
 import * as fsw from './fsw';
 import { Util, getAppDir } from './app-util';
 import { Schema } from './schema-validator';
-import { Session } from './app-static';
 import type { ICwDatabaseType } from './db-type';
 import { Controller, type IController } from './app-controller';
 import { Encryption, type ICryptoInfo } from "./encryption";
@@ -45,6 +44,7 @@ import { IncomingHttpHeaders } from "node:http";
 import { _mimeType } from "./http-mime-types";
 import { AppView } from "./app-view";
 import { _ctxManager, type IContext } from "./context";
+import { Session, type ISession } from "./session";
 
 export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 
@@ -56,6 +56,7 @@ export interface IServerEncryption {
     encryptUri(plainText: string): string;
     decryptUri(encryptedText: string): string;
 }
+
 export interface IDatabaseConfig {
     module: string;
     path: string;
@@ -1559,9 +1560,8 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                             next,
                             ctx => {
                                 if (_server.config.mimeType.includes(ctx.extension)) {
-                                    return _controller.httpMimeHandler.render(
-                                        ctx,
-                                        root
+                                    return _controller.httpMimeHandler.renderAsync(
+                                        ctx, root
                                     );
                                 }
 

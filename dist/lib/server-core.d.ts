@@ -3,7 +3,7 @@ import { Server } from 'node:http';
 import { type IRequestParam } from './app-router';
 import { type IRequest } from './request';
 import { type IResponse } from './response';
-type onError = (req: IRequest, res: IResponse, err?: Error | number) => void;
+type onErrorFunc = (req: IRequest, res: IResponse, err?: Error | number) => void;
 export type NextFunction = (err?: any) => void;
 export type HandlerFunc = (req: IRequest, res: IResponse, next: NextFunction, requestParam?: IRequestParam) => void;
 export interface IApplication {
@@ -71,7 +71,7 @@ export interface IApplication {
     shutdownAsync(): Promise<void>;
     on(ev: 'request-begain', handler: (req: IRequest) => void): IApplication;
     on(ev: 'response-end', handler: (req: IRequest, res: IResponse) => void): IApplication;
-    on(ev: 'error', handler: onError): IApplication;
+    on(ev: 'error', handler: onErrorFunc): IApplication;
     on(ev: 'shutdown', handler: () => void): IApplication;
     listen(handle: any, listeningListener?: () => void): IApplication;
 }

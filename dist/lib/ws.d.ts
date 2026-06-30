@@ -1,7 +1,7 @@
 import { ICwServer } from './server';
-import { ISession } from './app-static';
 import { EventEmitter } from 'node:events';
 import { Server } from 'node:http';
+import type { ISession } from './session';
 /** [socket.io blueprint] */
 export interface IOSocket extends EventEmitter {
     nsp: object;

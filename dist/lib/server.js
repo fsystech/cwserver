@@ -64,7 +64,6 @@ const _path = __importStar(require("node:path"));
 const fsw = __importStar(require("./fsw"));
 const app_util_1 = require("./app-util");
 const schema_validator_1 = require("./schema-validator");
-const app_static_2 = require("./app-static");
 const app_controller_1 = require("./app-controller");
 const encryption_1 = require("./encryption");
 const http_status_1 = require("./http-status");
@@ -72,6 +71,7 @@ const logger_1 = require("./logger");
 const http_mime_types_1 = require("./http-mime-types");
 const app_view_1 = require("./app-view");
 const context_1 = require("./context");
+const session_1 = require("./session");
 function isDefined(a) {
     return a !== null && a !== undefined;
 }
@@ -514,7 +514,7 @@ class CwServer {
             this._config.session.cookie.length === 0) {
             throw Error("You are unable to add session without session config. see your app_config.json");
         }
-        const session = new app_static_2.Session();
+        const session = new session_1.Session();
         const cookies = (0, help_1.parseCookie)(cook);
         const value = cookies[this._config.session.cookie];
         if (!value)
@@ -788,7 +788,7 @@ function initilizeServer(appRoot, wwwName) {
                 _app.use(virtualRoute, (req, res, next) => {
                     processHandler(req, res, next, ctx => {
                         if (_server.config.mimeType.includes(ctx.extension)) {
-                            return _controller.httpMimeHandler.render(ctx, root);
+                            return _controller.httpMimeHandler.renderAsync(ctx, root);
                         }
                         return ctx.next(404);
                     });

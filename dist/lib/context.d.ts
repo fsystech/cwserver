@@ -1,7 +1,7 @@
 import type { IResponse } from "./response";
 import type { IRequest } from "./request";
-import type { ISession } from "./app-static";
 import type { ICwServer } from "./server";
+import type { ISession } from "./session";
 type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 export interface IContext {
     readonly isDisposed: boolean;

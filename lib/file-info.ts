@@ -66,6 +66,7 @@ export interface IFileInfoCacheHandler {
         path: string, next: (exists: boolean, url: string) => void, force?: boolean
     ): void;
 }
+
 export class FileInfoCacheHandler implements IFileInfoCacheHandler {
 
     private _pathCache: Map<string, FileDescription>;

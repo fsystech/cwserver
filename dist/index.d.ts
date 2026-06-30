@@ -13,7 +13,7 @@ export { HttpMimeHandler } from './lib/http-mime';
 export type { IRequestParam } from './lib/app-router';
 export type { IController } from './lib/app-controller';
 export { socketInitilizer, wsClient } from './lib/ws';
-export { type ISession, Session } from './lib/app-static';
+export { type ISession, Session } from './lib/session';
 export { createProjectTemplate } from './lib/project-template';
 export { getBodyParser, PayloadParser } from './lib/body-parser';
 export { getMimeType, setMimeType } from './lib/http-mime-types';

@@ -24,17 +24,23 @@ import * as _fs from 'node:fs';
 import * as _path from 'node:path';
 import * as _zlib from 'node:zlib';
 import { pipeline } from 'node:stream';
+import { promisify } from "node:util";
 import destroy from 'destroy';
 import * as _mimeType from './http-mime-types';
 import type { IContext } from './context';
-import { HttpCache, type IChangeHeader } from './http-cache';
+import { HttpCache } from './http-cache';
 import { Streamer } from './web-streamer';
 import { Encryption } from './encryption';
 import { Util } from './app-util';
-import { FileInfoCacheHandler, type IFileInfoCacheHandler, type IFileDescription } from './file-info';
+import { FileInfoCacheHandler, type IFileInfoCacheHandler } from './file-info';
+const _fsp = _fs.promises;
+
+const pipelineAsync = promisify(pipeline);
 
 export interface IHttpMimeHandler {
-    render(ctx: IContext, maybeDir?: string): void;
+    renderAsync(
+        ctx: IContext, maybeDir?: string
+    ): Promise<void>;
     getMimeType(extension: string): string;
     isValidExtension(extension: string): boolean;
 }
@@ -74,28 +80,44 @@ class MimeHandler {
     private static _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
 
     private static getCachePath(ctx: IContext): string {
-        const path: string = _path.join(ctx.server.config.staticFile.tempPath, Encryption.toMd5(ctx.path));
+
+        const path = _path.join(
+            ctx.server.config.staticFile.tempPath, Encryption.toMd5(ctx.path)
+        );
+
         return _path.resolve(`${path}.${ctx.extension}.cache`);
     }
 
-    private static _sendFromMemCache(ctx: IContext, mimeType: string, dataInfo: MemCacheInfo): void {
-        const reqCacheHeader: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
-        const etag: string = HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
-        ctx.res.setHeader('x-served-from', 'mem-cache');
+    private static _sendFromMemCache(
+        ctx: IContext, mimeType: string, dataInfo: MemCacheInfo
+    ): void {
+
+        const reqCacheHeader = HttpCache.getChangedHeader(ctx.req.headers);
+        const etag = HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
+
+        ctx.res.setHeader(
+            'x-served-from', 'mem-cache'
+        );
+
         if (reqCacheHeader.etag || reqCacheHeader.sinceModify) {
-            let exit: boolean = false;
+
+            let exit = false;
+
             if (reqCacheHeader.etag) {
+
                 if (reqCacheHeader.etag === etag) {
                     HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                     ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                    return process.nextTick(() => ctx.next(304));
+                    return;
                 }
+
                 exit = true;
             }
+
             if (reqCacheHeader.sinceModify && !exit) {
                 HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
                 ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                return process.nextTick(() => ctx.next(304));
+                return;
             }
         }
 
@@ -112,114 +134,156 @@ class MimeHandler {
         return ctx.res.end(dataInfo.gizipData), ctx.next(200);
     }
 
-    private static _holdCache(cachePath: string, lastChangeTime: number, size: number): void {
-        if (this._mamCache.has(cachePath)) return;
-        setImmediate(() => {
-            this._mamCache.set(cachePath, {
-                lastChangeTime,
-                cfileSize: size,
-                gizipData: _fs.readFileSync(cachePath)
-            });
+    private static async _holdCacheAsync(
+        cachePath: string,
+        lastChangeTime: number, size: number
+    ): Promise<void> {
+        if (this._mamCache.has(cachePath))
+            return;
+
+        const data = await _fsp.readFile(cachePath);
+
+        this._mamCache.set(cachePath, {
+            lastChangeTime,
+            cfileSize: size,
+            gizipData: data
         });
     }
 
-    private static servedFromServerFileCache(
+    private static async servedFromServerFileCacheAsync(
         ctx: IContext, absPath: string, mimeType: string,
         fstat: _fs.Stats, cachePath: string
-    ): void {
-        const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
-        const reqCacheHeader: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
-        return this._fileInfo.stat(cachePath, (desc: IFileDescription): void => {
-            const existsCachFile: boolean = desc.exists;
-            return ctx.handleError(null, () => {
-                let lastChangeTime: number = 0, cfileSize: number = 0;
-                if (existsCachFile && desc.stats) {
-                    cfileSize = desc.stats.size;
-                    lastChangeTime = desc.stats.mtime.getTime();
-                }
-                let hasChanged: boolean = true;
-                if (existsCachFile) {
-                    hasChanged = fstat.mtime.getTime() > lastChangeTime;
-                }
-                const etag: string | undefined = cfileSize !== 0 ? HttpCache.getEtag(lastChangeTime, cfileSize) : void 0;
-                if (!hasChanged && existsCachFile && (reqCacheHeader.etag || reqCacheHeader.sinceModify)) {
-                    let exit: boolean = false;
-                    if (etag && reqCacheHeader.etag) {
-                        if (reqCacheHeader.etag === etag) {
-                            HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
-                            ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                            if (useFullOptimization && cachePath) {
-                                this._holdCache(cachePath, lastChangeTime, cfileSize);
-                            }
-                            return ctx.next(304);
-                        }
-                        exit = true;
-                    }
-                    if (reqCacheHeader.sinceModify && !exit) {
-                        HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
-                        ctx.res.status(304, { 'Content-Type': mimeType }).send();
-                        if (useFullOptimization && cachePath) {
-                            this._holdCache(cachePath, lastChangeTime, cfileSize);
-                        }
-                        return ctx.next(304);
-                    }
-                }
-                if (!hasChanged && existsCachFile) {
-                    HttpCache.writeCacheHeader(ctx.res, {
-                        lastChangeTime,
-                        etag: HttpCache.getEtag(lastChangeTime, cfileSize)
-                    }, ctx.server.config.cacheHeader);
-                    ctx.res.status(200, {
-                        'Content-Type': mimeType,
-                        'Content-Encoding': 'gzip',
-                        'x-served-from': 'cache-file'
-                    });
+    ): Promise<void> {
+
+        const useFullOptimization = ctx.server.config.useFullOptimization;
+        const reqCacheHeader = HttpCache.getChangedHeader(ctx.req.headers);
+
+        const desc = await this._fileInfo.statAsync(cachePath);
+        const existsCachFile: boolean = desc.exists;
+
+        let lastChangeTime = 0, cfileSize = 0;
+
+        if (existsCachFile && desc.stats) {
+            cfileSize = desc.stats.size;
+            lastChangeTime = desc.stats.mtime.getTime();
+        }
+
+        let hasChanged = true;
+        if (existsCachFile) {
+            hasChanged = fstat.mtime.getTime() > lastChangeTime;
+        }
+
+        const etag = cfileSize !== 0 ? HttpCache.getEtag(lastChangeTime, cfileSize) : undefined;
+
+        if (!hasChanged && existsCachFile && (reqCacheHeader.etag || reqCacheHeader.sinceModify)) {
+
+            let exit: boolean = false;
+
+            if (etag && reqCacheHeader.etag) {
+
+                if (reqCacheHeader.etag === etag) {
+
+                    HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
+                    ctx.res.status(304, { 'Content-Type': mimeType }).send();
+
                     if (useFullOptimization && cachePath) {
-                        this._holdCache(cachePath, lastChangeTime, cfileSize);
+                        await this._holdCacheAsync(cachePath, lastChangeTime, cfileSize);
                     }
-                    return Util.pipeOutputStream(cachePath, ctx);
+
+                    return;
                 }
-                const rstream: _fs.ReadStream = _fs.createReadStream(absPath);
-                const wstream: _fs.WriteStream = _fs.createWriteStream(cachePath);
-                return pipeline(rstream, createGzip(), wstream, (gzipErr: NodeJS.ErrnoException | null) => {
-                    destroy(rstream); destroy(wstream);
-                    return ctx.handleError(gzipErr, (): void => {
-                        return this._fileInfo.stat(cachePath, (cdesc: IFileDescription) => {
-                            return ctx.handleError(null, (): void => {
+                
+                exit = true;
+            }
 
-                                if (!cdesc.stats) {
-                                    ctx.next(404, true);
-                                    return;
-                                }
+            if (reqCacheHeader.sinceModify && !exit) {
 
-                                lastChangeTime = cdesc.stats.mtime.getTime();
+                HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
 
-                                HttpCache.writeCacheHeader(ctx.res, {
-                                    lastChangeTime,
-                                    etag: HttpCache.getEtag(lastChangeTime, cdesc.stats.size)
-                                }, ctx.server.config.cacheHeader);
+                ctx.res.status(304, { 'Content-Type': mimeType }).send();
 
-                                ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
+                if (useFullOptimization && cachePath) {
+                    await this._holdCacheAsync(cachePath, lastChangeTime, cfileSize);
+                }
 
-                                if (useFullOptimization && cachePath) {
-                                    this._holdCache(cachePath, lastChangeTime, cdesc.stats.size);
-                                }
+                return;
+            }
+        }
 
-                                return Util.pipeOutputStream(cachePath, ctx);
-                            });
+        if (!hasChanged && existsCachFile) {
 
-                        }, true);
-                    });
-                });
+            HttpCache.writeCacheHeader(ctx.res, {
+                lastChangeTime,
+                etag: HttpCache.getEtag(lastChangeTime, cfileSize)
+            }, ctx.server.config.cacheHeader);
+
+            ctx.res.status(200, {
+                'Content-Type': mimeType,
+                'Content-Encoding': 'gzip',
+                'x-served-from': 'cache-file'
             });
-        });
+
+            await Util.pipeOutputStreamAsync(cachePath, ctx);
+
+            if (useFullOptimization && cachePath) {
+                await this._holdCacheAsync(cachePath, lastChangeTime, cfileSize);
+            }
+
+            return;
+        }
+
+        const rstream: _fs.ReadStream = _fs.createReadStream(absPath);
+        const wstream: _fs.WriteStream = _fs.createWriteStream(cachePath);
+
+        try {
+
+            await pipelineAsync(rstream, createGzip(), wstream);
+
+            if (ctx.isDisposed)
+                return;
+
+            const cdesc = await this._fileInfo.statAsync(cachePath, true);
+
+            if (ctx.isDisposed)
+                return;
+
+            if (!cdesc.stats) {
+                ctx.next(404, true);
+                return;
+            }
+
+            lastChangeTime = cdesc.stats.mtime.getTime();
+
+            HttpCache.writeCacheHeader(ctx.res, {
+                lastChangeTime,
+                etag: HttpCache.getEtag(lastChangeTime, cdesc.stats.size)
+            }, ctx.server.config.cacheHeader);
+
+            ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
+
+            await Util.pipeOutputStreamAsync(
+                cachePath, ctx
+            );
+
+            if (useFullOptimization && cachePath) {
+                await this._holdCacheAsync(cachePath, lastChangeTime, cdesc.stats.size);
+            }
+
+            return;
+
+        } catch (ex: any) {
+            ctx.transferError(ex);
+        } finally {
+            destroy(rstream);
+            destroy(wstream);
+        }
     }
 
-    private static servedNoChache(
+    private static async servedNoChacheAsync(
         ctx: IContext, absPath: string,
         mimeType: string, isGzip: boolean,
         size: number
-    ): void {
+    ): Promise<void> {
 
         HttpCache.writeCacheHeader(ctx.res, {
             lastChangeTime: void 0,
@@ -235,27 +299,39 @@ class MimeHandler {
 
             const rstream: _fs.ReadStream = _fs.createReadStream(absPath);
 
-            return pipeline(rstream, createGzip(), ctx.res, (gzipErr: NodeJS.ErrnoException | null) => {
+            try {
+
+                await pipelineAsync(
+                    rstream, createGzip(), ctx.res
+                );
+
+            } catch (ex: any) {
+                ctx.transferError(ex);
+            } finally {
                 destroy(rstream);
-            }), void 0;
+            }
+
+            return;
         }
 
         ctx.res.status(200, {
             'Content-Type': mimeType, 'Content-Length': size
         });
 
-        return Util.pipeOutputStream(absPath, ctx);
+        await Util.pipeOutputStreamAsync(
+            absPath, ctx
+        );
     }
 
-    private static servedFromFile(
+    private static async servedFromFileAsync(
         ctx: IContext, absPath: string,
         mimeType: string, isGzip: boolean,
         fstat: _fs.Stats
-    ): void {
+    ): Promise<void> {
 
-        const reqCachHeader: IChangeHeader = HttpCache.getChangedHeader(ctx.req.headers);
-        const lastChangeTime: number = fstat.mtime.getTime();
-        const curEtag: string = HttpCache.getEtag(lastChangeTime, fstat.size);
+        const reqCachHeader = HttpCache.getChangedHeader(ctx.req.headers);
+        const lastChangeTime = fstat.mtime.getTime();
+        const curEtag = HttpCache.getEtag(lastChangeTime, fstat.size);
 
         if (
             (reqCachHeader.etag && reqCachHeader.etag === curEtag) ||
@@ -263,7 +339,7 @@ class MimeHandler {
         ) {
             HttpCache.writeCacheHeader(ctx.res, {}, ctx.server.config.cacheHeader);
             ctx.res.status(304, { 'Content-Type': mimeType }).send();
-            return process.nextTick(() => ctx.next(304));
+            return;
         }
 
         HttpCache.writeCacheHeader(ctx.res, {
@@ -275,19 +351,30 @@ class MimeHandler {
 
             ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
             const rstream: _fs.ReadStream = _fs.createReadStream(absPath);
-            return pipeline(rstream, createGzip(), ctx.res, (gzipErr: NodeJS.ErrnoException | null) => {
+
+            try {
+
+                await pipelineAsync(
+                    rstream, createGzip(), ctx.res
+                );
+
+            } catch (ex: any) {
+                ctx.transferError(ex);
+            } finally {
                 destroy(rstream);
-            }), void 0;
+            }
+
+            return;
         }
 
         ctx.res.status(200, { 'Content-Type': mimeType });
-        return Util.pipeOutputStream(absPath, ctx);
+        await Util.pipeOutputStreamAsync(absPath, ctx);
     }
 
-    static _render(
+    private static async _renderAsync(
         ctx: IContext, mimeType: string, absPath: string,
         stat: _fs.Stats, cachePath: string
-    ): void {
+    ): Promise<void> {
 
         ctx.req.setSocketNoDelay(true);
 
@@ -302,42 +389,58 @@ class MimeHandler {
 
             ctx.res.status(200, { 'Content-Type': mimeType });
 
-            return Util.pipeOutputStream(absPath, ctx);
+            return await Util.pipeOutputStreamAsync(absPath, ctx);
         }
 
         if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
             return Streamer.stream(ctx, absPath, mimeType, stat);
         }
 
-        let noCache: boolean = false;
-        const taskDeff: ITaskDeff | undefined = TaskDeff.find(a => a.ext === ctx.extension);
-        let isGzip: boolean = (!ctx.server.config.staticFile.compression ? false : HttpCache.isAcceptedEncoding(ctx.req.headers, "gzip"));
+        let noCache = false;
+
+        const taskDeff = TaskDeff.find(a => a.ext === ctx.extension);
+
+        let isGzip: boolean = (
+            !ctx.server.config.staticFile.compression ? false : HttpCache.isAcceptedEncoding(ctx.req.headers, "gzip")
+        );
+
         if (isGzip) {
             if (ctx.server.config.staticFile.minCompressionSize > 0 && stat.size < ctx.server.config.staticFile.minCompressionSize) {
                 isGzip = false;
             }
         }
+
         if (taskDeff) {
             noCache = taskDeff.cache === false;
             if (isGzip) {
                 isGzip = taskDeff.gzip;
             }
         }
+
         if (noCache === true || ctx.server.config.noCache.indexOf(ctx.extension) > -1) {
-            return this.servedNoChache(ctx, absPath, mimeType, isGzip, stat.size);
+            return await this.servedNoChacheAsync(
+                ctx, absPath, mimeType, isGzip, stat.size
+            );
         }
+
         if (!isGzip || (ctx.server.config.staticFile.fileCache === false)) {
-            return this.servedFromFile(ctx, absPath, mimeType, isGzip, stat);
+            return await this.servedFromFileAsync(
+                ctx, absPath, mimeType, isGzip, stat
+            );
         }
-        return this.servedFromServerFileCache(ctx, absPath, mimeType, stat, cachePath);
+
+        return await this.servedFromServerFileCacheAsync(
+            ctx, absPath, mimeType, stat, cachePath
+        );
     }
 
-    public static render(
+    public static async renderAsync(
         ctx: IContext, mimeType: string,
         maybeDir?: string
-    ): void {
-        const cachePath: string | void = ctx.server.config.staticFile.fileCache ? this.getCachePath(ctx) : undefined;
-        const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
+    ): Promise<void> {
+
+        const cachePath = ctx.server.config.staticFile.fileCache ? this.getCachePath(ctx) : undefined;
+        const useFullOptimization = ctx.server.config.useFullOptimization;
 
         if (cachePath) {
             if (useFullOptimization && this._mamCache.has(cachePath)) {
@@ -348,12 +451,18 @@ class MimeHandler {
         }
 
         const absPath: string = typeof (maybeDir) === "string" && maybeDir ? _path.resolve(`${maybeDir}/${ctx.path}`) : ctx.server.mapPath(ctx.path);
-        return this._fileInfo.stat(absPath, (desc: IFileDescription): void => {
-            return ctx.handleError(null, () => {
-                if (!desc.stats) return ctx.next(404, true);
-                return this._render(ctx, mimeType, absPath, desc.stats, cachePath || "");
-            });
-        });
+
+        const desc = await this._fileInfo.statAsync(absPath);
+
+        if (ctx.isDisposed)
+            return;
+
+        if (!desc.stats)
+            return ctx.next(404, true);
+
+        await this._renderAsync(
+            ctx, mimeType, absPath, desc.stats, cachePath || ""
+        );
     }
 }
 
@@ -366,13 +475,13 @@ export class HttpMimeHandler implements IHttpMimeHandler {
         return _mimeType.isValidExtension(extension);
     }
 
-    public render(ctx: IContext, maybeDir?: string): void {
+    public async renderAsync(ctx: IContext, maybeDir?: string): Promise<void> {
 
         if (!_mimeType.isValidExtension(ctx.extension)) {
             return ctx.transferRequest(404);
         }
 
-        return MimeHandler.render(
+        return await MimeHandler.renderAsync(
             ctx, _mimeType.getMimeType(ctx.extension), maybeDir
         );
     }

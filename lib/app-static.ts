@@ -181,15 +181,19 @@ export class BufferArray implements IBufferArray {
      * @throws Error if the instance has been disposed.
      */
     public push(buff: Buffer | string): number {
+
         this.shouldNotDisposed();
+
         if (Buffer.isBuffer(buff)) {
             this._length += buff.length;
             this._data.push(buff);
             return buff.length;
         }
+
         const nBuff: Buffer = Buffer.from(buff);
         this._length += nBuff.length;
         this._data.push(nBuff);
+        
         return nBuff.length;
     }
 
@@ -226,244 +230,6 @@ export class BufferArray implements IBufferArray {
             delete this._length;
         }
         return void 0;
-    }
-}
-/**
- * Interface representing a user session.
- * 
- * This interface defines the structure and required methods for managing user session data.
- */
-export interface ISession {
-    /**
-     * Indicates is mobile app or not.
-     */
-    isMobileApp?: boolean;
-    /**
-     * Indicates whether the user is authenticated.
-     */
-    isAuthenticated: boolean;
-
-    /**
-     * Unique identifier for the logged-in user.
-     */
-    readonly loginId: string;
-
-    /**
-     * Role identifier assigned to the user.
-     */
-    readonly roleId: string;
-
-    /**
-     * Additional user-specific data.
-     */
-    readonly userData?: any;
-
-    /**
-     * IP segment or part of the user's IP address.
-     */
-    readonly ipPart?: string;
-
-    /**
-     * A dictionary for storing arbitrary session-related data.
-     */
-    readonly data: NodeJS.Dict<any>;
-}
-
-/**
- * Class representing a user session.
- * 
- * Implements the ISession interface to manage session states, user authentication,
- * roles, and additional metadata associated with a session.
- */
-export class Session implements ISession {
-    /**
-     * Retrieves the login identifier of the user.
-     */
-    get loginId() {
-        return this._obj?.loginId;
-    }
-
-    /**
-     * Checks whether the user is authenticated.
-     */
-    get isAuthenticated() {
-        return this._obj?.isAuthenticated;
-    }
-
-    /**
-     * Updates the authentication status of the user.
-     */
-    set isAuthenticated(value) {
-        if (!this._obj) return;
-        this._obj.isAuthenticated = value;
-    }
-
-    /**
-     * Retrieves additional user data.
-     */
-    get userData() {
-        return this._obj?.userData;
-    }
-
-    /**
-     * Retrieves the user's IP segment.
-     */
-    get ipPart() {
-        return this._obj?.ipPart;
-    }
-
-    /**
-     * Retrieves the primary role identifier assigned to the user.
-     */
-    get roleId() {
-        return this._obj?.roleId;
-    }
-
-    /**
-     * Retrieves the session data as a dictionary.
-     */
-    get data() {
-        return this._obj;
-    }
-
-    /**
-     * Internal storage object for session data.
-     */
-    private _obj: {
-        [key: string]: any;
-        ipPart: string;
-        loginId: string;
-        roleId: string;
-        isAuthenticated: boolean;
-        userData: NodeJS.Dict<any>;
-        roleIds: Array<string>;
-    };
-
-    /**
-     * Constructs a new Session instance with default values.
-     */
-    constructor() {
-        this._obj = {
-            roleIds: [],
-            userData: {},
-            loginId: undefined,
-            roleId: undefined,
-            ipPart: undefined,
-            isAuthenticated: false,
-        };
-    }
-
-    /**
-     * Parses user data and updates the specified property or the default `userData` property.
-     *
-     * @param {Function} parseData - A function that processes the data and returns a dictionary.
-     * @param {string} [prop] - An optional property name to apply the parsing function to. If not provided, `userData` is used.
-     */
-    public parseUserData(parseData: (data: any) => NodeJS.Dict<any>, prop?: string): void {
-        if (prop) {
-            this._obj[prop] = parseData(this._obj[prop]);
-        } else {
-            this._obj.userData = parseData(this._obj.userData);
-        }
-    }
-
-    /**
-     * Converts the session data to a JSON string.
-     * 
-     * @returns A JSON string representing the session.
-     */
-    public toJson(): string {
-        if (!this._obj) return '{}';
-        return JSON.stringify(this._obj);
-    }
-
-    /**
-     * Checks if the user has a specific role.
-     * 
-     * @param roleId The role identifier to check.
-     * @returns True if the user has the specified role; otherwise, false.
-     */
-    public isInRole(roleId: string): boolean {
-        if (!this._obj) return false;
-        if (this._obj.roleId === roleId) return true;
-        return this._obj.roleIds.includes(roleId);
-    }
-
-    /**
-     * Parses the provided data and updates the session instance accordingly.
-     * 
-     * This method accepts either a JSON string or an object. If a JSON string is provided,
-     * it attempts to parse it into an object. Regardless of input type, the session data 
-     * is updated, authentication is enabled, and role information is properly structured.
-     * 
-     * @param data A JSON string or an object representing session data.
-     * @returns The updated session instance.
-     */
-    public parse(data: string | any): ISession {
-
-        if (typeof data === 'string') {
-            try {
-                this._obj = JSON.parse(data);
-            } catch { }
-        } else {
-            this._obj = { ...data };
-        }
-
-        try {
-            if (Array.isArray(this._obj.roleId)) {
-                this._obj.roleIds = this._obj.roleId;
-                this._obj.roleId = this._obj.roleIds[0];
-                delete this._obj.roleId;
-            } else {
-
-                if (this._obj.roleId) {
-                    this._obj.roleIds = this._obj.roleId.split(',');
-                    this._obj.roleId = this._obj.roleIds[0];
-                } else {
-                    this._obj.roleIds = [];
-                }
-            }
-
-            this._obj.isAuthenticated = true;
-        } catch { }
-
-        return this;
-    }
-
-    /**
-     * Retrieves a value from the session data.
-     * 
-     * @param key The key of the data to retrieve.
-     * @param prop An optional property to access within the stored data.
-     * @returns The value associated with the key, or undefined if not found.
-     */
-    public getData(key: string, prop?: string): any {
-        if (!this._obj) return undefined;
-        if (!prop) {
-            return this._obj[key];
-        }
-        
-        const value = this._obj[key];
-        if (!value) return undefined;
-
-        return value[prop];
-    }
-
-    /**
-     * Updates a value in the session data.
-     * 
-     * @param key The key of the data to update.
-     * @param obj The new object data to store under the specified key.
-     */
-    public updateData(key: string, obj: NodeJS.Dict<any>): void {
-        this._obj[key] = { ...obj };
-    }
-
-    /**
-     * Clears the session data, effectively resetting the session.
-     */
-    public clear(): void {
-        delete this._obj;
     }
 }
 

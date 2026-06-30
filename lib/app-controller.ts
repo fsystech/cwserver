@@ -229,6 +229,7 @@ export class Controller implements IController {
         }
         return ctx.next(404);
     }
+
     private processGet(ctx: IContext): void {
         const handler = this._routeTable.get.get(ctx.path);
 
@@ -239,18 +240,23 @@ export class Controller implements IController {
         if (this.fireHandler(ctx)) return void 0;
 
         if (ctx.extension) {
+            
             if (
                 this._hasDefaultExt
                 && ctx.server.config.defaultExt === `.${ctx.extension}`
             ) {
                 return ctx.next(404);
             }
+
             if (ctx.server.config.template.ext.indexOf(ctx.extension) > -1) {
                 return ctx.res.render(ctx, ctx.server.mapPath(ctx.req.path));
             }
+
             if (ctx.server.config.mimeType.indexOf(ctx.extension) > -1) {
-                return this.httpMimeHandler.render(ctx, void 0);
+                this.httpMimeHandler.renderAsync(ctx, void 0);
+                return;
             }
+
             return ctx.next(404, true);
         }
 

@@ -46,8 +46,12 @@ import {
 import { toString } from '../lib/app-static';
 import { decodeBodyBuffer } from '../lib/body-parser';
 import { assert, Util } from '../lib/app-util';
+
 const mimeHandler = new HttpMimeHandler();
-export function shouldBeError(next: () => void, printerr?: boolean): Error | void {
+
+export function shouldBeError(
+	next: () => void, printerr?: boolean
+): Error | void {
 	try {
 		next();
 	} catch (e: any) {
@@ -55,6 +59,7 @@ export function shouldBeError(next: () => void, printerr?: boolean): Error | voi
 		return e;
 	}
 };
+
 expect(toString(1)).toEqual("1");
 registerView((app: IApplication, controller: IController, server: ICwServer) => {
 	expect(shouldBeError(() => new SessionSecurity())).toBeInstanceOf(Error);
@@ -99,14 +104,16 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 registerView((app: IApplication, controller: IController, server: ICwServer) => {
 	expect(shouldBeError(() => { mimeHandler.getMimeType("NO_EXT"); })).toBeInstanceOf(Error);
 	const vDir: string = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
-	server.addVirtualDir("/vtest", vDir, (ctx: IContext): void => {
+	server.addVirtualDir("/vtest", vDir, async (ctx: IContext) => {
 		if (!mimeHandler.isValidExtension(ctx.extension)) return ctx.next(404);
 		mimeHandler.getMimeType(ctx.extension);
-		return mimeHandler.render(ctx, vDir);
+		await mimeHandler.renderAsync(ctx, vDir);
 	});
+
 	expect(shouldBeError(() => {
 		server.addVirtualDir("/vtest", vDir);
 	})).toBeInstanceOf(Error);
+
 	server.addVirtualDir("/test-virtual", vDir);
 	server.addVirtualDir("/vtest/virtual", vDir);
 	server.addVirtualDir("/vtest/virtual/test/", vDir);
@@ -133,9 +140,11 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 		}
 		return ctx.next(404);
 	});
-	server.addVirtualDir("/static-file", streamDir, (ctx: IContext, requestParam?: IRequestParam): void => {
-		return mimeHandler.render(ctx, streamDir);
+
+	server.addVirtualDir("/static-file", streamDir, async (ctx: IContext) => {
+		await mimeHandler.renderAsync(ctx, streamDir);
 	});
+
 	expect(shouldBeError(() => {
 		server.addVirtualDir("/static-file/*", streamDir);
 	})).toBeInstanceOf(Error);
@@ -415,7 +424,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 
 registerView((app: IApplication, controller: IController, server: ICwServer) => {
 	controller
-		.get("/test-context", (ctx: IContext, requestParam?: IRequestParam): void => {
+		.get("/test-context", async (ctx: IContext) => {
 			try {
 				expect(escapePath()).toBeDefined();
 				const mCtx: IContext = server.createContext(Object.create({
@@ -453,7 +462,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 				mCtx.transferRequest(0);
 				mCtx.signOut();
 				mCtx.setSession("Test", "Test", {});
-				
+
 				const nctx: IContext = server.createContext(ctx.req, ctx.res, ctx.next);
 				nctx.path = "/not-found/404/";
 				nctx.req.path = "/not-found/404/";
@@ -492,7 +501,9 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 					else
 						expect(toPath).toEqual(404);
 				}
-				mimeHandler.render(ctx);
+
+				await mimeHandler.renderAsync(ctx);
+
 				expect(mimeHandler.isValidExtension(ctx.extension)).toBeFalsy();
 				ctx.transferRequest = treq;
 				(() => {
@@ -550,6 +561,11 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 		.get('/controller-error', (ctx: IContext, requestParam?: IRequestParam): void => {
 			throw new Error("runtime-error");
 		})
+		.get('/ctx-handle-error', (ctx: IContext): void => {
+			ctx.handleError(new Error("ctx-handle-error"), () => {
+				ctx.res.status(200).end("Must be not here");
+			})
+		})
 		.any('/test-any/*', (ctx: IContext, requestParam?: IRequestParam): void => {
 			ctx.res.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');
 			ctx.res.noCache();
@@ -590,8 +606,8 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 		.get('/user/:id/settings', (ctx: IContext, requestParam?: IRequestParam): void => {
 			return ctx.res.json({ reqPath: ctx.path, servedFrom: "/user/:id/settings", q: requestParam });
 		})
-		.get('/ksdafsfasbd', (ctx: IContext, requestParam?: IRequestParam): void => {
-			return Util.sendResponse(ctx, "/invalid/not-found/no.html");
+		.get('/ksdafsfasbd', async (ctx: IContext) => {
+			await Util.sendResponseAsync(ctx, "/invalid/not-found/no.html");
 		});
 
 });
@@ -610,8 +626,10 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 		session.parseUserData((d) => d, 'userData');
 	}
 	controller
-		.get('/get-file', (ctx: IContext, requestParam?: IRequestParam): void => {
-			return Util.sendResponse(ctx, server.mapPath("index.html"), "text/plain");
+		.get('/get-file', async (ctx: IContext) => {
+			await Util.sendResponseAsync(
+				ctx, server.mapPath("index.html"), "text/plain"
+			);
 		})
 		.any('/cookie', (ctx: IContext, requestParam?: IRequestParam): void => {
 			ctx.res.cookie("test-1", "test", {

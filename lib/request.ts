@@ -22,10 +22,11 @@
 // by rajib chy
 
 import { IncomingMessage } from 'node:http';
-import { toString, ISession } from './app-static';
+import { toString } from './app-static';
 import { Util } from './app-util';
 import { UrlWithParsedQuery } from 'node:url';
 import { escapePath, getClientIp, parseCookie, parseUrl } from './help';
+import type { ISession } from './session';
 
 type ParsedUrlQuery = { [key: string]: string | string[] | undefined; };
 
@@ -132,7 +133,7 @@ export class Request extends IncomingMessage implements IRequest {
         delete this._path;
         delete this._cookies;
         delete this._isLocal;
-        
+
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
             this.removeAllListeners();
             this.destroy();

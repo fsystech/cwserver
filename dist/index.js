@@ -75,8 +75,8 @@ Object.defineProperty(exports, "HttpMimeHandler", { enumerable: true, get: funct
 var ws_1 = require("./lib/ws");
 Object.defineProperty(exports, "socketInitilizer", { enumerable: true, get: function () { return ws_1.socketInitilizer; } });
 Object.defineProperty(exports, "wsClient", { enumerable: true, get: function () { return ws_1.wsClient; } });
-var app_static_1 = require("./lib/app-static");
-Object.defineProperty(exports, "Session", { enumerable: true, get: function () { return app_static_1.Session; } });
+var session_1 = require("./lib/session");
+Object.defineProperty(exports, "Session", { enumerable: true, get: function () { return session_1.Session; } });
 var project_template_1 = require("./lib/project-template");
 Object.defineProperty(exports, "createProjectTemplate", { enumerable: true, get: function () { return project_template_1.createProjectTemplate; } });
 var body_parser_1 = require("./lib/body-parser");

@@ -33,7 +33,8 @@ import * as cwserver from '../index';
 import { getAppDir } from '../lib/app-util';
 // import FormData from "form-data";
 import { IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription } from '../lib/file-info';
-import { Session, toNumber, toResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
+import { toNumber, toResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
+import { Session } from '../lib/session';
 import {
     IAppUtility,
     ServerEncryption
@@ -64,6 +65,7 @@ type Agent = ReturnType<typeof request.agent>;
 const agent: Agent = request.agent();
 let appIsLestening: boolean = false;
 let appUtility: IAppUtility;
+
 const switchDefaultExt = (value: boolean) => {
     // @ts-ignore
     appUtility.controller._hasDefaultExt = value;
@@ -84,10 +86,12 @@ const createRequest = (method: string, url: string, ensure?: string): request.Su
     };
     return client;
 };
+
 const getAgent = (): Agent => {
     expect(appIsLestening).toEqual(true);
     return agent;
 };
+
 const shutdownApp = (done?: Mocha.Done): void => {
     try {
         app.shutdown((err?: Error): void => {
@@ -99,19 +103,7 @@ const shutdownApp = (done?: Mocha.Done): void => {
         return done(e);
     }
 };
-describe("cwserver-default-project-template", () => {
-    it("create project template for test", function (done: Mocha.Done): void {
-        this.timeout(5000);
-        cwserver.createProjectTemplate({
-            appRoot,
-            projectRoot,
-            allExample: false,
-            force: true, // Delete if projectRoot exists
-            isTest: true // add test view
-        });
-        done();
-    });
-});
+
 function handleError(
     err: NodeJS.ErrnoException | Error | null | undefined,
     next: () => void
@@ -132,6 +124,21 @@ function toBeTextHtml(val?: string): void {
     if (!val) throw new Error("content-type required text/html. Found empty.");
     expect(val.indexOf("text/html")).toBeGreaterThanOrEqual(0);
 }
+
+describe("cwserver-default-project-template", () => {
+    it("create project template for test", function (done: Mocha.Done): void {
+        this.timeout(5000);
+        cwserver.createProjectTemplate({
+            appRoot,
+            projectRoot,
+            allExample: false,
+            force: true, // Delete if projectRoot exists
+            isTest: true // add test view
+        });
+        done();
+    });
+});
+
 describe("cwserver-core", () => {
     it('validate application directory', (done: Mocha.Done): void => {
         process.pkg = Object.create(null);
@@ -919,22 +926,28 @@ describe("cwserver-bundler", () => {
                     ck: "bundle_test_js", ct: "text/javascript", rc: "Y"
                 })
                 .end((err, res) => {
+
                     if (!Util.isError(err) && tryCount === 0) {
+
                         return setTimeout(() => {
                             tryCount++;
                             return sendReq(done, tryCount);
                         }, 300), void 0;
+
                     }
+
                     expect(err).toBeInstanceOf(Error);
                     expect(res.status).toBe(304);
                     expect(res.header["x-server-revalidate"]).toBe("true");
                     return done();
                 });
         };
+
         return (done: Mocha.Done): void => {
             expect(lastModified.length).toBeGreaterThan(0);
             return sendReq(done, 0);
         };
+
     })());
     it('bundler should compare if-none-match and send 304 (server file cache)', (() => {
         const sendReq = (done: Mocha.Done, tryCount: number): void => {
@@ -1983,6 +1996,15 @@ describe("cwserver-error", () => {
                 done();
             });
     });
+    it('should be context handle error', (done: Mocha.Done): void => {
+        getAgent()
+            .get(`http://localhost:${appUtility.port}/ctx-handle-error`)
+            .end((err, res) => {
+                expect(err).toBeInstanceOf(Error);
+                expect(res.status).toBe(500);
+                done();
+            });
+    });
     it('should be pass server error', (done: Mocha.Done): void => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/pass-error`)
@@ -2104,7 +2126,9 @@ describe("cwserver-controller-reset", () => {
             });
     });
 });
+
 describe("cwserver-utility", () => {
+
     const getConfig = (() => {
         const configFile: string = path.resolve(`${appRoot}/${projectRoot}/config/app.config.json`);
         let config: { [x: string]: any; } | void;
@@ -2118,6 +2142,7 @@ describe("cwserver-utility", () => {
             return {};
         }
     })();
+
     it("test-session", function (done: Mocha.Done) {
         const session = new Session();
         expect(session.getData("roleId")).toBeUndefined();
@@ -2132,6 +2157,14 @@ describe("cwserver-utility", () => {
 
         session.updateData("testKey", { "key": "ok" });
 
+        expect(shouldBeError(() => {
+            session.updateData("roleId", { "key": "ok" });
+        })).toBeInstanceOf(Error);
+
+        expect(shouldBeError(() => {
+            session.updateData("roles", { "key": "ok" });
+        })).toBeInstanceOf(Error);
+
         expect(session.getData("testKey", 'key')).toBeDefined();
         expect(session.getData("xtestKey", 'unknown')).toBeUndefined();
         expect(Util.extend({}, () => session, true)).toBeInstanceOf(Object);
@@ -2143,6 +2176,18 @@ describe("cwserver-utility", () => {
 
         expect(session.isInRole("Admin")).toBeFalsy();
         expect(session.userData).toBeDefined();
+
+        session.updateRoleId("Admin");
+        session.updateRoleId(["Users"]);
+
+        session.clear();
+
+        session.parse({ roleId: [] });
+        expect(session.roleId).toBeNull();
+
+        session.updateRoleId([]);
+
+        expect(session.roleId).toBeNull();
 
         session.clear();
 
@@ -2160,6 +2205,20 @@ describe("cwserver-utility", () => {
         expect(parseIp("::ffff:127.0.0.1")).toBeDefined();
 
         injectPrototype(Session, Session);
+
+        expect(shouldBeError(() => {
+            session.updateRoleId(['none']);
+        })).toBeInstanceOf(Error);
+
+        expect(shouldBeError(() => {
+            session.parse("{");
+        })).toBeInstanceOf(Error);
+
+        expect(shouldBeError(() => {
+            session.parse(1);
+        })).toBeInstanceOf(Error);
+
+        session.clear();
 
         done();
     })
