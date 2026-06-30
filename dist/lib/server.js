@@ -497,6 +497,9 @@ ${appRoot}\\www_public
         // return session;
         return session.parse(str);
     }
+    onClearSession(ctx) {
+        // nothing to do
+    }
     setSession(ctx, loginId, roleId, userData) {
         return ctx.res.cookie(this._config.session.cookie, encryption_1.Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {
             loginId, roleId, userData
@@ -608,7 +611,7 @@ ${appRoot}\\www_public
         else {
             ctx.error += `\r\n\r\nNext Error occured in ${ctx.path}`;
         }
-        if (!ctx.server.config.isDebug)
+        if (!this._config.isDebug)
             return ctx;
         if (typeof (ex) === "string") {
             ctx.error += " " + ex;
@@ -795,7 +798,8 @@ function initilizeServer(appRoot, wwwName) {
         _app.use((req, res, next) => {
             const context = _process.createContext(req, res, next);
             const reqPath = req.path;
-            if (_server.config.hiddenDirectory.some((a) => {
+            const hiddenDirectory = _server.config.hiddenDirectory;
+            if (hiddenDirectory.some((a) => {
                 return reqPath.substring(0, a.length) === a;
             })) {
                 _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`);

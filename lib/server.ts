@@ -219,6 +219,20 @@ export interface ICwServer {
     parseSession(headers: IncomingHttpHeaders, cook: undefined | string[] | string | { [x: string]: any }): ISession;
 
     /**
+     * Called when the current session is cleared or invalidated.
+     *
+     * Allows implementations to perform cleanup operations such as removing
+     * cached session state, resetting authentication context, or notifying
+     * dependent services.
+     *
+     * @param {IContext} ctx
+     * Request context associated with the cleared session.
+     *
+     * @returns {void}
+     */
+    onClearSession(ctx: IContext): void;
+
+    /**
      * Sets a session for a user.
      * @param {IContext} ctx - The request context.
      * @param {string} loginId - The login ID of the user.
@@ -865,6 +879,10 @@ ${appRoot}\\www_public
         return session.parse(str);
     }
 
+    public onClearSession(ctx: IContext): void {
+        // nothing to do
+    }
+
     public setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean {
         return ctx.res.cookie(
             this._config.session.cookie,
@@ -878,10 +896,13 @@ ${appRoot}\\www_public
     }
 
     public passError(ctx: IContext): boolean {
-        if (!ctx.error) return false;
+        if (!ctx.error)
+            return false;
+
         if (!this._config.isDebug) {
             return ctx.res.status(500).send("Internal error occured. Please try again."), true;
         }
+
         // ctx.error.replace(this.preRegx, "")
         const msg: string = this.escape(ctx.error.replace(/\\/gi, "/").replace(this._rootregx, "$root").replace(this._publicregx, "$public/"));
         return ctx.res.status(500).send(`<pre>${msg}</pre>`), true;
@@ -956,37 +977,51 @@ ${appRoot}\\www_public
     }
 
     public pathToUrl(path: string): string {
-        if (!Util.getExtension(path)) return path;
+
+        if (!Util.getExtension(path))
+            return path;
+
         let index: number = path.indexOf(this._public);
-        if (index === 0) return path;
+
+        if (index === 0)
+            return path;
+
         if (index > 0) {
             path = path.substring(path.indexOf(this._public) + this._public.length);
         } else {
             path = path.replace(this._rootregx, "/$root");
         }
+
         index = path.lastIndexOf(".");
+
         return path.substring(0, index).replace(/\\/gi, "/");
     }
 
     public addError(ctx: IContext, ex: string | Error): IContext {
         ctx.path = this.pathToUrl(ctx.path);
+
         if (!ctx.error) {
             ctx.error = `Error occured in ${ctx.path}`;
         } else {
             ctx.error += `\r\n\r\nNext Error occured in ${ctx.path}`;
         }
-        if (!ctx.server.config.isDebug) return ctx;
+
+        if (!this._config.isDebug)
+            return ctx;
+
         if (typeof (ex) === "string") {
             ctx.error += " " + ex;
         } else {
             ctx.error += "\r\n" + ex.message;
             ctx.error += "\r\n" + ex.stack;
         }
+
         ctx.error = ctx.error
             .replace(/\\/gi, '/')
             .replace(this._rootregx, "$root")
             .replace(this._publicregx, "$public/")
             .replace(this._nodeModuleregx, "$engine/");
+
         return ctx;
     }
 
@@ -1005,13 +1040,19 @@ ${appRoot}\\www_public
     }
 
     public createBundle(str: string): string {
-        if (!str) throw new Error("No string found to create bundle...")
-        return Encryption.encryptUri(str, this._config.encryptionKey);
+        if (!str)
+            throw new Error("No string found to create bundle...")
+
+        return Encryption.encryptUri(
+            str, this._config.encryptionKey
+        );
     }
+
     public addMimeType(extension: string, val: string): void {
         return _mimeType.add(extension, val);
     }
 }
+
 export interface IAppUtility {
     readonly init: () => IApplication;
     readonly public: string;
@@ -1046,15 +1087,20 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             return _server.transferRequest(ctx, code);
         },
         createContext: (req: IRequest, res: IResponse, next: NextFunction): IContext => {
+            
             const _context = _server.createContext(req, res, next);
             const _next = _context.next;
+
             _context.next = (code?: number | undefined, transfer?: boolean): any => {
+                
                 if (_context.isDisposed) {
                     console.warn('Warning: `context already disposed`. Cannot access disposed object.');
                     return;
                 }
+
                 return _process.render(code, _context, _next, transfer);
             }
+
             return _context;
         }
     }
@@ -1162,7 +1208,9 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         }
 
         if (Util.isArrayLike(_server.config.views)) {
-            _server.config.views.forEach(path => _importLocalAssets(path));
+            _server.config.views.forEach(
+                path => _importLocalAssets(path)
+            );
         }
 
         _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
@@ -1191,8 +1239,9 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
             const context: IContext = _process.createContext(req, res, next);
             const reqPath: string = req.path;
+            const hiddenDirectory = _server.config.hiddenDirectory;
 
-            if (_server.config.hiddenDirectory.some((a) => {
+            if (hiddenDirectory.some((a) => {
                 return reqPath.substring(0, a.length) === a;
             })) {
                 _server.log.write(`Trying to access Hidden directory. Remote Adress ${req.ip} Send 404 ${req.path}`);

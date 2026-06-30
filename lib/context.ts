@@ -155,11 +155,16 @@ export class Context implements IContext {
     }
 
     public signOut(): IContext {
+
         if (!this._isDisposed) {
+
             this._res.cookie(this._server.config.session.cookie, "", {
                 expires: -1
             });
+
+            this._server.onClearSession(this);
         }
+
         return this;
     }
 

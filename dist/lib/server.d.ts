@@ -168,6 +168,19 @@ export interface ICwServer {
         [x: string]: any;
     }): ISession;
     /**
+     * Called when the current session is cleared or invalidated.
+     *
+     * Allows implementations to perform cleanup operations such as removing
+     * cached session state, resetting authentication context, or notifying
+     * dependent services.
+     *
+     * @param {IContext} ctx
+     * Request context associated with the cleared session.
+     *
+     * @returns {void}
+     */
+    onClearSession(ctx: IContext): void;
+    /**
      * Sets a session for a user.
      * @param {IContext} ctx - The request context.
      * @param {string} loginId - The login ID of the user.
@@ -416,6 +429,7 @@ export declare class CwServer implements ICwServer {
     parseSession(headers: IncomingHttpHeaders, cook: undefined | string[] | string | {
         [x: string]: any;
     }): ISession;
+    onClearSession(ctx: IContext): void;
     setSession(ctx: IContext, loginId: string, roleId: string, userData: any): boolean;
     passError(ctx: IContext): boolean;
     getErrorPath(statusCode: number, tryServer?: boolean): string | void;
