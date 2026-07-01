@@ -60,6 +60,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CwServer = exports.SessionSecurity = exports.ServerConfig = exports.ServerEncryption = void 0;
 exports.initilizeServer = initilizeServer;
@@ -81,6 +84,7 @@ const http_mime_types_1 = require("./http-mime-types");
 const app_view_1 = require("./app-view");
 const context_1 = require("./context");
 const session_1 = require("./session");
+const default_headers_1 = __importDefault(require("./default-headers"));
 function isDefined(a) {
     return a !== null && a !== undefined;
 }
@@ -488,34 +492,20 @@ class CwServer {
         return context;
     }
     setDefaultProtectionHeader(res) {
-        const headers = {
-            "x-timestamp": Date.now(),
-            "x-xss-protection": "1; mode=block",
-            "x-content-type-options": "nosniff",
-            "x-frame-options": "SAMEORIGIN",
-            // Prevent leaking referrer information
-            "referrer-policy": "strict-origin-when-cross-origin",
-            // Disable unnecessary browser features
-            "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
-            // Modern cross-origin protection
-            "cross-origin-opener-policy": "same-origin",
-            "cross-origin-resource-policy": "same-origin",
-        };
-        if (this._config.hostInfo.frameAncestors) {
-            headers["content-security-policy"] =
-                `frame-ancestors ${this._config.hostInfo.frameAncestors}`;
-        }
-        if (this._config.session.isSecure) {
-            headers["strict-transport-security"] =
-                "max-age=31536000; includeSubDomains; preload";
-            const host = this._config.hostInfo.hostName;
-            if (host) {
-                headers["expect-ct"] =
-                    `max-age=0, report-uri="https://${host}/report/?ct=browser&version=${server_core_1.appVersion}`;
-            }
-        }
+        res.setHeader("x-timestamp", Date.now());
+        const headers = default_headers_1.default.getHeaders();
         for (const [key, value] of Object.entries(headers)) {
             res.setHeader(key, value);
+        }
+        if (this._config.hostInfo.frameAncestors) {
+            res.setHeader("content-security-policy", `frame-ancestors ${this._config.hostInfo.frameAncestors}`);
+        }
+        if (this._config.session.isSecure) {
+            res.setHeader("strict-transport-security", "max-age=31536000; includeSubDomains; preload");
+            const host = this._config.hostInfo.hostName;
+            if (host) {
+                res.setHeader("expect-ct", `max-age=0, report-uri="https://${host}/report/?ct=browser&version=${server_core_1.appVersion}`);
+            }
         }
     }
     parseSession(headers, cook) {

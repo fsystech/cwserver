@@ -32,8 +32,9 @@ import { HttpStatus } from "../lib/http-status";
 import * as cwserver from '../index';
 import { getAppDir } from '../lib/app-util';
 // import FormData from "form-data";
-import { 
-    IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription 
+import {
+    IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription,
+    defaultHeaders
 } from '../index';
 import { toNumber, toResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
 import { Session } from '../lib/session';
@@ -2146,6 +2147,12 @@ describe("cwserver-utility", () => {
         }
     })();
 
+    it("update outgoing header", function (done: Mocha.Done): void {
+        defaultHeaders.addHeader("x-app-type", "Test");
+        defaultHeaders.deleteHeader("x-app-type");
+        done();
+    });
+
     it("test-session", function (done: Mocha.Done) {
         const session = new Session();
         expect(session.getData("roleId")).toBeUndefined();
@@ -3095,6 +3102,7 @@ describe("cwserver-fsw", () => {
     });
 });
 describe("finalization", () => {
+
     it("create project template for production", function (done: Mocha.Done): void {
         this.timeout(5000);
         cwserver.createProjectTemplate({

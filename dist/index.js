@@ -51,8 +51,11 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FileDescription = exports.FileInfoCacheHandler = exports.appVersion = exports.readAppVersion = exports.App = exports.ServerEncryption = exports.SessionSecurity = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.setMimeType = exports.getMimeType = exports.PayloadParser = exports.getBodyParser = exports.createProjectTemplate = exports.Session = exports.wsClient = exports.socketInitilizer = exports.HttpMimeHandler = exports.registerView = exports.HttpCache = exports.Encryption = exports.initilizeServer = exports.Streamer = exports.parseCookie = exports.Util = exports.fsw = void 0;
+exports.FileDescription = exports.FileInfoCacheHandler = exports.appVersion = exports.readAppVersion = exports.App = exports.ServerEncryption = exports.SessionSecurity = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.setMimeType = exports.getMimeType = exports.defaultHeaders = exports.PayloadParser = exports.getBodyParser = exports.createProjectTemplate = exports.Session = exports.wsClient = exports.socketInitilizer = exports.HttpMimeHandler = exports.registerView = exports.HttpCache = exports.Encryption = exports.initilizeServer = exports.Streamer = exports.parseCookie = exports.Util = exports.fsw = void 0;
 // 3:56 PM 5/9/2020
 // by rajib chy
 exports.fsw = __importStar(require("./lib/fsw"));
@@ -82,6 +85,8 @@ Object.defineProperty(exports, "createProjectTemplate", { enumerable: true, get:
 var body_parser_1 = require("./lib/body-parser");
 Object.defineProperty(exports, "getBodyParser", { enumerable: true, get: function () { return body_parser_1.getBodyParser; } });
 Object.defineProperty(exports, "PayloadParser", { enumerable: true, get: function () { return body_parser_1.PayloadParser; } });
+var default_headers_1 = require("./lib/default-headers");
+Object.defineProperty(exports, "defaultHeaders", { enumerable: true, get: function () { return __importDefault(default_headers_1).default; } });
 var http_mime_types_1 = require("./lib/http-mime-types");
 Object.defineProperty(exports, "getMimeType", { enumerable: true, get: function () { return http_mime_types_1.getMimeType; } });
 Object.defineProperty(exports, "setMimeType", { enumerable: true, get: function () { return http_mime_types_1.setMimeType; } });

@@ -45,6 +45,7 @@ import { _mimeType } from "./http-mime-types";
 import { AppView } from "./app-view";
 import { _ctxManager, type IContext } from "./context";
 import { Session, type ISession } from "./session";
+import defaultHeaders from "./default-headers";
 
 export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
 
@@ -1067,43 +1068,36 @@ export class CwServer implements ICwServer {
 
 
     public setDefaultProtectionHeader(res: IResponse): void {
-        const headers: Record<string, string | number> = {
-            "x-timestamp": Date.now(),
-            "x-xss-protection": "1; mode=block",
-            "x-content-type-options": "nosniff",
-            "x-frame-options": "SAMEORIGIN",
 
-            // Prevent leaking referrer information
-            "referrer-policy": "strict-origin-when-cross-origin",
+        res.setHeader("x-timestamp", Date.now());
 
-            // Disable unnecessary browser features
-            "permissions-policy":
-                "camera=(), microphone=(), geolocation=(), payment=()",
+        const headers = defaultHeaders.getHeaders();
 
-            // Modern cross-origin protection
-            "cross-origin-opener-policy": "same-origin",
-            "cross-origin-resource-policy": "same-origin",
-        };
+        for (const [key, value] of Object.entries(headers)) {
+            res.setHeader(key, value);
+        }
 
         if (this._config.hostInfo.frameAncestors) {
-            headers["content-security-policy"] =
-                `frame-ancestors ${this._config.hostInfo.frameAncestors}`;
+            res.setHeader(
+                "content-security-policy",
+                `frame-ancestors ${this._config.hostInfo.frameAncestors}`
+            );
         }
 
         if (this._config.session.isSecure) {
-            headers["strict-transport-security"] =
-                "max-age=31536000; includeSubDomains; preload";
+            res.setHeader(
+                "strict-transport-security",
+                "max-age=31536000; includeSubDomains; preload"
+            );
 
             const host = this._config.hostInfo.hostName;
 
             if (host) {
-                headers["expect-ct"] =
-                    `max-age=0, report-uri="https://${host}/report/?ct=browser&version=${appVersion}`;
+                res.setHeader(
+                    "expect-ct",
+                    `max-age=0, report-uri="https://${host}/report/?ct=browser&version=${appVersion}`
+                );
             }
-        }
-
-        for (const [key, value] of Object.entries(headers)) {
-            res.setHeader(key, value);
         }
     }
 
