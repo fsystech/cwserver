@@ -18,6 +18,15 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Controller = void 0;
 // 11:16 PM 5/2/2020
@@ -140,73 +149,77 @@ class Controller {
         this._routeTable.any.set(route, next);
         return this;
     }
-    passDefaultDoc(ctx) {
-        let index = -1;
-        const forword = () => {
-            index++;
-            const name = ctx.server.config.defaultDoc[index];
-            if (!name)
-                return ctx.next(404);
-            const path = ctx.server.mapPath(`/${ctx.req.path}${name}${ctx.server.config.defaultExt}`);
-            return this._fileInfo.exists(path, (exists, url) => {
-                return ctx.handleError(null, () => {
-                    if (exists)
-                        return ctx.res.render(ctx, url);
-                    return forword();
-                });
-            });
-        };
-        return forword();
-    }
-    sendDefaultDoc(ctx) {
-        if (this._hasDefaultExt) {
-            if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
-                return this.passDefaultDoc(ctx);
+    passDefaultDocAsync(ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const rpath = ctx.req.path;
+            const { defaultDoc, defaultExt } = ctx.server.config;
+            for (const name of defaultDoc) {
+                const path = ctx.server.mapPath(`/${rpath}${name}${defaultExt}`);
+                const status = yield this._fileInfo.existsAsync(path);
+                if (ctx.isDisposed)
+                    return;
+                if (!status.exists)
+                    continue;
+                return ctx.res.render(ctx, status.url);
             }
-            const fileName = getFileName(ctx.req.path);
+            if (ctx.isDisposed)
+                return;
+            return ctx.next(404);
+        });
+    }
+    sendDefaultDocAsync(ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const rpath = ctx.req.path;
+            if (!this._hasDefaultExt) {
+                if (rpath.charAt(rpath.length - 1) === "/") {
+                    return yield this.passDefaultDocAsync(ctx);
+                }
+                return ctx.next(404);
+            }
+            if (rpath.charAt(rpath.length - 1) === "/") {
+                return yield this.passDefaultDocAsync(ctx);
+            }
+            const fileName = getFileName(rpath);
             if (!fileName)
                 return ctx.next(404);
-            if (ctx.server.config.defaultDoc.indexOf(fileName) > -1)
+            if (ctx.server.config.defaultDoc.includes(fileName))
                 return ctx.next(404);
             if (http_status_1.HttpStatus.isErrorFileName(fileName /*401*/)) {
                 return ctx.transferRequest((0, app_static_1.toNumber)(fileName));
             }
             const path = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
-            return this._fileInfo.exists(path, (exists, url) => {
-                return ctx.handleError(null, () => {
-                    if (exists)
-                        return ctx.res.render(ctx, url);
-                    return ctx.next(404);
-                });
-            });
-        }
-        if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
-            return this.passDefaultDoc(ctx);
-        }
-        return ctx.next(404);
-    }
-    processGet(ctx) {
-        const handler = this._routeTable.get.get(ctx.path);
-        if (handler) {
-            return handler(ctx);
-        }
-        if (this.fireHandler(ctx))
-            return void 0;
-        if (ctx.extension) {
-            if (this._hasDefaultExt
-                && ctx.server.config.defaultExt === `.${ctx.extension}`) {
-                return ctx.next(404);
-            }
-            if (ctx.server.config.template.ext.indexOf(ctx.extension) > -1) {
-                return ctx.res.render(ctx, ctx.server.mapPath(ctx.req.path));
-            }
-            if (ctx.server.config.mimeType.indexOf(ctx.extension) > -1) {
-                this.httpMimeHandler.renderAsync(ctx, void 0);
+            const status = yield this._fileInfo.existsAsync(path);
+            if (ctx.isDisposed)
                 return;
+            if (status.exists)
+                return ctx.res.render(ctx, status.url);
+            return ctx.next(404);
+        });
+    }
+    processGetAsync(ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const handler = this._routeTable.get.get(ctx.path);
+            if (handler) {
+                return handler(ctx);
             }
-            return ctx.next(404, true);
-        }
-        return this.sendDefaultDoc(ctx);
+            if (this.fireHandler(ctx))
+                return void 0;
+            if (ctx.extension) {
+                if (this._hasDefaultExt
+                    && ctx.server.config.defaultExt === `.${ctx.extension}`) {
+                    return ctx.next(404);
+                }
+                if (ctx.server.config.template.ext.indexOf(ctx.extension) > -1) {
+                    return ctx.res.render(ctx, ctx.server.mapPath(ctx.req.path));
+                }
+                if (ctx.server.config.mimeType.indexOf(ctx.extension) > -1) {
+                    this.httpMimeHandler.renderAsync(ctx);
+                    return;
+                }
+                return ctx.next(404, true);
+            }
+            return yield this.sendDefaultDocAsync(ctx);
+        });
     }
     processPost(ctx) {
         const handler = this._routeTable.post.get(ctx.path);
@@ -218,15 +231,17 @@ class Controller {
         return ctx.next(404);
     }
     processAny(ctx) {
-        const handler = this._routeTable.any.get(ctx.path);
-        if (handler) {
-            return handler(ctx);
-        }
-        if (ctx.req.method === "POST")
-            return this.processPost(ctx);
-        if (ctx.req.method === "GET")
-            return this.processGet(ctx);
-        return ctx.next(404);
+        return __awaiter(this, void 0, void 0, function* () {
+            const handler = this._routeTable.any.get(ctx.path);
+            if (handler) {
+                return handler(ctx);
+            }
+            if (ctx.req.method === "POST")
+                return this.processPost(ctx);
+            if (ctx.req.method === "GET")
+                return yield this.processGetAsync(ctx);
+            return ctx.next(404);
+        });
     }
     remove(path) {
         let found = 0;

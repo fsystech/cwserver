@@ -564,7 +564,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 		.get('/ctx-handle-error', (ctx: IContext): void => {
 			ctx.handleError(new Error("ctx-handle-error"), () => {
 				ctx.res.status(200).end("Must be not here");
-			})
+			});
 		})
 		.any('/test-any/*', (ctx: IContext, requestParam?: IRequestParam): void => {
 			ctx.res.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');

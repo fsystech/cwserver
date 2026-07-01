@@ -37,7 +37,7 @@ export interface IController {
     any(route: string, next: AppHandler): IController;
     get(route: string, next: AppHandler): IController;
     post(route: string, next: AppHandler): IController;
-    processAny(ctx: IContext): void;
+    processAny(ctx: IContext): Promise<void>;
     reset(): void;
     /** The given `arguments` will be skip */
     delete(...args: string[]): void;
@@ -61,8 +61,6 @@ function _deleteRouter(skip: string[], router: Map<string, AppHandler>) {
     }
 }
 
-
-
 /**
  * Create duplicate `route` error message
  * @param method `route` group
@@ -72,6 +70,7 @@ function _deleteRouter(skip: string[], router: Map<string, AppHandler>) {
 const _createDRM = (method: string, route: string): string => {
     return `This given "${method}" route ${route} already exists in route table`;
 };
+
 export class Controller implements IController {
     private _httpMimeHandler: IHttpMimeHandler;
     private _fileInfo: IFileInfoCacheHandler;
@@ -98,6 +97,7 @@ export class Controller implements IController {
         this._routeTable.any.clear();
         this._routeTable.router.length = 0;
     }
+
     private fireHandler(ctx: IContext): boolean {
 
         if (this._routeTable.router.length === 0) return false;
@@ -125,6 +125,7 @@ export class Controller implements IController {
             return false;
         });
     }
+
     public get(route: string, next: AppHandler): IController {
         if (this._routeTable.get.has(route))
             throw new Error(_createDRM('get', route));
@@ -149,10 +150,13 @@ export class Controller implements IController {
     }
 
     public post(route: string, next: AppHandler): IController {
+
         if (this._routeTable.post.has(route))
             throw new Error(_createDRM('post', route));
+
         if (this._routeTable.any.has(route))
             throw new Error(_createDRM('post', route));
+
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
             this._routeTable.router.push({
                 method: "POST",
@@ -171,11 +175,15 @@ export class Controller implements IController {
     public any(route: string, next: AppHandler): IController {
         if (this._routeTable.post.has(route))
             throw new Error(_createDRM('post', route));
+
         if (this._routeTable.get.has(route))
             throw new Error(_createDRM('get', route));
+
         if (this._routeTable.any.has(route))
             throw new Error(_createDRM('any', route));
+
         if (route !== "/" && (route.indexOf(":") > -1 || route.indexOf("*") > -1)) {
+
             this._routeTable.router.push({
                 method: "ANY",
                 handler: next,
@@ -183,54 +191,86 @@ export class Controller implements IController {
                 pathArray: route.split("/"),
                 routeMatcher: getRouteMatcher(route)
             });
+
         }
 
         this._routeTable.any.set(route, next);
         return this;
     }
 
-    private passDefaultDoc(ctx: IContext): void {
-        let index: number = -1;
-        const forword = (): void => {
-            index++;
-            const name: string | undefined = ctx.server.config.defaultDoc[index];
-            if (!name) return ctx.next(404);
-            const path: string = ctx.server.mapPath(`/${ctx.req.path}${name}${ctx.server.config.defaultExt}`);
-            return this._fileInfo.exists(path, (exists: boolean, url: string): void => {
-                return ctx.handleError(null, () => {
-                    if (exists) return ctx.res.render(ctx, url);
-                    return forword();
-                });
-            });
+    private async passDefaultDocAsync(ctx: IContext): Promise<void> {
+        const rpath = ctx.req.path;
+        const { defaultDoc, defaultExt } = ctx.server.config;
+
+        for (const name of defaultDoc) {
+
+            const path: string = ctx.server.mapPath(
+                `/${rpath}${name}${defaultExt}`
+            );
+
+            const status = await this._fileInfo.existsAsync(path);
+            if (ctx.isDisposed)
+                return;
+
+            if (!status.exists)
+                continue;
+
+            return ctx.res.render(
+                ctx, status.url
+            );
+
         }
-        return forword();
+
+        if (ctx.isDisposed)
+            return;
+
+        return ctx.next(404);
+
     }
-    private sendDefaultDoc(ctx: IContext): void {
-        if (this._hasDefaultExt) {
-            if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
-                return this.passDefaultDoc(ctx);
+    private async sendDefaultDocAsync(ctx: IContext): Promise<void> {
+        const rpath = ctx.req.path;
+
+        if (!this._hasDefaultExt) {
+
+            if (rpath.charAt(rpath.length - 1) === "/") {
+                return await this.passDefaultDocAsync(ctx);
             }
-            const fileName: string | void = getFileName(ctx.req.path);
-            if (!fileName) return ctx.next(404);
-            if (ctx.server.config.defaultDoc.indexOf(fileName) > -1) return ctx.next(404);
-            if (HttpStatus.isErrorFileName(fileName /*401*/)) {
-                return ctx.transferRequest(toNumber(fileName));
-            }
-            const path: string = ctx.server.mapPath(`/${ctx.req.path}${ctx.server.config.defaultExt}`);
-            return this._fileInfo.exists(path, (exists: boolean, url: string): void => {
-                return ctx.handleError(null, () => {
-                    if (exists) return ctx.res.render(ctx, url);
-                    return ctx.next(404);
-                });
-            });
+
+            return ctx.next(404);
         }
-        if (ctx.req.path.charAt(ctx.req.path.length - 1) === "/") {
-            return this.passDefaultDoc(ctx);
+
+
+        if (rpath.charAt(rpath.length - 1) === "/") {
+            return await this.passDefaultDocAsync(ctx);
         }
+
+        const fileName = getFileName(rpath);
+        
+        if (!fileName)
+            return ctx.next(404);
+
+        if (ctx.server.config.defaultDoc.includes(fileName))
+            return ctx.next(404);
+
+        if (HttpStatus.isErrorFileName(fileName /*401*/)) {
+            return ctx.transferRequest(toNumber(fileName));
+        }
+
+        const path: string = ctx.server.mapPath(
+            `/${ctx.req.path}${ctx.server.config.defaultExt}`
+        );
+
+        const status = await this._fileInfo.existsAsync(path);
+        if (ctx.isDisposed)
+            return;
+
+        if (status.exists)
+            return ctx.res.render(ctx, status.url);
+
         return ctx.next(404);
     }
 
-    private processGet(ctx: IContext): void {
+    private async processGetAsync(ctx: IContext): Promise<void> {
         const handler = this._routeTable.get.get(ctx.path);
 
         if (handler) {
@@ -240,7 +280,7 @@ export class Controller implements IController {
         if (this.fireHandler(ctx)) return void 0;
 
         if (ctx.extension) {
-            
+
             if (
                 this._hasDefaultExt
                 && ctx.server.config.defaultExt === `.${ctx.extension}`
@@ -253,14 +293,14 @@ export class Controller implements IController {
             }
 
             if (ctx.server.config.mimeType.indexOf(ctx.extension) > -1) {
-                this.httpMimeHandler.renderAsync(ctx, void 0);
+                this.httpMimeHandler.renderAsync(ctx);
                 return;
             }
 
             return ctx.next(404, true);
         }
 
-        return this.sendDefaultDoc(ctx);
+        return await this.sendDefaultDocAsync(ctx);
     }
 
     private processPost(ctx: IContext): void {
@@ -275,7 +315,7 @@ export class Controller implements IController {
         return ctx.next(404);
     }
 
-    public processAny(ctx: IContext): void {
+    public async processAny(ctx: IContext): Promise<void> {
         const handler = this._routeTable.any.get(ctx.path);
 
         if (handler) {
@@ -286,7 +326,7 @@ export class Controller implements IController {
             return this.processPost(ctx);
 
         if (ctx.req.method === "GET")
-            return this.processGet(ctx);
+            return await this.processGetAsync(ctx);
 
         return ctx.next(404);
     }
@@ -304,7 +344,9 @@ export class Controller implements IController {
 
         if (found === 0) return false;
 
-        const index: number = this._routeTable.router.findIndex(r => r.route === path);
+        const index: number = this._routeTable.router.findIndex(
+            r => r.route === path
+        );
 
         if (index > -1) {
             this._routeTable.router.splice(index, 1);
@@ -312,6 +354,7 @@ export class Controller implements IController {
 
         return true;
     }
+
     public sort(): void {
         return this._routeTable.router = this._routeTable.router.sort((a, b) => {
             return a.route.length - b.route.length;

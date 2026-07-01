@@ -1639,7 +1639,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _controller.sort();
 
 
-        _app.use((req: IRequest, res: IResponse, next: NextFunction) => {
+        _app.use(async (req: IRequest, res: IResponse, next: NextFunction) => {
             const context = _process.createContext(
                 req, res, next
             );
@@ -1672,7 +1672,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                     return;
                 }
 
-                return _controller.processAny(context);
+                return await _controller.processAny(context);
 
             } catch (ex: any) {
                 return _server.transferRequest(

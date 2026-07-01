@@ -651,6 +651,7 @@ describe("cwserver-template-engine", () => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/no_template`)
             .end((err, res) => {
+                console.log(res.status);
                 Util.extend(appUtility.server.config.template, old);
                 expect(err).not.toBeInstanceOf(Error);
                 expect(res.status).toBe(200);

@@ -51,6 +51,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CwServer = exports.SessionSecurity = exports.ServerConfig = exports.ServerEncryption = void 0;
 exports.initilizeServer = initilizeServer;
@@ -831,7 +840,7 @@ function initilizeServer(appRoot, wwwName) {
         });
         app_view_1.AppView.init(_app, _controller, _server);
         _controller.sort();
-        _app.use((req, res, next) => {
+        _app.use((req, res, next) => __awaiter(this, void 0, void 0, function* () {
             const context = _process.createContext(req, res, next);
             const reqPath = req.path;
             const isHidden = _server.config.hiddenDirectory.some(dir => reqPath.startsWith(dir));
@@ -847,12 +856,12 @@ function initilizeServer(appRoot, wwwName) {
                 if (!_server.isValidContext(context)) {
                     return;
                 }
-                return _controller.processAny(context);
+                return yield _controller.processAny(context);
             }
             catch (ex) {
                 return _server.transferRequest(_server.addError(context, ex), 500);
             }
-        });
+        }));
         _server.init();
         return _app;
     }

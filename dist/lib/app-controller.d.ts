@@ -6,7 +6,7 @@ export interface IController {
     any(route: string, next: AppHandler): IController;
     get(route: string, next: AppHandler): IController;
     post(route: string, next: AppHandler): IController;
-    processAny(ctx: IContext): void;
+    processAny(ctx: IContext): Promise<void>;
     reset(): void;
     /** The given `arguments` will be skip */
     delete(...args: string[]): void;
@@ -26,11 +26,11 @@ export declare class Controller implements IController {
     get(route: string, next: AppHandler): IController;
     post(route: string, next: AppHandler): IController;
     any(route: string, next: AppHandler): IController;
-    private passDefaultDoc;
-    private sendDefaultDoc;
-    private processGet;
+    private passDefaultDocAsync;
+    private sendDefaultDocAsync;
+    private processGetAsync;
     private processPost;
-    processAny(ctx: IContext): void;
+    processAny(ctx: IContext): Promise<void>;
     remove(path: string): boolean;
     sort(): void;
 }
