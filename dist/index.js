@@ -52,7 +52,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.appVersion = exports.readAppVersion = exports.App = exports.ServerEncryption = exports.SessionSecurity = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.setMimeType = exports.getMimeType = exports.PayloadParser = exports.getBodyParser = exports.createProjectTemplate = exports.Session = exports.wsClient = exports.socketInitilizer = exports.HttpMimeHandler = exports.registerView = exports.HttpCache = exports.Encryption = exports.initilizeServer = exports.Streamer = exports.parseCookie = exports.Util = exports.fsw = void 0;
+exports.FileDescription = exports.FileInfoCacheHandler = exports.appVersion = exports.readAppVersion = exports.App = exports.ServerEncryption = exports.SessionSecurity = exports.LogTime = exports.ShadowLogger = exports.Logger = exports.ConsoleColor = exports.setMimeType = exports.getMimeType = exports.PayloadParser = exports.getBodyParser = exports.createProjectTemplate = exports.Session = exports.wsClient = exports.socketInitilizer = exports.HttpMimeHandler = exports.registerView = exports.HttpCache = exports.Encryption = exports.initilizeServer = exports.Streamer = exports.parseCookie = exports.Util = exports.fsw = void 0;
 // 3:56 PM 5/9/2020
 // by rajib chy
 exports.fsw = __importStar(require("./lib/fsw"));
@@ -97,4 +97,7 @@ var server_core_1 = require("./lib/server-core");
 Object.defineProperty(exports, "App", { enumerable: true, get: function () { return server_core_1.App; } });
 Object.defineProperty(exports, "readAppVersion", { enumerable: true, get: function () { return server_core_1.readAppVersion; } });
 Object.defineProperty(exports, "appVersion", { enumerable: true, get: function () { return server_core_1.appVersion; } });
+var file_info_1 = require("./lib/file-info");
+Object.defineProperty(exports, "FileInfoCacheHandler", { enumerable: true, get: function () { return file_info_1.FileInfoCacheHandler; } });
+Object.defineProperty(exports, "FileDescription", { enumerable: true, get: function () { return file_info_1.FileDescription; } });
 //# sourceMappingURL=index.js.map

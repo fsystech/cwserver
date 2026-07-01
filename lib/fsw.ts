@@ -118,12 +118,14 @@ export function isExists(
     next: (exists: boolean, url: string) => void
 ): void {
 
-    isExistsAsync(path).then(rs => {
-        return next(rs.exists, rs.url)
-    });
+    isExistsAsync(path).then(
+        rs => next(rs.exists, rs.url)
+    );
 }
 
-export async function isExistsAsync(path: string): Promise<{ exists: boolean, url: string }> {
+export async function isExistsAsync(
+    path: string
+): Promise<{ exists: boolean, url: string }> {
 
     const url = _path.resolve(path);
 

@@ -46,3 +46,4 @@ export { ConsoleColor, Logger, ShadowLogger, LogTime } from './lib/logger';
 export { type ICwServer, SessionSecurity, ServerEncryption } from './lib/server';
 export { App, type IApplication, readAppVersion, appVersion } from './lib/server-core';
 export type { IWsClientInfo, ICwSocketServer, ICwSocketInfo, IOSocket } from './lib/ws';
+export { type IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, type IFileDescription } from './lib/file-info';

@@ -32,7 +32,9 @@ import { HttpStatus } from "../lib/http-status";
 import * as cwserver from '../index';
 import { getAppDir } from '../lib/app-util';
 // import FormData from "form-data";
-import { IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription } from '../lib/file-info';
+import { 
+    IFileInfoCacheHandler, FileInfoCacheHandler, FileDescription, IFileDescription 
+} from '../index';
 import { toNumber, toResponseTime, IBufferArray, BufferArray } from '../lib/app-static';
 import { Session } from '../lib/session';
 import {

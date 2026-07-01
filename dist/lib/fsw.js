@@ -175,9 +175,7 @@ function compareFileSync(a, b) {
     return false;
 }
 function isExists(path, next) {
-    isExistsAsync(path).then(rs => {
-        return next(rs.exists, rs.url);
-    });
+    isExistsAsync(path).then(rs => next(rs.exists, rs.url));
 }
 function isExistsAsync(path) {
     return __awaiter(this, void 0, void 0, function* () {
