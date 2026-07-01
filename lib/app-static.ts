@@ -93,12 +93,18 @@ export interface IBufferArray extends IDispose {
     readonly length: number;
 
     /**
-     * Adds a buffer or string to the buffer array.
-     * 
-     * @param buff The buffer or string to add.
-     * @returns The length of the added buffer.
+     * Appends buffer data into the internal buffer collection.
+     *
+     * Supports Buffer, string, and array of Buffer values.
+     * Updates the total byte length and returns the number of bytes added.
+     *
+     * @param {Buffer | Array<Buffer> | string} buff
+     * Buffer data to append.
+     *
+     * @returns {number}
+     * Total bytes added.
      */
-    push(buff: Buffer | string): number;
+    push(buff: Buffer | Array<Buffer> | string): number;
 
     /**
      * Clears the buffer array.
@@ -173,16 +179,39 @@ export class BufferArray implements IBufferArray {
     }
 
     /**
-     * Adds a buffer or string to the buffer array.
-     * 
-     * @param buff The buffer or string to add.
-     * @returns The length of the added buffer.
-     * 
-     * @throws Error if the instance has been disposed.
+     * Appends buffer data into the internal buffer collection.
+     *
+     * Supports Buffer, string, and array of Buffer values.
+     * Updates the total byte length and returns the number of bytes added.
+     *
+     * @param {Buffer | Array<Buffer> | string} buff
+     * Buffer data to append.
+     *
+     * @returns {number}
+     * Total bytes added.
      */
-    public push(buff: Buffer | string): number {
+    public push(buff: Buffer | Array<Buffer> | string): number {
 
         this.shouldNotDisposed();
+
+        if (Array.isArray(buff)) {
+
+            let length = 0;
+
+            for (const item of buff) {
+
+                if (!Buffer.isBuffer(item)) {
+                    throw new TypeError("Array item must be Buffer.");
+                }
+
+                length += item.length;
+                this._data.push(item);
+            }
+
+            this._length += length;
+
+            return length;
+        }
 
         if (Buffer.isBuffer(buff)) {
             this._length += buff.length;
@@ -193,7 +222,7 @@ export class BufferArray implements IBufferArray {
         const nBuff: Buffer = Buffer.from(buff);
         this._length += nBuff.length;
         this._data.push(nBuff);
-        
+
         return nBuff.length;
     }
 

@@ -179,6 +179,52 @@ class Bundlew {
         );
     }
 
+    private static async _readFileAsync(
+        ctx: IContext, 
+        inf: BundlerFileInfo, 
+        copyBuff: Buffer<ArrayBuffer>
+    ): Promise<Buffer<ArrayBufferLike>[]> {
+        
+        if (ctx.isDisposed)
+            return null;
+
+        const result: Buffer[] = [];
+
+        result.push(Buffer.from(`\r\n// ${inf.name}\r\n`));
+
+        if (inf.iCwn === true) {
+
+            result.push(copyBuff);
+
+            if (!inf.name.includes(".min.")) {
+
+                const data = await _fsp.readFile(
+                    inf.absolute,
+                    "utf8"
+                );
+
+                result.push(
+                    Buffer.from(
+                        data
+                            .replace(
+                                /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm,
+                                ""
+                            )
+                            .replace(/^\s*$(?:\r\n?|\n)/gm, "")
+                    )
+                );
+
+                return result;
+            }
+        }
+
+        result.push(
+            await _fsp.readFile(inf.absolute)
+        );
+
+        return result;
+    }
+
     public static async readBufferAsync(
         ctx: IContext,
         files: BundlerFileInfo[], copyright: string
@@ -198,26 +244,17 @@ class Bundlew {
         out.push(Buffer.from(istr));
         const copyBuff = Buffer.from(copyright);
 
-        for (const inf of files) {
+        const buffers = await Promise.all(files.map(
+            (inf) => this._readFileAsync(ctx, inf, copyBuff)
+        ));
 
-            if (ctx.isDisposed)
-                return null;
+        if (ctx.isDisposed)
+            return null;
 
-            out.push(`\r\n// ${inf.name}\r\n`);
-
-            if (inf.iCwn === true) {
-
-                out.push(copyBuff);
-
-                if (!inf.name.includes(".min.")) {
-
-                    const data = await _fsp.readFile(inf.absolute, "utf8");
-                    out.push(Buffer.from(data.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "")));/** Replace Comment and empty line */
-                    continue;
-                }
+        for (const list of buffers) {
+            if (list) {
+                out.push(list);
             }
-
-            out.push(await _fsp.readFile(inf.absolute));
         }
 
         return out;
@@ -518,8 +555,11 @@ class Bundlew {
                 return;
             }
 
-            const buffer = await this.readBufferAsync(ctx, files, server.copyright());
-            if (ctx.isDisposed)
+            const buffer = await this.readBufferAsync(
+                ctx, files, server.copyright()
+            );
+
+            if (buffer === null || ctx.isDisposed)
                 return;
 
             if (!server.config.bundler.compress) {

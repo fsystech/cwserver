@@ -60,12 +60,18 @@ export interface IBufferArray extends IDispose {
      */
     readonly length: number;
     /**
-     * Adds a buffer or string to the buffer array.
+     * Appends buffer data into the internal buffer collection.
      *
-     * @param buff The buffer or string to add.
-     * @returns The length of the added buffer.
+     * Supports Buffer, string, and array of Buffer values.
+     * Updates the total byte length and returns the number of bytes added.
+     *
+     * @param {Buffer | Array<Buffer> | string} buff
+     * Buffer data to append.
+     *
+     * @returns {number}
+     * Total bytes added.
      */
-    push(buff: Buffer | string): number;
+    push(buff: Buffer | Array<Buffer> | string): number;
     /**
      * Clears the buffer array.
      */
@@ -117,14 +123,18 @@ export declare class BufferArray implements IBufferArray {
      */
     private shouldNotDisposed;
     /**
-     * Adds a buffer or string to the buffer array.
+     * Appends buffer data into the internal buffer collection.
      *
-     * @param buff The buffer or string to add.
-     * @returns The length of the added buffer.
+     * Supports Buffer, string, and array of Buffer values.
+     * Updates the total byte length and returns the number of bytes added.
      *
-     * @throws Error if the instance has been disposed.
+     * @param {Buffer | Array<Buffer> | string} buff
+     * Buffer data to append.
+     *
+     * @returns {number}
+     * Total bytes added.
      */
-    push(buff: Buffer | string): number;
+    push(buff: Buffer | Array<Buffer> | string): number;
     /**
      * Clears the buffer array by resetting stored data.
      *

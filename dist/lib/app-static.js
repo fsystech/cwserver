@@ -63,15 +63,31 @@ class BufferArray {
             throw new Error("This `BufferArray` instance already disposed.");
     }
     /**
-     * Adds a buffer or string to the buffer array.
+     * Appends buffer data into the internal buffer collection.
      *
-     * @param buff The buffer or string to add.
-     * @returns The length of the added buffer.
+     * Supports Buffer, string, and array of Buffer values.
+     * Updates the total byte length and returns the number of bytes added.
      *
-     * @throws Error if the instance has been disposed.
+     * @param {Buffer | Array<Buffer> | string} buff
+     * Buffer data to append.
+     *
+     * @returns {number}
+     * Total bytes added.
      */
     push(buff) {
         this.shouldNotDisposed();
+        if (Array.isArray(buff)) {
+            let length = 0;
+            for (const item of buff) {
+                if (!Buffer.isBuffer(item)) {
+                    throw new TypeError("Array item must be Buffer.");
+                }
+                length += item.length;
+                this._data.push(item);
+            }
+            this._length += length;
+            return length;
+        }
         if (Buffer.isBuffer(buff)) {
             this._length += buff.length;
             this._data.push(buff);

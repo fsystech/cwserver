@@ -173,6 +173,26 @@ class Bundlew {
             })));
         });
     }
+    static _readFileAsync(ctx, inf, copyBuff) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (ctx.isDisposed)
+                return null;
+            const result = [];
+            result.push(Buffer.from(`\r\n// ${inf.name}\r\n`));
+            if (inf.iCwn === true) {
+                result.push(copyBuff);
+                if (!inf.name.includes(".min.")) {
+                    const data = yield _fsp.readFile(inf.absolute, "utf8");
+                    result.push(Buffer.from(data
+                        .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "")
+                        .replace(/^\s*$(?:\r\n?|\n)/gm, "")));
+                    return result;
+                }
+            }
+            result.push(yield _fsp.readFile(inf.absolute));
+            return result;
+        });
+    }
     static readBufferAsync(ctx, files, copyright) {
         return __awaiter(this, void 0, void 0, function* () {
             const out = new app_static_1.BufferArray();
@@ -184,19 +204,13 @@ class Bundlew {
             istr += "// Generated on- " + new Date().toString() + "\r\n";
             out.push(Buffer.from(istr));
             const copyBuff = Buffer.from(copyright);
-            for (const inf of files) {
-                if (ctx.isDisposed)
-                    return null;
-                out.push(`\r\n// ${inf.name}\r\n`);
-                if (inf.iCwn === true) {
-                    out.push(copyBuff);
-                    if (!inf.name.includes(".min.")) {
-                        const data = yield _fsp.readFile(inf.absolute, "utf8");
-                        out.push(Buffer.from(data.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, ""))); /** Replace Comment and empty line */
-                        continue;
-                    }
+            const buffers = yield Promise.all(files.map((inf) => this._readFileAsync(ctx, inf, copyBuff)));
+            if (ctx.isDisposed)
+                return null;
+            for (const list of buffers) {
+                if (list) {
+                    out.push(list);
                 }
-                out.push(yield _fsp.readFile(inf.absolute));
             }
             return out;
         });
@@ -373,7 +387,7 @@ class Bundlew {
                     return;
                 }
                 const buffer = yield this.readBufferAsync(ctx, files, server.copyright());
-                if (ctx.isDisposed)
+                if (buffer === null || ctx.isDisposed)
                     return;
                 if (!server.config.bundler.compress) {
                     yield _fsp.writeFile(cachpath, buffer.data);
