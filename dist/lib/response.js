@@ -62,6 +62,7 @@ const app_template_1 = require("./app-template");
 const app_util_1 = require("./app-util");
 const _zlib = __importStar(require("node:zlib"));
 const _mimeType = __importStar(require("./http-mime-types"));
+const JSON_GZIP_THRESHOLD = 8 * 1024; // 8 KiB
 class Response extends node_http_1.ServerResponse {
     // @ts-ignore
     get statusCode() {
@@ -98,7 +99,7 @@ class Response extends node_http_1.ServerResponse {
     noCache() {
         const header = this.get('cache-control');
         if (header) {
-            if (header.indexOf('must-revalidate') > -1) {
+            if (header.includes('must-revalidate')) {
                 return this;
             }
             this.removeHeader('cache-control');
@@ -111,7 +112,7 @@ class Response extends node_http_1.ServerResponse {
         if (headers) {
             for (const name in headers) {
                 const val = headers[name];
-                if (!val)
+                if (val == null)
                     continue;
                 this.setHeader(name, val);
             }
@@ -135,54 +136,55 @@ class Response extends node_http_1.ServerResponse {
     }
     send(chunk) {
         if (this.headersSent) {
-            throw new Error("If you use res.writeHead(), invoke res.end() instead of res.send()");
+            throw new Error("If you use res.writeHead(), invoke res.end() instead of res.send().");
         }
-        if (204 === this.statusCode || 304 === this.statusCode) {
-            this.removeHeader('Content-Type');
-            this.removeHeader('Content-Length');
-            this.removeHeader('Transfer-Encoding');
-            return this.end(), void 0;
+        if (this.statusCode === 204 || this.statusCode === 304) {
+            this.removeHeader("Content-Type");
+            this.removeHeader("Content-Length");
+            this.removeHeader("Transfer-Encoding");
+            this.end();
+            return;
         }
         if (this.method === "HEAD") {
-            return this.end(), void 0;
+            this.end();
+            return;
         }
-        switch (typeof (chunk)) {
-            case 'undefined': throw new Error("Body required....");
-            case 'string':
-                if (!this.get('Content-Type')) {
-                    this.type('html');
+        switch (typeof chunk) {
+            case "undefined":
+                throw new Error("Response body is required.");
+            case "string":
+                if (!this.get("Content-Type")) {
+                    this.type("html");
                 }
                 break;
-            case 'boolean':
-            case 'number':
-                if (!this.get('Content-Type')) {
-                    this.type('text');
+            case "number":
+            case "boolean":
+                if (!this.get("Content-Type")) {
+                    this.type("text");
                 }
                 chunk = String(chunk);
-            case 'object':
+                break;
+            case "object":
                 if (Buffer.isBuffer(chunk)) {
-                    if (!this.get('Content-Type')) {
-                        this.type('bin');
+                    if (!this.get("Content-Type")) {
+                        this.type("bin");
                     }
                 }
                 else {
-                    this.type("json");
+                    if (!this.get("Content-Type")) {
+                        this.type("json");
+                    }
                     chunk = app_util_1.Util.JSON.stringify(chunk);
                 }
                 break;
+            default:
+                throw new TypeError(`Unsupported response body type: ${typeof chunk}.`);
         }
-        let len = 0;
-        if (Buffer.isBuffer(chunk)) {
-            // get length of Buffer
-            len = chunk.length;
-        }
-        else {
-            // convert chunk to Buffer and calculate
-            chunk = Buffer.from(chunk, "utf-8");
-            len = chunk.length;
-        }
-        this.set('Content-Length', len);
-        return this.end(chunk), void 0;
+        const buffer = Buffer.isBuffer(chunk)
+            ? chunk
+            : Buffer.from(chunk, "utf8");
+        this.set("Content-Length", buffer.length);
+        this.end(buffer);
     }
     asHTML(code, contentLength, isGzip) {
         return this.status(code, getCommonHeader(_mimeType.getMimeType("html"), contentLength, isGzip)), this;
@@ -220,15 +222,26 @@ class Response extends node_http_1.ServerResponse {
         return true;
     }
     json(body, compress, next) {
-        const buffer = Buffer.from(app_util_1.Util.JSON.stringify(body), "utf-8");
-        if (typeof (compress) === 'boolean' && compress === true) {
-            return _zlib.gzip(buffer, (error, buff) => {
-                if (!this.sendIfError(error)) {
-                    this.asJSON(200, buff.length, true).end(buff);
-                }
-            }), void 0;
+        const buffer = Buffer.from(app_util_1.Util.JSON.stringify(body), "utf8");
+        const shouldCompress = compress === true ||
+            (compress === undefined &&
+                buffer.length >= JSON_GZIP_THRESHOLD);
+        if (!shouldCompress) {
+            this.asJSON(200, buffer.length).end(buffer);
+            next === null || next === void 0 ? void 0 : next(null);
+            return;
         }
-        return this.asJSON(200, buffer.length).end(buffer), void 0;
+        _zlib.gzip(buffer, {
+            level: _zlib.constants.Z_DEFAULT_COMPRESSION
+        }, (error, compressed) => {
+            if (error) {
+                next === null || next === void 0 ? void 0 : next(error);
+                this.sendIfError(error);
+                return;
+            }
+            this.asJSON(200, compressed.length, true).end(compressed);
+            next === null || next === void 0 ? void 0 : next(null);
+        });
     }
     dispose() {
         delete this._method;
@@ -239,6 +252,28 @@ class Response extends node_http_1.ServerResponse {
     }
 }
 exports.Response = Response;
+/**
+ * Creates a common set of HTTP response headers.
+ *
+ * The returned header collection always includes a `Content-Type` header and
+ * optionally includes `Content-Length` and `Content-Encoding` when their
+ * corresponding arguments are provided.
+ *
+ * @param {string} contentType
+ * The MIME type to assign to the `Content-Type` header.
+ *
+ * @param {number} [contentLength]
+ * The size of the response body in bytes. When specified, a
+ * `Content-Length` header is included.
+ *
+ * @param {boolean} [isGzip]
+ * Indicates whether the response body is gzip-compressed. When `true`,
+ * a `Content-Encoding: gzip` header is included.
+ *
+ * @returns {OutgoingHttpHeaders}
+ * A collection of HTTP response headers suitable for use with
+ * `ServerResponse.writeHead()` or `ServerResponse.setHeader()`.
+ */
 function getCommonHeader(contentType, contentLength, isGzip) {
     const header = {
         'Content-Type': contentType
@@ -251,6 +286,37 @@ function getCommonHeader(contentType, contentLength, isGzip) {
     }
     return header;
 }
+/**
+ * Creates the value of a `Set-Cookie` response header.
+ *
+ * The cookie string is constructed from the supplied name, value, and
+ * configuration options. If no path is specified, the cookie defaults to
+ * the root path (`/`).
+ *
+ * When both `expires` and `maxAge` are provided, `expires` takes precedence.
+ * If only `maxAge` is specified, an expiration date is calculated relative
+ * to the current time.
+ *
+ * Supported cookie attributes include:
+ * - `Domain`
+ * - `Path`
+ * - `Expires`
+ * - `Secure`
+ * - `HttpOnly`
+ * - `SameSite`
+ *
+ * @param {string} name
+ * The cookie name.
+ *
+ * @param {string} val
+ * The cookie value.
+ *
+ * @param {CookieOptions} options
+ * Options that control the cookie's scope, lifetime, and security attributes.
+ *
+ * @returns {string}
+ * A formatted `Set-Cookie` header value.
+ */
 function createCookie(name, val, options) {
     let str = `${name}=${val}`;
     if (options.domain)

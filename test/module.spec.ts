@@ -654,7 +654,6 @@ describe("cwserver-template-engine", () => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/no_template`)
             .end((err, res) => {
-                console.log(res.status);
                 Util.extend(appUtility.server.config.template, old);
                 expect(err).not.toBeInstanceOf(Error);
                 expect(res.status).toBe(200);
@@ -1717,6 +1716,7 @@ describe("cwserver-gzip-response", () => {
             .get(`http://localhost:${appUtility.port}/response`)
             .query({ task: "gzip", data: JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }) })
             .end((err, res) => {
+                console.log(err);
                 expect(err).not.toBeInstanceOf(Error);
                 expect(res.status).toBe(200);
                 expect(res.header["content-encoding"]).toBe("gzip");

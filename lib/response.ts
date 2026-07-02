@@ -46,24 +46,312 @@ type CookieOptions = {
 }
 
 export interface IResponse extends ServerResponse {
+    /**
+     * Indicates whether the underlying connection is still active and capable
+     * of sending a response.
+     *
+     * A value of `false` means the connection has been closed or destroyed.
+     */
     readonly isAlive: boolean;
+
+    /**
+     * Gets the HTTP status code that will be sent with the response.
+     *
+     * The value may be modified through methods such as `status()`.
+     */
     readonly statusCode: number;
+
+    /**
+     * Determines whether the underlying socket should be destroyed when the
+     * response is disposed.
+     *
+     * When `true`, all event listeners are removed and the socket is explicitly
+     * destroyed during disposal.
+     */
     cleanSocket: boolean;
+
+    /**
+     * Sends a JSON response to the client.
+     *
+     * The response body is serialized to UTF-8 encoded JSON. Compression behavior
+     * is determined by the `compress` parameter:
+     *
+     * - `true`      : Always gzip-compress the response.
+     * - `false`     : Never compress the response.
+     * - `undefined` : Automatically gzip-compress responses whose serialized JSON
+     *                 size is greater than or equal to the configured compression
+     *                 threshold.
+     *
+     * When compression is applied, the response is sent with the appropriate
+     * `Content-Encoding` and `Content-Length` headers. The callback, if provided,
+     * is invoked once the response has been written or if a compression error
+     * occurs.
+     *
+     * @param {NodeJS.Dict<any>} body
+     * The object to serialize and send as a JSON response.
+     *
+     * @param {boolean} [compress]
+     * Controls gzip compression. If omitted, compression is applied automatically
+     * based on the serialized JSON size.
+     *
+     * @param {(error: Error | null) => void} [next]
+     * Optional callback invoked after the response has been sent successfully or
+     * when a compression error occurs. Receives `null` on success or the
+     * encountered `Error` on failure.
+     *
+     * @returns {void}
+     */
     json(body: NodeJS.Dict<any>, compress?: boolean, next?: (error: Error | null) => void): void;
+
+    /**
+     * Sets the HTTP status code and optionally applies one or more response
+     * headers.
+     *
+     * Existing headers with the same name are overwritten. Header entries whose
+     * values are `null` or `undefined` are ignored.
+     *
+     * @param {number} code
+     * HTTP status code to send.
+     *
+     * @param {OutgoingHttpHeaders} [headers]
+     * Optional collection of response headers to apply.
+     *
+     * @returns {IResponse}
+     * The current response instance for method chaining.
+     */
     status(code: number, headers?: OutgoingHttpHeaders): IResponse;
+
+    /**
+     * Sets the response status and headers for an HTML response.
+     *
+     * This method configures the response with the specified HTTP status code,
+     * `Content-Type: text/html`, optional `Content-Length`, and optional
+     * `Content-Encoding: gzip`.
+     *
+     * @param {number} code
+     * HTTP status code to send.
+     *
+     * @param {number} [contentLength]
+     * Size of the response body in bytes. If omitted, the `Content-Length`
+     * header is not set.
+     *
+     * @param {boolean} [isGzip]
+     * Indicates whether the response body is gzip-compressed. When `true`,
+     * the appropriate `Content-Encoding` header is included.
+     *
+     * @returns {IResponse}
+     * The current response instance for method chaining.
+     */
     asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse;
+
+    /**
+     * Sets the response status and headers for a JSON response.
+     *
+     * This method configures the response with the specified HTTP status code,
+     * `Content-Type: application/json`, optional `Content-Length`, and optional
+     * `Content-Encoding: gzip`.
+     *
+     * @param {number} code
+     * HTTP status code to send.
+     *
+     * @param {number} [contentLength]
+     * Size of the response body in bytes. If omitted, the `Content-Length`
+     * header is not set.
+     *
+     * @param {boolean} [isGzip]
+     * Indicates whether the response body is gzip-compressed. When `true`,
+     * the appropriate `Content-Encoding` header is included.
+     *
+     * @returns {IResponse}
+     * The current response instance for method chaining.
+     */
     asJSON(code: number, contentLength?: number, isGzip?: boolean): IResponse;
+
+    /**
+     * Adds a `Set-Cookie` header to the response.
+     *
+     * If one or more cookies have already been added, the new cookie is
+     * appended without replacing the existing values.
+     *
+     * @param {string} name
+     * Cookie name.
+     *
+     * @param {string} val
+     * Cookie value.
+     *
+     * @param {CookieOptions} options
+     * Cookie configuration options.
+     *
+     * @returns {IResponse}
+     * The current response instance for method chaining.
+     */
     cookie(name: string, val: string, options: CookieOptions): IResponse;
+
+    /**
+     * Retrieves the value of a response header.
+     *
+     * If the header contains multiple values, they are returned as a JSON string.
+     * Returns `undefined` if the header is not present.
+     *
+     * @param {string} name
+     * Name of the response header.
+     *
+     * @returns {string | void}
+     * The header value as a string, or `undefined` if the header does not exist.
+     */
     get(name: string): string | void;
+
+    /**
+     * Sets a response header.
+     *
+     * If a header with the same name already exists, its value is replaced.
+     *
+     * @param {string} field
+     * Header name.
+     *
+     * @param {number | string | string[]} value
+     * Header value.
+     *
+     * @returns {IResponse}
+     * The current response instance for method chaining.
+     */
     set(field: string, value: number | string | string[]): IResponse;
+
+    /**
+     * Redirects the client to another URL.
+     *
+     * Sets the `Location` response header and ends the response. When
+     * `force` is `true`, cache-control headers are applied to prevent
+     * clients from caching the redirect.
+     *
+     * @param {string} url
+     * Destination URL.
+     *
+     * @param {boolean} [force]
+     * If `true`, disables caching before issuing the redirect.
+     *
+     * @returns {void}
+     */
     redirect(url: string, force?: boolean): void;
+
+    /**
+     * Renders a template and writes the resulting output to the response.
+     *
+     * The template is resolved from the specified path and rendered using
+     * the provided request context. An optional response status object may
+     * be supplied to expose additional data to the template.
+     *
+     * @param {IContext} ctx
+     * The current request context.
+     *
+     * @param {string} path
+     * Path of the template to render.
+     *
+     * @param {IResInfo} [status]
+     * Optional data passed to the template during rendering.
+     *
+     * @returns {void}
+     */
     render(ctx: IContext, path: string, status?: IResInfo): void;
+
+
+    /**
+     * Sets the response `Content-Type` header using a file extension or MIME alias.
+     *
+     * The extension is resolved to its corresponding MIME type using the
+     * application's MIME type registry.
+     *
+     * @param {string} extension
+     * File extension or MIME alias (e.g. `"html"`, `"json"`, `"text"`, `"bin"`).
+     *
+     * @returns {IResponse}
+     * The current response instance for method chaining.
+     */
     type(extension: string): IResponse;
+
+    /**
+     * Configures the response to prevent client and intermediary caching.
+     *
+     * If a `Cache-Control` header already exists and contains the
+     * `must-revalidate` directive, no changes are made. Otherwise, any existing
+     * `Cache-Control` header is replaced with a strict no-cache policy.
+     *
+     * The applied policy is:
+     * `no-store, no-cache, must-revalidate, immutable`
+     *
+     * @returns {IResponse}
+     * The current response instance for method chaining.
+     */
     noCache(): IResponse;
+
+    /**
+     * Sends an HTTP 500 Internal Server Error response when the supplied
+     * value is a valid `Error` object.
+     *
+     * If the response has already been completed or the supplied value is
+     * not an `Error`, no response is sent.
+     *
+     * @param {any} [err]
+     * The error to send to the client.
+     *
+     * @returns {boolean}
+     * Returns `true` if the response was already closed or an error response
+     * was sent; otherwise, returns `false`.
+     */
     sendIfError(err?: any): boolean;
+
+    /**
+     * Sends a response body to the client and completes the response.
+     *
+     * The response `Content-Type` is determined automatically when it has not
+     * already been specified:
+     *
+     * - `string`  → `text/html`
+     * - `number` or `boolean` → `text/plain`
+     * - `Buffer`  → `application/octet-stream`
+     * - `object`  → `application/json` (serialized using `Util.JSON.stringify()`)
+     *
+     * A `Content-Length` header is calculated and set automatically before the
+     * response is ended.
+     *
+     * For HTTP status codes `204 No Content` and `304 Not Modified`, any
+     * `Content-Type`, `Content-Length`, and `Transfer-Encoding` headers are
+     * removed as required by the HTTP specification, and the response is sent
+     * without a body.
+     *
+     * For `HEAD` requests, headers are sent but the response body is omitted.
+     *
+     * @param {any} chunk
+     * The response body to send. Supported types are `string`, `number`,
+     * `boolean`, `Buffer`, and JSON-serializable objects.
+     *
+     * @throws {Error}
+     * Thrown if response headers have already been sent. In this case,
+     * `res.end()` should be used instead of `res.send()`.
+     *
+     * @throws {Error}
+     * Thrown if `chunk` is `undefined`.
+     *
+     * @returns {void}
+     */
     send(chunk?: Buffer | string | number | boolean | { [key: string]: any }): void;
+
+    /**
+     * Releases resources associated with this response.
+     *
+     * Clears internal state and, when `cleanSocket` is enabled (or the current
+     * process is running in the `TEST` environment), removes all event listeners
+     * and destroys the underlying socket.
+     *
+     * This method should be called when the response instance is no longer needed
+     * to help free resources and prevent memory leaks.
+     *
+     * @returns {void}
+     */
     dispose(): void;
 }
+
+const JSON_GZIP_THRESHOLD = 8 * 1024; // 8 KiB
 
 export class Response extends ServerResponse implements IResponse {
     private _isAlive: boolean | undefined;
@@ -72,7 +360,7 @@ export class Response extends ServerResponse implements IResponse {
     private _statusCode: number | undefined;
 
     // @ts-ignore
-    public get statusCode() {
+    public get statusCode(): number {
         return this._statusCode === undefined ? 0 : this._statusCode;
     }
 
@@ -82,8 +370,9 @@ export class Response extends ServerResponse implements IResponse {
         this._statusCode = code;
     }
 
-    public get cleanSocket() {
-        if (this._cleanSocket === undefined) return false;
+    public get cleanSocket(): boolean {
+        if (this._cleanSocket === undefined)
+            return false;
         return this._cleanSocket;
     }
 
@@ -91,8 +380,10 @@ export class Response extends ServerResponse implements IResponse {
         this._cleanSocket = val;
     }
 
-    public get isAlive() {
-        if (this._isAlive !== undefined) return this._isAlive;
+    public get isAlive(): boolean {
+        if (this._isAlive !== undefined)
+            return this._isAlive;
+
         this._isAlive = true;
         return this._isAlive;
     }
@@ -101,7 +392,7 @@ export class Response extends ServerResponse implements IResponse {
         this._isAlive = val;
     }
 
-    public get method() {
+    public get method(): string {
         return toString(this._method);
     }
 
@@ -110,101 +401,131 @@ export class Response extends ServerResponse implements IResponse {
     }
 
     public noCache(): IResponse {
-        const header: string | void = this.get('cache-control');
+        const header = this.get('cache-control');
+
         if (header) {
-            if (header.indexOf('must-revalidate') > -1) {
+
+            if (header.includes('must-revalidate')) {
                 return this;
             }
+
             this.removeHeader('cache-control');
         }
-        this.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');
+
+        this.setHeader(
+            'cache-control', 'no-store, no-cache, must-revalidate, immutable'
+        );
         return this;
     }
 
     public status(code: number, headers?: OutgoingHttpHeaders): IResponse {
         this.statusCode = code;
+
         if (headers) {
             for (const name in headers) {
-                const val: number | string | string[] | undefined = headers[name];
-                if (!val) continue;
+                const val = headers[name];
+                if (val == null) continue;
                 this.setHeader(name, val);
             }
         }
+
         return this;
     }
 
     public get(name: string): string | void {
-        const val: number | string | string[] | undefined = this.getHeader(name);
+        const val = this.getHeader(name);
+
         if (val) {
+
             if (Array.isArray(val)) {
                 return Util.JSON.stringify(val);
             }
+
             return toString(val);
         }
     }
 
     public set(field: string, value: number | string | string[]): IResponse {
-        return this.setHeader(field, value), this;
+        return this.setHeader(
+            field, value
+        ), this;
     }
 
     public type(extension: string): IResponse {
-        return this.setHeader('Content-Type', _mimeType.getMimeType(extension)), this;
+        return this.setHeader(
+            'Content-Type', _mimeType.getMimeType(extension)
+        ), this;
     }
 
     public send(chunk?: any): void {
+
         if (this.headersSent) {
-            throw new Error("If you use res.writeHead(), invoke res.end() instead of res.send()");
+            throw new Error("If you use res.writeHead(), invoke res.end() instead of res.send().");
         }
-        if (204 === this.statusCode || 304 === this.statusCode) {
-            this.removeHeader('Content-Type');
-            this.removeHeader('Content-Length');
-            this.removeHeader('Transfer-Encoding');
-            return this.end(), void 0;
+
+        if (this.statusCode === 204 || this.statusCode === 304) {
+            this.removeHeader("Content-Type");
+            this.removeHeader("Content-Length");
+            this.removeHeader("Transfer-Encoding");
+            this.end();
+            return;
         }
+
         if (this.method === "HEAD") {
-            return this.end(), void 0;
+            this.end();
+            return;
         }
-        switch (typeof (chunk)) {
-            case 'undefined': throw new Error("Body required....");
-            case 'string':
-                if (!this.get('Content-Type')) {
-                    this.type('html');
+
+        switch (typeof chunk) {
+
+            case "undefined":
+                throw new Error("Response body is required.");
+
+            case "string":
+                if (!this.get("Content-Type")) {
+                    this.type("html");
                 }
                 break;
-            case 'boolean':
-            case 'number':
-                if (!this.get('Content-Type')) {
-                    this.type('text');
+
+            case "number":
+            case "boolean":
+                if (!this.get("Content-Type")) {
+                    this.type("text");
                 }
                 chunk = String(chunk);
-            case 'object':
+                break;
+
+            case "object":
                 if (Buffer.isBuffer(chunk)) {
-                    if (!this.get('Content-Type')) {
-                        this.type('bin');
+                    if (!this.get("Content-Type")) {
+                        this.type("bin");
                     }
                 } else {
-                    this.type("json");
+                    if (!this.get("Content-Type")) {
+                        this.type("json");
+                    }
                     chunk = Util.JSON.stringify(chunk);
                 }
                 break;
+
+            default:
+                throw new TypeError(`Unsupported response body type: ${typeof chunk}.`);
         }
-        let len: number = 0;
-        if (Buffer.isBuffer(chunk)) {
-            // get length of Buffer
-            len = chunk.length;
-        } else {
-            // convert chunk to Buffer and calculate
-            chunk = Buffer.from(chunk, "utf-8");
-            len = chunk.length;
-        }
-        this.set('Content-Length', len);
-        return this.end(chunk), void 0;
+
+        const buffer = Buffer.isBuffer(chunk)
+            ? chunk
+            : Buffer.from(chunk, "utf8");
+
+        this.set("Content-Length", buffer.length);
+
+        this.end(buffer);
     }
 
     public asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse {
         return this.status(
             code, getCommonHeader(
-                _mimeType.getMimeType("html"), contentLength, isGzip
+                _mimeType.getMimeType("html"),
+                contentLength, isGzip
             )
         ), this;
     }
@@ -212,7 +533,8 @@ export class Response extends ServerResponse implements IResponse {
     public asJSON(code: number, contentLength?: number, isGzip?: boolean): IResponse {
         return this.status(
             code, getCommonHeader(
-                _mimeType.getMimeType('json'), contentLength, isGzip
+                _mimeType.getMimeType('json'),
+                contentLength, isGzip
             )
         ), this;
     }
@@ -247,28 +569,61 @@ export class Response extends ServerResponse implements IResponse {
     }
 
     public sendIfError(err?: any): boolean {
-        if (!this.isAlive) return true;
-        if (!err || !Util.isError(err)) return false;
+        if (!this.isAlive)
+            return true;
+
+        if (!err || !Util.isError(err))
+            return false;
+
         this.status(500, {
             'Content-Type': _mimeType.getMimeType('text')
         }).end(`Runtime Error: ${err.message}`);
+
         return true;
     }
 
-    public json(body: NodeJS.Dict<any>, compress?: boolean, next?: (error: Error | null) => void): void {
+    public json(
+        body: NodeJS.Dict<any>,
+        compress?: boolean,
+        next?: (error: Error | null) => void
+    ): void {
 
-        const buffer: Buffer = Buffer.from(Util.JSON.stringify(body), "utf-8");
+        const buffer = Buffer.from(Util.JSON.stringify(body), "utf8");
 
-        if (typeof (compress) === 'boolean' && compress === true) {
+        const shouldCompress =
+            compress === true ||
+            (compress === undefined &&
+                buffer.length >= JSON_GZIP_THRESHOLD);
 
-            return _zlib.gzip(buffer, (error: Error | null, buff: Buffer) => {
-                if (!this.sendIfError(error)) {
-                    this.asJSON(200, buff.length, true).end(buff);
-                }
-            }), void 0;
+        if (!shouldCompress) {
+
+            this.asJSON(
+                200, buffer.length
+            ).end(buffer);
+
+            next?.(null);
+            return;
         }
 
-        return this.asJSON(200, buffer.length).end(buffer), void 0;
+        _zlib.gzip(
+            buffer,
+            {
+                level: _zlib.constants.Z_DEFAULT_COMPRESSION
+            },
+            (error, compressed) => {
+
+                if (error) {
+
+                    next?.(error);
+                    this.sendIfError(error);
+                    return;
+                }
+
+                this.asJSON(200, compressed.length, true).end(compressed);
+
+                next?.(null);
+            }
+        );
     }
 
     public dispose(): void {
@@ -280,20 +635,85 @@ export class Response extends ServerResponse implements IResponse {
     }
 }
 
-function getCommonHeader(contentType: string, contentLength?: number, isGzip?: boolean): OutgoingHttpHeaders {
+/**
+ * Creates a common set of HTTP response headers.
+ *
+ * The returned header collection always includes a `Content-Type` header and
+ * optionally includes `Content-Length` and `Content-Encoding` when their
+ * corresponding arguments are provided.
+ *
+ * @param {string} contentType
+ * The MIME type to assign to the `Content-Type` header.
+ *
+ * @param {number} [contentLength]
+ * The size of the response body in bytes. When specified, a
+ * `Content-Length` header is included.
+ *
+ * @param {boolean} [isGzip]
+ * Indicates whether the response body is gzip-compressed. When `true`,
+ * a `Content-Encoding: gzip` header is included.
+ *
+ * @returns {OutgoingHttpHeaders}
+ * A collection of HTTP response headers suitable for use with
+ * `ServerResponse.writeHead()` or `ServerResponse.setHeader()`.
+ */
+function getCommonHeader(
+    contentType: string, 
+    contentLength?: number, 
+    isGzip?: boolean
+): OutgoingHttpHeaders {
+
     const header: OutgoingHttpHeaders = {
         'Content-Type': contentType
     };
+
     if (typeof (contentLength) === 'number') {
         header['Content-Length'] = contentLength;
     }
+
     if (typeof (isGzip) === 'boolean' && isGzip === true) {
         header['Content-Encoding'] = 'gzip';
     }
+    
     return header;
 }
 
-function createCookie(name: string, val: string, options: CookieOptions): string {
+/**
+ * Creates the value of a `Set-Cookie` response header.
+ *
+ * The cookie string is constructed from the supplied name, value, and
+ * configuration options. If no path is specified, the cookie defaults to
+ * the root path (`/`).
+ *
+ * When both `expires` and `maxAge` are provided, `expires` takes precedence.
+ * If only `maxAge` is specified, an expiration date is calculated relative
+ * to the current time.
+ *
+ * Supported cookie attributes include:
+ * - `Domain`
+ * - `Path`
+ * - `Expires`
+ * - `Secure`
+ * - `HttpOnly`
+ * - `SameSite`
+ *
+ * @param {string} name
+ * The cookie name.
+ *
+ * @param {string} val
+ * The cookie value.
+ *
+ * @param {CookieOptions} options
+ * Options that control the cookie's scope, lifetime, and security attributes.
+ *
+ * @returns {string}
+ * A formatted `Set-Cookie` header value.
+ */
+function createCookie(
+    name: string, 
+    val: string, 
+    options: CookieOptions
+): string {
     let str = `${name}=${val}`;
     if (options.domain)
         str += `;Domain=${options.domain}`;

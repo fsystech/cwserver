@@ -1319,6 +1319,9 @@ export class CwServer implements ICwServer {
     }
 
     public addError(ctx: IContext, ex: string | Error): IContext {
+        if (ctx.isDisposed)
+            return ctx;
+
         ctx.path = this.pathToUrl(ctx.path);
 
         ctx.error = ctx.error
@@ -1393,15 +1396,18 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             if (transfer && typeof (transfer) !== "boolean") {
                 throw new Error("transfer argument should be ?boolean....");
             }
+            
             if (!code) {
                 return next();
             }
+
             if (code < 0
                 || (typeof (transfer) === "boolean" && transfer === false)
                 || !HttpStatus.isErrorCode(code)
             ) {
                 return void 0;
             }
+
             return _server.transferRequest(ctx, code);
         },
 

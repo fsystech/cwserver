@@ -679,9 +679,19 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 			if (ctx.req.method === "GET") {
 				if (ctx.req.query.task === "gzip") {
 					const data = ctx.req.query.data;
+
+					expect(shouldBeError(() => {
+						const stringBigInt = BigInt("123456789012345678901234567890");
+						ctx.res.send(stringBigInt as any);
+					})).toBeInstanceOf(Error);
+
 					return ctx.res.json(typeof (data) === "string" ? JSON.parse(data) : data, true, (err) => {
-						ctx.server.addError(ctx, err || "");
-						ctx.next(500);
+
+						if (err) {
+							ctx.server.addError(ctx, err || "");
+							ctx.next(500);
+						}
+
 					}), void 0;
 				}
 			}

@@ -121,20 +121,16 @@ class Context {
     }
     dispose() {
         if (this._isDisposed)
-            return void 0;
+            return;
         this._isDisposed = true;
         delete this._next;
         const id = this._req.id;
-        // @ts-ignore
+        this._res.dispose();
+        this._req.dispose();
         delete this._server;
         delete this.path;
-        // @ts-ignore
-        this._res.dispose();
         delete this._res;
-        // @ts-ignore
-        this._req.dispose();
         delete this._req;
-        // @ts-ignore
         delete this.extension;
         delete this.root;
         delete this.servedFrom;

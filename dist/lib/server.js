@@ -643,6 +643,8 @@ class CwServer {
     }
     addError(ctx, ex) {
         var _a;
+        if (ctx.isDisposed)
+            return ctx;
         ctx.path = this.pathToUrl(ctx.path);
         ctx.error = ctx.error
             ? `${ctx.error}\r\n\r\nNext error occurred in ${ctx.path}`
