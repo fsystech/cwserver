@@ -423,8 +423,39 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 });
 
 registerView((app: IApplication, controller: IController, server: ICwServer) => {
+
+	function _createContext(ctx: IContext) {
+
+		const creq = Object.create(
+			Object.getPrototypeOf(ctx.req),
+			Object.getOwnPropertyDescriptors(ctx.req)
+		) as IRequest;
+
+		const cres = Object.create(
+			Object.getPrototypeOf(ctx.res),
+			Object.getOwnPropertyDescriptors(ctx.res)
+		) as IResponse;
+
+		// @ts-ignore
+		creq._id = undefined;
+
+		return server.createContext(creq, cres, (code) => {
+			console.log("Dummy Context", creq.id, code);
+			_ctxManager.removeContext(creq.id)
+		});
+	}
+
 	controller
 		.get("/test-context", async (ctx: IContext) => {
+			ctx.req.cleanSocket = true;
+			ctx.res.cleanSocket = true;
+
+			const ctx1: IContext = _createContext(ctx);
+
+			ctx.res.json({
+				done: true
+			});
+
 			try {
 				expect(escapePath()).toBeDefined();
 				const mCtx: IContext = server.createContext(Object.create({
@@ -463,94 +494,120 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 				mCtx.signOut();
 				mCtx.setSession("Test", "Test", {});
 
-				const nctx: IContext = server.createContext(ctx.req, ctx.res, ctx.next);
-				nctx.path = "/not-found/404/";
-				nctx.req.path = "/not-found/404/";
-				nctx.next = (code, transfer) => {
+				ctx1.path = "/not-found/404/";
+				ctx1.req.path = "/not-found/404/";
+				ctx1.next = (code, transfer) => {
 					// Nothing to do....!
 					expect(code).toEqual(404);
 				}
+
 				const oldDoc: string[] = server.config.defaultDoc;
 				server.config.defaultDoc = [];
-				controller.processAny(nctx);
+
+				const ctx2: IContext = _createContext(ctx1);
+
+				await controller.processAny(ctx1);
+
 				server.config.defaultDoc = oldDoc;
-				nctx.path = "";
-				nctx.req.path = "";
-				controller.processAny(nctx);
+				ctx2.path = "";
+				ctx2.req.path = "";
+
+				const ctx3: IContext = _createContext(ctx2);
+				await controller.processAny(ctx2);
+
 				const oldext: string = server.config.defaultExt;
 				server.config.defaultExt = "";
 				server.config.defaultDoc = [];
-				controller.processAny(nctx);
-				nctx.path = "/not-found/";
-				nctx.req.path = "/not-found/";
-				controller.processAny(nctx);
+
+				const ctx4: IContext = _createContext(ctx3);
+				await controller.processAny(ctx3);
+
+				ctx4.path = "/not-found/";
+				ctx4.req.path = "/not-found/";
+
+				const ctx5: IContext = _createContext(ctx4);
+				await controller.processAny(ctx4);
+
 				server.config.defaultExt = oldext;
 				server.config.defaultDoc = oldDoc;
-				nctx.path = "/not-found/index";
-				nctx.req.path = "/not-found/index";
-				controller.processAny(nctx);
-				const oldEncoding = ctx.req.headers['accept-encoding'];
-				ctx.req.headers['accept-encoding'] = void 0;
-				expect(HttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
-				expect(_HttpCache.isAcceptedEncoding(ctx.req.headers, "NOTHING")).toBeFalsy();
-				ctx.req.headers['accept-encoding'] = oldEncoding;
-				const treq = ctx.transferRequest;
-				ctx.transferRequest = (toPath: string | number): void => {
+				ctx5.path = "/not-found/index";
+				ctx5.req.path = "/not-found/index";
+
+				const ctx6: IContext = _createContext(ctx5);
+				await controller.processAny(ctx5);
+
+				const oldEncoding = ctx6.req.headers['accept-encoding'];
+				ctx6.req.headers['accept-encoding'] = void 0;
+				expect(HttpCache.isAcceptedEncoding(ctx6.req.headers, "NOTHING")).toBeFalsy();
+				expect(_HttpCache.isAcceptedEncoding(ctx6.req.headers, "NOTHING")).toBeFalsy();
+				ctx6.req.headers['accept-encoding'] = oldEncoding;
+				const treq = ctx6.transferRequest;
+				ctx6.transferRequest = (toPath: string | number): void => {
 					if (typeof (toPath) === "string")
 						expect(toPath.indexOf("404")).toBeGreaterThan(-1);
 					else
 						expect(toPath).toEqual(404);
 				}
 
-				await mimeHandler.renderAsync(ctx);
+				const ctx7: IContext = _createContext(ctx6);
+				const ctx8: IContext = _createContext(ctx6);
+				await mimeHandler.renderAsync(ctx6);
 
-				expect(mimeHandler.isValidExtension(ctx.extension)).toBeFalsy();
-				ctx.transferRequest = treq;
+				expect(mimeHandler.isValidExtension(ctx7.extension)).toBeFalsy();
+				ctx7.transferRequest = treq;
 				(() => {
-					const oldEnd = ctx.res.end;
-					ctx.res.end = function (...arg: any[]): IResponse {
+					const oldEnd = ctx7.res.end;
+					ctx7.res.end = function (...arg: any[]): IResponse {
 						expect(arg.length).toBeGreaterThanOrEqual(0);
 						return this;
 					}
-					ctx.res.status(204).send();
+
 					expect(shouldBeError(() => {
-						ctx.res.status(200).send();
+						ctx7.res.status(200).send("Nothing to do...");
+						ctx7.res.setHeader('Content-Type', "");
+						ctx7.res.send(true);
+						ctx7.res.setHeader('Content-Type', "");
+						ctx7.res.send(1000);
+						ctx7.res.setHeader('Content-Type', "");
+						ctx7.res.send(Buffer.from("Nothing to do...."));
+					}, true)).not.toBeInstanceOf(Error);
+
+					ctx7.res.status(204).send();
+
+					expect(shouldBeError(() => {
+						ctx7.res.status(200).send();
 					})).toBeInstanceOf(Error);
-					ctx.res.status(200).send("Nothing to do...");
-					ctx.res.setHeader('Content-Type', "");
-					ctx.res.send(true);
-					ctx.res.setHeader('Content-Type', "");
-					ctx.res.send(1000);
-					ctx.res.setHeader('Content-Type', "");
-					ctx.res.send(Buffer.from("Nothing to do...."));
-					ctx.res.end = oldEnd;
+
+					ctx7.res.end = oldEnd;
 				})();
+
 				(() => {
-					const parser: IBodyParser = getBodyParser(ctx.req, server.mapPath("/upload/temp/"));
+					const parser: IBodyParser = getBodyParser(ctx8.req, server.mapPath("/upload/temp/"));
 					expect(shouldBeError(() => {
 						parser.getData();
 					})).toBeInstanceOf(Error);
 					parser.dispose();
 				})();
+
 				expect(decodeBodyBuffer(Buffer.from("data==10&p=10&a"))).toBeInstanceOf(Object);
 				(() => {
-					const parser = new PayloadParser(ctx.req, server.mapPath("/upload/temp/"));
+					const parser = new PayloadParser(ctx8.req, server.mapPath("/upload/temp/"));
 					parser.clear();
 				})();
+
 				process.env.TASK_TYPE = 'TESTX';
-				ctx.req.cleanSocket = true;
-				ctx.res.cleanSocket = true;
-				ctx.res.json({
-					done: true
-				});
+
+				ctx8.res.asJSON(200, 1);
+				ctx8.res.compress("Test Compress", "text");
+
+				expect(shouldBeError(() => {
+					ctx8.res.compress(Buffer.from("Test Compress"), "bin");
+				})).toBeInstanceOf(Error);
+
 			} catch (e) {
 				console.log(e);
-				ctx.res.json({
-					done: true
-				});
 			}
-		})
-		.get('/test-response-error', (ctx: IContext, requestParam?: IRequestParam): void => {
+		}).get('/test-response-error', (ctx: IContext, requestParam?: IRequestParam): void => {
 			expect(ctx.res.sendIfError("NOT-ERROR")).toBeFalsy();
 			expect(ctx.res.sendIfError(new Error("test-response-error"))).toBeTruthy();
 			const res: IResponse = ctx.res;
@@ -675,7 +732,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 			ctx.req.pipe(ctx.res);
 			return void 0;
 		})
-		.any('/response', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.any('/response', async (ctx: IContext, requestParam?: IRequestParam): Promise<void> => {
 			if (ctx.req.method === "GET") {
 				if (ctx.req.query.task === "gzip") {
 					const data = ctx.req.query.data;
@@ -685,7 +742,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 						ctx.res.send(stringBigInt as any);
 					})).toBeInstanceOf(Error);
 
-					return ctx.res.json(typeof (data) === "string" ? JSON.parse(data) : data, true, (err) => {
+					return ctx.res.json(typeof (data) === "string" ? JSON.parse(data) : data, "GZIP", (err) => {
 
 						if (err) {
 							ctx.server.addError(ctx, err || "");
@@ -694,10 +751,48 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 
 					}), void 0;
 				}
+
+				return ctx.next(404);
 			}
-			return ctx.next(404);
-		})
-		.get('/is-authenticate', (ctx: IContext, requestParam?: IRequestParam): void => {
+
+			const parser = getBodyParser(ctx.req);
+
+			try {
+
+				await parser.parseSync();
+
+				const data = parser.getJson();
+
+				if (ctx.req.query.task === "gzip") {
+					ctx.res.status(200).json(
+						data, "GZIP"
+					);
+
+					// Connection Disconnected
+					ctx.res.status(200).json(
+						data, "BROTLI"
+					);
+
+					return;
+				}
+
+				ctx.res.status(200).json(
+					data, "BROTLI"
+				);
+
+				expect(shouldBeError(() => {
+					ctx.res.status(200).json(
+						data, "ZSTD"
+					);
+				})).toBeInstanceOf(Error);
+
+			} catch (ex) {
+				ctx.transferError(ex as any);
+			} finally {
+				parser.dispose();
+			}
+
+		}).get('/is-authenticate', (ctx: IContext, requestParam?: IRequestParam): void => {
 			if (!ctx.req.query.loginId)
 				return ctx.next(401);
 

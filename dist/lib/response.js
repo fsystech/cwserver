@@ -62,7 +62,15 @@ const app_template_1 = require("./app-template");
 const app_util_1 = require("./app-util");
 const _zlib = __importStar(require("node:zlib"));
 const _mimeType = __importStar(require("./http-mime-types"));
-const JSON_GZIP_THRESHOLD = 8 * 1024; // 8 KiB
+/**
+ * Minimum response size (in bytes) required before HTTP compression is applied.
+ * Defaults to 8 KiB if the COMPRESSION_THRESHOLD environment variable is missing
+ * or contains an invalid value.
+ */
+const COMPRESSION_THRESHOLD = (() => {
+    const value = Number(process.env.COMPRESSION_THRESHOLD);
+    return Number.isFinite(value) ? value : 8 * 1024;
+})();
 class Response extends node_http_1.ServerResponse {
     // @ts-ignore
     get statusCode() {
@@ -123,7 +131,7 @@ class Response extends node_http_1.ServerResponse {
         const val = this.getHeader(name);
         if (val) {
             if (Array.isArray(val)) {
-                return app_util_1.Util.JSON.stringify(val);
+                return JSON.stringify(val);
             }
             return (0, app_static_1.toString)(val);
         }
@@ -174,7 +182,7 @@ class Response extends node_http_1.ServerResponse {
                     if (!this.get("Content-Type")) {
                         this.type("json");
                     }
-                    chunk = app_util_1.Util.JSON.stringify(chunk);
+                    chunk = JSON.stringify(chunk);
                 }
                 break;
             default:
@@ -186,11 +194,11 @@ class Response extends node_http_1.ServerResponse {
         this.set("Content-Length", buffer.length);
         this.end(buffer);
     }
-    asHTML(code, contentLength, isGzip) {
-        return this.status(code, getCommonHeader(_mimeType.getMimeType("html"), contentLength, isGzip)), this;
+    asHTML(code, contentLength, compress) {
+        return this.status(code, getCommonHeader(_mimeType.getMimeType("html"), contentLength, compress)), this;
     }
-    asJSON(code, contentLength, isGzip) {
-        return this.status(code, getCommonHeader(_mimeType.getMimeType('json'), contentLength, isGzip)), this;
+    asJSON(code, contentLength, compress) {
+        return this.status(code, getCommonHeader(_mimeType.getMimeType('json'), contentLength, compress)), this;
     }
     render(ctx, path, status) {
         return app_template_1.Template.parse(ctx, path, status);
@@ -222,26 +230,76 @@ class Response extends node_http_1.ServerResponse {
         return true;
     }
     json(body, compress, next) {
-        const buffer = Buffer.from(app_util_1.Util.JSON.stringify(body), "utf8");
-        const shouldCompress = compress === true ||
-            (compress === undefined &&
-                buffer.length >= JSON_GZIP_THRESHOLD);
+        const buffer = Buffer.from(JSON.stringify(body), "utf8");
+        return this._compressData(buffer, "json", compress, next);
+    }
+    compress(data, contentType, compress, next) {
+        const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+        return this._compressData(buffer, contentType, compress, next);
+    }
+    /**
+     * Compresses the specified response payload when enabled and the payload
+     * size exceeds the configured compression threshold.
+     *
+     * If compression is disabled or unnecessary, the payload is sent directly.
+     *
+     * Supported compression algorithms:
+     * - GZIP
+     * - BROTLI
+     *
+     * @private
+     * @param {Buffer} buffer - The response payload.
+     * @param {string} contentType - The MIME type or file extension used to determine the response Content-Type.
+     * @param {CompressionType} [compress] - The compression algorithm to apply.
+     * @param {(err: Error) => void} [next] - Invoked if compression fails.
+     * @returns {void}
+     * @throws {Error} Thrown if the specified compression algorithm is not supported.
+     */
+    _compressData(buffer, contentType, compress, next) {
+        const shouldCompress = !compress ? false : (buffer.length >= COMPRESSION_THRESHOLD);
         if (!shouldCompress) {
-            this.asJSON(200, buffer.length).end(buffer);
-            next === null || next === void 0 ? void 0 : next(null);
+            this.status(200, getCommonHeader(_mimeType.getMimeType(contentType))).end(buffer);
             return;
         }
-        _zlib.gzip(buffer, {
-            level: _zlib.constants.Z_DEFAULT_COMPRESSION
-        }, (error, compressed) => {
-            if (error) {
-                next === null || next === void 0 ? void 0 : next(error);
-                this.sendIfError(error);
-                return;
-            }
-            this.asJSON(200, compressed.length, true).end(compressed);
-            next === null || next === void 0 ? void 0 : next(null);
-        });
+        if (compress === 'GZIP') {
+            return _zlib.gzip(buffer, { level: _zlib.constants.Z_DEFAULT_COMPRESSION }, (error, compressed) => this._onCompress(contentType, compressed, compress, next, error));
+        }
+        if (compress === "BROTLI") {
+            return _zlib.brotliCompress(buffer, {
+                params: {
+                    [_zlib.constants.BROTLI_PARAM_QUALITY]: _zlib.constants.BROTLI_DEFAULT_QUALITY
+                }
+            }, (error, compressed) => this._onCompress(contentType, compressed, compress, next, error));
+        }
+        throw new Error(`This compression type "${compress}" not supported.`);
+    }
+    /**
+     * Handles the completion of a compression operation and sends the
+     * compressed response to the client.
+     *
+     * If compression fails, the optional callback is invoked and the error
+     * response is sent to the client. If the connection has already been
+     * closed, no further action is taken.
+     *
+     * @private
+     * @param {string} contentType - The MIME type or file extension used to determine the response Content-Type.
+     * @param {Buffer} compressed - The compressed response payload.
+     * @param {CompressionType} compress - The compression algorithm used.
+     * @param {(err: Error) => void} [next] - Invoked if compression fails.
+     * @param {Error} [error] - The compression error, if any.
+     * @returns {void}
+     */
+    _onCompress(contentType, compressed, compress, next, error) {
+        if (!this.isAlive) {
+            console.warn(`Connection Disconnected. Compression type: "${compress}"`);
+            return;
+        }
+        if (error) {
+            next === null || next === void 0 ? void 0 : next(error);
+            this.sendIfError(error);
+            return;
+        }
+        this.status(200, getCommonHeader(_mimeType.getMimeType(contentType), compressed.length, compress)).end(compressed);
     }
     dispose() {
         delete this._method;
@@ -274,15 +332,15 @@ exports.Response = Response;
  * A collection of HTTP response headers suitable for use with
  * `ServerResponse.writeHead()` or `ServerResponse.setHeader()`.
  */
-function getCommonHeader(contentType, contentLength, isGzip) {
+function getCommonHeader(contentType, contentLength, compress) {
     const header = {
         'Content-Type': contentType
     };
     if (typeof (contentLength) === 'number') {
         header['Content-Length'] = contentLength;
     }
-    if (typeof (isGzip) === 'boolean' && isGzip === true) {
-        header['Content-Encoding'] = 'gzip';
+    if (compress) {
+        header['Content-Encoding'] = compress.toLowerCase();
     }
     return header;
 }

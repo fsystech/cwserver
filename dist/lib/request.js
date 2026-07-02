@@ -83,9 +83,9 @@ class Request extends node_http_1.IncomingMessage {
         return this._ip;
     }
     get id() {
-        if (this._id !== undefined)
-            return this._id;
-        this._id = app_util_1.Util.guid();
+        if (!this._id) {
+            this._id = app_util_1.Util.guid();
+        }
         return this._id;
     }
     get query() {

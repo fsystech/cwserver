@@ -904,12 +904,7 @@ describe("cwserver-bundler", () => {
                 expect(res.header["last-modified"]).toBeDefined();
                 lastModified = res.header['last-modified'];
                 eTag = res.header.etag;
-                // const val = res.text || res.body;
-                // if (Buffer.isBuffer(val)) {
-                //     console.log(val.toString());
-                // } else {
-                //     console.log(val);
-                // }
+
                 done();
             });
     });
@@ -1618,7 +1613,6 @@ describe("cwserver-multipart-body-parser", () => {
                     while (true) {
                         size += buff.byteLength;
                         const ok: boolean = writer.write(buff);
-                        //console.log(`Buff->${size}`);
                         if (size >= (16400 + 200)) {
                             writer.end('Goodbye\n');
                             return wdone();
@@ -1710,19 +1704,92 @@ describe("cwserver-multipart-body-parser", () => {
         });
     });
 });
+
 describe("cwserver-gzip-response", () => {
-    it('should be response type gzip', (done: Mocha.Done): void => {
+
+    it('should be response not gzip', (done: Mocha.Done): void => {
+
         getAgent()
             .get(`http://localhost:${appUtility.port}/response`)
             .query({ task: "gzip", data: JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }) })
             .end((err, res) => {
-                console.log(err);
                 expect(err).not.toBeInstanceOf(Error);
                 expect(res.status).toBe(200);
-                expect(res.header["content-encoding"]).toBe("gzip");
+                expect(res.header["content-encoding"]).not.toBe("gzip");
                 done();
             });
     });
+
+
+    it('should be response gzip', (done: Mocha.Done): void => {
+
+        const obj: any = { name: 'rajibs', occupation: 'kutukutu' };
+        const data: Array<any> = [];
+
+        for (let i = 0; i < 120; i++) {
+            data.push({ ...obj });
+        }
+        const form = new FormData();
+
+        form.append("data", JSON.stringify(data));
+
+        const res = fetch(
+            `http://localhost:${appUtility.port}/response?task=gzip`,
+            {
+                method: "POST",
+                body: form
+            }
+        );
+
+        res.then(r => {
+
+            expect(r.status).toBe(200);
+            expect(r.headers.get("content-encoding")).toBe("gzip");
+
+            r.text().then(o => {
+                done();
+            });
+
+        }).catch(ex => {
+            throw ex;
+        });
+    });
+
+    it('should be response brotli', (done: Mocha.Done): void => {
+
+        const obj: any = { name: 'rajibs', occupation: 'kutukutu' };
+        const data: Array<any> = [];
+
+        for (let i = 0; i < 120; i++) {
+            data.push({ ...obj });
+        }
+        const form = new FormData();
+
+        form.append("data", JSON.stringify(data));
+
+        const res = fetch(
+            `http://localhost:${appUtility.port}/response?task=brotli`,
+            {
+                method: "POST",
+                body: form
+            }
+        );
+
+        res.then(r => {
+
+            expect(r.status).toBe(200);
+            expect(r.headers.get("content-encoding")).toBe("brotli");
+
+            r.text().then(o => {
+                done();
+            });
+
+        }).catch(ex => {
+            throw ex;
+        });
+    });
+
+
     it('response should be pass error', (done: Mocha.Done): void => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/test-response-error`)
@@ -2094,7 +2161,7 @@ describe("cwserver-controller-reset", () => {
     it('should-be-controller-error', (done: Mocha.Done): void => {
         getAgent()
             .get(`http://localhost:${appUtility.port}/response`)
-            .query({ task: "gzip", data: JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }) })
+            .query({ tasks: "gzip", data: JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }) })
             .end((err, res) => {
                 expect(err).toBeInstanceOf(Error);
                 expect(res.status).toBe(404);

@@ -5,6 +5,13 @@ declare global {
             SCRIPT?: "TS" | 'JS';
             IISNODE_VERSION?: string;
             APP_CONFIG_NAME?: string;
+            /**
+             * Minimum response size, in bytes, required before HTTP response
+             * compression is applied.
+             *
+             * If omitted or invalid, the default threshold is 8 KiB (8192 bytes).
+             */
+            COMPRESSION_THRESHOLD?: string;
         }
         interface Process {
             /**

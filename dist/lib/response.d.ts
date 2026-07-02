@@ -13,6 +13,17 @@ type CookieOptions = {
     encode?: (val: string) => string;
     sameSite?: boolean | 'lax' | 'strict' | 'none';
 };
+/**
+ * Supported HTTP response compression algorithms.
+ *
+ * - `"GZIP"` - Widely supported compression format offering an excellent
+ *   balance between compression ratio and performance.
+ * - `"BROTLI"` - Modern compression algorithm that typically produces
+ *   smaller payloads than GZIP, especially for text-based content.
+ * - `"ZSTD"` - Zstandard compression algorithm designed to provide high
+ *   compression ratios with very fast compression and decompression speeds.
+ */
+export type CompressionType = "GZIP" | "BROTLI" | "ZSTD";
 export interface IResponse extends ServerResponse {
     /**
      * Indicates whether the underlying connection is still active and capable
@@ -36,37 +47,38 @@ export interface IResponse extends ServerResponse {
      */
     cleanSocket: boolean;
     /**
-     * Sends a JSON response to the client.
+     * Serializes the specified object to JSON, optionally compresses the
+     * resulting payload, and sends it as the HTTP response.
      *
-     * The response body is serialized to UTF-8 encoded JSON. Compression behavior
-     * is determined by the `compress` parameter:
+     * Compression is only applied when:
+     * - A compression type is specified.
+     * - The serialized payload size meets the configured compression threshold.
      *
-     * - `true`      : Always gzip-compress the response.
-     * - `false`     : Never compress the response.
-     * - `undefined` : Automatically gzip-compress responses whose serialized JSON
-     *                 size is greater than or equal to the configured compression
-     *                 threshold.
+     * If compression is not applied, the JSON payload is sent uncompressed.
      *
-     * When compression is applied, the response is sent with the appropriate
-     * `Content-Encoding` and `Content-Length` headers. The callback, if provided,
-     * is invoked once the response has been written or if a compression error
-     * occurs.
-     *
-     * @param {NodeJS.Dict<any>} body
-     * The object to serialize and send as a JSON response.
-     *
-     * @param {boolean} [compress]
-     * Controls gzip compression. If omitted, compression is applied automatically
-     * based on the serialized JSON size.
-     *
-     * @param {(error: Error | null) => void} [next]
-     * Optional callback invoked after the response has been sent successfully or
-     * when a compression error occurs. Receives `null` on success or the
-     * encountered `Error` on failure.
-     *
+     * @param {NodeJS.Dict<any>} body - The object to serialize as JSON.
+     * @param {CompressionType} [compress] - The compression algorithm to use.
+     * @param {(error: Error) => void} [next] - Invoked if a compression error occurs.
      * @returns {void}
      */
-    json(body: NodeJS.Dict<any>, compress?: boolean, next?: (error: Error | null) => void): void;
+    json(body: NodeJS.Dict<any>, compress?: CompressionType, next?: (error: Error) => void): void;
+    /**
+     * Sends arbitrary data as the HTTP response, optionally compressing it
+     * before transmission.
+     *
+     * Compression is only applied when:
+     * - A compression type is specified.
+     * - The payload size meets the configured compression threshold.
+     *
+     * If compression is not applied, the original data is sent unchanged.
+     *
+     * @param {string | Buffer} data - The response payload.
+     * @param {string} contentType - The MIME type or file extension used to determine the response Content-Type.
+     * @param {CompressionType} [compress] - The compression algorithm to use.
+     * @param {(error: Error) => void} [next] - Invoked if a compression error occurs.
+     * @returns {void}
+     */
+    compress(data: string | Buffer, contentType: string, compress?: CompressionType, next?: (error: Error) => void): void;
     /**
      * Sets the HTTP status code and optionally applies one or more response
      * headers.
@@ -105,7 +117,7 @@ export interface IResponse extends ServerResponse {
      * @returns {IResponse}
      * The current response instance for method chaining.
      */
-    asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse;
+    asHTML(code: number, contentLength?: number, compress?: CompressionType): IResponse;
     /**
      * Sets the response status and headers for a JSON response.
      *
@@ -127,7 +139,7 @@ export interface IResponse extends ServerResponse {
      * @returns {IResponse}
      * The current response instance for method chaining.
      */
-    asJSON(code: number, contentLength?: number, isGzip?: boolean): IResponse;
+    asJSON(code: number, contentLength?: number, compress?: CompressionType): IResponse;
     /**
      * Adds a `Set-Cookie` header to the response.
      *
@@ -322,13 +334,50 @@ export declare class Response extends ServerResponse implements IResponse {
     set(field: string, value: number | string | string[]): IResponse;
     type(extension: string): IResponse;
     send(chunk?: any): void;
-    asHTML(code: number, contentLength?: number, isGzip?: boolean): IResponse;
-    asJSON(code: number, contentLength?: number, isGzip?: boolean): IResponse;
+    asHTML(code: number, contentLength?: number, compress?: CompressionType): IResponse;
+    asJSON(code: number, contentLength?: number, compress?: CompressionType): IResponse;
     render(ctx: IContext, path: string, status?: IResInfo): void;
     redirect(url: string, force?: boolean): void;
     cookie(name: string, val: string, options: CookieOptions): IResponse;
     sendIfError(err?: any): boolean;
-    json(body: NodeJS.Dict<any>, compress?: boolean, next?: (error: Error | null) => void): void;
+    json(body: NodeJS.Dict<any>, compress?: CompressionType, next?: (error: Error) => void): void;
+    compress(data: string | Buffer, contentType: string, compress?: CompressionType, next?: (error: Error) => void): void;
+    /**
+     * Compresses the specified response payload when enabled and the payload
+     * size exceeds the configured compression threshold.
+     *
+     * If compression is disabled or unnecessary, the payload is sent directly.
+     *
+     * Supported compression algorithms:
+     * - GZIP
+     * - BROTLI
+     *
+     * @private
+     * @param {Buffer} buffer - The response payload.
+     * @param {string} contentType - The MIME type or file extension used to determine the response Content-Type.
+     * @param {CompressionType} [compress] - The compression algorithm to apply.
+     * @param {(err: Error) => void} [next] - Invoked if compression fails.
+     * @returns {void}
+     * @throws {Error} Thrown if the specified compression algorithm is not supported.
+     */
+    private _compressData;
+    /**
+     * Handles the completion of a compression operation and sends the
+     * compressed response to the client.
+     *
+     * If compression fails, the optional callback is invoked and the error
+     * response is sent to the client. If the connection has already been
+     * closed, no further action is taken.
+     *
+     * @private
+     * @param {string} contentType - The MIME type or file extension used to determine the response Content-Type.
+     * @param {Buffer} compressed - The compressed response payload.
+     * @param {CompressionType} compress - The compression algorithm used.
+     * @param {(err: Error) => void} [next] - Invoked if compression fails.
+     * @param {Error} [error] - The compression error, if any.
+     * @returns {void}
+     */
+    private _onCompress;
     dispose(): void;
 }
 export {};

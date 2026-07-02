@@ -58,58 +58,75 @@ export class Request extends IncomingMessage implements IRequest {
     private _cleanSocket: boolean | undefined;
     private _isMobile: boolean | undefined;
     private _isLocal: boolean | undefined;
-    public get isMobile() {
+
+    public get isMobile(): boolean {
         if (this._isMobile !== undefined) return this._isMobile;
         const userAgent: string = toString(this.get('user-agent'));
         this._isMobile = MOBILE_RE.test(userAgent);
         return this._isMobile;
     }
-    public get cleanSocket() {
-        if (this._cleanSocket === undefined) return false;
+
+    public get cleanSocket(): boolean {
+        if (this._cleanSocket === undefined)
+            return false;
         return this._cleanSocket;
     }
+
     public set cleanSocket(val: boolean) {
         this._cleanSocket = val;
     }
+
     public get q(): UrlWithParsedQuery {
         if (this._q !== undefined) return this._q;
         this._q = parseUrl(this.url);
         return this._q;
     }
+
     public get cookies(): NodeJS.Dict<string> {
         if (this._cookies !== undefined) return this._cookies;
         this._cookies = parseCookie(this.headers.cookie);
         return this._cookies;
     }
+
     public get session(): ISession {
         return this._session || Object.create({});
     }
+
     public set session(val: ISession) {
         this._session = val;
     }
+
     public get isLocal() {
         if (this._isLocal !== undefined) return this._isLocal;
         this._isLocal = this.ip === '::1' || this.ip === '127.0.0.1';
         return this._isLocal;
     }
+
     public get path(): string {
         if (this._path !== undefined) return this._path;
         this._path = decodeURIComponent(escapePath(this.q.pathname));
         return this._path;
     }
+
     public set path(val: string) {
         this._path = val;
     }
+
     public get ip(): string {
         if (this._ip !== undefined) return this._ip;
         this._ip = getClientIp(this);
         return this._ip;
     }
+
     public get id(): string {
-        if (this._id !== undefined) return this._id;
-        this._id = Util.guid();
+
+        if (!this._id) {
+            this._id = Util.guid();
+        }
+
         return this._id;
     }
+    
     public get query(): ParsedUrlQuery {
         return this.q.query;
     }
