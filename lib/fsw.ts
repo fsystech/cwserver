@@ -140,22 +140,25 @@ export async function isExistsAsync(
 
 export async function readJsonAsync<T>(
     absPath: string
-) {
+): Promise<T> {
 
     const data: Buffer = await _fsp.readFile(absPath);
 
+    if (!data || data.length === 0)
+        return null;
+
     return JSON.parse(
         data.toString("utf8").replace(/^\uFEFF/, '')
-    );
+    ) as T;
 }
 
 export function readJson<T>(
     absPath: string,
-    next: (err?: NodeJS.ErrnoException, json?: NodeJS.Dict<T>) => void,
+    next: (err?: NodeJS.ErrnoException, json?: T) => void,
     errHandler: ErrorHandler
 ): void {
 
-    readJsonAsync(absPath).then(rs => {
+    readJsonAsync<T>(absPath).then(rs => {
         errHandler(null, () => next(null, rs));
     }).catch(ex => errHandler(ex, () => next(ex)));
 }

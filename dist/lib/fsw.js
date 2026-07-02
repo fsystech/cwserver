@@ -192,6 +192,8 @@ function isExistsAsync(path) {
 function readJsonAsync(absPath) {
     return __awaiter(this, void 0, void 0, function* () {
         const data = yield _fsp.readFile(absPath);
+        if (!data || data.length === 0)
+            return null;
         return JSON.parse(data.toString("utf8").replace(/^\uFEFF/, ''));
     });
 }
