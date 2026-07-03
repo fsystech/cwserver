@@ -69,7 +69,6 @@ exports.HttpMimeHandler = void 0;
 // by rajib chy
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
-const _zlib = __importStar(require("node:zlib"));
 const node_stream_1 = require("node:stream");
 const node_util_1 = require("node:util");
 const destroy_1 = __importDefault(require("destroy"));
@@ -96,9 +95,6 @@ const TaskDeff = [
     { cache: false, ext: "htm", gzip: false },
     { cache: false, ext: "wjsx", gzip: false }
 ];
-function createGzip() {
-    return _zlib.createGzip({ level: _zlib.constants.Z_BEST_COMPRESSION });
-}
 class MimeHandler {
     static getCachePath(ctx) {
         const path = _path.join(ctx.server.config.staticFile.tempPath, encryption_1.Encryption.toMd5(ctx.path));
@@ -203,7 +199,7 @@ class MimeHandler {
             const rstream = _fs.createReadStream(absPath);
             const wstream = _fs.createWriteStream(cachePath);
             try {
-                yield pipelineAsync(rstream, createGzip(), wstream);
+                yield pipelineAsync(rstream, app_util_1.Util.createGzip(), wstream);
                 if (ctx.isDisposed)
                     return;
                 const cdesc = yield this._fileInfo.statAsync(cachePath, true);
@@ -247,7 +243,7 @@ class MimeHandler {
                 });
                 const rstream = _fs.createReadStream(absPath);
                 try {
-                    yield pipelineAsync(rstream, createGzip(), ctx.res);
+                    yield pipelineAsync(rstream, app_util_1.Util.createGzip(), ctx.res);
                 }
                 catch (ex) {
                     ctx.transferError(ex);
@@ -282,7 +278,7 @@ class MimeHandler {
                 ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
                 const rstream = _fs.createReadStream(absPath);
                 try {
-                    yield pipelineAsync(rstream, createGzip(), ctx.res);
+                    yield pipelineAsync(rstream, app_util_1.Util.createGzip(), ctx.res);
                 }
                 catch (ex) {
                     ctx.transferError(ex);

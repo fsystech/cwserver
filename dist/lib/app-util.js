@@ -75,6 +75,7 @@ const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
 const node_stream_1 = require("node:stream");
 const destroy_1 = __importDefault(require("destroy"));
+const _zlib = __importStar(require("node:zlib"));
 const node_util_1 = require("node:util");
 const fsw_1 = require("./fsw");
 const pipelineAsync = (0, node_util_1.promisify)(node_stream_1.pipeline);
@@ -193,6 +194,11 @@ class Util {
     static throwIfError(obj) {
         if (this.isError(obj))
             throw obj;
+    }
+    static createGzip(level) {
+        return _zlib.createGzip({
+            level: level !== null && level !== void 0 ? level : _zlib.constants.Z_BEST_COMPRESSION
+        });
     }
     static pipeOutputStreamAsync(absPath, ctx) {
         return __awaiter(this, void 0, void 0, function* () {

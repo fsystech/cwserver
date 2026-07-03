@@ -60,21 +60,25 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Bundler = exports.__moduleName = void 0;
 // 4:48 PM 5/3/2020
 // by rajib chy
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
-const _zlib = __importStar(require("node:zlib"));
 const encryption_1 = require("./encryption");
 const http_cache_1 = require("./http-cache");
 const app_util_1 = require("./app-util");
 const app_static_1 = require("./app-static");
 const file_info_1 = require("./file-info");
 const node_util_1 = require("node:util");
+const node_stream_1 = require("node:stream");
+const destroy_1 = __importDefault(require("destroy"));
 const _fsp = _fs.promises;
-const gzipAsync = (0, node_util_1.promisify)(_zlib.gzip);
+const pipelineAsync = (0, node_util_1.promisify)(node_stream_1.pipeline);
 var ContentType;
 (function (ContentType) {
     ContentType[ContentType["JS"] = 0] = "JS";
@@ -262,7 +266,7 @@ class Bundlew {
                     });
                     return ctx.res.end(buffer.data), buffer.dispose();
                 }
-                return _responseWriteGzip(ctx, buffer, cte);
+                return ctx.res.compress(buffer.data, cte === ContentType.JS ? "js" : 'css', "GZIP");
             }
             catch (ex) {
                 ctx.transferError(ex);
@@ -418,11 +422,18 @@ class Bundlew {
                     buffer.dispose();
                     return;
                 }
-                const gbuff = yield gzipAsync(buffer.data);
-                buffer.dispose();
+                const writeStream = _fs.createWriteStream(cachpath);
+                try {
+                    yield pipelineAsync(node_stream_1.Readable.from(buffer.data), app_util_1.Util.createGzip(), writeStream);
+                }
+                catch (ex) {
+                    return ctx.transferError(ex);
+                }
+                finally {
+                    (0, destroy_1.default)(writeStream);
+                }
                 if (ctx.isDisposed)
                     return;
-                yield _fsp.writeFile(cachpath, gbuff);
                 if (ctx.isDisposed)
                     return;
                 const edesc = yield Bundel.fi.statAsync(cachpath, true);
@@ -438,16 +449,12 @@ class Bundlew {
                 ctx.res.status(200, {
                     'Content-Type': this.getResponseContentType(cte),
                     'Content-Encoding': 'gzip',
-                    'Content-Length': gbuff.length
+                    'Content-Length': edesc.stats.size
                 });
+                yield app_util_1.Util.pipeOutputStreamAsync(cachpath, ctx);
                 if (useFullOptimization) {
-                    Bundel.cache.set(memCacheKey, {
-                        lastChangeTime,
-                        bundleData: gbuff,
-                        cfileSize: edesc.stats.size
-                    });
+                    yield this._holdCacheAsync(memCacheKey, cachpath, lastChangeTime, edesc.stats.size);
                 }
-                ctx.res.end(gbuff);
             }
             catch (ex) {
                 ctx.transferError(ex);
@@ -473,23 +480,5 @@ class Bundler {
 exports.Bundler = Bundler;
 function _getInfo() {
     return '// Cw "Combiner"\r\n// Copyright (c) 2022 FSys Tech Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
-}
-function _responseWriteGzip(ctx, buff, cte) {
-    ctx.res.status(200, {
-        'Content-Type': Bundlew.getResponseContentType(cte),
-        'Content-Encoding': 'gzip'
-    });
-    const compressor = _zlib.createGzip({
-        level: _zlib.constants.Z_BEST_COMPRESSION
-    });
-    compressor.pipe(ctx.res);
-    compressor.end(buff.data);
-    buff.dispose();
-    compressor.on("end", () => {
-        if (ctx.isDisposed)
-            return;
-        compressor.unpipe(ctx.res);
-        ctx.next(200);
-    });
 }
 //# sourceMappingURL=app-bundler.js.map

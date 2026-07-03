@@ -71,9 +71,6 @@ const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "wjsx", gzip: false }
 ];
 
-function createGzip(): _zlib.Gzip {
-    return _zlib.createGzip({ level: _zlib.constants.Z_BEST_COMPRESSION });
-}
 
 class MimeHandler {
     private static _mamCache: Map<string, MemCacheInfo> = new Map();
@@ -192,7 +189,7 @@ class MimeHandler {
 
                     return;
                 }
-                
+
                 exit = true;
             }
 
@@ -237,7 +234,9 @@ class MimeHandler {
 
         try {
 
-            await pipelineAsync(rstream, createGzip(), wstream);
+            await pipelineAsync(
+                rstream, Util.createGzip(), wstream
+            );
 
             if (ctx.isDisposed)
                 return;
@@ -302,7 +301,7 @@ class MimeHandler {
             try {
 
                 await pipelineAsync(
-                    rstream, createGzip(), ctx.res
+                    rstream, Util.createGzip(), ctx.res
                 );
 
             } catch (ex: any) {
@@ -355,7 +354,7 @@ class MimeHandler {
             try {
 
                 await pipelineAsync(
-                    rstream, createGzip(), ctx.res
+                    rstream, Util.createGzip(), ctx.res
                 );
 
             } catch (ex: any) {

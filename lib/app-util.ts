@@ -25,6 +25,7 @@ import * as _path from 'node:path';
 import { pipeline } from 'node:stream';
 import type { IContext } from './context';
 import destroy from 'destroy';
+import * as _zlib from 'node:zlib';
 import { promisify } from "node:util";
 import { isExistsAsync } from './fsw';
 
@@ -155,6 +156,12 @@ export class Util {
         if (this.isError(obj)) throw obj;
     }
 
+    public static createGzip(level?: number): _zlib.Gzip {
+        return _zlib.createGzip({
+            level: level ?? _zlib.constants.Z_BEST_COMPRESSION
+        });
+    }
+
     public static async pipeOutputStreamAsync(absPath: string, ctx: IContext): Promise<void> {
         if (ctx.isDisposed)
             return;
@@ -165,9 +172,10 @@ export class Util {
         try {
 
             await pipelineAsync(openenedFile, ctx.res);
+
             if (ctx.isDisposed)
                 return;
-            
+
             ctx.next(statusCode);
 
         } catch (ex: any) {

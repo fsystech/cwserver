@@ -22,7 +22,6 @@
 // by rajib chy
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
-import * as _zlib from 'node:zlib';
 import { Encryption } from './encryption';
 import { HttpCache } from './http-cache';
 import { IApplication } from './server-core';
@@ -33,9 +32,11 @@ import type { IContext } from './context';
 import { type IBufferArray, BufferArray } from './app-static';
 import { FileInfoCacheHandler, type IFileInfoCacheHandler } from './file-info';
 import { promisify } from "node:util";
+import { pipeline, Readable } from 'node:stream';
+import destroy from 'destroy';
 
 const _fsp = _fs.promises;
-const gzipAsync = promisify(_zlib.gzip);
+const pipelineAsync = promisify(pipeline);
 
 enum ContentType {
     JS = 0,
@@ -180,11 +181,11 @@ class Bundlew {
     }
 
     private static async _readFileAsync(
-        ctx: IContext, 
-        inf: BundlerFileInfo, 
+        ctx: IContext,
+        inf: BundlerFileInfo,
         copyBuff: Buffer<ArrayBuffer>
     ): Promise<Buffer<ArrayBufferLike>[]> {
-        
+
         if (ctx.isDisposed)
             return null;
 
@@ -344,8 +345,8 @@ class Bundlew {
                 return ctx.res.end(buffer.data), buffer.dispose();
             }
 
-            return _responseWriteGzip(
-                ctx, buffer, cte
+            return ctx.res.compress(
+                buffer.data, cte === ContentType.JS ? "js" : 'css', "GZIP"
             );
 
         } catch (ex: any) {
@@ -600,13 +601,23 @@ class Bundlew {
                 return;
             }
 
-            const gbuff = await gzipAsync(buffer.data);
-            buffer.dispose();
+            const writeStream = _fs.createWriteStream(cachpath);
+
+            try {
+
+                await pipelineAsync(
+                    Readable.from(buffer.data), 
+                    Util.createGzip(), writeStream
+                );
+
+            } catch (ex: any) {
+                return ctx.transferError(ex);
+            } finally {
+                destroy(writeStream);
+            }
 
             if (ctx.isDisposed)
                 return;
-
-            await _fsp.writeFile(cachpath, gbuff);
 
             if (ctx.isDisposed)
                 return;
@@ -628,18 +639,21 @@ class Bundlew {
             ctx.res.status(200, {
                 'Content-Type': this.getResponseContentType(cte),
                 'Content-Encoding': 'gzip',
-                'Content-Length': gbuff.length
+                'Content-Length': edesc.stats.size
             });
 
-            if (useFullOptimization) {
-                Bundel.cache.set(memCacheKey, {
-                    lastChangeTime,
-                    bundleData: gbuff,
-                    cfileSize: edesc.stats.size
-                });
-            }
+            await Util.pipeOutputStreamAsync(
+                cachpath, ctx
+            );
 
-            ctx.res.end(gbuff);
+            if (useFullOptimization) {
+                await this._holdCacheAsync(
+                    memCacheKey,
+                    cachpath,
+                    lastChangeTime,
+                    edesc.stats.size
+                );
+            }
 
         } catch (ex: any) {
             ctx.transferError(ex);
@@ -673,32 +687,4 @@ export class Bundler {
 
 function _getInfo(): string {
     return '// Cw "Combiner"\r\n// Copyright (c) 2022 FSys Tech Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
-}
-
-function _responseWriteGzip(
-    ctx: IContext, buff: IBufferArray,
-    cte: ContentType
-): void {
-
-    ctx.res.status(200, {
-        'Content-Type': Bundlew.getResponseContentType(cte),
-        'Content-Encoding': 'gzip'
-    });
-
-    const compressor = _zlib.createGzip({
-        level: _zlib.constants.Z_BEST_COMPRESSION
-    });
-
-    compressor.pipe(ctx.res);
-    compressor.end(buff.data);
-    buff.dispose();
-
-    compressor.on("end", () => {
-        if (ctx.isDisposed)
-            return;
-
-        compressor.unpipe(ctx.res);
-        ctx.next(200);
-
-    });
 }
