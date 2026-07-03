@@ -809,10 +809,31 @@ function getCommonHeader(
     }
 
     if (compress) {
-        header['Content-Encoding'] = compress.toLowerCase();
+        header['Content-Encoding'] = toContentEncoding(compress);
     }
 
     return header;
+}
+
+/**
+ * Converts a compression type to its corresponding HTTP
+ * `Content-Encoding` header value.
+ *
+ * @param {CompressionType} compressType
+ * The compression algorithm.
+ *
+ * @returns {"gzip" | "br" | "zstd"}
+ * The HTTP `Content-Encoding` value corresponding to the specified
+ * compression type.
+ */
+function toContentEncoding(compressType: CompressionType): "gzip" | "br" | "zstd" {
+    if (compressType === "GZIP")
+        return "gzip";
+
+    if (compressType === "BROTLI")
+        return "br";
+
+    return "zstd";
 }
 
 /**
