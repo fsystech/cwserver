@@ -31,12 +31,8 @@ import { Util } from './app-util';
 import type { IContext } from './context';
 import { type IBufferArray, BufferArray } from './app-static';
 import { FileInfoCacheHandler, type IFileInfoCacheHandler } from './file-info';
-import { promisify } from "node:util";
-import { pipeline, Readable } from 'node:stream';
-import destroy from 'destroy';
 
 const _fsp = _fs.promises;
-const pipelineAsync = promisify(pipeline);
 
 enum ContentType {
     JS = 0,
@@ -601,19 +597,14 @@ class Bundlew {
                 return;
             }
 
-            const writeStream = _fs.createWriteStream(cachpath);
-
             try {
 
-                await pipelineAsync(
-                    Readable.from(buffer.data), 
-                    Util.createGzip(), writeStream
+                await Util.compressAsync(
+                    buffer.data, cachpath
                 );
 
             } catch (ex: any) {
                 return ctx.transferError(ex);
-            } finally {
-                destroy(writeStream);
             }
 
             if (ctx.isDisposed)

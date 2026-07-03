@@ -22,7 +22,7 @@
 // by rajib chy
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
-import { pipeline } from 'node:stream';
+import { pipeline, Readable } from 'node:stream';
 import type { IContext } from './context';
 import destroy from 'destroy';
 import * as _zlib from 'node:zlib';
@@ -160,6 +160,33 @@ export class Util {
         return _zlib.createGzip({
             level: level ?? _zlib.constants.Z_BEST_COMPRESSION
         });
+    }
+
+    public static async compressAsync(
+        absPath: string | Uint8Array,
+        cachePath: string
+    ): Promise<void> {
+
+        const rstream = typeof absPath === "string"
+            ? _fs.createReadStream(absPath)
+            : Readable.from(absPath);
+
+        const gzip = Util.createGzip();
+        const wstream = _fs.createWriteStream(cachePath);
+
+        try {
+            
+            await pipelineAsync(
+                rstream,
+                gzip,
+                wstream
+            );
+
+        } finally {
+            destroy(rstream);
+            destroy(gzip);
+            destroy(wstream);
+        }
     }
 
     public static async pipeOutputStreamAsync(absPath: string, ctx: IContext): Promise<void> {

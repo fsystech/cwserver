@@ -200,6 +200,23 @@ class Util {
             level: level !== null && level !== void 0 ? level : _zlib.constants.Z_BEST_COMPRESSION
         });
     }
+    static compressAsync(absPath, cachePath) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const rstream = typeof absPath === "string"
+                ? _fs.createReadStream(absPath)
+                : node_stream_1.Readable.from(absPath);
+            const gzip = Util.createGzip();
+            const wstream = _fs.createWriteStream(cachePath);
+            try {
+                yield pipelineAsync(rstream, gzip, wstream);
+            }
+            finally {
+                (0, destroy_1.default)(rstream);
+                (0, destroy_1.default)(gzip);
+                (0, destroy_1.default)(wstream);
+            }
+        });
+    }
     static pipeOutputStreamAsync(absPath, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             if (ctx.isDisposed)

@@ -22,6 +22,7 @@ export declare class Util {
     static isError(obj: any): obj is Error;
     static throwIfError(obj: any): void;
     static createGzip(level?: number): _zlib.Gzip;
+    static compressAsync(absPath: string | Uint8Array, cachePath: string): Promise<void>;
     static pipeOutputStreamAsync(absPath: string, ctx: IContext): Promise<void>;
     static sendResponseAsync(ctx: IContext, reqPath: string, contentType?: string): Promise<void>;
     static getExtension(reqPath: string): string | void;

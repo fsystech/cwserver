@@ -60,9 +60,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Bundler = exports.__moduleName = void 0;
 // 4:48 PM 5/3/2020
@@ -74,11 +71,7 @@ const http_cache_1 = require("./http-cache");
 const app_util_1 = require("./app-util");
 const app_static_1 = require("./app-static");
 const file_info_1 = require("./file-info");
-const node_util_1 = require("node:util");
-const node_stream_1 = require("node:stream");
-const destroy_1 = __importDefault(require("destroy"));
 const _fsp = _fs.promises;
-const pipelineAsync = (0, node_util_1.promisify)(node_stream_1.pipeline);
 var ContentType;
 (function (ContentType) {
     ContentType[ContentType["JS"] = 0] = "JS";
@@ -422,15 +415,11 @@ class Bundlew {
                     buffer.dispose();
                     return;
                 }
-                const writeStream = _fs.createWriteStream(cachpath);
                 try {
-                    yield pipelineAsync(node_stream_1.Readable.from(buffer.data), app_util_1.Util.createGzip(), writeStream);
+                    yield app_util_1.Util.compressAsync(buffer.data, cachpath);
                 }
                 catch (ex) {
                     return ctx.transferError(ex);
-                }
-                finally {
-                    (0, destroy_1.default)(writeStream);
                 }
                 if (ctx.isDisposed)
                     return;
