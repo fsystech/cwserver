@@ -200,6 +200,20 @@ class Util {
             level: level !== null && level !== void 0 ? level : _zlib.constants.Z_BEST_COMPRESSION
         });
     }
+    static writeGzipStreamAsync(phypath, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            res.status(200, {
+                'Content-Encoding': 'gzip'
+            });
+            const rstream = _fs.createReadStream(phypath);
+            try {
+                yield pipelineAsync(rstream, Util.createGzip(), res);
+            }
+            finally {
+                (0, destroy_1.default)(rstream);
+            }
+        });
+    }
     static compressAsync(absPath, cachePath) {
         return __awaiter(this, void 0, void 0, function* () {
             const rstream = typeof absPath === "string"

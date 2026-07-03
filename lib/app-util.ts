@@ -28,6 +28,7 @@ import destroy from 'destroy';
 import * as _zlib from 'node:zlib';
 import { promisify } from "node:util";
 import { isExistsAsync } from './fsw';
+import { IResponse } from './response';
 
 const pipelineAsync = promisify(pipeline);
 
@@ -162,6 +163,27 @@ export class Util {
         });
     }
 
+    public static async writeGzipStreamAsync(
+        phypath: string, res: IResponse
+    ): Promise<void> {
+
+        res.status(200, {
+            'Content-Encoding': 'gzip'
+        });
+
+        const rstream = _fs.createReadStream(phypath);
+
+        try {
+
+            await pipelineAsync(
+                rstream, Util.createGzip(), res
+            );
+            
+        } finally {
+            destroy(rstream);
+        }
+    }
+
     public static async compressAsync(
         absPath: string | Uint8Array,
         cachePath: string
@@ -175,7 +197,7 @@ export class Util {
         const wstream = _fs.createWriteStream(cachePath);
 
         try {
-            
+
             await pipelineAsync(
                 rstream,
                 gzip,

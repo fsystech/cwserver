@@ -1,5 +1,6 @@
 import type { IContext } from './context';
 import * as _zlib from 'node:zlib';
+import { IResponse } from './response';
 export declare function assert(condition: any, expr: string): void;
 export declare function getLibRoot(): string;
 export declare function getAppDir(): string;
@@ -22,6 +23,7 @@ export declare class Util {
     static isError(obj: any): obj is Error;
     static throwIfError(obj: any): void;
     static createGzip(level?: number): _zlib.Gzip;
+    static writeGzipStreamAsync(phypath: string, res: IResponse): Promise<void>;
     static compressAsync(absPath: string | Uint8Array, cachePath: string): Promise<void>;
     static pipeOutputStreamAsync(absPath: string, ctx: IContext): Promise<void>;
     static sendResponseAsync(ctx: IContext, reqPath: string, contentType?: string): Promise<void>;
