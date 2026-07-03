@@ -434,8 +434,6 @@ class Bundlew {
                 }
                 if (ctx.isDisposed)
                     return;
-                if (ctx.isDisposed)
-                    return;
                 const edesc = yield Bundel.fi.statAsync(cachpath, true);
                 if (ctx.isDisposed)
                     return;
