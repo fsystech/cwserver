@@ -362,6 +362,38 @@ export declare class Response extends ServerResponse implements IResponse {
      */
     private _compressData;
     /**
+     * Handles errors that occur during the response compression pipeline.
+     *
+     * Client disconnects and premature stream closures are treated as expected
+     * conditions and are silently ignored. Only unexpected compression or I/O
+     * errors are reported and propagated.
+     *
+     * @param error The error returned by the compression pipeline, or `null` if
+     *              the pipeline completed successfully.
+     * @param next Optional callback invoked with the error for additional
+     *             application-level handling.
+     */
+    private _onCompressionError;
+    /**
+     * Compresses the response payload entirely in memory.
+     *
+     * This method is intended for relatively small payloads, allowing the
+     * compressed size to be determined before sending the response so that
+     * an accurate `Content-Length` header can be included.
+     *
+     * Supported compression algorithms:
+     * - GZIP
+     * - BROTLI
+     *
+     * @private
+     * @param {Buffer} buffer - The response payload to compress.
+     * @param {string} contentType - The MIME type or file extension used to determine the response `Content-Type`.
+     * @param {CompressionType} [compress] - The compression algorithm to apply.
+     * @param {(err: Error) => void} [next] - Optional callback invoked if compression fails.
+     * @returns {void}
+     */
+    private _memoryCompress;
+    /**
      * Handles the completion of a compression operation and sends the
      * compressed response to the client.
      *

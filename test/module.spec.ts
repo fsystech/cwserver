@@ -998,7 +998,6 @@ describe("cwserver-bundler", () => {
                 expect(res.status).toEqual(200);
                 expect(res.header["content-type"].toLowerCase()).toEqual("application/javascript; charset=utf-8");
                 //expect(res.header["content-encoding"]).toEqual("gzip");
-                console.log(res.header["content-encoding"]);
                 expect(res.header["last-modified"]).toBeDefined();
                 lastModified = res.header['last-modified'];
                 done();
@@ -1708,11 +1707,16 @@ describe("cwserver-multipart-body-parser", () => {
 
 describe("cwserver-gzip-response", () => {
 
+    const obj: any = { 
+        name: 'rajibs', occupation: 'kutukutu',
+        xname: 'rajibs', poccupation: 'kutukutu' 
+    };
+
     it('should be response not gzip', (done: Mocha.Done): void => {
 
         getAgent()
             .get(`http://localhost:${appUtility.port}/response`)
-            .query({ task: "gzip", data: JSON.stringify({ name: 'rajibs', occupation: 'kutukutu' }) })
+            .query({ task: "gzip", data: JSON.stringify(obj) })
             .end((err, res) => {
                 expect(err).not.toBeInstanceOf(Error);
                 expect(res.status).toBe(200);
@@ -1724,7 +1728,6 @@ describe("cwserver-gzip-response", () => {
 
     it('should be response gzip', (done: Mocha.Done): void => {
 
-        const obj: any = { name: 'rajibs', occupation: 'kutukutu' };
         const data: Array<any> = [];
 
         for (let i = 0; i < 120; i++) {
@@ -1752,13 +1755,50 @@ describe("cwserver-gzip-response", () => {
             });
 
         }).catch(ex => {
+            console.log(ex);
+            throw ex;
+        });
+    });
+
+
+    const bigData: Array<any> = [];
+
+    for (let i = 0; i < 550; i++) {
+        bigData.push({ ...obj });
+    }
+
+    it('should be response gzip-stream', (done: Mocha.Done): void => {
+
+
+        const form = new FormData();
+
+        form.append("data", JSON.stringify(bigData));
+
+        const res = fetch(
+            `http://localhost:${appUtility.port}/response?task=gzip-stream`,
+            {
+                method: "POST",
+                body: form
+            }
+        );
+
+        res.then(r => {
+
+            expect(r.status).toBe(200);
+            expect(r.headers.get("content-encoding")).toBe("gzip");
+
+            r.text().then(o => {
+                done();
+            });
+
+        }).catch(ex => {
+            console.log(ex);
             throw ex;
         });
     });
 
     it('should be response brotli', (done: Mocha.Done): void => {
 
-        const obj: any = { name: 'rajibs', occupation: 'kutukutu' };
         const data: Array<any> = [];
 
         for (let i = 0; i < 120; i++) {
@@ -1779,13 +1819,43 @@ describe("cwserver-gzip-response", () => {
         res.then(r => {
 
             expect(r.status).toBe(200);
-            expect(r.headers.get("content-encoding")).toBe("brotli");
+            expect(r.headers.get("content-encoding")).toBe("br");
 
             r.text().then(o => {
                 done();
             });
 
         }).catch(ex => {
+            console.log(ex);
+            throw ex;
+        });
+    });
+
+    it('should be response brotli-stream', (done: Mocha.Done): void => {
+
+        const form = new FormData();
+
+        form.append("data", JSON.stringify(bigData));
+
+        const res = fetch(
+            `http://localhost:${appUtility.port}/response?task=brotli-stream`,
+            {
+                method: "POST",
+                body: form
+            }
+        );
+
+        res.then(r => {
+
+            expect(r.status).toBe(200);
+            expect(r.headers.get("content-encoding")).toBe("br");
+
+            r.text().then(o => {
+                done();
+            });
+
+        }).catch(ex => {
+            console.log(ex);
             throw ex;
         });
     });
@@ -2776,7 +2846,7 @@ describe("cwserver-utility", () => {
         logger.dispose();
         appUtility.server.log.dispose();
         logger = new cwserver.Logger(logDir, projectRoot, "+6", false, false, 100);
-        logger.write("No way");
+        logger.write("Logger Write Test....");
         expect(logger.flush()).toEqual(true);
         expect(logger.flush()).toEqual(false);
         logger.log({});

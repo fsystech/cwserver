@@ -763,28 +763,40 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 
 				const data = parser.getJson();
 
-				if (ctx.req.query.task === "gzip") {
-					ctx.res.status(200).json(
+				if (ctx.req.query.task === "gzip" || ctx.req.query.task === 'gzip-stream') {
+
+					ctx.res.json(
 						data, "GZIP"
 					);
 
-					// Connection Disconnected
-					ctx.res.status(200).json(
-						data, "BROTLI"
-					);
+					if (ctx.req.query.task === 'gzip') {
+						// Connection Disconnected
+						ctx.res.json(
+							data, "GZIP"
+						);
+					}
+
+					// expect(shouldBeError(() => {
+					// 	ctx.res.json(
+					// 		data, "GZIP"
+					// 	);
+					// })).toBeInstanceOf(Error);
 
 					return;
 				}
 
-				ctx.res.status(200).json(
+				ctx.res.json(
 					data, "BROTLI"
 				);
 
-				expect(shouldBeError(() => {
-					ctx.res.status(200).json(
-						data, "ZSTD"
-					);
-				})).toBeInstanceOf(Error);
+
+				if (ctx.req.query.task === 'brotli') {
+					expect(shouldBeError(() => {
+						ctx.res.json(
+							data, "ZSTD"
+						);
+					})).toBeInstanceOf(Error);
+				}
 
 			} catch (ex) {
 				ctx.transferError(ex as any);

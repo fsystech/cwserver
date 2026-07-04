@@ -36,8 +36,18 @@ declare global {
              * If omitted or invalid, the default threshold is 8 KiB (8192 bytes).
              */
             COMPRESSION_THRESHOLD?: string;
+
+            /**
+             * Maximum response payload size (in bytes) to compress entirely in memory.
+             *
+             * Responses larger than this value are compressed using a streaming
+             * pipeline instead of allocating an in-memory compressed buffer.
+             *
+             * Default: `65536` (64 KiB)
+             */
+            DEFAULT_MAX_MEMORY_COMPRESS_SIZE?: string;
         }
-        
+
         interface Process {
             /**
              * ```ts

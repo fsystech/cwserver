@@ -24,12 +24,14 @@
 import {
     OutgoingHttpHeaders, ServerResponse
 } from 'node:http';
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream";
+import * as _zlib from 'node:zlib';
 import { toResponseTime, toString, type IResInfo } from './app-static';
 import { HttpStatus } from './http-status';
 import type { IContext } from './context';
 import { Template } from './app-template';
 import { Util } from './app-util';
-import * as _zlib from 'node:zlib';
 import * as _mimeType from './http-mime-types';
 
 type CookieOptions = {
@@ -390,6 +392,36 @@ const COMPRESSION_THRESHOLD = (() => {
     return Number.isFinite(value) ? value : 8 * 1024;
 })();
 
+
+/**
+ * Maximum payload size (in bytes) eligible for in-memory compression.
+ *
+ * Responses whose payload size is less than or equal to this limit are
+ * compressed entirely in memory, allowing an accurate `Content-Length`
+ * header to be sent. Larger responses are compressed using a streaming
+ * pipeline to reduce peak memory usage.
+ *
+ * The value can be configured using the
+ * `DEFAULT_MAX_MEMORY_COMPRESS_SIZE` environment variable.
+ *
+ * Default: `64 * 1024` (64 KiB)
+ */
+const DEFAULT_MAX_MEMORY_COMPRESS_SIZE = (() => {
+    const value = Number(process.env.DEFAULT_MAX_MEMORY_COMPRESS_SIZE);
+    return Number.isFinite(value) ? value : 64 * 1024;
+})();
+
+const GZIP_OPTIONS = {
+    level: _zlib.constants.Z_DEFAULT_COMPRESSION
+};
+
+const BROTLI_OPTIONS = {
+    params: {
+        [_zlib.constants.BROTLI_PARAM_QUALITY]:
+            _zlib.constants.BROTLI_DEFAULT_QUALITY
+    }
+};
+
 export class Response extends ServerResponse implements IResponse {
     private _isAlive: boolean | undefined;
     private _method: string | undefined;
@@ -556,6 +588,11 @@ export class Response extends ServerResponse implements IResponse {
         this.set("Content-Length", buffer.length);
 
         this.end(buffer);
+
+        // pipeline(
+        //     Readable.from([buffer]), this,
+        //     (error) => this._onCompressionError(error)
+        // );
     }
 
     public asHTML(
@@ -678,46 +715,133 @@ export class Response extends ServerResponse implements IResponse {
         next?: (err: Error) => void
     ): void {
 
+        if (this.headersSent) {
+            throw new Error("Header already flushed.");
+        }
+
+        const contentLength = buffer.length;
+
         const shouldCompress = !compress ? false : (
-            buffer.length >= COMPRESSION_THRESHOLD
+            contentLength >= COMPRESSION_THRESHOLD
         );
 
         if (!shouldCompress) {
 
             this.status(200, getCommonHeader(
-                _mimeType.getMimeType(contentType)
+                _mimeType.getMimeType(contentType), contentLength
             )).end(buffer);
 
             return;
         }
 
+        if (!(compress === 'GZIP' || compress === "BROTLI")) {
+            throw new Error(`This compression type "${compress}" not supported.`)
+        }
+
+        if (contentLength <= DEFAULT_MAX_MEMORY_COMPRESS_SIZE) {
+
+            return this._memoryCompress(
+                buffer, contentType, compress, next
+            );
+
+        }
+
+        this.status(200, getCommonHeader(
+            _mimeType.getMimeType(contentType), null, compress
+        ));
+
+        const compressor
+            = compress === "GZIP"
+                ? _zlib.createGzip(GZIP_OPTIONS)
+                : _zlib.createBrotliCompress(BROTLI_OPTIONS)
+            ;
+
+        pipeline(
+            Readable.from([buffer]), compressor, this,
+            (error) => this._onCompressionError(error, next)
+        );
+
+    }
+
+    /**
+     * Handles errors that occur during the response compression pipeline.
+     *
+     * Client disconnects and premature stream closures are treated as expected
+     * conditions and are silently ignored. Only unexpected compression or I/O
+     * errors are reported and propagated.
+     *
+     * @param error The error returned by the compression pipeline, or `null` if
+     *              the pipeline completed successfully.
+     * @param next Optional callback invoked with the error for additional
+     *             application-level handling.
+     */
+    private _onCompressionError(
+        error: NodeJS.ErrnoException | null | undefined,
+        next?: (err?: Error) => void
+    ): void {
+
+        if (!error) {
+            return;
+        }
+
+        const clientAborted =
+            !this.isAlive ||
+            error.code === "ERR_STREAM_PREMATURE_CLOSE" ||
+            this.destroyed ||
+            this.writableEnded;
+
+        if (clientAborted) {
+            return;
+        }
+
+        console.error('Pipeline error:', error);
+
+        this.sendIfError(error);
+
+        next?.(error);
+    }
+
+    /**
+     * Compresses the response payload entirely in memory.
+     *
+     * This method is intended for relatively small payloads, allowing the
+     * compressed size to be determined before sending the response so that
+     * an accurate `Content-Length` header can be included.
+     *
+     * Supported compression algorithms:
+     * - GZIP
+     * - BROTLI
+     *
+     * @private
+     * @param {Buffer} buffer - The response payload to compress.
+     * @param {string} contentType - The MIME type or file extension used to determine the response `Content-Type`.
+     * @param {CompressionType} [compress] - The compression algorithm to apply.
+     * @param {(err: Error) => void} [next] - Optional callback invoked if compression fails.
+     * @returns {void}
+     */
+    private _memoryCompress(
+        buffer: Buffer,
+        contentType: string,
+        compress?: CompressionType,
+        next?: (err: Error) => void
+    ): void {
+
         if (compress === 'GZIP') {
 
             return _zlib.gzip(
-                buffer, { level: _zlib.constants.Z_DEFAULT_COMPRESSION },
+                buffer, GZIP_OPTIONS,
                 (error, compressed) => this._onCompress(
                     contentType, compressed, compress, next, error
                 )
             );
         }
 
-        if (compress === "BROTLI") {
-            return _zlib.brotliCompress(
-                buffer,
-                {
-                    params: {
-                        [_zlib.constants.BROTLI_PARAM_QUALITY]:
-                            _zlib.constants.BROTLI_DEFAULT_QUALITY
-                    }
-                },
-                (error, compressed) => this._onCompress(
-                    contentType, compressed, compress, next, error
-                )
-            );
-        }
-
-        throw new Error(`This compression type "${compress}" not supported.`)
-
+        return _zlib.brotliCompress(
+            buffer, BROTLI_OPTIONS,
+            (error, compressed) => this._onCompress(
+                contentType, compressed, compress, next, error
+            )
+        );
     }
 
     /**
