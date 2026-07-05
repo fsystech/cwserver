@@ -391,11 +391,11 @@ export declare class CwServer implements ICwServer {
     private _nodeModuleregx;
     private _userInteractive;
     private _encryption;
-    private _isInitilized;
+    private _isInitialized;
     private _db;
     private _errorPage;
     get version(): string;
-    get isInitilized(): boolean;
+    get isInitialized(): boolean;
     get config(): IServerConfig;
     get public(): string;
     get log(): ILogger;
@@ -444,12 +444,12 @@ export declare class CwServer implements ICwServer {
     addMimeType(extension: string, val: string): void;
 }
 export interface IAppUtility {
-    readonly init: () => IApplication;
     readonly public: string;
     readonly port: string | number;
     readonly socketPath: string;
     readonly log: ILogger;
     readonly server: ICwServer;
     readonly controller: IController;
+    readonly initAsync: () => Promise<IApplication>;
 }
 export declare function initilizeServer(appRoot: string, wwwName?: string): IAppUtility;

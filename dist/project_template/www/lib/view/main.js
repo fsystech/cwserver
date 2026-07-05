@@ -19,7 +19,7 @@ function _generateRandomNumber(num) {
 	}
 	return result;
 }
-registerView((app, controller, server) => {
+registerView(async (app, controller, server) => {
 	const { getBodyParser, Encryption, fsw } = require('cwserver');
 	// const { PayloadParser, Encryption, socketInitilizer } = require( 'cwserver' );
 	// const ws = socketInitilizer(server, require("../socket-client"));

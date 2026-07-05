@@ -247,8 +247,8 @@ class CwServer {
     get version() {
         return server_core_1.appVersion;
     }
-    get isInitilized() {
-        return this._isInitilized;
+    get isInitialized() {
+        return this._isInitialized;
     }
     get config() {
         return this._config;
@@ -272,7 +272,7 @@ class CwServer {
         return this._errorPage;
     }
     constructor(appRoot, wwwName) {
-        this._isInitilized = false;
+        this._isInitialized = false;
         this._port = 0;
         this._log = Object.create(null);
         if (!wwwName) {
@@ -379,7 +379,7 @@ class CwServer {
         return this._public;
     }
     init() {
-        this._isInitilized = true;
+        this._isInitialized = true;
     }
     implimentConfig(config) {
         var _a;
@@ -719,148 +719,150 @@ function initilizeServer(appRoot, wwwName) {
         }
     };
     const _controller = new app_controller_1.Controller(_server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false);
-    function initilize() {
-        if (_server.isInitilized) {
-            throw new Error("Server already initilized");
-        }
-        const _app = (0, server_core_1.App)(_server.config.isDebug);
-        _server.on = (ev, handler) => {
-            _app.on(ev, handler);
-        };
-        if (_server.config.isDebug) {
-            _app.on("request-begain", (req) => {
-                _server.log.success(`${req.method} ${req.path}`);
-            }).on("response-end", (req, res) => {
-                const ctx = context_1._ctxManager.getMyContext(req.id);
-                if (ctx && !ctx.isDisposed) {
-                    if (res.statusCode && http_status_1.HttpStatus.isErrorCode(res.statusCode)) {
-                        _server.log.error(`Send ${res.statusCode} ${ctx.path}`);
-                    }
-                    else {
-                        _server.log.success(`Send ${res.statusCode} ${ctx.path}`);
-                    }
-                }
-                return context_1._ctxManager.removeContext(req.id);
-            });
-        }
-        else {
-            _app.on("response-end", (req, res) => {
-                return context_1._ctxManager.removeContext(req.id);
-            });
-        }
-        const _virtualDir = [];
-        _server.virtualInfo = (route) => {
-            const v = _virtualDir.find(a => a.route === route);
-            if (!v)
-                return;
-            return {
-                route: v.route,
-                root: v.root
-            };
-        };
-        _server.addVirtualDir = (route, root, evt) => {
-            if (route.includes(":") || route.includes("*")) {
-                throw new Error(`Unsupported symbol defined. ${route}`);
+    function initializeAsync() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (_server.isInitialized) {
+                throw new Error("Server already initilized");
             }
-            const originalRoute = route;
-            if (_virtualDir.some(item => item.route === originalRoute)) {
-                throw new Error(`You already added this virtual route ${route}`);
-            }
-            const virtualRoute = `${route.replace(/\/?$/, "/")}*`;
-            const processHandler = (req, res, next, handler) => {
-                const ctx = _server.createContext(req, res, next);
-                ctx.next = (code, transfer) => {
-                    if (!code || code === 200) {
-                        return;
-                    }
-                    return _process.render(code, ctx, next, transfer);
-                };
-                if (!_server.isValidContext(ctx)) {
-                    return;
-                }
-                fsw.isExists(`${root}/${ctx.path}`, (exists) => {
-                    if (!exists) {
-                        return ctx.next(404);
-                    }
-                    return handler(ctx);
-                });
+            const _app = (0, server_core_1.App)(_server.config.isDebug);
+            _server.on = (ev, handler) => {
+                _app.on(ev, handler);
             };
-            if (typeof evt !== "function") {
-                _app.use(virtualRoute, (req, res, next) => {
-                    processHandler(req, res, next, ctx => {
-                        if (_server.config.mimeType.includes(ctx.extension)) {
-                            return _controller.httpMimeHandler.renderAsync(ctx, root);
+            if (_server.config.isDebug) {
+                _app.on("request-begain", (req) => {
+                    _server.log.success(`${req.method} ${req.path}`);
+                }).on("response-end", (req, res) => {
+                    const ctx = context_1._ctxManager.getMyContext(req.id);
+                    if (ctx && !ctx.isDisposed) {
+                        if (res.statusCode && http_status_1.HttpStatus.isErrorCode(res.statusCode)) {
+                            _server.log.error(`Send ${res.statusCode} ${ctx.path}`);
                         }
-                        return ctx.next(404);
-                    });
-                }, true);
+                        else {
+                            _server.log.success(`Send ${res.statusCode} ${ctx.path}`);
+                        }
+                    }
+                    return context_1._ctxManager.removeContext(req.id);
+                });
             }
             else {
-                _app.use(virtualRoute, (req, res, next) => {
-                    processHandler(req, res, next, ctx => {
-                        _server.log.success(`Send 200 ${virtualRoute}${req.path}`);
-                        return evt(ctx);
-                    });
-                }, true);
+                _app.on("response-end", (req, res) => {
+                    return context_1._ctxManager.removeContext(req.id);
+                });
             }
-            _virtualDir.push({
-                route: originalRoute,
-                root
-            });
-        };
-        if (_server.config.bundler && _server.config.bundler.enable) {
-            const { Bundler } = require("./app-bundler");
-            Bundler.Init(_app, _controller, _server);
-        }
-        if (app_util_1.Util.isArrayLike(_server.config.views)) {
-            _server.config.views.forEach(path => _importLocalAssets(path));
-        }
-        _app.prerequisites((req, res, next) => {
-            req.session = _server.parseSession(req.headers, req.cookies);
-            return next();
-        });
-        _app.on("error", (req, res, err) => {
-            if (res.isAlive) {
-                const context = _process.createContext(req, res, res.sendIfError.bind(res));
-                if (!err) {
-                    return context.transferRequest(404);
-                }
-                if (err instanceof Error) {
-                    return context.transferError(err);
-                }
-            }
-        });
-        app_view_1.AppView.init(_app, _controller, _server);
-        _controller.sort();
-        _app.use((req, res, next) => __awaiter(this, void 0, void 0, function* () {
-            const context = _process.createContext(req, res, next);
-            const reqPath = req.path;
-            const isHidden = _server.config.hiddenDirectory.some(dir => reqPath.startsWith(dir));
-            if (isHidden) {
-                _server.log.write(`Trying to access Hidden directory. Remote Address ${req.ip} Send 404 ${req.path}`);
-                return _server.transferRequest(context, 404);
-            }
-            if (reqPath.includes("$root") || reqPath.includes("$public")) {
-                _server.log.write(`Trying to access directly reserved keyword ($root | $public). Remote Address ${req.ip} Send 404 ${req.path}`);
-                return _server.transferRequest(context, 404);
-            }
-            try {
-                if (!_server.isValidContext(context)) {
+            const _virtualDir = [];
+            _server.virtualInfo = (route) => {
+                const v = _virtualDir.find(a => a.route === route);
+                if (!v)
                     return;
+                return {
+                    route: v.route,
+                    root: v.root
+                };
+            };
+            _server.addVirtualDir = (route, root, evt) => {
+                if (route.includes(":") || route.includes("*")) {
+                    throw new Error(`Unsupported symbol defined. ${route}`);
                 }
-                return yield _controller.processAny(context);
+                const originalRoute = route;
+                if (_virtualDir.some(item => item.route === originalRoute)) {
+                    throw new Error(`You already added this virtual route ${route}`);
+                }
+                const virtualRoute = `${route.replace(/\/?$/, "/")}*`;
+                const processHandler = (req, res, next, handler) => {
+                    const ctx = _server.createContext(req, res, next);
+                    ctx.next = (code, transfer) => {
+                        if (!code || code === 200) {
+                            return;
+                        }
+                        return _process.render(code, ctx, next, transfer);
+                    };
+                    if (!_server.isValidContext(ctx)) {
+                        return;
+                    }
+                    fsw.isExists(`${root}/${ctx.path}`, (exists) => {
+                        if (!exists) {
+                            return ctx.next(404);
+                        }
+                        return handler(ctx);
+                    });
+                };
+                if (typeof evt !== "function") {
+                    _app.use(virtualRoute, (req, res, next) => {
+                        processHandler(req, res, next, ctx => {
+                            if (_server.config.mimeType.includes(ctx.extension)) {
+                                return _controller.httpMimeHandler.renderAsync(ctx, root);
+                            }
+                            return ctx.next(404);
+                        });
+                    }, true);
+                }
+                else {
+                    _app.use(virtualRoute, (req, res, next) => {
+                        processHandler(req, res, next, ctx => {
+                            _server.log.success(`Send 200 ${virtualRoute}${req.path}`);
+                            return evt(ctx);
+                        });
+                    }, true);
+                }
+                _virtualDir.push({
+                    route: originalRoute,
+                    root
+                });
+            };
+            if (_server.config.bundler && _server.config.bundler.enable) {
+                const { Bundler } = require("./app-bundler");
+                Bundler.Init(_app, _controller, _server);
             }
-            catch (ex) {
-                return _server.transferRequest(_server.addError(context, ex), 500);
+            if (app_util_1.Util.isArrayLike(_server.config.views)) {
+                _server.config.views.forEach(path => _importLocalAssets(path));
             }
-        }));
-        _server.init();
-        return _app;
+            _app.prerequisites((req, res, next) => {
+                req.session = _server.parseSession(req.headers, req.cookies);
+                return next();
+            });
+            _app.on("error", (req, res, err) => {
+                if (res.isAlive) {
+                    const context = _process.createContext(req, res, res.sendIfError.bind(res));
+                    if (!err) {
+                        return context.transferRequest(404);
+                    }
+                    if (err instanceof Error) {
+                        return context.transferError(err);
+                    }
+                }
+            });
+            yield app_view_1.AppView.initAsync(_app, _controller, _server);
+            _controller.sort();
+            _app.use((req, res, next) => __awaiter(this, void 0, void 0, function* () {
+                const context = _process.createContext(req, res, next);
+                const reqPath = req.path;
+                const isHidden = _server.config.hiddenDirectory.some(dir => reqPath.startsWith(dir));
+                if (isHidden) {
+                    _server.log.write(`Trying to access Hidden directory. Remote Address ${req.ip} Send 404 ${req.path}`);
+                    return _server.transferRequest(context, 404);
+                }
+                if (reqPath.includes("$root") || reqPath.includes("$public")) {
+                    _server.log.write(`Trying to access directly reserved keyword ($root | $public). Remote Address ${req.ip} Send 404 ${req.path}`);
+                    return _server.transferRequest(context, 404);
+                }
+                try {
+                    if (!_server.isValidContext(context)) {
+                        return;
+                    }
+                    return yield _controller.processAny(context);
+                }
+                catch (ex) {
+                    return _server.transferRequest(_server.addError(context, ex), 500);
+                }
+            }));
+            _server.init();
+            return _app;
+        });
     }
     ;
     app_view_1.AppView.isInitilized = true;
     return {
-        init: initilize,
+        initAsync: initializeAsync,
         get public() { return _server.public; },
         get port() { return _server.port; },
         get log() { return _server.log; },

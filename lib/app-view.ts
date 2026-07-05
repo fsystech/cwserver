@@ -24,7 +24,8 @@ import type { ICwServer } from './server';
 import type { IApplication } from './server-core';
 import type { IController } from './app-controller';
 
-export type ViewRegisterFunc = (app: IApplication, controller: IController, server: ICwServer) => void;
+export type ViewRegisterFunc = (app: IApplication, controller: IController, server: ICwServer) => Promise<void>;
+
 export interface IAppViewRegister {
     /**
      * Register new `view` module
@@ -32,7 +33,12 @@ export interface IAppViewRegister {
      * @param next View register function
      */
     add(next: ViewRegisterFunc): void;
-    init(app: IApplication, controller: IController, server: ICwServer): void;
+
+    initAsync(
+        app: IApplication,
+        controller: IController,
+        server: ICwServer
+    ): Promise<void>;
 }
 
 class AppViewRegister implements IAppViewRegister {
@@ -48,15 +54,17 @@ class AppViewRegister implements IAppViewRegister {
         this._isInitilized = value;
     }
 
-    public init(app: IApplication, controller: IController, server: ICwServer): void {
+    public async initAsync(
+        app: IApplication, controller: IController, server: ICwServer
+    ): Promise<void> {
 
         if (this._isInit || this._evt.length === 0) return;
 
         this._isInit = true;
 
-        this._evt.forEach(handler => {
-            return handler(app, controller, server);
-        });
+        await Promise.all(this._evt.map(
+            handler => handler(app, controller, server))
+        );
 
         this._evt.length = 0;
     }

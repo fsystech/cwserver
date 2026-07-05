@@ -640,14 +640,14 @@ export class CwServer implements ICwServer {
     private _nodeModuleregx: RegExp;
     private _userInteractive: boolean;
     private _encryption: IServerEncryption;
-    private _isInitilized: boolean = false;
+    private _isInitialized: boolean = false;
     private _db: NodeJS.Dict<ICwDatabaseType>;
     private _errorPage: { [x: string]: string; };
     public get version() {
         return appVersion;
     }
-    public get isInitilized() {
-        return this._isInitilized;
+    public get isInitialized() {
+        return this._isInitialized;
     }
     public get config(): IServerConfig {
         return this._config;
@@ -865,7 +865,7 @@ export class CwServer implements ICwServer {
     }
 
     public init() {
-        this._isInitilized = true;
+        this._isInitialized = true;
     }
 
     public implimentConfig(config: NodeJS.Dict<any>): void {
@@ -1374,13 +1374,13 @@ export class CwServer implements ICwServer {
 }
 
 export interface IAppUtility {
-    readonly init: () => IApplication;
     readonly public: string;
     readonly port: string | number;
     readonly socketPath: string;
     readonly log: ILogger;
     readonly server: ICwServer;
     readonly controller: IController;
+    readonly initAsync: () => Promise<IApplication>;
 }
 
 export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility {
@@ -1396,7 +1396,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             if (transfer && typeof (transfer) !== "boolean") {
                 throw new Error("transfer argument should be ?boolean....");
             }
-            
+
             if (!code) {
                 return next();
             }
@@ -1434,9 +1434,9 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false
     );
 
-    function initilize(): IApplication {
+    async function initializeAsync(): Promise<IApplication> {
 
-        if (_server.isInitilized) {
+        if (_server.isInitialized) {
             throw new Error("Server already initilized");
         }
 
@@ -1634,7 +1634,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
             }
         });
 
-        AppView.init(_app, _controller, _server);
+        await AppView.initAsync(_app, _controller, _server);
 
         _controller.sort();
 
@@ -1689,7 +1689,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
     AppView.isInitilized = true;
 
     return {
-        init: initilize,
+        initAsync: initializeAsync,
         get public() { return _server.public; },
         get port() { return _server.port; },
         get log() { return _server.log; },

@@ -18,6 +18,15 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppView = void 0;
 exports.registerView = registerView;
@@ -33,14 +42,14 @@ class AppViewRegister {
     set isInitilized(value) {
         this._isInitilized = value;
     }
-    init(app, controller, server) {
-        if (this._isInit || this._evt.length === 0)
-            return;
-        this._isInit = true;
-        this._evt.forEach(handler => {
-            return handler(app, controller, server);
+    initAsync(app, controller, server) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._isInit || this._evt.length === 0)
+                return;
+            this._isInit = true;
+            yield Promise.all(this._evt.map(handler => handler(app, controller, server)));
+            this._evt.length = 0;
         });
-        this._evt.length = 0;
     }
     add(next) {
         if (this._isInit) {

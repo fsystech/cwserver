@@ -58,10 +58,21 @@ export function shouldBeError(
 		if (printerr === true) console.log(e);
 		return e;
 	}
-};
+}
+
+export async function shouldBeErrorAsync(
+	next: () => Promise<void>, printerr?: boolean
+): Promise<Error | void> {
+	try {
+		await next();
+	} catch (e: any) {
+		if (printerr === true) console.log(e);
+		return e;
+	}
+}
 
 expect(toString(1)).toEqual("1");
-registerView((app: IApplication, controller: IController, server: ICwServer) => {
+registerView(async (app: IApplication, controller: IController, server: ICwServer) => {
 	expect(shouldBeError(() => new SessionSecurity())).toBeInstanceOf(Error);
 	expect(SessionSecurity.getRemoteAddress("::1")).toEqual('127.0.0');
 	fsw.mkdirSync(server.config.staticFile.tempPath, "");
@@ -101,7 +112,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 	});
 });
 
-registerView((app: IApplication, controller: IController, server: ICwServer) => {
+registerView(async (app: IApplication, controller: IController, server: ICwServer) => {
 	expect(shouldBeError(() => { mimeHandler.getMimeType("NO_EXT"); })).toBeInstanceOf(Error);
 	const vDir: string = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
 	server.addVirtualDir("/vtest", vDir, async (ctx: IContext) => {
@@ -124,7 +135,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 	})).toBeInstanceOf(Error);
 });
 
-registerView((app: IApplication, controller: IController, server: ICwServer) => {
+registerView(async (app: IApplication, controller: IController, server: ICwServer) => {
 	const streamDir = path.join(path.resolve(server.getRoot(), '..'), "/project_template/test/");
 	server.addVirtualDir("/web-stream", streamDir, (ctx: IContext, requestParam?: IRequestParam): void => {
 		if (ctx.server.config.liveStream.indexOf(ctx.extension) > -1) {
@@ -153,7 +164,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 	})).toBeInstanceOf(Error);
 });
 
-registerView((app: IApplication, controller: IController, server: ICwServer) => {
+registerView(async (app: IApplication, controller: IController, server: ICwServer) => {
 	const downloadDir = server.mapPath("/upload/data/");
 	if (!fs.existsSync(downloadDir)) {
 		fsw.mkdirSync(server.mapPath("/"), "/upload/data/");
@@ -422,7 +433,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 	});
 });
 
-registerView((app: IApplication, controller: IController, server: ICwServer) => {
+registerView(async (app: IApplication, controller: IController, server: ICwServer) => {
 
 	function _createContext(ctx: IContext) {
 
@@ -669,7 +680,7 @@ registerView((app: IApplication, controller: IController, server: ICwServer) => 
 
 });
 
-registerView((app: IApplication, controller: IController, server: ICwServer) => {
+registerView(async (app: IApplication, controller: IController, server: ICwServer) => {
 
 	{
 		const enc = server.encryption.encrypt("Hello World..");

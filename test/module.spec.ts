@@ -53,7 +53,7 @@ import { assert, Util } from '../lib/app-util';
 import { injectPrototype, parseIp } from '../lib/help';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/schema-validator';
 import { TemplateCore, templateNext, CompilerResult } from '../lib/app-template';
-import { shouldBeError } from "./test-view";
+import { shouldBeError, shouldBeErrorAsync } from "./test-view";
 import { promisify } from 'util';
 import destroy from 'destroy';
 import { AppView } from '../lib/app-view';
@@ -189,14 +189,17 @@ describe("cwserver-core", () => {
             }, 300);
         });
     });
-    it("initilize server throw error (projectRoot not provided)", (done: Mocha.Done): void => {
-        expect(shouldBeError(() => {
+    it("initilize server throw error (projectRoot not provided)", (done: Mocha.Done) => {
+
+        shouldBeErrorAsync(async () => {
             cwserver.initilizeServer(appRoot);
             // @ts-ignore
-            AppView.init();// try re-init
+            await AppView.initAsync();// try re-init
+        }).then(err => {
+            expect(err).toBeInstanceOf(Error);
+            done();
+        })
 
-        })).toBeInstanceOf(Error);
-        done();
     });
     it("initilize server throw error (projectRoot not provided)", (done: Mocha.Done): void => {
         expect(shouldBeError(() => {
@@ -242,14 +245,22 @@ describe("cwserver-core", () => {
         })).toBeInstanceOf(Error);
         done();
     });
-    it("initilize application", function (done: Mocha.Done): void {
+    it("initilize application", function (done: Mocha.Done) {
         this.timeout(5000);
-        app = appUtility.init();
-        expect(shouldBeError(() => {
-            appUtility.init();
-        })).toBeInstanceOf(Error);
-        done();
+
+        appUtility.initAsync().then(a => {
+            app = a;
+
+            shouldBeErrorAsync(async () => {
+                await appUtility.initAsync();
+            }).then(err => {
+                expect(err).toBeInstanceOf(Error);
+                done();
+            })
+        });
+
     });
+    
     it("application listen", (done: Mocha.Done): void => {
         app.listen(appUtility.port, () => {
             appUtility.log.write(`
@@ -501,7 +512,7 @@ describe("cwserver-view", () => {
     });
     it('should throw error (After initilize view, you should not register new veiw)', (done: Mocha.Done): void => {
         expect(shouldBeError(() => {
-            cwserver.registerView((_app, controller, server) => { });
+            cwserver.registerView(async (_app, controller, server) => { });
         })).toBeInstanceOf(Error);
         done();
     });
@@ -1707,9 +1718,9 @@ describe("cwserver-multipart-body-parser", () => {
 
 describe("cwserver-gzip-response", () => {
 
-    const obj: any = { 
+    const obj: any = {
         name: 'rajibs', occupation: 'kutukutu',
-        xname: 'rajibs', poccupation: 'kutukutu' 
+        xname: 'rajibs', poccupation: 'kutukutu'
     };
 
     it('should be response not gzip', (done: Mocha.Done): void => {
