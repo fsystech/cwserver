@@ -47,12 +47,15 @@ export class DataParser implements IDataParser {
     private _errors: (Error | NodeJS.ErrnoException)[];
     private _tempDir: string;
     private _readers: IMultipartDataReader[];
+
     public get files(): IPostedFileInfo[] {
         return this._files;
     }
+
     public get body(): Buffer {
         return this._body.data;
     }
+
     constructor(
         tempDir: string
     ) {
@@ -64,18 +67,22 @@ export class DataParser implements IDataParser {
     public onRawData(buff: Buffer | string): void {
         this._body.push(buff);
     }
+
     public getRawData(encoding?: BufferEncoding): string {
-        let data = this._body.toString(encoding);
-        if (Object.keys(this._multipartBody).length > 0) {
-            for (const prop in this._multipartBody) {
-                data += '&' + prop + '=' + this._multipartBody[prop];
-            }
+
+        const data = [this._body.toString(encoding)];
+
+        for (const [key, value] of Object.entries(this._multipartBody)) {
+            data.push(`${key}=${value}`);
         }
-        return data;
+
+        return data.join('&');
     }
+
     public getMultipartBody(): { [id: string]: string } {
         return this._multipartBody;
     }
+
     public onPart(
         stream: PartStream,
         next: (forceExit: boolean) => void,
@@ -89,7 +96,7 @@ export class DataParser implements IDataParser {
         }
 
         reader.on("file", (file: IPostedFileInfo): void => {
-            return this._files.push(file), void 0;
+            this._files.push(file);
         });
 
         reader.on("field", (key: string, data: string): void => {
@@ -107,27 +114,26 @@ export class DataParser implements IDataParser {
         reader.read(stream, this._tempDir);
 
         this._readers.push(reader);
+    }
 
-        return void 0;
-    }
-    
     public getError(): string | void {
+
         if (this._errors.length > 0) {
-            let str: string = "";
-            for (const err of this._errors) {
-                str += err.message + "\n";
-            }
-            return str;
+            return this._errors.join("\n");
         }
+
     }
+
     public dispose(): void {
+
         dispose(this._readers);
         dispose(this._files);
         this._body.dispose();
-        // @ts-ignore
-        delete this._body; delete this._multipartBody;
+
+        delete this._body;
+        delete this._multipartBody;
+
         if (this._errors) {
-            // @ts-ignore
             delete this._errors;
         }
     }

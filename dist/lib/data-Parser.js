@@ -41,13 +41,11 @@ class DataParser {
         this._body.push(buff);
     }
     getRawData(encoding) {
-        let data = this._body.toString(encoding);
-        if (Object.keys(this._multipartBody).length > 0) {
-            for (const prop in this._multipartBody) {
-                data += '&' + prop + '=' + this._multipartBody[prop];
-            }
+        const data = [this._body.toString(encoding)];
+        for (const [key, value] of Object.entries(this._multipartBody)) {
+            data.push(`${key}=${value}`);
         }
-        return data;
+        return data.join('&');
     }
     getMultipartBody() {
         return this._multipartBody;
@@ -58,7 +56,7 @@ class DataParser {
             reader.skipFile = skipFile;
         }
         reader.on("file", (file) => {
-            return this._files.push(file), void 0;
+            this._files.push(file);
         });
         reader.on("field", (key, data) => {
             this._multipartBody[key] = encodeURIComponent(data);
@@ -72,26 +70,19 @@ class DataParser {
         });
         reader.read(stream, this._tempDir);
         this._readers.push(reader);
-        return void 0;
     }
     getError() {
         if (this._errors.length > 0) {
-            let str = "";
-            for (const err of this._errors) {
-                str += err.message + "\n";
-            }
-            return str;
+            return this._errors.join("\n");
         }
     }
     dispose() {
         dispose(this._readers);
         dispose(this._files);
         this._body.dispose();
-        // @ts-ignore
         delete this._body;
         delete this._multipartBody;
         if (this._errors) {
-            // @ts-ignore
             delete this._errors;
         }
     }

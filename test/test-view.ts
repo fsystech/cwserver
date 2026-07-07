@@ -354,6 +354,10 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 				parser.getData();
 			})).toBeInstanceOf(Error);
 			await parser.parseSync();
+			parser.getFiles((pf, fdone) => {
+				console.log(pf?.getFileName());
+				fdone?.();
+			});
 			const data: UploadFileInfo[] = parser.getUploadFileInfo();
 			parser.saveAsSync(downloadDir);
 			parser.dispose();

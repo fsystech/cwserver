@@ -81,7 +81,8 @@ export class MultipartDataReader extends EventEmitter implements IMultipartDataR
 
             for (const [key, value] of Object.entries(header)) {
 
-                if (!Util.isArrayLike<string>(value)) continue;
+                if (!Util.isArrayLike<string>(value))
+                    continue;
 
                 const part: string | undefined = value[0];
                 if (!part) continue;
@@ -149,7 +150,7 @@ export class MultipartDataReader extends EventEmitter implements IMultipartDataR
                     return;
                 }
 
-                const tempFile: string | void = fileInfo.getTempPath();
+                const tempFile = fileInfo.getTempPath();
 
                 if (tempFile) {
 
@@ -168,12 +169,14 @@ export class MultipartDataReader extends EventEmitter implements IMultipartDataR
     }
 
     public dispose(): void {
-        if (this._isDisposed) return;
+        if (this._isDisposed)
+            return;
+
         this._isDisposed = true;
         this.removeAllListeners();
         this.destroy();
+        
         delete this._writeStream;
-        // @ts-ignore
         delete this._forceExit;
     }
 }

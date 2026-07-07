@@ -194,21 +194,20 @@ class BodyParser {
     }
     getUploadFileInfo() {
         this.validate(true);
-        const data = [];
-        this._parser.files.forEach((file) => {
-            data.push({
-                contentType: file.getContentType(),
-                name: file.getName(),
-                fileName: file.getFileName(),
-                contentDisposition: file.getContentDisposition(),
-                tempPath: file.getTempPath()
-            });
-        });
-        return data;
+        return this._parser.files.map(file => ({
+            contentType: file.getContentType(),
+            name: file.getName(),
+            fileName: file.getFileName(),
+            contentDisposition: file.getContentDisposition(),
+            tempPath: file.getTempPath()
+        }));
     }
     getFilesSync(next) {
         this.validate(true);
-        return this._parser.files.forEach(pf => next(pf));
+        const files = this._parser.files;
+        for (const file of files) {
+            next(file);
+        }
     }
     getFiles(next) {
         this.validate(true);
@@ -244,13 +243,11 @@ class BodyParser {
         return this.parseSync();
     }
     parseSync() {
-        return new Promise((resolve, reject) => {
-            this.parse((err) => {
-                if (err)
-                    return reject(err);
-                return resolve();
-            });
-        });
+        return new Promise((resolve, reject) => this.parse((err) => {
+            if (err)
+                return reject(err);
+            return resolve();
+        }));
     }
     tryFinish(onReadEnd) {
         if (!this._isReadEnd || this._part.length > 0)
@@ -343,7 +340,6 @@ class BodyParser {
         this._isDisposed = true;
         if (this._isReadEnd) {
             this._parser.dispose();
-            // @ts-ignore
             delete this._parser;
         }
         if (this._multipartParser) {
@@ -351,10 +347,8 @@ class BodyParser {
             (0, destroy_1.default)(this._multipartParser);
             delete this._multipartParser;
         }
-        // @ts-ignore
         delete this._req;
         delete this._part;
-        // @ts-ignore
         delete this._contentType;
         delete this._contentLength;
     }

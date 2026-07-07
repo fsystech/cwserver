@@ -158,7 +158,6 @@ class MultipartDataReader extends node_events_1.EventEmitter {
         this.removeAllListeners();
         this.destroy();
         delete this._writeStream;
-        // @ts-ignore
         delete this._forceExit;
     }
 }

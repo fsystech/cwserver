@@ -170,21 +170,27 @@ class BodyParser implements IBodyParser {
         this._maxBuffLength = length;
         return this;
     }
+
     public isUrlEncoded(): boolean {
         return this._contentTypeEnum === ContentType.URL_ENCODE;
     }
+
     public isAppJson(): boolean {
         return this._contentTypeEnum === ContentType.APP_JSON;
     }
+
     public isMultipart(): boolean {
         return this._contentTypeEnum === ContentType.MULTIPART;
     }
+
     public isRawData(): boolean {
         return this._contentTypeEnum === ContentType.RAW_TEXT;
     }
+
     public isValidRequest(): boolean {
         return this._contentLength > 0 && this._contentTypeEnum !== ContentType.UNKNOWN;
     }
+
     private validate(isMultipart: boolean): void {
         if (!this.isValidRequest())
             throw new Error("Invalid request defiend....");
@@ -233,35 +239,42 @@ class BodyParser implements IBodyParser {
 
     public getUploadFileInfo(): UploadFileInfo[] {
         this.validate(true);
-        const data: UploadFileInfo[] = [];
-        this._parser.files.forEach((file: IPostedFileInfo): void => {
-            data.push({
-                contentType: file.getContentType(),
-                name: file.getName(),
-                fileName: file.getFileName(),
-                contentDisposition: file.getContentDisposition(),
-                tempPath: file.getTempPath()
-            });
-        });
-        return data;
+
+        return this._parser.files.map<UploadFileInfo>(file => ({
+            contentType: file.getContentType(),
+            name: file.getName(),
+            fileName: file.getFileName(),
+            contentDisposition: file.getContentDisposition(),
+            tempPath: file.getTempPath()
+        }));
     }
 
     public getFilesSync(next: (file: IPostedFileInfo) => void): void {
         this.validate(true);
-        return this._parser.files.forEach(pf => next(pf));
+
+        const files = this._parser.files;
+
+        for (const file of files) {
+            next(file);
+        }
     }
 
     public getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void {
         this.validate(true);
+
         let index: number = -1;
+
         const forward = (): void => {
             index++;
-            const pf: IPostedFileInfo | undefined = this._parser.files[index];
+
+            const pf = this._parser.files[index];
             if (!pf) return next();
+
             return next(pf, () => {
                 return forward();
             });
-        };
+        }
+
         return forward();
     }
 
@@ -276,8 +289,14 @@ class BodyParser implements IBodyParser {
             throw new Error("Raw Text data found. It's can not transform to json.");
         }
 
-        const outObj: NodeJS.Dict<string> = decodeBodyBuffer(this._parser.body);
-        Util.extend(outObj, this._parser.getMultipartBody());
+        const outObj = decodeBodyBuffer(
+            this._parser.body
+        );
+
+        Util.extend(
+            outObj, this._parser.getMultipartBody()
+        );
+
         return outObj;
     }
 
@@ -285,17 +304,16 @@ class BodyParser implements IBodyParser {
         this.validate(false);
         return this._parser.getRawData();
     }
+
     public readDataAsync(): Promise<void> {
         return this.parseSync();
     }
 
     public parseSync(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this.parse((err?: Error): void => {
-                if (err) return reject(err);
-                return resolve();
-            });
-        });
+        return new Promise((resolve, reject) => this.parse((err?: Error): void => {
+            if (err) return reject(err);
+            return resolve();
+        }));
     }
 
     private tryFinish(onReadEnd: (err?: Error) => void): void {
@@ -358,7 +376,9 @@ class BodyParser implements IBodyParser {
             return onReadEnd(err);
         }
     }
+
     public parse(onReadEnd: (err?: Error) => void): void {
+
         if (!this.isValidRequest()) {
             return process.nextTick(() => onReadEnd(new Error("Invalid request defiend....")));
         }
@@ -425,24 +445,31 @@ class BodyParser implements IBodyParser {
     public readData(onReadEnd: (err?: Error) => void): void {
         return this.parse(onReadEnd);
     }
+
     public dispose(): void {
-        if (this._isDisposed) return;
+
+        if (this._isDisposed)
+            return;
+
         this._isDisposed = true;
+
         if (this._isReadEnd) {
             this._parser.dispose();
-            // @ts-ignore
             delete this._parser;
         }
+
         if (this._multipartParser) {
             this._req.unpipe(this._multipartParser);
             destroy(this._multipartParser);
             delete this._multipartParser;
         }
-        // @ts-ignore
-        delete this._req; delete this._part;
-        // @ts-ignore
-        delete this._contentType; delete this._contentLength;
+
+        delete this._req;
+        delete this._part;
+        delete this._contentType;
+        delete this._contentLength;
     }
+
     public clear(): void {
         this.dispose();
     }
