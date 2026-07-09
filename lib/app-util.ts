@@ -103,13 +103,16 @@ export function generateRandomString(num: number): string {
 
 class JSONW {
     static parse(text: any, reviver?: (this: any, key: string, value: any) => any): any {
-        if (typeof (text) !== "string") return text;
+        if (typeof (text) !== "string")
+            return text;
+
         try {
             return JSON.parse(text, reviver);
         } catch {
             return undefined;
         }
     }
+    
     static stringify(value: any, replacer?: (this: any, key: string, value: any) => any, space?: string | number): any {
         return JSON.stringify(value, replacer, space);
     }
@@ -144,8 +147,11 @@ export class Util {
 
     /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise. */
     public static isArrayLike<T>(obj?: any): obj is T[] {
-        if (obj === null || obj === undefined) return false;
+        if (obj === null || obj === undefined)
+            return false;
+
         const result = Object.prototype.toString.call(obj);
+
         return result === "[object NodeList]" || result === "[object Array]" ? true : false;
     }
 
@@ -171,16 +177,22 @@ export class Util {
             'Content-Encoding': 'gzip'
         });
 
-        const rstream = _fs.createReadStream(phypath);
+        let rstream: _fs.ReadStream = null;
 
         try {
+
+            rstream = _fs.createReadStream(phypath);
 
             await pipelineAsync(
                 rstream, Util.createGzip(), res
             );
-            
+
         } finally {
-            destroy(rstream);
+
+            if (rstream) {
+                destroy(rstream);
+            }
+
         }
     }
 
@@ -215,22 +227,28 @@ export class Util {
         if (ctx.isDisposed)
             return;
 
-        const statusCode = ctx.res.statusCode;
-        const openenedFile: _fs.ReadStream = _fs.createReadStream(absPath);
+        const response = ctx.res;
+        response.status(200)
+
+        let openenedFile: _fs.ReadStream = null;
 
         try {
 
-            await pipelineAsync(openenedFile, ctx.res);
+            openenedFile = _fs.createReadStream(absPath)
+            await pipelineAsync(openenedFile, response);
 
+        } catch (ex: any) {
             if (ctx.isDisposed)
                 return;
 
-            ctx.next(statusCode);
-
-        } catch (ex: any) {
             ctx.transferError(ex);
+
         } finally {
-            destroy(openenedFile);
+
+            if (openenedFile) {
+                destroy(openenedFile);
+            }
+
         }
     }
 

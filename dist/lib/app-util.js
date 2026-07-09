@@ -205,12 +205,15 @@ class Util {
             res.status(200, {
                 'Content-Encoding': 'gzip'
             });
-            const rstream = _fs.createReadStream(phypath);
+            let rstream = null;
             try {
+                rstream = _fs.createReadStream(phypath);
                 yield pipelineAsync(rstream, Util.createGzip(), res);
             }
             finally {
-                (0, destroy_1.default)(rstream);
+                if (rstream) {
+                    (0, destroy_1.default)(rstream);
+                }
             }
         });
     }
@@ -235,19 +238,22 @@ class Util {
         return __awaiter(this, void 0, void 0, function* () {
             if (ctx.isDisposed)
                 return;
-            const statusCode = ctx.res.statusCode;
-            const openenedFile = _fs.createReadStream(absPath);
+            const response = ctx.res;
+            response.status(200);
+            let openenedFile = null;
             try {
-                yield pipelineAsync(openenedFile, ctx.res);
-                if (ctx.isDisposed)
-                    return;
-                ctx.next(statusCode);
+                openenedFile = _fs.createReadStream(absPath);
+                yield pipelineAsync(openenedFile, response);
             }
             catch (ex) {
+                if (ctx.isDisposed)
+                    return;
                 ctx.transferError(ex);
             }
             finally {
-                (0, destroy_1.default)(openenedFile);
+                if (openenedFile) {
+                    (0, destroy_1.default)(openenedFile);
+                }
             }
         });
     }
