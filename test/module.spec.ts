@@ -260,7 +260,7 @@ describe("cwserver-core", () => {
         });
 
     });
-    
+
     it("application listen", (done: Mocha.Done): void => {
         app.listen(appUtility.port, () => {
             appUtility.log.write(`
@@ -412,7 +412,7 @@ describe("cwserver-router", () => {
     });
     it('target route /*', (done: Mocha.Done): void => {
         const route: string = "/*";
-        appUtility.controller.any(route, (ctx: IContext, routeParam?: IRequestParam) => {
+        appUtility.controller.any(route, async (ctx: IContext, routeParam?: IRequestParam) => {
             return ctx.res.json({ reqPath: ctx.path, servedFrom: "/*", q: routeParam });
         });
         appUtility.controller.sort();
@@ -465,7 +465,7 @@ describe("cwserver-router", () => {
 });
 describe("cwserver-view", () => {
     it('register view', (done: Mocha.Done): void => {
-        const invoke = (ctx: IContext) => {
+        const invoke = async (ctx: IContext) => {
             ctx.res.writeHead(200, {
                 "Content-Type": "text/plain"
             });

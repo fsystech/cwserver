@@ -41,7 +41,7 @@ registerView(async (app, controller, server) => {
 	//	});
 	//});
 	registerView((_app, _controller, _server) => {
-		_controller.get('/authenticate/:loginId/:roleid', (ctx, requestParam) => {
+		_controller.get('/authenticate/:loginId/:roleid', async (ctx, requestParam) => {
 			if (ctx.req.session.isAuthenticated) {
 				ctx.res.status(200).type("html").send(`Hello ${ctx.req.session.loginId}`);
 			} else {
@@ -52,19 +52,19 @@ registerView(async (app, controller, server) => {
 		});
 	});
 	controller
-		.get('/', (ctx) => {
+		.get('/', async (ctx) => {
 			return ctx.res.render(ctx, server.mapPath(`/index${server.config.defaultExt || ".html"}`));
 		})
-		.get('/task/:id', (ctx, match) => {
+		.get('/task/:id', async (ctx, match) => {
 			return ctx.res.status(200).json({ reqPath: ctx.path, servedFrom: "/task/:id", q: match });
 		})
-		.get('/dist/*', (ctx, match) => {
+		.get('/dist/*', async (ctx, match) => {
 			return ctx.res.status(200).json({ reqPath: ctx.path, servedFrom: "/dist/*", q: match });
 		})
-		.get('/user/:id/settings', (ctx, match) => {
+		.get('/user/:id/settings', async (ctx, match) => {
 			return ctx.res.status(200).json({ reqPath: ctx.path, servedFrom: "/user/:id/settings", q: match });
 		})
-		.get('/user/:id/:name/settings', (ctx, match) => {
+		.get('/user/:id/:name/settings', async (ctx, match) => {
 			return ctx.res.status(200).json({ reqPath: ctx.path, servedFrom: "/user/:id/:name/settings", q: match });
 		})
 		.get('/authenticate', (ctx) => {
@@ -122,7 +122,7 @@ registerView(async (app, controller, server) => {
 				parser.clear();
 				ctx.transferError(err);
 			}
-		}).any("/post_data", (ctx) => {
+		}).any("/post_data", async (ctx) => {
 			if (ctx.req.method !== "POST") return ctx.next(404);
 			let parser = getBodyParser(ctx.req, tempDir);
 			parser.parse((err) => {

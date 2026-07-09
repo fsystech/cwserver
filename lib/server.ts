@@ -47,7 +47,9 @@ import { _ctxManager, type IContext } from "./context";
 import { Session, type ISession } from "./session";
 import defaultHeaders from "./default-headers";
 
-export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
+export type AppHandler = (
+    ctx: IContext, requestParam?: IRequestParam
+) => Promise<void>;
 
 export interface IServerEncryption {
     encrypt(plainText: string): string;

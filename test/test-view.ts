@@ -101,13 +101,13 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 	expect(ws.create(io, app.httpServer)).toEqual(false);
 	expect(ws.isConnectd).toEqual(true);
 	expect(ws.wsServer).toBeDefined();
-	controller.get('/ws-server-event', (ctx: IContext, requestParam?: IRequestParam): void => {
+	controller.get('/ws-server-event', async (ctx: IContext, requestParam?: IRequestParam) => {
 		const event = ws.wsEvent;
 		expect(event).toBeInstanceOf(Object);
 		ctx.res.json(ws.wsEvent || {}); ctx.next(200);
 		return void 0;
 	});
-	controller.any("/test-head", (ctx: IContext, requestParam?: IRequestParam): void => {
+	controller.any("/test-head", async (ctx: IContext, requestParam?: IRequestParam) => {
 		return ctx.res.status(200).send();
 	});
 });
@@ -171,7 +171,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 	}
 	const tempDir: string = server.mapPath("/upload/temp/");
 	fsw.mkdirSync(tempDir);
-	controller.post('/post-test-data', (ctx: IContext) => {
+	controller.post('/post-test-data', async (ctx: IContext) => {
 		console.log(`IsLocal=>${ctx.req.isLocal}`);
 		console.log(`IsLocal=>${ctx.req.ip}`);
 		expect(ctx.req.isLocal).toBeTruthy();
@@ -186,7 +186,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			console.log(e);
 			ctx.res.json({});
 		}
-	}).post('/post-text-data', (ctx: IContext) => {
+	}).post('/post-text-data', async (ctx: IContext) => {
 		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
 
 		try {
@@ -253,14 +253,17 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 		});
 	}).post('/post-async/:id', async (ctx: IContext, requestParam?: IRequestParam) => {
 		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
+
 		if (parser.isUrlEncoded() || parser.isAppJson()) {
 			await parser.parseSync();
-			return ctx.res.asHTML(200).end(JSON.stringify(parser.getJson()));
+			ctx.res.asHTML(200).end(JSON.stringify(parser.getJson()));
+		} else {
+			parser.saveAsSync(downloadDir);
+			parser.dispose();
+			ctx.res.asHTML(200).end("<h1>success</h1>");
 		}
-		parser.saveAsSync(downloadDir);
-		parser.dispose();
-		return ctx.res.asHTML(200).end("<h1>success</h1>");
-	}).post('/post-data', (ctx: IContext, requestParam?: IRequestParam): void => {
+
+	}).post('/post-data', async (ctx: IContext, requestParam?: IRequestParam) => {
 		const parser: IBodyParser = getBodyParser(ctx.req);
 		expect(shouldBeError(() => {
 			parser.setMaxBuffLength(0);
@@ -367,7 +370,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			console.log(e);
 			ctx.transferError(e);
 		}
-	}).post('/upload-non-bolock', (ctx: IContext, requestParam?: IRequestParam): void => {
+	}).post('/upload-non-bolock', async (ctx: IContext, requestParam?: IRequestParam) => {
 		if (ctx.res.isAlive) {
 			expect(ctx.req.get("content-type")).toBeDefined();
 			const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
@@ -622,7 +625,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			} catch (e) {
 				console.log(e);
 			}
-		}).get('/test-response-error', (ctx: IContext, requestParam?: IRequestParam): void => {
+		}).get('/test-response-error', async (ctx: IContext, requestParam?: IRequestParam) => {
 			expect(ctx.res.sendIfError("NOT-ERROR")).toBeFalsy();
 			expect(ctx.res.sendIfError(new Error("test-response-error"))).toBeTruthy();
 			const res: IResponse = ctx.res;
@@ -630,15 +633,15 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 				expect(res.sendIfError(new Error("test-response-error"))).toBeTruthy();
 			});
 		})
-		.get('/controller-error', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.get('/controller-error', async (ctx: IContext, requestParam?: IRequestParam) => {
 			throw new Error("runtime-error");
 		})
-		.get('/ctx-handle-error', (ctx: IContext): void => {
+		.get('/ctx-handle-error', async (ctx: IContext) => {
 			ctx.handleError(new Error("ctx-handle-error"), () => {
 				ctx.res.status(200).end("Must be not here");
 			});
 		})
-		.any('/test-any/*', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.any('/test-any/*', async (ctx: IContext, requestParam?: IRequestParam) => {
 			ctx.res.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');
 			ctx.res.noCache();
 			ctx.res.setHeader('cache-control', 'max-age=300');
@@ -665,17 +668,17 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			_ctxManager.removeContext("12");
 			_ctxManager.getMyContext("12");
 		})
-		.get('/task/:id/*', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.get('/task/:id/*', async (ctx: IContext, requestParam?: IRequestParam) => {
 			return ctx.res.json({ reqPath: ctx.path, servedFrom: "/task/:id/*", q: requestParam });
 		})
-		.get('/test-c/:id', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.get('/test-c/:id', async (ctx: IContext, requestParam?: IRequestParam) => {
 			ctx.addError(new Error("Error Test"));
 			return ctx.res.json({ reqPath: ctx.path, servedFrom: "/test-c/:id", q: requestParam });
 		})
-		.get('/dist/*', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.get('/dist/*', async (ctx: IContext, requestParam?: IRequestParam) => {
 			return ctx.res.json({ reqPath: ctx.path, servedFrom: "/dist/*", q: requestParam });
 		})
-		.get('/user/:id/settings', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.get('/user/:id/settings', async (ctx: IContext, requestParam?: IRequestParam) => {
 			return ctx.res.json({ reqPath: ctx.path, servedFrom: "/user/:id/settings", q: requestParam });
 		})
 		.get('/ksdafsfasbd', async (ctx: IContext) => {
@@ -703,7 +706,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 				ctx, server.mapPath("index.html"), "text/plain"
 			);
 		})
-		.any('/cookie', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.any('/cookie', async (ctx: IContext, requestParam?: IRequestParam) => {
 			ctx.res.cookie("test-1", "test", {
 				domain: "localhost", path: "/",
 				expires: new Date(), secure: true,
@@ -740,14 +743,14 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			ctx.res.json({ task: "done" });
 			return void 0;
 		})
-		.any('/echo', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.any('/echo', async (ctx: IContext, requestParam?: IRequestParam) => {
 			ctx.res.writeHead(200, {
 				"Content-Type": ctx.req.headers["content-type"] || "text/plain"
 			});
 			ctx.req.pipe(ctx.res);
 			return void 0;
 		})
-		.any('/response', async (ctx: IContext, requestParam?: IRequestParam): Promise<void> => {
+		.any('/response', async (ctx: IContext, requestParam?: IRequestParam) => {
 			if (ctx.req.method === "GET") {
 				if (ctx.req.query.task === "gzip") {
 					const data = ctx.req.query.data;
@@ -819,7 +822,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 				parser.dispose();
 			}
 
-		}).get('/is-authenticate', (ctx: IContext, requestParam?: IRequestParam): void => {
+		}).get('/is-authenticate', async (ctx: IContext, requestParam?: IRequestParam) => {
 			if (!ctx.req.query.loginId)
 				return ctx.next(401);
 
@@ -835,7 +838,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			if (ctx.session.loginId !== ctx.req.query.loginId) return ctx.next(401);
 			ctx.res.json(ctx.session.data); return ctx.next(200);
 		})
-		.get('/signout', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.get('/signout', async (ctx: IContext, requestParam?: IRequestParam) => {
 			if (!ctx.session.isAuthenticated) {
 				console.log(ctx.session);
 				return ctx.next(401, true);
@@ -843,15 +846,15 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 
 			ctx.signOut().redirect("/", true).next(302, true);
 		})
-		.any('/redirect', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.any('/redirect', async (ctx: IContext, requestParam?: IRequestParam) => {
 			return ctx.redirect("/", true), ctx.next(302, false);
 		})
-		.any('/pass-error', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.any('/pass-error', async (ctx: IContext, requestParam?: IRequestParam) => {
 			server.addError(ctx, new Error('test pass-error'));
 			server.addError(ctx, 'test pass-error');
 			return server.passError(ctx), void 0;
 		})
-		.get('/authenticate', (ctx: IContext, requestParam?: IRequestParam): void => {
+		.get('/authenticate', async (ctx: IContext, requestParam?: IRequestParam) => {
 			if (!ctx.req.query.loginId) {
 				if (!ctx.req.session.isAuthenticated) return ctx.next(401);
 				return ctx.res.status(302).redirect("/"), ctx.next(302, false);

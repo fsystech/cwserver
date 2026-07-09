@@ -75,14 +75,17 @@ class Controller {
         this._routeTable.any.clear();
         this._routeTable.router.length = 0;
     }
-    fireHandler(ctx) {
-        if (this._routeTable.router.length === 0)
-            return false;
-        const routeInfo = (0, app_router_1.getRouteInfo)(ctx.path, this._routeTable.router, ctx.req.method || "GET");
-        if (!routeInfo) {
-            return false;
-        }
-        return routeInfo.layer.handler(ctx, routeInfo.requestParam), true;
+    fireHandlerAsync(ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._routeTable.router.length === 0)
+                return false;
+            const routeInfo = (0, app_router_1.getRouteInfo)(ctx.path, this._routeTable.router, ctx.req.method || "GET");
+            if (!routeInfo) {
+                return false;
+            }
+            const asyncHandler = routeInfo.layer.handler;
+            return yield asyncHandler(ctx, routeInfo.requestParam), true;
+        });
     }
     delete(...args) {
         if (args.length === 0)
@@ -198,12 +201,12 @@ class Controller {
     }
     processGetAsync(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const handler = this._routeTable.get.get(ctx.path);
-            if (handler) {
-                return handler(ctx);
+            const handlerAsync = this._routeTable.get.get(ctx.path);
+            if (handlerAsync) {
+                return yield handlerAsync(ctx);
             }
-            if (this.fireHandler(ctx))
-                return void 0;
+            if (yield this.fireHandlerAsync(ctx))
+                return;
             if (ctx.extension) {
                 if (this._hasDefaultExt
                     && ctx.server.config.defaultExt === `.${ctx.extension}`) {
@@ -221,23 +224,25 @@ class Controller {
             return yield this.sendDefaultDocAsync(ctx);
         });
     }
-    processPost(ctx) {
-        const handler = this._routeTable.post.get(ctx.path);
-        if (handler) {
-            return handler(ctx);
-        }
-        if (this.fireHandler(ctx))
-            return void 0;
-        return ctx.next(404);
+    processPostAsync(ctx) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const handlerAsync = this._routeTable.post.get(ctx.path);
+            if (handlerAsync) {
+                return yield handlerAsync(ctx);
+            }
+            if (yield this.fireHandlerAsync(ctx))
+                return;
+            return ctx.next(404);
+        });
     }
     processAny(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
-            const handler = this._routeTable.any.get(ctx.path);
-            if (handler) {
-                return handler(ctx);
+            const handlerAsync = this._routeTable.any.get(ctx.path);
+            if (handlerAsync) {
+                return yield handlerAsync(ctx);
             }
             if (ctx.req.method === "POST")
-                return this.processPost(ctx);
+                return yield this.processPostAsync(ctx);
             if (ctx.req.method === "GET")
                 return yield this.processGetAsync(ctx);
             return ctx.next(404);

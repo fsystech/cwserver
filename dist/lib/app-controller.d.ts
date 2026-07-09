@@ -21,7 +21,7 @@ export declare class Controller implements IController {
     private _routeTable;
     constructor(hasDefaultExt: boolean);
     reset(): void;
-    private fireHandler;
+    private fireHandlerAsync;
     delete(...args: string[]): void;
     get(route: string, next: AppHandler): IController;
     post(route: string, next: AppHandler): IController;
@@ -29,7 +29,7 @@ export declare class Controller implements IController {
     private passDefaultDocAsync;
     private sendDefaultDocAsync;
     private processGetAsync;
-    private processPost;
+    private processPostAsync;
     processAny(ctx: IContext): Promise<void>;
     remove(path: string): boolean;
     sort(): void;

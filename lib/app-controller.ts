@@ -98,9 +98,10 @@ export class Controller implements IController {
         this._routeTable.router.length = 0;
     }
 
-    private fireHandler(ctx: IContext): boolean {
+    private async fireHandlerAsync(ctx: IContext): Promise<boolean> {
 
-        if (this._routeTable.router.length === 0) return false;
+        if (this._routeTable.router.length === 0)
+            return false;
 
         const routeInfo: IRouteInfo<AppHandler> | undefined = getRouteInfo(
             ctx.path, this._routeTable.router, ctx.req.method || "GET"
@@ -110,7 +111,11 @@ export class Controller implements IController {
             return false;
         }
 
-        return routeInfo.layer.handler(ctx, routeInfo.requestParam), true;
+        const asyncHandler = routeInfo.layer.handler;
+
+        return await asyncHandler(
+            ctx, routeInfo.requestParam
+        ), true;
     }
 
     public delete(...args: string[]): void {
@@ -245,7 +250,7 @@ export class Controller implements IController {
         }
 
         const fileName = getFileName(rpath);
-        
+
         if (!fileName)
             return ctx.next(404);
 
@@ -271,13 +276,14 @@ export class Controller implements IController {
     }
 
     private async processGetAsync(ctx: IContext): Promise<void> {
-        const handler = this._routeTable.get.get(ctx.path);
+        const handlerAsync = this._routeTable.get.get(ctx.path);
 
-        if (handler) {
-            return handler(ctx);
+        if (handlerAsync) {
+            return await handlerAsync(ctx);
         }
 
-        if (this.fireHandler(ctx)) return void 0;
+        if (await this.fireHandlerAsync(ctx))
+            return;
 
         if (ctx.extension) {
 
@@ -303,27 +309,31 @@ export class Controller implements IController {
         return await this.sendDefaultDocAsync(ctx);
     }
 
-    private processPost(ctx: IContext): void {
-        const handler = this._routeTable.post.get(ctx.path);
+    private async processPostAsync(ctx: IContext): Promise<void> {
+        const handlerAsync = this._routeTable.post.get(ctx.path);
 
-        if (handler) {
-            return handler(ctx);
+        if (handlerAsync) {
+            return await handlerAsync(ctx);
         }
 
-        if (this.fireHandler(ctx)) return void 0;
+        if (await this.fireHandlerAsync(ctx))
+            return;
 
         return ctx.next(404);
     }
 
     public async processAny(ctx: IContext): Promise<void> {
-        const handler = this._routeTable.any.get(ctx.path);
+        
+        const handlerAsync = this._routeTable.any.get(
+            ctx.path
+        );
 
-        if (handler) {
-            return handler(ctx);
+        if (handlerAsync) {
+            return await handlerAsync(ctx);
         }
 
         if (ctx.req.method === "POST")
-            return this.processPost(ctx);
+            return await this.processPostAsync(ctx);
 
         if (ctx.req.method === "GET")
             return await this.processGetAsync(ctx);

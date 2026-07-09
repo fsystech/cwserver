@@ -10,7 +10,7 @@ import { ILogger } from "./logger";
 import { IncomingHttpHeaders } from "node:http";
 import { type IContext } from "./context";
 import { type ISession } from "./session";
-export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => void;
+export type AppHandler = (ctx: IContext, requestParam?: IRequestParam) => Promise<void>;
 export interface IServerEncryption {
     encrypt(plainText: string): string;
     decrypt(encryptedText: string): string;
