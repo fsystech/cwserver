@@ -627,6 +627,8 @@ export class Response extends ServerResponse implements IResponse {
             this.noCache();
         }
 
+        this.statusCode = 302;
+
         return this.status(this.statusCode, {
             'Location': url
         }).end(), void 0;

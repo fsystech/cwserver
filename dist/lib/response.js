@@ -238,6 +238,7 @@ class Response extends node_http_1.ServerResponse {
         if (force) {
             this.noCache();
         }
+        this.statusCode = 302;
         return this.status(this.statusCode, {
             'Location': url
         }).end(), void 0;
