@@ -139,7 +139,7 @@ class Response extends node_http_1.ServerResponse {
             }
             this.removeHeader('cache-control');
         }
-        this.setHeader('cache-control', 'no-store, no-cache, must-revalidate, immutable');
+        this.setHeader('cache-control', 'no-store, max-age=0');
         return this;
     }
     status(code, headers) {

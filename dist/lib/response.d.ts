@@ -243,7 +243,7 @@ export interface IResponse extends ServerResponse {
      * `Cache-Control` header is replaced with a strict no-cache policy.
      *
      * The applied policy is:
-     * `no-store, no-cache, must-revalidate, immutable`
+     * `no-store, max-age=0`
      *
      * @returns {IResponse}
      * The current response instance for method chaining.

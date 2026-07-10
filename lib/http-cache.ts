@@ -29,54 +29,141 @@ export type IChangeHeader = {
     etag?: string;
 };
 export class HttpCache {
-    /** Gets value in millisecond of {If-Modified-Since} from header. */
-    public static getIfModifiedSinceUTCTime(headers: IncomingHttpHeaders): number | void {
-        const ifModifiedSinceHeaderText: string | string[] | undefined = headers["If-Modified-Since"] || headers["if-modified-since"];
-        if (ifModifiedSinceHeaderText) {
-            const date: Date = new Date(ifModifiedSinceHeaderText.toString());
-            if (date.toString().indexOf("Invalid") > -1) return void 0;
-            return date.getTime();
+
+    /**
+     * Parses the `If-Modified-Since` request header and returns its UTC timestamp.
+     *
+     * Node.js normalizes incoming header names to lowercase, so the header is
+     * read from `if-modified-since`. If the header is missing or contains an
+     * invalid HTTP date, `undefined` is returned.
+     *
+     * @param {IncomingHttpHeaders} headers - The incoming HTTP request headers.
+     * @returns {number | undefined} The parsed UTC timestamp in milliseconds,
+     * or `undefined` when the header is absent or invalid.
+     */
+    public static getIfModifiedSinceUTCTime(headers: IncomingHttpHeaders): number | undefined {
+        // IncomingHttpHeaders automatically normalizes keys to lowercase
+        const headerValue = headers["if-modified-since"];
+
+        if (headerValue) {
+            // Safely grab the first string if it's an array (rare for this header, but safe)
+            const dateStr = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+            const timestamp = Date.parse(dateStr);
+
+            // Fast, native validation check
+            if (!isNaN(timestamp)) {
+                return timestamp;
+            }
         }
-        return void 0;
+
+        // Returning undefined is cleaner and idiomatic in TypeScript than 'number | void'
+        return undefined;
     }
-    /** Gets the {sinceModify, etag} from given header {If-None-Match, If-Modified-Since}. */
+
+    /**
+     * Extracts conditional request headers used for cache validation.
+     *
+     * Reads the `If-Modified-Since` and `If-None-Match`/`ETag` headers from the
+     * incoming request and returns them in a normalized structure for
+     * conditional response handling (for example, returning `304 Not Modified`).
+     *
+     * @param {IncomingHttpHeaders} headers - The incoming HTTP request headers.
+     * @returns {IChangeHeader} An object containing the parsed
+     * `If-Modified-Since` timestamp and `ETag`, if present.
+     */
     public static getChangedHeader(headers: IncomingHttpHeaders): IChangeHeader {
-        const tag: string | string[] | undefined = headers["If-None-Match"] || headers["if-none-match"] || headers.ETag || headers.etag;
+        const tag = headers["If-None-Match"] || headers["if-none-match"] || headers.ETag || headers.etag;
         return {
             sinceModify: this.getIfModifiedSinceUTCTime(headers),
             etag: tag ? tag.toString() : void 0
         };
     }
+
     /**
-     * Write cache header
-     * e.g. {last-modified, expires, ETag, cache-control, x-server-revalidate}.
+     * Writes standard HTTP caching headers to the response.
+     *
+     * Depending on the supplied configuration, this method enables either:
+     * - Time-based client caching using `Cache-Control: max-age` and `Expires`, or
+     * - Server revalidation using `Cache-Control: no-cache, must-revalidate`,
+     *   allowing clients to validate cached content with `ETag` or
+     *   `Last-Modified` before reusing it.
+     *
+     * If provided, the `Last-Modified` and `ETag` headers are included to support
+     * conditional requests (`If-Modified-Since` and `If-None-Match`).
+     *
+     * @param {IResponse} res - The HTTP response object.
+     * @param {{ lastChangeTime?: number | void; etag?: string }} obj - Cache
+     * metadata used for conditional requests.
+     * @param {number} [obj.lastChangeTime] - Resource modification time as a Unix
+     * timestamp in milliseconds.
+     * @param {string} [obj.etag] - Entity tag identifying the current version of
+     * the resource.
+     * @param {{ maxAge: number; serverRevalidate: boolean }} cacheHeader - Cache
+     * policy configuration.
+     * @param {number} cacheHeader.maxAge - Client cache lifetime in seconds.
+     * @param {boolean} cacheHeader.serverRevalidate - When `true`, instructs
+     * clients to revalidate cached content with the server before using it.
+     * When `false`, allows clients to reuse the cached response until `maxAge`
+     * expires.
+     * @returns {void}
      */
     public static writeCacheHeader(
         res: IResponse,
         obj: { lastChangeTime?: number | void, etag?: string },
         cacheHeader: {
-            maxAge: number;
+            maxAge: number; // Assumed to be in seconds (e.g., 3600 for 1 hour)
             serverRevalidate: boolean;
         }
     ): void {
         if (obj.lastChangeTime) {
             res.setHeader('last-modified', toResponseTime(obj.lastChangeTime));
-            res.setHeader('expires', toResponseTime(cacheHeader.maxAge + Date.now()));
+
+            // 'expires' expects an absolute future date string. 
+            // Convert maxAge to milliseconds to add it to Date.now().
+            const expiresTimestamp = Date.now() + (cacheHeader.maxAge * 1000);
+            res.setHeader('expires', toResponseTime(expiresTimestamp));
         }
+
         if (obj.etag) {
             res.setHeader('ETag', obj.etag);
         }
+
         if (cacheHeader.serverRevalidate) {
-            res.setHeader('cache-control', 'no-cache, must-revalidate, immutable');
+            // Tells browser to store it, but always revalidate using ETag/Last-Modified
+            res.setHeader('cache-control', 'no-cache, must-revalidate');
             res.setHeader('x-server-revalidate', 'true');
         } else {
-            res.setHeader('cache-control', `max-age=${cacheHeader.maxAge + Date.now()}, public, immutable`);
+            // Pass ONLY the relative maxAge seconds here. Do NOT add Date.now().
+            res.setHeader('cache-control', `max-age=${cacheHeader.maxAge}, public`);
         }
     }
-    /** Create and Gets {etag} (timestamp ^ fsize). */
+
+    /**
+     * Generates a weak ETag from a resource's last modification timestamp and size.
+     *
+     * The ETag is intended for HTTP cache validation and should not be considered
+     * a cryptographically unique identifier. It is suitable for detecting resource
+     * changes for conditional requests.
+     *
+     * @param {number} timestamp - The resource's last modification time in
+     * milliseconds since the Unix epoch.
+     * @param {number} fsize - The resource size in bytes.
+     * @returns {string} A weak ETag value.
+     */
     public static getEtag(timestamp: number, fsize: number): string {
         return `W/${(timestamp ^ fsize)}`;
     }
+
+    /**
+     * Determines whether the client accepts a specific content encoding.
+     *
+     * Checks the `Accept-Encoding` request header for the specified encoding
+     * token (for example, `"gzip"` or `"br"`).
+     *
+     * @param {IncomingHttpHeaders} headers - The incoming HTTP request headers.
+     * @param {string} name - The content encoding to check.
+     * @returns {boolean} `true` if the encoding is accepted; otherwise, `false`.
+     */
     public static isAcceptedEncoding(headers: IncomingHttpHeaders, name: string): boolean {
         const acceptEncoding = headers['accept-encoding'];
         if (!acceptEncoding) return false;
