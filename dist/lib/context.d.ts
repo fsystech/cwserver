@@ -113,10 +113,9 @@ export interface IContext {
      * @param {boolean} [force]
      * If `true`, applies a no-cache policy before issuing the redirect.
      *
-     * @returns {IContext}
-     * The current context instance for method chaining.
+     * @returns {void}
      */
-    redirect(url: string, force?: boolean): IContext;
+    redirect(url: string, force?: boolean): void;
     /**
      * Internally transfers the current request to another route or handler.
      *
@@ -270,7 +269,7 @@ export declare class Context implements IContext {
     addError(err: NodeJS.ErrnoException | Error): void;
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
-    redirect(url: string, force?: boolean): IContext;
+    redirect(url: string, force?: boolean): void;
     write(chunk: Buffer | string | number | boolean | {
         [key: string]: any;
     }): void;

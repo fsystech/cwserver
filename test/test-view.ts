@@ -844,7 +844,8 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 				return ctx.next(401, true);
 			}
 
-			ctx.signOut().redirect("/", true).next(302, true);
+			ctx.signOut().redirect("/", true);
+			ctx.next(302, true);
 		})
 		.any('/redirect', async (ctx: IContext, requestParam?: IRequestParam) => {
 			return ctx.redirect("/", true), ctx.next(302, false);

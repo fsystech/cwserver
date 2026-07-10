@@ -153,10 +153,9 @@ export interface IContext {
      * @param {boolean} [force]
      * If `true`, applies a no-cache policy before issuing the redirect.
      *
-     * @returns {IContext}
-     * The current context instance for method chaining.
+     * @returns {void}
      */
-    redirect(url: string, force?: boolean): IContext;
+    redirect(url: string, force?: boolean): void;
 
     /**
      * Internally transfers the current request to another route or handler.
@@ -373,11 +372,10 @@ export class Context implements IContext {
         // Nothing to do, context destroyed or response header already been sent
     }
 
-    public redirect(url: string, force?: boolean): IContext {
+    public redirect(url: string, force?: boolean): void {
         if (!this._isDisposed) {
             this._res.status(302).redirect(url, force);
         }
-        return this;
     }
 
     public write(chunk: Buffer | string | number | boolean | { [key: string]: any }): void {

@@ -92,7 +92,6 @@ class Context {
         if (!this._isDisposed) {
             this._res.status(302).redirect(url, force);
         }
-        return this;
     }
     write(chunk) {
         if (!this._isDisposed) {
