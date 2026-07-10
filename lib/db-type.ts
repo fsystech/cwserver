@@ -56,6 +56,7 @@ export interface ICwDatabaseType {
         next: (resp: IoResult) => void
     ): void;
     executeQuary(queryText: string, values: any[], next: (result: NodeJS.Dict<any>) => void): void;
+    executeQuaryAsync(queryText: string, values: any[]): Promise<NodeJS.Dict<any>>;
     executeIoAsync(sp: string, ctx: string, formObj: string): Promise<IoResult>;
     query<R extends QueryResultRow = any>(
         queryText: string,
