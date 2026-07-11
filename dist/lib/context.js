@@ -88,6 +88,11 @@ class Context {
         }
         // Nothing to do, context destroyed or response header already been sent
     }
+    json(body) {
+        if (this._isDisposed)
+            return;
+        this._res.json(body, this._req.acceptEncoding());
+    }
     redirect(url, force) {
         if (!this._isDisposed) {
             this._res.status(302).redirect(url, force);

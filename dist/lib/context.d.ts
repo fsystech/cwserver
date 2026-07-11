@@ -149,6 +149,18 @@ export interface IContext {
         [key: string]: any;
     }): void;
     /**
+     * Sends a JSON response to the client.
+     *
+     * @remarks
+     * The response is automatically compressed using the best algorithm
+     * accepted by the client, as determined by
+     * {@link Request.acceptEncoding}. If this context has already been
+     * disposed, the call is ignored.
+     *
+     * @param body - The JSON-serializable object to send in the response.
+     */
+    json(body: Record<string, any>): void;
+    /**
      * Records an error for the current request context.
      *
      * The error is forwarded to the server's error handling pipeline for
@@ -269,6 +281,7 @@ export declare class Context implements IContext {
     addError(err: NodeJS.ErrnoException | Error): void;
     transferError(err: NodeJS.ErrnoException | Error): void;
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
+    json(body: Record<string, any>): void;
     redirect(url: string, force?: boolean): void;
     write(chunk: Buffer | string | number | boolean | {
         [key: string]: any;

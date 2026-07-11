@@ -190,6 +190,19 @@ export interface IContext {
     write(chunk: Buffer | string | number | boolean | { [key: string]: any }): void;
 
     /**
+     * Sends a JSON response to the client.
+     *
+     * @remarks
+     * The response is automatically compressed using the best algorithm
+     * accepted by the client, as determined by
+     * {@link Request.acceptEncoding}. If this context has already been
+     * disposed, the call is ignored.
+     *
+     * @param body - The JSON-serializable object to send in the response.
+     */
+    json(body: Record<string, any>): void;
+
+    /**
      * Records an error for the current request context.
      *
      * The error is forwarded to the server's error handling pipeline for
@@ -370,6 +383,15 @@ export class Context implements IContext {
             }
         }
         // Nothing to do, context destroyed or response header already been sent
+    }
+
+    public json(body: Record<string, any>): void {
+        if (this._isDisposed)
+            return;
+
+        this._res.json(
+            body, this._req.acceptEncoding()
+        );
     }
 
     public redirect(url: string, force?: boolean): void {
