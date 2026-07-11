@@ -32,15 +32,34 @@ exports.injectPrototype = injectPrototype;
 // by rajib chy
 const node_url_1 = __importDefault(require("node:url"));
 const app_static_1 = require("./app-static");
+/**
+ * Parses an HTTP `Cookie` header into a dictionary of cookie names and values.
+ *
+ * @param cook - The cookie data. This may be:
+ * - A raw `Cookie` header string.
+ * - An array of cookie strings.
+ * - An existing cookie dictionary, which is returned unchanged.
+ * - `undefined`.
+ *
+ * @returns A dictionary of parsed cookies. Returns an empty object if
+ * `cook` is `undefined` or otherwise falsy.
+ */
 function parseCookie(cook) {
     if (!cook)
         return {};
+    if (typeof cook === 'object' && !Array.isArray(cook))
+        return cook;
     if (Array.isArray(cook))
         return getCook(cook);
-    if (cook instanceof Object)
-        return cook;
     return getCook(cook.split(';'));
 }
+/**
+ * Parses an array of cookie name-value pairs into a dictionary.
+ *
+ * @param cooks - An array of cookie strings in the form `"name=value"`.
+ * @returns A dictionary containing the parsed cookie names and values.
+ * Invalid entries that do not contain an equals sign (`=`) are ignored.
+ */
 function getCook(cooks) {
     const cookies = {};
     cooks.forEach((value) => {

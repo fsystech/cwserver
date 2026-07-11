@@ -85,6 +85,7 @@ const app_view_1 = require("./app-view");
 const context_1 = require("./context");
 const session_1 = require("./session");
 const default_headers_1 = __importDefault(require("./default-headers"));
+const app_bundler_1 = require("./app-bundler");
 function isDefined(a) {
     return a !== null && a !== undefined;
 }
@@ -810,16 +811,11 @@ function initilizeServer(appRoot, wwwName) {
                 });
             };
             if (_server.config.bundler && _server.config.bundler.enable) {
-                const { Bundler } = require("./app-bundler");
-                Bundler.Init(_app, _controller, _server);
+                app_bundler_1.Bundler.Init(_app, _controller, _server);
             }
             if (app_util_1.Util.isArrayLike(_server.config.views)) {
                 _server.config.views.forEach(path => _importLocalAssets(path));
             }
-            _app.prerequisites((req, res, next) => {
-                req.session = _server.parseSession(req.headers, req.cookies);
-                return next();
-            });
             _app.on("error", (req, res, err) => {
                 if (res.isAlive) {
                     const context = _process.createContext(req, res, res.sendIfError.bind(res));
@@ -833,13 +829,16 @@ function initilizeServer(appRoot, wwwName) {
             });
             yield app_view_1.AppView.initAsync(_app, _controller, _server);
             _controller.sort();
+            const hasHiddenDirectory = _server.config.hiddenDirectory.length > 0;
             _app.use((req, res, next) => __awaiter(this, void 0, void 0, function* () {
                 const context = _process.createContext(req, res, next);
                 const reqPath = req.path;
-                const isHidden = _server.config.hiddenDirectory.some(dir => reqPath.startsWith(dir));
-                if (isHidden) {
-                    _server.log.write(`Trying to access Hidden directory. Remote Address ${req.ip} Send 404 ${req.path}`);
-                    return _server.transferRequest(context, 404);
+                if (hasHiddenDirectory) {
+                    const isHidden = _server.config.hiddenDirectory.some(dir => reqPath.startsWith(dir));
+                    if (isHidden) {
+                        _server.log.write(`Trying to access Hidden directory. Remote Address ${req.ip} Send 404 ${req.path}`);
+                        return _server.transferRequest(context, 404);
+                    }
                 }
                 if (reqPath.includes("$root") || reqPath.includes("$public")) {
                     _server.log.write(`Trying to access directly reserved keyword ($root | $public). Remote Address ${req.ip} Send 404 ${req.path}`);

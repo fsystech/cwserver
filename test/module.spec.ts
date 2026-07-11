@@ -2944,7 +2944,7 @@ describe("cwserver-schema-validator", () => {
                 "nsession": []
             }, true);
         })();
-        const config: NodeJS.Dict<any> | void = fsw.readJsonSync<any>(appUtility.server.mapPath("/config/app.config.json"));
+        const config: Record<string, any> | void = fsw.readJsonSync<any>(appUtility.server.mapPath("/config/app.config.json"));
         expect(config).toBeInstanceOf(Object);
         if (!config) throw new Error("unreachable...");
         const $schema = config.$schema;

@@ -21,6 +21,21 @@ declare global {
              * Default: `65536` (64 KiB)
              */
             DEFAULT_MAX_MEMORY_COMPRESS_SIZE?: string;
+            /**
+             * Specifies the default content compression algorithm for server responses.
+             *
+             * @remarks
+             * The server negotiates the response compression using the client's
+             * `Accept-Encoding` header. This value defines the server's preferred
+             * algorithm when multiple supported algorithms are available.
+             *
+             * Can be configured using the `DEFAULT_CONTENT_COMPRESSION`
+             * environment variable (`process.env.DEFAULT_CONTENT_COMPRESSION`).
+             *
+             * @default 'gzip'
+             * @type {'gzip' | 'br' | 'zstd'}
+             */
+            DEFAULT_CONTENT_COMPRESSION?: 'gzip' | 'br' | 'zstd';
         }
         interface Process {
             /**
@@ -50,4 +65,15 @@ declare global {
      */
     function _importLocalAssets(path: string): any;
 }
+/**
+ * Supported HTTP response compression algorithms.
+ *
+ * - `"GZIP"` - Widely supported compression format offering an excellent
+ *   balance between compression ratio and performance.
+ * - `"BROTLI"` - Modern compression algorithm that typically produces
+ *   smaller payloads than GZIP, especially for text-based content.
+ * - `"ZSTD"` - Zstandard compression algorithm designed to provide high
+ *   compression ratios with very fast compression and decompression speeds.
+ */
+export type CompressionType = "gzip" | "br" | "zstd";
 export {};

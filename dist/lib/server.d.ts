@@ -53,7 +53,7 @@ export interface IServerConfig {
     defaultDoc: string[];
     defaultExt: string;
     views: string[];
-    errorPage: NodeJS.Dict<string>;
+    errorPage: Record<string, string>;
     hiddenDirectory: string[];
     hostInfo: {
         origin: string[];
@@ -61,7 +61,7 @@ export interface IServerConfig {
         hostName: string;
         frameAncestors?: string;
         tls: boolean;
-        cert: NodeJS.Dict<string>;
+        cert: Record<string, string>;
         port: string | number;
     };
     database?: IDatabaseConfig[];
@@ -106,7 +106,7 @@ export interface ICwServer {
     /** Encryption utilities used by the server. */
     readonly encryption: IServerEncryption;
     /** Database connections managed by the server. */
-    readonly db: NodeJS.Dict<ICwDatabaseType>;
+    readonly db: Record<string, ICwDatabaseType>;
     /** The port number on which the server runs. */
     readonly port: string | number;
     /**
@@ -151,9 +151,9 @@ export interface ICwServer {
     getAppConfigName(): string;
     /**
      * Applies the provided configuration settings.
-     * @param {NodeJS.Dict<any>} config - Configuration object.
+     * @param {Record<string, any>} config - Configuration object.
      */
-    implimentConfig(config: NodeJS.Dict<any>): void;
+    implimentConfig(config: Record<string, any>): void;
     /**
      * Sets default security-related HTTP headers.
      * @param {IResponse} res - The response object.
@@ -294,9 +294,9 @@ export interface ICwServer {
     /**
      * Creates and returns a new Vim context object.
      *
-     * @returns {NodeJS.Dict<any>} A newly created Vim context as a dictionary-like object.
+     * @returns {Record<string, any>} A newly created Vim context as a dictionary-like object.
      */
-    createVimContext(): NodeJS.Dict<any>;
+    createVimContext(): Record<string, any>;
     /**
      * Registers an event listener for server events.
      * @param {'shutdown'} ev - The event name.
@@ -333,7 +333,7 @@ export declare class ServerConfig implements IServerConfig {
     defaultDoc: string[];
     defaultExt: string;
     views: string[];
-    errorPage: NodeJS.Dict<string>;
+    errorPage: Record<string, string>;
     hiddenDirectory: string[];
     hostInfo: {
         origin: string[];
@@ -341,7 +341,7 @@ export declare class ServerConfig implements IServerConfig {
         hostName: string;
         frameAncestors?: string;
         tls: boolean;
-        cert: NodeJS.Dict<string>;
+        cert: Record<string, string>;
         port: string | number;
     };
     database?: IDatabaseConfig[];
@@ -377,7 +377,7 @@ export declare class ServerConfig implements IServerConfig {
 export declare class SessionSecurity {
     constructor();
     static getRemoteAddress(ip: string): string;
-    static createSession(req: IRequest, sessionObj: NodeJS.Dict<any>): string;
+    static createSession(req: IRequest, sessionObj: Record<string, any>): string;
     static isValidSession(req: IRequest): void;
 }
 export declare class CwServer implements ICwServer {
@@ -400,13 +400,13 @@ export declare class CwServer implements ICwServer {
     get public(): string;
     get log(): ILogger;
     get port(): string | number;
-    get db(): NodeJS.Dict<ICwDatabaseType>;
+    get db(): Record<string, ICwDatabaseType>;
     get encryption(): IServerEncryption;
     get errorPage(): {
         [x: string]: string;
     };
     constructor(appRoot: string, wwwName?: string);
-    createVimContext(): NodeJS.Dict<any>;
+    createVimContext(): Record<string, any>;
     updateEncryption(serverEnc?: IServerEncryption): void;
     on: (ev: "shutdown", handler: () => void) => void;
     addVirtualDir: (route: string, root: string, evt?: (ctx: IContext) => void) => void;
@@ -421,7 +421,7 @@ export declare class CwServer implements ICwServer {
     getPublic(): string;
     getPublicDirName(): string;
     init(): void;
-    implimentConfig(config: NodeJS.Dict<any>): void;
+    implimentConfig(config: Record<string, any>): void;
     createLogger(): void;
     initilize(): void;
     copyright(): string;

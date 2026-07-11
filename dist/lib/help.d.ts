@@ -1,8 +1,20 @@
 import { UrlWithParsedQuery } from 'node:url';
 import type { IRequest } from './request';
+/**
+ * Parses an HTTP `Cookie` header into a dictionary of cookie names and values.
+ *
+ * @param cook - The cookie data. This may be:
+ * - A raw `Cookie` header string.
+ * - An array of cookie strings.
+ * - An existing cookie dictionary, which is returned unchanged.
+ * - `undefined`.
+ *
+ * @returns A dictionary of parsed cookies. Returns an empty object if
+ * `cook` is `undefined` or otherwise falsy.
+ */
 export declare function parseCookie(cook: undefined | string[] | string | {
     [x: string]: any;
-}): NodeJS.Dict<string>;
+}): Record<string, string>;
 export declare function escapePath(unsafe?: string | null): string;
 export declare function parseUrl(url?: string): UrlWithParsedQuery;
 /**

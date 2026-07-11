@@ -32,7 +32,7 @@ export interface ISession {
     /**
      * A dictionary for storing arbitrary session-related data.
      */
-    readonly data: NodeJS.Dict<any>;
+    readonly data: Record<string, any>;
     /**
      * Checks if the user has a specific role.
      *
@@ -63,7 +63,7 @@ export declare class Session implements ISession {
     /**
      * Retrieves additional user data.
      */
-    get userData(): NodeJS.Dict<any>;
+    get userData(): Record<string, any>;
     /**
      * Retrieves the user's IP segment.
      */
@@ -81,7 +81,7 @@ export declare class Session implements ISession {
         loginId: string;
         roleId: string;
         isAuthenticated: boolean;
-        userData: NodeJS.Dict<any>;
+        userData: Record<string, any>;
         roles: Set<string>;
     };
     /**
@@ -98,7 +98,7 @@ export declare class Session implements ISession {
      * @param {Function} parseData - A function that processes the data and returns a dictionary.
      * @param {string} [prop] - An optional property name to apply the parsing function to. If not provided, `userData` is used.
      */
-    parseUserData(parseData: (data: any) => NodeJS.Dict<any>, prop?: string): void;
+    parseUserData(parseData: (data: any) => Record<string, any>, prop?: string): void;
     /**
      * Converts the session data to a JSON string.
      *
@@ -154,7 +154,7 @@ export declare class Session implements ISession {
      * @param {string} key
      * The session data key to update.
      *
-     * @param {NodeJS.Dict<any>} obj
+     * @param {Record<string, any>} obj
      * The object value to store for the specified key.
      *
      * @throws {Error}
@@ -163,7 +163,7 @@ export declare class Session implements ISession {
      * @returns {void}
      * Does not return a value.
      */
-    updateData(key: string, obj: NodeJS.Dict<any>): void;
+    updateData(key: string, obj: Record<string, any>): void;
     /**
      * Clears the session data, effectively resetting the session.
      */

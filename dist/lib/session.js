@@ -211,7 +211,7 @@ class Session {
      * @param {string} key
      * The session data key to update.
      *
-     * @param {NodeJS.Dict<any>} obj
+     * @param {Record<string, any>} obj
      * The object value to store for the specified key.
      *
      * @throws {Error}

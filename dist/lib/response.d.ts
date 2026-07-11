@@ -1,6 +1,7 @@
 import { OutgoingHttpHeaders, ServerResponse } from 'node:http';
 import { type IResInfo } from './app-static';
 import type { IContext } from './context';
+import type { CompressionType } from './app-global';
 type CookieOptions = {
     maxAge?: number;
     signed?: boolean;
@@ -13,17 +14,6 @@ type CookieOptions = {
     encode?: (val: string) => string;
     sameSite?: boolean | 'lax' | 'strict' | 'none';
 };
-/**
- * Supported HTTP response compression algorithms.
- *
- * - `"GZIP"` - Widely supported compression format offering an excellent
- *   balance between compression ratio and performance.
- * - `"BROTLI"` - Modern compression algorithm that typically produces
- *   smaller payloads than GZIP, especially for text-based content.
- * - `"ZSTD"` - Zstandard compression algorithm designed to provide high
- *   compression ratios with very fast compression and decompression speeds.
- */
-export type CompressionType = "GZIP" | "BROTLI" | "ZSTD";
 export interface IResponse extends ServerResponse {
     /**
      * Indicates whether the underlying connection is still active and capable
@@ -56,12 +46,12 @@ export interface IResponse extends ServerResponse {
      *
      * If compression is not applied, the JSON payload is sent uncompressed.
      *
-     * @param {NodeJS.Dict<any>} body - The object to serialize as JSON.
+     * @param {Record<string, any>} body - The object to serialize as JSON.
      * @param {CompressionType} [compress] - The compression algorithm to use.
      * @param {(error: Error) => void} [next] - Invoked if a compression error occurs.
      * @returns {void}
      */
-    json(body: NodeJS.Dict<any>, compress?: CompressionType, next?: (error: Error) => void): void;
+    json(body: Record<string, any>, compress?: CompressionType, next?: (error: Error) => void): void;
     /**
      * Sends arbitrary data as the HTTP response, optionally compressing it
      * before transmission.
@@ -340,7 +330,7 @@ export declare class Response extends ServerResponse implements IResponse {
     redirect(url: string, force?: boolean): void;
     cookie(name: string, val: string, options: CookieOptions): IResponse;
     sendIfError(err?: any): boolean;
-    json(body: NodeJS.Dict<any>, compress?: CompressionType, next?: (error: Error) => void): void;
+    json(body: Record<string, any>, compress?: CompressionType, next?: (error: Error) => void): void;
     compress(data: string | Buffer, contentType: string, compress?: CompressionType, next?: (error: Error) => void): void;
     /**
      * Compresses the specified response payload when enabled and the payload

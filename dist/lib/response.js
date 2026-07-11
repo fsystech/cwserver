@@ -297,14 +297,14 @@ class Response extends node_http_1.ServerResponse {
             this.status(200, getCommonHeader(_mimeType.getMimeType(contentType), contentLength)).end(buffer);
             return;
         }
-        if (!(compress === 'GZIP' || compress === "BROTLI")) {
+        if (!(compress === 'gzip' || compress === "br")) {
             throw new Error(`This compression type "${compress}" not supported.`);
         }
         if (contentLength <= DEFAULT_MAX_MEMORY_COMPRESS_SIZE) {
             return this._memoryCompress(buffer, contentType, compress, next);
         }
         this.status(200, getCommonHeader(_mimeType.getMimeType(contentType), null, compress));
-        const compressor = compress === "GZIP"
+        const compressor = compress === "gzip"
             ? _zlib.createGzip(GZIP_OPTIONS)
             : _zlib.createBrotliCompress(BROTLI_OPTIONS);
         (0, node_stream_2.pipeline)(node_stream_1.Readable.from([buffer]), compressor, this, (error) => this._onCompressionError(error, next));
@@ -355,7 +355,7 @@ class Response extends node_http_1.ServerResponse {
      * @returns {void}
      */
     _memoryCompress(buffer, contentType, compress, next) {
-        if (compress === 'GZIP') {
+        if (compress === 'gzip') {
             return _zlib.gzip(buffer, GZIP_OPTIONS, (error, compressed) => this._onCompress(contentType, compressed, compress, next, error));
         }
         return _zlib.brotliCompress(buffer, BROTLI_OPTIONS, (error, compressed) => this._onCompress(contentType, compressed, compress, next, error));
@@ -427,27 +427,9 @@ function getCommonHeader(contentType, contentLength, compress) {
         header['Content-Length'] = contentLength;
     }
     if (compress) {
-        header['Content-Encoding'] = toContentEncoding(compress);
+        header['Content-Encoding'] = compress;
     }
     return header;
-}
-/**
- * Converts a compression type to its corresponding HTTP
- * `Content-Encoding` header value.
- *
- * @param {CompressionType} compressType
- * The compression algorithm.
- *
- * @returns {"gzip" | "br" | "zstd"}
- * The HTTP `Content-Encoding` value corresponding to the specified
- * compression type.
- */
-function toContentEncoding(compressType) {
-    if (compressType === "GZIP")
-        return "gzip";
-    if (compressType === "BROTLI")
-        return "br";
-    return "zstd";
 }
 /**
  * Creates the value of a `Set-Cookie` response header.

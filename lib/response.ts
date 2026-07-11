@@ -33,6 +33,7 @@ import type { IContext } from './context';
 import { Template } from './app-template';
 import { Util } from './app-util';
 import * as _mimeType from './http-mime-types';
+import type { CompressionType } from './app-global';
 
 type CookieOptions = {
     maxAge?: number;
@@ -46,21 +47,6 @@ type CookieOptions = {
     encode?: (val: string) => string;
     sameSite?: boolean | 'lax' | 'strict' | 'none';
 }
-
-/**
- * Supported HTTP response compression algorithms.
- *
- * - `"GZIP"` - Widely supported compression format offering an excellent
- *   balance between compression ratio and performance.
- * - `"BROTLI"` - Modern compression algorithm that typically produces
- *   smaller payloads than GZIP, especially for text-based content.
- * - `"ZSTD"` - Zstandard compression algorithm designed to provide high
- *   compression ratios with very fast compression and decompression speeds.
- */
-export type CompressionType =
-    | "GZIP"
-    | "BROTLI"
-    | "ZSTD";
 
 export interface IResponse extends ServerResponse {
     /**
@@ -97,12 +83,12 @@ export interface IResponse extends ServerResponse {
      *
      * If compression is not applied, the JSON payload is sent uncompressed.
      *
-     * @param {NodeJS.Dict<any>} body - The object to serialize as JSON.
+     * @param {Record<string, any>} body - The object to serialize as JSON.
      * @param {CompressionType} [compress] - The compression algorithm to use.
      * @param {(error: Error) => void} [next] - Invoked if a compression error occurs.
      * @returns {void}
      */
-    json(body: NodeJS.Dict<any>, compress?: CompressionType, next?: (error: Error) => void): void;
+    json(body: Record<string, any>, compress?: CompressionType, next?: (error: Error) => void): void;
 
     /**
      * Sends arbitrary data as the HTTP response, optionally compressing it
@@ -663,7 +649,7 @@ export class Response extends ServerResponse implements IResponse {
     }
 
     public json(
-        body: NodeJS.Dict<any>,
+        body: Record<string, any>,
         compress?: CompressionType,
         next?: (error: Error) => void
     ): void {
@@ -736,7 +722,7 @@ export class Response extends ServerResponse implements IResponse {
             return;
         }
 
-        if (!(compress === 'GZIP' || compress === "BROTLI")) {
+        if (!(compress === 'gzip' || compress === "br")) {
             throw new Error(`This compression type "${compress}" not supported.`)
         }
 
@@ -753,7 +739,7 @@ export class Response extends ServerResponse implements IResponse {
         ));
 
         const compressor
-            = compress === "GZIP"
+            = compress === "gzip"
                 ? _zlib.createGzip(GZIP_OPTIONS)
                 : _zlib.createBrotliCompress(BROTLI_OPTIONS)
             ;
@@ -828,7 +814,7 @@ export class Response extends ServerResponse implements IResponse {
         next?: (err: Error) => void
     ): void {
 
-        if (compress === 'GZIP') {
+        if (compress === 'gzip') {
 
             return _zlib.gzip(
                 buffer, GZIP_OPTIONS,
@@ -935,31 +921,10 @@ function getCommonHeader(
     }
 
     if (compress) {
-        header['Content-Encoding'] = toContentEncoding(compress);
+        header['Content-Encoding'] = compress;
     }
 
     return header;
-}
-
-/**
- * Converts a compression type to its corresponding HTTP
- * `Content-Encoding` header value.
- *
- * @param {CompressionType} compressType
- * The compression algorithm.
- *
- * @returns {"gzip" | "br" | "zstd"}
- * The HTTP `Content-Encoding` value corresponding to the specified
- * compression type.
- */
-function toContentEncoding(compressType: CompressionType): "gzip" | "br" | "zstd" {
-    if (compressType === "GZIP")
-        return "gzip";
-
-    if (compressType === "BROTLI")
-        return "br";
-
-    return "zstd";
 }
 
 /**

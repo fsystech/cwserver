@@ -61,7 +61,7 @@ export interface ISession {
     /**
      * A dictionary for storing arbitrary session-related data.
      */
-    readonly data: NodeJS.Dict<any>;
+    readonly data: Record<string, any>;
 
     /**
      * Checks if the user has a specific role.
@@ -138,7 +138,7 @@ export class Session implements ISession {
         loginId: string;
         roleId: string;
         isAuthenticated: boolean;
-        userData: NodeJS.Dict<any>;
+        userData: Record<string, any>;
         roles: Set<string>;
     };
 
@@ -163,7 +163,7 @@ export class Session implements ISession {
      * @param {string} [prop] - An optional property name to apply the parsing function to. If not provided, `userData` is used.
      */
     public parseUserData(
-        parseData: (data: any) => NodeJS.Dict<any>, prop?: string
+        parseData: (data: any) => Record<string, any>, prop?: string
     ): void {
 
         if (prop) {
@@ -297,7 +297,7 @@ export class Session implements ISession {
      * @param {string} key
      * The session data key to update.
      *
-     * @param {NodeJS.Dict<any>} obj
+     * @param {Record<string, any>} obj
      * The object value to store for the specified key.
      *
      * @throws {Error}
@@ -306,7 +306,7 @@ export class Session implements ISession {
      * @returns {void}
      * Does not return a value.
      */
-    public updateData(key: string, obj: NodeJS.Dict<any>): void {
+    public updateData(key: string, obj: Record<string, any>): void {
         if (key === 'roles' || key === 'roleId') {
             throw new Error(
                 `Direct update for '${key}' is not supported. Use Session.updateRoleId instead.`

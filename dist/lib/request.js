@@ -18,6 +18,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Request = void 0;
 // 4:03 PM 2/7/2026
@@ -27,6 +28,13 @@ const app_static_1 = require("./app-static");
 const app_util_1 = require("./app-util");
 const help_1 = require("./help");
 const MOBILE_RE = /mobile/i;
+/**
+ * The server's preferred response compression algorithm.
+ *
+ * This value is read from the `DEFAULT_CONTENT_COMPRESSION` environment
+ * variable and defaults to `"gzip"` when not specified.
+ */
+const _DEFAULT_CONTENT_COMPRESSION = (_a = process.env.DEFAULT_CONTENT_COMPRESSION) !== null && _a !== void 0 ? _a : "gzip";
 class Request extends node_http_1.IncomingMessage {
     get isMobile() {
         if (this._isMobile !== undefined)
@@ -91,11 +99,50 @@ class Request extends node_http_1.IncomingMessage {
     get query() {
         return this.q.query;
     }
+    /**
+     * Retrieves the value of an HTTP request header.
+     *
+     * @param name - The header name. Header names are matched using Node.js'
+     * normalized lowercase keys (for example, `"content-type"` or
+     * `"accept-encoding"`).
+     * @returns The header value as a string, or `undefined` if the header is not present.
+     */
     get(name) {
         const val = this.headers[name];
         if (val !== undefined) {
             return String(val);
         }
+    }
+    /**
+     * Returns the most suitable compression algorithm supported by the client.
+     *
+     * @remarks
+     * The client's `Accept-Encoding` header is evaluated in the following order:
+     *
+     * 1. The server's preferred compression algorithm (`_DEFAULT_CONTENT_COMPRESSION`), if accepted.
+     * 2. Brotli (`br`).
+     * 3. Gzip (`gzip`).
+     *
+     * If none of the supported algorithms are accepted, or the
+     * `Accept-Encoding` header is not present, `null` is returned.
+     *
+     * @returns The selected compression algorithm, or `null` if no supported
+     * compression algorithm is accepted by the client.
+     */
+    acceptEncoding() {
+        const encoding = this.get('accept-encoding');
+        if (!encoding)
+            return null;
+        // Check if the client supports our explicitly preferred server default first
+        if (encoding.includes(_DEFAULT_CONTENT_COMPRESSION))
+            return _DEFAULT_CONTENT_COMPRESSION;
+        if (encoding.includes('br'))
+            return 'br';
+        // Strict fallback ladder if the server default isn't matched
+        if (encoding.includes('gzip'))
+            return 'gzip';
+        // zstd not supported write now. will be implement
+        return null;
     }
     setSocketNoDelay(noDelay) {
         if (this.socket) {

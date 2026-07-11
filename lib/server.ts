@@ -46,6 +46,7 @@ import { AppView } from "./app-view";
 import { _ctxManager, type IContext } from "./context";
 import { Session, type ISession } from "./session";
 import defaultHeaders from "./default-headers";
+import { Bundler } from "./app-bundler";
 
 export type AppHandler = (
     ctx: IContext, requestParam?: IRequestParam
@@ -94,7 +95,7 @@ export interface IServerConfig {
     defaultDoc: string[];
     defaultExt: string;
     views: string[];
-    errorPage: NodeJS.Dict<string>;
+    errorPage: Record<string, string>;
     hiddenDirectory: string[];
     hostInfo: {
         origin: string[];
@@ -102,7 +103,7 @@ export interface IServerConfig {
         hostName: string;
         frameAncestors?: string;
         tls: boolean;
-        cert: NodeJS.Dict<string>;
+        cert: Record<string, string>;
         port: string | number
     };
     database?: IDatabaseConfig[];
@@ -150,7 +151,7 @@ export interface ICwServer {
     readonly encryption: IServerEncryption;
 
     /** Database connections managed by the server. */
-    readonly db: NodeJS.Dict<ICwDatabaseType>;
+    readonly db: Record<string, ICwDatabaseType>;
 
     /** The port number on which the server runs. */
     readonly port: string | number;
@@ -204,9 +205,9 @@ export interface ICwServer {
 
     /**
      * Applies the provided configuration settings.
-     * @param {NodeJS.Dict<any>} config - Configuration object.
+     * @param {Record<string, any>} config - Configuration object.
      */
-    implimentConfig(config: NodeJS.Dict<any>): void;
+    implimentConfig(config: Record<string, any>): void;
 
     /**
      * Sets default security-related HTTP headers.
@@ -363,9 +364,9 @@ export interface ICwServer {
     /**
      * Creates and returns a new Vim context object.
      *
-     * @returns {NodeJS.Dict<any>} A newly created Vim context as a dictionary-like object.
+     * @returns {Record<string, any>} A newly created Vim context as a dictionary-like object.
      */
-    createVimContext(): NodeJS.Dict<any>;
+    createVimContext(): Record<string, any>;
 
     /**
      * Registers an event listener for server events.
@@ -509,7 +510,7 @@ export class ServerConfig implements IServerConfig {
     defaultDoc: string[];
     defaultExt: string;
     views: string[];
-    errorPage: NodeJS.Dict<string>;
+    errorPage: Record<string, string>;
     hiddenDirectory: string[];
     hostInfo: {
         origin: string[];
@@ -517,7 +518,7 @@ export class ServerConfig implements IServerConfig {
         hostName: string;
         frameAncestors?: string;
         tls: boolean;
-        cert: NodeJS.Dict<string>;
+        cert: Record<string, string>;
         port: string | number;
     };
     database?: IDatabaseConfig[];
@@ -617,7 +618,7 @@ export class SessionSecurity {
         }
         return ipPart;
     }
-    public static createSession(req: IRequest, sessionObj: NodeJS.Dict<any>): string {
+    public static createSession(req: IRequest, sessionObj: Record<string, any>): string {
         sessionObj.ipPart = this.getRemoteAddress(req.ip);
         return Util.JSON.stringify(sessionObj);
     }
@@ -643,7 +644,7 @@ export class CwServer implements ICwServer {
     private _userInteractive: boolean;
     private _encryption: IServerEncryption;
     private _isInitialized: boolean = false;
-    private _db: NodeJS.Dict<ICwDatabaseType>;
+    private _db: Record<string, ICwDatabaseType>;
     private _errorPage: { [x: string]: string; };
     public get version() {
         return appVersion;
@@ -663,7 +664,7 @@ export class CwServer implements ICwServer {
     public get port(): string | number {
         return this._port;
     }
-    public get db(): NodeJS.Dict<ICwDatabaseType> {
+    public get db(): Record<string, ICwDatabaseType> {
         return this._db;
     }
     public get encryption(): IServerEncryption {
@@ -820,7 +821,7 @@ export class CwServer implements ICwServer {
         this._log = new ShadowLogger();
     }
 
-    public createVimContext(): NodeJS.Dict<any> {
+    public createVimContext(): Record<string, any> {
         return {};
     }
 
@@ -870,7 +871,7 @@ export class CwServer implements ICwServer {
         this._isInitialized = true;
     }
 
-    public implimentConfig(config: NodeJS.Dict<any>): void {
+    public implimentConfig(config: Record<string, any>): void {
 
         if (typeof this._config.bundler.reValidate !== "boolean") {
             this._config.bundler.reValidate = true;
@@ -1603,7 +1604,6 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         };
 
         if (_server.config.bundler && _server.config.bundler.enable) {
-            const { Bundler } = require("./app-bundler");
             Bundler.Init(_app, _controller, _server);
         }
 
@@ -1612,11 +1612,6 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 path => _importLocalAssets(path)
             );
         }
-
-        _app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
-            req.session = _server.parseSession(req.headers, req.cookies);
-            return next();
-        });
 
         _app.on("error", (req: IRequest, res: IResponse, err?: number | Error): void => {
 
@@ -1640,6 +1635,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
         _controller.sort();
 
+        const hasHiddenDirectory = _server.config.hiddenDirectory.length > 0;
 
         _app.use(async (req: IRequest, res: IResponse, next: NextFunction) => {
             const context = _process.createContext(
@@ -1648,16 +1644,20 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
             const reqPath = req.path;
 
-            const isHidden = _server.config.hiddenDirectory.some(
-                dir => reqPath.startsWith(dir)
-            );
+            if (hasHiddenDirectory) {
 
-            if (isHidden) {
-                _server.log.write(
-                    `Trying to access Hidden directory. Remote Address ${req.ip} Send 404 ${req.path}`
+                const isHidden = _server.config.hiddenDirectory.some(
+                    dir => reqPath.startsWith(dir)
                 );
 
-                return _server.transferRequest(context, 404);
+                if (isHidden) {
+                    _server.log.write(
+                        `Trying to access Hidden directory. Remote Address ${req.ip} Send 404 ${req.path}`
+                    );
+
+                    return _server.transferRequest(context, 404);
+                }
+
             }
 
             if (reqPath.includes("$root") || reqPath.includes("$public")) {

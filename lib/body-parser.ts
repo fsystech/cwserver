@@ -67,7 +67,7 @@ export interface IBodyParser extends IDispose {
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync(next: (file: IPostedFileInfo) => void): void;
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
-    getJson(): NodeJS.Dict<any>;
+    getJson(): Record<string, any>;
     getData(): string;
     parse(onReadEnd: (err?: Error) => void): void;
     parseSync(): Promise<void>;
@@ -105,8 +105,8 @@ function decode(str: string): string {
     return decodeURIComponent(str.replace(/\+/g, ' '));
 }
 
-export function decodeBodyBuffer(buff: Buffer): NodeJS.Dict<string> {
-    const outObj: NodeJS.Dict<string> = {};
+export function decodeBodyBuffer(buff: Buffer): Record<string, string> {
+    const outObj: Record<string, string> = {};
     const decoder: TextDecoder = new TextDecoder('utf-8');
     const params = new URLSearchParams(decoder.decode(buff));
     for (const [key, value] of params.entries()) {
@@ -278,7 +278,7 @@ class BodyParser implements IBodyParser {
         return forward();
     }
 
-    public getJson(): NodeJS.Dict<any> {
+    public getJson(): Record<string, any> {
         this.isValidRequest();
 
         if (this._contentTypeEnum === ContentType.APP_JSON) {
@@ -380,7 +380,9 @@ class BodyParser implements IBodyParser {
     public parse(onReadEnd: (err?: Error) => void): void {
 
         if (!this.isValidRequest()) {
-            return process.nextTick(() => onReadEnd(new Error("Invalid request defiend....")));
+            return process.nextTick(() => onReadEnd(
+                new Error("Invalid request defiend....")
+            ));
         }
 
         if (
@@ -389,7 +391,9 @@ class BodyParser implements IBodyParser {
             this._contentTypeEnum === ContentType.RAW_TEXT
         ) {
             if (this._contentLength > this._maxBuffLength) {
-                return process.nextTick(() => onReadEnd(new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`)));
+                return process.nextTick(() => onReadEnd(
+                    new Error(`Max buff length max:${this._maxBuffLength} > req:${this._contentLength} exceed for contentent type ${this._contentType}`))
+                );
             }
         }
 

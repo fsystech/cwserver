@@ -25,16 +25,42 @@ import urlHelpers, { UrlWithParsedQuery } from 'node:url';
 import { toString } from './app-static';
 import type { IRequest } from './request';
 
+/**
+ * Parses an HTTP `Cookie` header into a dictionary of cookie names and values.
+ *
+ * @param cook - The cookie data. This may be:
+ * - A raw `Cookie` header string.
+ * - An array of cookie strings.
+ * - An existing cookie dictionary, which is returned unchanged.
+ * - `undefined`.
+ *
+ * @returns A dictionary of parsed cookies. Returns an empty object if
+ * `cook` is `undefined` or otherwise falsy.
+ */
 export function parseCookie(
     cook: undefined | string[] | string | { [x: string]: any; }
-): NodeJS.Dict<string> {
-    if (!cook) return {};
-    if (Array.isArray(cook)) return getCook(cook);
-    if (cook instanceof Object) return cook;
+): Record<string, string> {
+
+    if (!cook) return {} as Record<string, string>;
+
+    if (typeof cook === 'object' && !Array.isArray(cook))
+        return cook as Record<string, string>;
+
+
+    if (Array.isArray(cook))
+        return getCook(cook);
+
     return getCook(cook.split(';'));
 }
 
-function getCook(cooks: string[]): NodeJS.Dict<string> {
+/**
+ * Parses an array of cookie name-value pairs into a dictionary.
+ *
+ * @param cooks - An array of cookie strings in the form `"name=value"`.
+ * @returns A dictionary containing the parsed cookie names and values.
+ * Invalid entries that do not contain an equals sign (`=`) are ignored.
+ */
+function getCook(cooks: string[]): Record<string, string> {
     const cookies: { [x: string]: any; } = {};
     cooks.forEach((value) => {
         const index = value.indexOf('=');

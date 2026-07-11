@@ -259,7 +259,7 @@ class Bundlew {
                     });
                     return ctx.res.end(buffer.data), buffer.dispose();
                 }
-                return ctx.res.compress(buffer.data, cte === ContentType.JS ? "js" : 'css', "GZIP");
+                return ctx.res.compress(buffer.data, cte === ContentType.JS ? "js" : 'css', "gzip");
             }
             catch (ex) {
                 ctx.transferError(ex);

@@ -73,6 +73,10 @@ export async function shouldBeErrorAsync(
 
 expect(toString(1)).toEqual("1");
 registerView(async (app: IApplication, controller: IController, server: ICwServer) => {
+	app.prerequisites((req: IRequest, res: IResponse, next: NextFunction): void => {
+		req.session = server.parseSession(req.headers, req.cookies);
+		return next();
+	});
 	expect(shouldBeError(() => new SessionSecurity())).toBeInstanceOf(Error);
 	expect(SessionSecurity.getRemoteAddress("::1")).toEqual('127.0.0');
 	fsw.mkdirSync(server.config.staticFile.tempPath, "");
@@ -760,7 +764,9 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 						ctx.res.send(stringBigInt as any);
 					})).toBeInstanceOf(Error);
 
-					return ctx.res.json(typeof (data) === "string" ? JSON.parse(data) : data, "GZIP", (err) => {
+					expect(ctx.req.acceptEncoding()).toEqual("gzip");
+
+					return ctx.res.json(typeof (data) === "string" ? JSON.parse(data) : data, 'gzip', (err) => {
 
 						if (err) {
 							ctx.server.addError(ctx, err || "");
@@ -784,13 +790,13 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 				if (ctx.req.query.task === "gzip" || ctx.req.query.task === 'gzip-stream') {
 
 					ctx.res.json(
-						data, "GZIP"
+						data, "gzip"
 					);
 
 					if (ctx.req.query.task === 'gzip') {
 						// Connection Disconnected
 						ctx.res.json(
-							data, "GZIP"
+							data, "gzip"
 						);
 					}
 
@@ -804,14 +810,14 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 				}
 
 				ctx.res.json(
-					data, "BROTLI"
+					data, 'br'
 				);
 
 
 				if (ctx.req.query.task === 'brotli') {
 					expect(shouldBeError(() => {
 						ctx.res.json(
-							data, "ZSTD"
+							data, 'zstd'
 						);
 					})).toBeInstanceOf(Error);
 				}

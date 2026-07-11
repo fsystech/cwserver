@@ -32,7 +32,7 @@ export interface IBodyParser extends IDispose {
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync(next: (file: IPostedFileInfo) => void): void;
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
-    getJson(): NodeJS.Dict<any>;
+    getJson(): Record<string, any>;
     getData(): string;
     parse(onReadEnd: (err?: Error) => void): void;
     parseSync(): Promise<void>;
@@ -43,7 +43,7 @@ export interface IBodyParser extends IDispose {
     /** @deprecated since v2.0.3 - use `dispose` instead. */
     clear(): void;
 }
-export declare function decodeBodyBuffer(buff: Buffer): NodeJS.Dict<string>;
+export declare function decodeBodyBuffer(buff: Buffer): Record<string, string>;
 declare class BodyParser implements IBodyParser {
     private _contentType;
     private _contentTypeEnum;
@@ -70,7 +70,7 @@ declare class BodyParser implements IBodyParser {
     getUploadFileInfo(): UploadFileInfo[];
     getFilesSync(next: (file: IPostedFileInfo) => void): void;
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
-    getJson(): NodeJS.Dict<any>;
+    getJson(): Record<string, any>;
     getData(): string;
     readDataAsync(): Promise<void>;
     parseSync(): Promise<void>;

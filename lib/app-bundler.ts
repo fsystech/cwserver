@@ -342,7 +342,7 @@ class Bundlew {
             }
 
             return ctx.res.compress(
-                buffer.data, cte === ContentType.JS ? "js" : 'css', "GZIP"
+                buffer.data, cte === ContentType.JS ? "js" : 'css', "gzip"
             );
 
         } catch (ex: any) {

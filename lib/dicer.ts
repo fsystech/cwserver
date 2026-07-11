@@ -51,9 +51,9 @@ class HeaderParser extends EventEmitter {
     public maxHeaderPairs: number;
     private maxed: boolean = false;
     private finished: boolean = false;
-    public header: NodeJS.Dict<string[]> = {};
+    public header: Record<string, string[]> = {};
 
-    constructor(cfg: NodeJS.Dict<any>) {
+    constructor(cfg: Record<string, any>) {
         super();
 
         this.maxHeaderPairs = (cfg && typeof cfg.maxHeaderPairs === 'number'
@@ -302,7 +302,7 @@ export class Dicer extends WritableStream {
                 data = Buffer.from(
                     Uint8Array.prototype.slice.call(data, r)
                 );
-                
+
             } else {
                 return cb();
             }

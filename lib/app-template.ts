@@ -404,7 +404,7 @@ class TemplateParser {
 export class TemplateCore {
     public static compile(
         str: string | undefined, next: TemplateNextFunc,
-        vimCtx: NodeJS.Dict<any>
+        vimCtx: Record<string, any>
     ): void {
 
         if (!str) {
@@ -662,7 +662,7 @@ class TemplateLink {
                     });
                 });
             }
-            
+
             return _fs.readFile(cachePath, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
                 return ctx.handleError(err, (): void => {
                     const isScript: boolean = TemplateCore.isScriptTemplate(data);
