@@ -127,18 +127,18 @@ class Context {
         if (this._isDisposed)
             return;
         this._isDisposed = true;
-        delete this._next;
+        this._next = null;
         const id = this._req.id;
         this._res.dispose();
         this._req.dispose();
-        delete this._server;
-        delete this.path;
-        delete this._res;
-        delete this._req;
-        delete this.extension;
-        delete this.root;
-        delete this.servedFrom;
-        delete this.error;
+        this._server = null;
+        this.path = null;
+        this._res = null;
+        this._req = null;
+        this.extension = null;
+        this.root = null;
+        this.servedFrom = null;
+        this.error = null;
         return id;
     }
 }

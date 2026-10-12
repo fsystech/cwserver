@@ -150,12 +150,12 @@ class Request extends node_http_1.IncomingMessage {
         }
     }
     dispose() {
-        delete this._id;
-        delete this._q;
-        delete this._ip;
-        delete this._path;
-        delete this._cookies;
-        delete this._isLocal;
+        this._id = null;
+        this._q = null;
+        this._ip = null;
+        this._path = null;
+        this._cookies = null;
+        this._isLocal = null;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
             this.removeAllListeners();
             this.destroy();

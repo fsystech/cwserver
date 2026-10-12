@@ -13,6 +13,7 @@ export interface IDataParser extends IDispose {
     };
 }
 export declare class DataParser implements IDataParser {
+    private _isDisposed;
     private _files;
     private _body;
     private _multipartBody;

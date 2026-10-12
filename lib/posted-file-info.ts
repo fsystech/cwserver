@@ -131,7 +131,7 @@ export class PostedFileInfo implements IPostedFileInfo {
 
         _fs.copyFileSync(this._tempFile, absPath);
         _fs.unlinkSync(this._tempFile);
-        delete this._tempFile;
+        this._tempFile = null;
         this._isMoved = true;
     }
 
@@ -143,7 +143,7 @@ export class PostedFileInfo implements IPostedFileInfo {
             await fsw.moveFileAsync(this._tempFile, absPath);
         } catch { }
 
-        delete this._tempFile;
+        this._tempFile = null;
 
         this._isMoved = true;
     }
@@ -153,7 +153,7 @@ export class PostedFileInfo implements IPostedFileInfo {
             return;
 
         fsw.moveFile(this._tempFile, absPath, (err) => {
-            delete this._tempFile;
+            this._tempFile = null;
             this._isMoved = true;
             return next(err);
         });
@@ -170,9 +170,8 @@ export class PostedFileInfo implements IPostedFileInfo {
                 _fs.unlinkSync(this._tempFile);
         }
 
-        // @ts-ignore
-        delete this._fileInfo;
-        delete this._tempFile;
+        this._fileInfo = null;
+        this._tempFile = null;
     }
 
     public clear(): void {

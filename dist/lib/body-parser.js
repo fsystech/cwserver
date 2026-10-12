@@ -64,7 +64,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PayloadParser = void 0;
 exports.decodeBodyBuffer = decodeBodyBuffer;
 exports.getBodyParser = getBodyParser;
 // 11:17 PM 5/5/2020
@@ -239,15 +238,15 @@ class BodyParser {
         this.validate(false);
         return this._parser.getRawData();
     }
-    readDataAsync() {
-        return this.parseSync();
+    parseAsync() {
+        return new Promise((resolve, reject) => {
+            this.parse((err) => {
+                err ? reject(err) : resolve();
+            });
+        });
     }
     parseSync() {
-        return new Promise((resolve, reject) => this.parse((err) => {
-            if (err)
-                return reject(err);
-            return resolve();
-        }));
+        return this.parseAsync();
     }
     tryFinish(onReadEnd) {
         if (!this._isReadEnd || this._part.length > 0)
@@ -331,38 +330,26 @@ class BodyParser {
         this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
         this._req.pipe(this._multipartParser);
     }
-    readData(onReadEnd) {
-        return this.parse(onReadEnd);
-    }
     dispose() {
         if (this._isDisposed)
             return;
         this._isDisposed = true;
         if (this._isReadEnd) {
             this._parser.dispose();
-            delete this._parser;
+            this._parser = null;
         }
         if (this._multipartParser) {
             this._req.unpipe(this._multipartParser);
             (0, destroy_1.default)(this._multipartParser);
-            delete this._multipartParser;
+            this._multipartParser = null;
         }
-        delete this._req;
-        delete this._part;
-        delete this._contentType;
-        delete this._contentLength;
-    }
-    clear() {
-        this.dispose();
+        this._req = null;
+        this._part = null;
+        this._contentType = null;
+        this._contentLength = null;
     }
 }
-/** @deprecated since v2.0.3 - use `getBodyParser` instead. */
-exports.PayloadParser = (() => {
-    return { PayloadParser: (0, node_util_1.deprecate)(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
-})().PayloadParser;
-BodyParser.prototype.clear = (0, node_util_1.deprecate)(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
-BodyParser.prototype.readData = (0, node_util_1.deprecate)(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
-BodyParser.prototype.readDataAsync = (0, node_util_1.deprecate)(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
+BodyParser.prototype.parseSync = (0, node_util_1.deprecate)(BodyParser.prototype.parseSync, '`BodyParser.parseSync` is depreciated, please use `BodyParser.parseAsync` instead.', '4.1.2');
 function getBodyParser(req, tempDir) {
     return new BodyParser(req, tempDir);
 }

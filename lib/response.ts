@@ -876,7 +876,7 @@ export class Response extends ServerResponse implements IResponse {
     }
 
     public dispose(): void {
-        delete this._method;
+        this._method = null;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
             this.removeAllListeners();
             this.destroy();

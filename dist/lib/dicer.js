@@ -244,12 +244,9 @@ class Dicer extends stream_1.Writable {
         }
     }
     reset() {
-        // @ts-ignore
-        delete this._part;
-        // @ts-ignore
-        delete this._bparser;
-        // @ts-ignore
-        delete this._hparser;
+        this._part = null;
+        this._bparser = null;
+        this._hparser = null;
     }
     setBoundary(boundary) {
         this._bparser = new streamsearch_1.default(`\r\n--${boundary}`, this._onInfo.bind(this));
@@ -345,8 +342,7 @@ class Dicer extends stream_1.Writable {
                 });
             }
             this._part.push(null);
-            // @ts-ignore
-            delete this._part;
+            this._part = null;
             this._ignoreData = false;
             this._justMatched = true;
             this._dashes = 0;
@@ -366,11 +362,11 @@ class Dicer extends stream_1.Writable {
         if (!this._pause)
             return;
         this._pause = false;
-        if (this._cb) {
-            const cb = this._cb;
-            delete this._cb;
-            cb();
-        }
+        if (!this._cb)
+            return;
+        const cb = this._cb;
+        this._cb = null;
+        cb();
     }
 }
 exports.Dicer = Dicer;

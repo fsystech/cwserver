@@ -70,13 +70,10 @@ export interface IBodyParser extends IDispose {
     getJson(): Record<string, any>;
     getData(): string;
     parse(onReadEnd: (err?: Error) => void): void;
+    parseAsync(): Promise<void>;
+
+    /** @deprecated since v4.1.2 - use `parseAsync` instead. */
     parseSync(): Promise<void>;
-    /** @deprecated since v2.0.3 - use `parse` instead. */
-    readData(onReadEnd: (err?: Error) => void): void;
-    /** @deprecated since v2.0.3 - use `parseSync` instead. */
-    readDataAsync(): Promise<void>;
-    /** @deprecated since v2.0.3 - use `dispose` instead. */
-    clear(): void;
 }
 
 const incomingContentType: {
@@ -305,15 +302,18 @@ class BodyParser implements IBodyParser {
         return this._parser.getRawData();
     }
 
-    public readDataAsync(): Promise<void> {
-        return this.parseSync();
+    public parseAsync(): Promise<void> {
+        return new Promise((resolve, reject) => {
+
+            this.parse((err?: Error): void => {
+                err ? reject(err) : resolve();
+            });
+
+        });
     }
 
     public parseSync(): Promise<void> {
-        return new Promise((resolve, reject) => this.parse((err?: Error): void => {
-            if (err) return reject(err);
-            return resolve();
-        }));
+        return this.parseAsync();
     }
 
     private tryFinish(onReadEnd: (err?: Error) => void): void {
@@ -446,10 +446,6 @@ class BodyParser implements IBodyParser {
         this._req.pipe(this._multipartParser);
     }
 
-    public readData(onReadEnd: (err?: Error) => void): void {
-        return this.parse(onReadEnd);
-    }
-
     public dispose(): void {
 
         if (this._isDisposed)
@@ -459,34 +455,23 @@ class BodyParser implements IBodyParser {
 
         if (this._isReadEnd) {
             this._parser.dispose();
-            delete this._parser;
+            this._parser = null;
         }
 
         if (this._multipartParser) {
             this._req.unpipe(this._multipartParser);
             destroy(this._multipartParser);
-            delete this._multipartParser;
+            this._multipartParser = null;
         }
 
-        delete this._req;
-        delete this._part;
-        delete this._contentType;
-        delete this._contentLength;
-    }
-
-    public clear(): void {
-        this.dispose();
+        this._req = null;
+        this._part = null;
+        this._contentType = null;
+        this._contentLength = null;
     }
 }
 
-/** @deprecated since v2.0.3 - use `getBodyParser` instead. */
-export const { PayloadParser } = (() => {
-    return { PayloadParser: deprecate(BodyParser, '`PayloadParser` is depreciated, please use `getBodyParser` instead.', 'v2.0.3:1') };
-})();
-
-BodyParser.prototype.clear = deprecate(BodyParser.prototype.clear, '`BodyParser.clear` is depreciated, please use `BodyParser.dispose` instead.', 'v2.0.3:2');
-BodyParser.prototype.readData = deprecate(BodyParser.prototype.readData, '`BodyParser.readData` is depreciated, please use `BodyParser.parse` instead.', 'v2.0.3:3');
-BodyParser.prototype.readDataAsync = deprecate(BodyParser.prototype.readDataAsync, '`BodyParser.readDataAsync` is depreciated, please use `BodyParser.parseSync` instead.', 'v2.0.3:4');
+BodyParser.prototype.parseSync = deprecate(BodyParser.prototype.parseSync, '`BodyParser.parseSync` is depreciated, please use `BodyParser.parseAsync` instead.', '4.1.2');
 
 export function getBodyParser(
     req: IRequest,

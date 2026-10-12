@@ -726,13 +726,19 @@ export class CwServer implements ICwServer {
             );
         }
 
-        const config =
-            fsw.readJsonSync<IServerConfig>(configPath);
+        let config: IServerConfig = null;
 
-        if (!config) {
-            throw new Error(
+        try {
+
+            config = fsw.readJsonSyncUnsafe<IServerConfig>(configPath);
+
+        } catch (ex: any) {
+
+            console.warn(
                 `Invalid config file defined.\r\nConfig: ${configPath}`
             );
+
+            throw ex;
         }
 
         Schema.Validate(config);
@@ -740,7 +746,7 @@ export class CwServer implements ICwServer {
         if (this._public !== config.hostInfo.root) {
             throw new Error(
                 `Server ready for App Root: ${this._public}.
-    But host_info root path is ${config.hostInfo.root}.`
+                But host_info root path is ${config.hostInfo.root}.`
             );
         }
 
@@ -826,9 +832,7 @@ export class CwServer implements ICwServer {
     }
 
     public updateEncryption(serverEnc?: IServerEncryption): void {
-        if (this._encryption) {
-            delete this._encryption;
-        }
+        this._encryption = null;
 
         if (serverEnc) {
             this._encryption = serverEnc;

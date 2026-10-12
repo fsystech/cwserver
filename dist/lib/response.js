@@ -389,7 +389,7 @@ class Response extends node_http_1.ServerResponse {
         this.status(200, getCommonHeader(_mimeType.getMimeType(contentType), compressed.length, compress)).end(compressed);
     }
     dispose() {
-        delete this._method;
+        this._method = null;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {
             this.removeAllListeners();
             this.destroy();

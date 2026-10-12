@@ -125,7 +125,7 @@ class PostedFileInfo {
             return;
         _fs.copyFileSync(this._tempFile, absPath);
         _fs.unlinkSync(this._tempFile);
-        delete this._tempFile;
+        this._tempFile = null;
         this._isMoved = true;
     }
     saveAsAsync(absPath) {
@@ -136,7 +136,7 @@ class PostedFileInfo {
                 yield fsw.moveFileAsync(this._tempFile, absPath);
             }
             catch (_a) { }
-            delete this._tempFile;
+            this._tempFile = null;
             this._isMoved = true;
         });
     }
@@ -144,7 +144,7 @@ class PostedFileInfo {
         if (!this.validate(this._tempFile))
             return;
         fsw.moveFile(this._tempFile, absPath, (err) => {
-            delete this._tempFile;
+            this._tempFile = null;
             this._isMoved = true;
             return next(err);
         });
@@ -157,9 +157,8 @@ class PostedFileInfo {
             if (_fs.existsSync(this._tempFile))
                 _fs.unlinkSync(this._tempFile);
         }
-        // @ts-ignore
-        delete this._fileInfo;
-        delete this._tempFile;
+        this._fileInfo = null;
+        this._tempFile = null;
     }
     clear() {
         this.dispose();

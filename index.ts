@@ -36,7 +36,7 @@ export type { IController } from './lib/app-controller';
 export { socketInitilizer, wsClient } from './lib/ws';
 export { type ISession, Session } from './lib/session';
 export { createProjectTemplate } from './lib/project-template';
-export { getBodyParser, PayloadParser } from './lib/body-parser';
+export { getBodyParser } from './lib/body-parser';
 export { default as defaultHeaders } from './lib/default-headers';
 export { getMimeType, setMimeType } from './lib/http-mime-types';
 export { UploadFileInfo, type IBodyParser } from './lib/body-parser';

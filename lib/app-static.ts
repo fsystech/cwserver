@@ -251,94 +251,66 @@ export class BufferArray implements IBufferArray {
      * Disposes of the buffer array, releasing stored data.
      */
     public dispose(): void {
-        if (!this._isDisposed) {
-            this._isDisposed = true;
-            this._data.length = 0;
-            // @ts-ignore
-            delete this._data;
-            delete this._length;
-        }
-        return void 0;
+        if (this._isDisposed)
+            return;
+
+        this._isDisposed = true;
+
+        this._data = null;
+        this._length = null;
     }
 }
 
 export class ResInfo implements IResInfo {
-    code: number;
-    isValid: boolean;
-    isErrorCode: boolean;
-    isInternalErrorCode: boolean;
-    description: string;
-    constructor() {
-        this.code = 0; this.isValid = false;
-        this.isErrorCode = false;
-        this.isInternalErrorCode = false;
-        this.description = "Ok";
-    };
+    public code: number = 0;
+    public isValid: boolean = false;
+    public isErrorCode: boolean = false;
+    public isInternalErrorCode: boolean = false;
+    public description: string = "ok";
 }
+
 export function toString(val: any): string {
     if (!val) return "";
     return typeof (val) === "string" ? val : String(val);
 }
-export function toNumber(obj: any): number {
-    if (!obj) return 0;
-    if (typeof (obj) === "number") return obj;
-    if (isNaN(obj)) return 0;
-    return parseFloat(obj);
-}
-const _map: {
-    month: { [key: number]: string },
-    day: { [key: number]: string }
-} = {
-    month: {
-        1: 'Jan',
-        2: 'Feb',
-        3: 'Mar',
-        4: 'Apr',
-        5: 'May',
-        6: 'Jun',
-        7: 'July',
-        8: 'Aug',
-        9: 'Sep',
-        10: 'Oct',
-        11: 'Nov',
-        12: 'Dec'
-    },
-    day: {
-        0: "Sun",
-        1: "Mon",
-        2: "Tue",
-        3: "Wed",
-        4: "Thu",
-        5: "Fri",
-        6: "Sat"
+
+export function toNumber(v: any): number {
+    const type = typeof (v);
+
+    if (type === "number")
+        return v;
+
+    if (type === 'string') {
+        v = v.replace(/,|\$/g, "");
     }
-};
-const dfo = (t: number): string => {
-    t = t === 0 ? 1 : t;
-    return _map.day[t];
-};
+    // allow fraction digits
+    if (/^[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?$/.test(v) === false)
+        return 0;
 
-const dfon = (t: number): any => {
-    t = t === 0 ? 1 : t;
-    return t <= 9 ? "0" + t : t;
-};
+    return parseFloat(v);
+}
 
-const dfm = (t: number): string => {
-    t += 1;
-    return _map.month[t];
-};
+const MONTHS = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "July", "Aug", "Sep", "Oct", "Nov", "Dec"
+] as const;
+
+const DAYS = [
+    "Mon", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+] as const;
+
+const pad2 = (n: number): string =>
+    n < 10 ? `0${n}` : `${n}`;
 
 export function toResponseTime(timestamp?: number | Date): string {
-    // Thu, 01 May 2020 23:34:07 GMT
-    let date: Date;
-    if (timestamp) {
-        if (typeof (timestamp) === "number") {
-            date = new Date(timestamp);
-        } else {
-            date = timestamp;
-        }
-    } else {
-        date = new Date();
-    }
-    return `${dfo(date.getDay())}, ${dfon(date.getDate())} ${dfm(date.getMonth())} ${date.getFullYear()} ${dfon(date.getHours())}:${dfon(date.getMinutes())}:${dfon(date.getSeconds())} GMT`;
+    const date = timestamp == null
+        ? new Date()
+        : timestamp instanceof Date
+            ? timestamp
+            : new Date(timestamp);
+
+    const day = date.getDay();
+    const month = date.getMonth();
+
+    return `${DAYS[day === 0 ? 1 : day]}, ${pad2(date.getDate())} ${MONTHS[month]} ${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())} GMT`;
 }

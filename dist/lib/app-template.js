@@ -135,7 +135,7 @@ class ScriptParser {
         this._cmnt = new CommentTag();
     }
     startTage(parserInfo) {
-        if (parserInfo.line.indexOf(parserInfo.tag) <= -1) {
+        if (!parserInfo.line.includes(parserInfo.tag)) {
             if (parserInfo.isLastTag && parserInfo.isTagEnd) {
                 parserInfo.line = parserInfo.line + "\x0f; __v8val += \x0f";
             }
@@ -234,12 +234,10 @@ class ScriptParser {
             }
             parserInfo.startTageName = (!parserInfo.isTagEnd ? parserInfo.startTageName : void 0);
         }
-        return;
     }
     dispose() {
-        // @ts-ignore
-        delete this.tag;
-        delete this._cmnt;
+        this.tag = null;
+        this._cmnt = null;
     }
 }
 function ExportAttachMatch(str) {
@@ -527,7 +525,7 @@ class TemplateLink {
                             if (result.sandBox) {
                                 try {
                                     result.sandBox(ctx, this.processResponse(status), false);
-                                    delete result.sandBox;
+                                    result.sandBox = null;
                                     return void 0;
                                 }
                                 catch (e) {

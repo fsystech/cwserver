@@ -159,8 +159,7 @@ export declare class ResInfo implements IResInfo {
     isErrorCode: boolean;
     isInternalErrorCode: boolean;
     description: string;
-    constructor();
 }
 export declare function toString(val: any): string;
-export declare function toNumber(obj: any): number;
+export declare function toNumber(v: any): number;
 export declare function toResponseTime(timestamp?: number | Date): string;

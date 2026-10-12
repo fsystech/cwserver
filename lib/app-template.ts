@@ -90,6 +90,7 @@ class ParserInfo implements IParserInfo {
         this.isLastTag = false;
     }
 }
+
 class ScriptTag implements IScriptTag {
     public l: string;
     public get lre(): RegExp {
@@ -101,13 +102,15 @@ class ScriptTag implements IScriptTag {
     }
     public repre: RegExp;
     constructor() {
-        this.l = '{%'; this.r = '%}';
+        this.l = '{%';
+        this.r = '%}';
         this.repre = /NO_NEED/gi;
     }
 }
+
 class WriteTag implements IScriptTag {
     public l: string;
-    public get lre() {
+    public get lre(): RegExp {
         return /{=/gi;
     };
     public r: string;
@@ -121,6 +124,7 @@ class WriteTag implements IScriptTag {
         this.l = '{='; this.r = '=}';
     }
 }
+
 class Tag implements ITag {
     public script: IScriptTag;
     public write: IScriptTag;
@@ -129,6 +133,7 @@ class Tag implements ITag {
         this.write = new WriteTag();
     }
 }
+
 class CommentTag {
     public get jsStart() {
         return /\/\*{%\*\//gi;
@@ -143,21 +148,24 @@ class CommentTag {
         return /<\!--%}-->/gi;
     }
 }
+
 class ScriptParser implements IScriptParser {
-    public tag: ITag;
-    private _cmnt: CommentTag;
-    constructor() {
-        this.tag = new Tag();
-        this._cmnt = new CommentTag();
-    }
+    public tag: ITag = new Tag();
+    private _cmnt: CommentTag = new CommentTag();
+
     public startTage(parserInfo: IParserInfo): void {
-        if (parserInfo.line.indexOf(parserInfo.tag) <= -1) {
+
+        if (!parserInfo.line.includes(parserInfo.tag)) {
+
             if (parserInfo.isLastTag && parserInfo.isTagEnd) {
                 parserInfo.line = parserInfo.line + "\x0f; __v8val += \x0f";
             }
+
             return;
         }
+
         parserInfo.isTagStart = true;
+
         switch (parserInfo.tag) {
             case this.tag.script.l: /*{%*/
                 if (this.tag.script.rre.test(parserInfo.line) === true) {
@@ -213,13 +221,20 @@ class ScriptParser implements IScriptParser {
                     parserInfo.line = parserInfo.line.replace(/'/gi, '\x0f').replace(this.tag.write.lre, "\x0f; __v8val +="));
                 break;
         }
+
         parserInfo.startTageName = (!parserInfo.isTagEnd ? parserInfo.tag : void 0);
+
         return;
     }
+
     public endTage(parserInfo: IParserInfo): void {
-        if (parserInfo.isTagStart === false && parserInfo.isTagEnd === true) return;
+        if (parserInfo.isTagStart === false && parserInfo.isTagEnd === true)
+            return;
+
         if (parserInfo.isTagStart !== false && parserInfo.isTagEnd !== true) {
+
             parserInfo.isTagStart = true;
+
             switch (parserInfo.tag) {
                 case this.tag.script.r: /*%}*/
                     if (this.tag.script.rre.test(parserInfo.line) === true) {
@@ -243,28 +258,37 @@ class ScriptParser implements IScriptParser {
                         : parserInfo.isTagEnd = false);
                     break;
             }
+
             parserInfo.startTageName = (!parserInfo.isTagEnd ? parserInfo.startTageName : void 0);
         }
-        return;
+
     }
+
     public dispose() {
-        // @ts-ignore
-        delete this.tag; delete this._cmnt;
+        this.tag = null;
+        this._cmnt = null;
     }
 }
+
 function ExportAttachMatch(str: string): RegExpMatchArray | null {
     let match = null;
+
     if (_isWin) {
         match = str.match(/#attach([\s\S]+?)\r\n/gi);
+
         if (!match) {
             match = str.match(/#attach([\s\S]+?)\n/gi);
         }
+
     } else {
+
         match = str.match(/#attach([\s\S]+?)\n/gi);
+
         if (!match) {
             match = str.match(/#attach([\s\S]+?)\r\n/gi);
         }
     }
+
     return match;
 }
 function ExportExtendMatch(str: string): RegExpExecArray | null {
@@ -274,7 +298,9 @@ function ExportExtendMatch(str: string): RegExpExecArray | null {
     }
     return match;
 }
+
 const _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
+
 class TemplateParser {
     private static implimentAttachment(
         ctx: IContext, appRoot: string, str: string,
@@ -303,6 +329,7 @@ class TemplateParser {
         }
         return forword();
     }
+
     private static mergeTemplate(
         match: string[],
         template: string,
@@ -436,6 +463,7 @@ export class TemplateCore {
             return process.nextTick(() => next({ str, err: e }));
         }
     }
+
     private static parseScript(str: string): string | undefined {
         str = str.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
         const script = str.split('\n');
@@ -471,6 +499,7 @@ export class TemplateCore {
         out = out.replace(/__v8val \+\= '';/g, '');
         return out.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
     }
+
     private static isScript(str: string): boolean {
         if (/{%/gi.test(str) === true
             || /{=/gi.test(str) === true
@@ -479,6 +508,7 @@ export class TemplateCore {
         }
         return false;
     }
+
     public static isTemplate(str: string): boolean {
         if (/#attach/gi.test(str) === true
             || /#extends/gi.test(str) === true) {
@@ -486,6 +516,7 @@ export class TemplateCore {
         }
         return false;
     }
+
     public static isScriptTemplate(str: string): boolean {
         const index = str.indexOf("\n");
         if (index < 0) return false;
@@ -541,6 +572,7 @@ function canReadFileCache(ctx: IContext, filePath: string, cachePath: string, ne
         }, ctx.handleError.bind(ctx));
     });
 }
+
 class TemplateLink {
     private static _tw: Map<string, any> = new Map();
 
@@ -576,7 +608,7 @@ class TemplateLink {
                             if (result.sandBox) {
                                 try {
                                     result.sandBox(ctx, this.processResponse(status), false);
-                                    delete result.sandBox;
+                                    result.sandBox = null;
                                     return void 0;
                                 } catch (e: any) {
                                     return ctx.transferError(e);

@@ -233,7 +233,7 @@ class Session {
         if (!this._obj)
             return;
         this._obj.roles.clear();
-        delete this._obj;
+        this._obj = null;
     }
 }
 exports.Session = Session;

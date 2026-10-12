@@ -121,14 +121,11 @@ class BufferArray {
      * Disposes of the buffer array, releasing stored data.
      */
     dispose() {
-        if (!this._isDisposed) {
-            this._isDisposed = true;
-            this._data.length = 0;
-            // @ts-ignore
-            delete this._data;
-            delete this._length;
-        }
-        return void 0;
+        if (this._isDisposed)
+            return;
+        this._isDisposed = true;
+        this._data = null;
+        this._length = null;
     }
 }
 exports.BufferArray = BufferArray;
@@ -138,9 +135,8 @@ class ResInfo {
         this.isValid = false;
         this.isErrorCode = false;
         this.isInternalErrorCode = false;
-        this.description = "Ok";
+        this.description = "ok";
     }
-    ;
 }
 exports.ResInfo = ResInfo;
 function toString(val) {
@@ -148,66 +144,34 @@ function toString(val) {
         return "";
     return typeof (val) === "string" ? val : String(val);
 }
-function toNumber(obj) {
-    if (!obj)
+function toNumber(v) {
+    const type = typeof (v);
+    if (type === "number")
+        return v;
+    if (type === 'string') {
+        v = v.replace(/,|\$/g, "");
+    }
+    // allow fraction digits
+    if (/^[\+\-]?\d*\.?\d+(?:[Ee][\+\-]?\d+)?$/.test(v) === false)
         return 0;
-    if (typeof (obj) === "number")
-        return obj;
-    if (isNaN(obj))
-        return 0;
-    return parseFloat(obj);
+    return parseFloat(v);
 }
-const _map = {
-    month: {
-        1: 'Jan',
-        2: 'Feb',
-        3: 'Mar',
-        4: 'Apr',
-        5: 'May',
-        6: 'Jun',
-        7: 'July',
-        8: 'Aug',
-        9: 'Sep',
-        10: 'Oct',
-        11: 'Nov',
-        12: 'Dec'
-    },
-    day: {
-        0: "Sun",
-        1: "Mon",
-        2: "Tue",
-        3: "Wed",
-        4: "Thu",
-        5: "Fri",
-        6: "Sat"
-    }
-};
-const dfo = (t) => {
-    t = t === 0 ? 1 : t;
-    return _map.day[t];
-};
-const dfon = (t) => {
-    t = t === 0 ? 1 : t;
-    return t <= 9 ? "0" + t : t;
-};
-const dfm = (t) => {
-    t += 1;
-    return _map.month[t];
-};
+const MONTHS = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "July", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+const DAYS = [
+    "Mon", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+];
+const pad2 = (n) => n < 10 ? `0${n}` : `${n}`;
 function toResponseTime(timestamp) {
-    // Thu, 01 May 2020 23:34:07 GMT
-    let date;
-    if (timestamp) {
-        if (typeof (timestamp) === "number") {
-            date = new Date(timestamp);
-        }
-        else {
-            date = timestamp;
-        }
-    }
-    else {
-        date = new Date();
-    }
-    return `${dfo(date.getDay())}, ${dfon(date.getDate())} ${dfm(date.getMonth())} ${date.getFullYear()} ${dfon(date.getHours())}:${dfon(date.getMinutes())}:${dfon(date.getSeconds())} GMT`;
+    const date = timestamp == null
+        ? new Date()
+        : timestamp instanceof Date
+            ? timestamp
+            : new Date(timestamp);
+    const day = date.getDay();
+    const month = date.getMonth();
+    return `${DAYS[day === 0 ? 1 : day]}, ${pad2(date.getDate())} ${MONTHS[month]} ${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())} GMT`;
 }
 //# sourceMappingURL=app-static.js.map

@@ -30,6 +30,7 @@ class DataParser {
         return this._body.data;
     }
     constructor(tempDir) {
+        this._isDisposed = false;
         this._errors = [];
         this._files = [];
         this._body = new app_static_1.BufferArray();
@@ -38,9 +39,13 @@ class DataParser {
         this._multipartBody = {};
     }
     onRawData(buff) {
+        if (this._isDisposed)
+            return;
         this._body.push(buff);
     }
     getRawData(encoding) {
+        if (this._isDisposed)
+            return null;
         const data = [this._body.toString(encoding)];
         for (const [key, value] of Object.entries(this._multipartBody)) {
             data.push(`${key}=${value}`);
@@ -48,20 +53,30 @@ class DataParser {
         return data.join('&');
     }
     getMultipartBody() {
+        if (this._isDisposed)
+            return null;
         return this._multipartBody;
     }
     onPart(stream, next, skipFile) {
+        if (this._isDisposed)
+            return;
         const reader = new multipart_data_reader_1.MultipartDataReader();
         if (skipFile) {
             reader.skipFile = skipFile;
         }
         reader.on("file", (file) => {
+            if (this._isDisposed)
+                return;
             this._files.push(file);
         });
         reader.on("field", (key, data) => {
+            if (this._isDisposed)
+                return;
             this._multipartBody[key] = encodeURIComponent(data);
         });
         reader.on("end", (err) => {
+            if (this._isDisposed)
+                return;
             if (err) {
                 this._errors.push(err);
             }
@@ -72,19 +87,22 @@ class DataParser {
         this._readers.push(reader);
     }
     getError() {
+        if (this._isDisposed)
+            return null;
         if (this._errors.length > 0) {
             return this._errors.join("\n");
         }
     }
     dispose() {
+        if (this._isDisposed)
+            return;
+        this._isDisposed = true;
         dispose(this._readers);
         dispose(this._files);
         this._body.dispose();
-        delete this._body;
-        delete this._multipartBody;
-        if (this._errors) {
-            delete this._errors;
-        }
+        this._body = null;
+        this._errors = null;
+        this._multipartBody = null;
     }
 }
 exports.DataParser = DataParser;

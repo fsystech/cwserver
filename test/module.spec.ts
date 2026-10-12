@@ -388,6 +388,7 @@ describe("cwserver-router", () => {
             .get(`http://localhost:${appUtility.port}/user/10/settings/100`)
             .end((err, res) => {
                 expect(err).toBeInstanceOf(Error);
+                console.log(err);
                 expect(res.status).toBe(404);
                 done();
             });

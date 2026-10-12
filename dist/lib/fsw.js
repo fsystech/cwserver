@@ -97,6 +97,7 @@ exports.isExists = isExists;
 exports.isExistsAsync = isExistsAsync;
 exports.readJsonAsync = readJsonAsync;
 exports.readJson = readJson;
+exports.readJsonSyncUnsafe = readJsonSyncUnsafe;
 exports.readJsonSync = readJsonSync;
 exports.mkdirAsyncx = mkdirAsyncx;
 exports.mkdir = mkdir;
@@ -202,10 +203,13 @@ function readJson(absPath, next, errHandler) {
         errHandler(null, () => next(null, rs));
     }).catch(ex => errHandler(ex, () => next(ex)));
 }
+function readJsonSyncUnsafe(absPath) {
+    const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
+    return JSON.parse(jsonstr);
+}
 function readJsonSync(absPath) {
     try {
-        const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
-        return JSON.parse(jsonstr);
+        return readJsonSyncUnsafe(absPath);
     }
     catch (_a) {
         return null;

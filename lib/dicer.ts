@@ -323,16 +323,13 @@ export class Dicer extends WritableStream {
         }
     }
 
-    public reset() {
-        // @ts-ignore
-        delete this._part;
-        // @ts-ignore
-        delete this._bparser;
-        // @ts-ignore
-        delete this._hparser;
+    public reset(): void {
+        this._part = null;
+        this._bparser = null;
+        this._hparser = null;
     }
 
-    public setBoundary(boundary: string) {
+    public setBoundary(boundary: string): void {
         this._bparser = new StreamSearch(`\r\n--${boundary}`, this._onInfo.bind(this));
     }
 
@@ -420,16 +417,16 @@ export class Dicer extends WritableStream {
                     }
                 });
             }
+
             this._part.push(null);
-            // @ts-ignore
-            delete this._part;
+            this._part = null;
             this._ignoreData = false;
             this._justMatched = true;
             this._dashes = 0;
         }
     }
 
-    private _ignore() {
+    private _ignore(): void {
         if (this._part && !this._ignoreData) {
             this._ignoreData = true;
             this._part.on('error', EMPTY_FN);
@@ -440,14 +437,20 @@ export class Dicer extends WritableStream {
         }
     }
 
-    private _unpause() {
-        if (!this._pause) return;
+    private _unpause(): void {
+        if (!this._pause)
+            return;
+
         this._pause = false;
-        if (this._cb) {
-            const cb = this._cb;
-            delete this._cb;
-            cb();
-        }
+
+        if (!this._cb)
+            return;
+
+        const cb = this._cb;
+        
+        this._cb = null;
+
+        cb();
     }
 }
 

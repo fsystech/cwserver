@@ -325,6 +325,6 @@ export class Session implements ISession {
 
         this._obj.roles.clear()
 
-        delete this._obj;
+        this._obj = null;
     }
 }

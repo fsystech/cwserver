@@ -163,16 +163,19 @@ export function readJson<T>(
     }).catch(ex => errHandler(ex, () => next(ex)));
 }
 
+export function readJsonSyncUnsafe<T>(absPath: string): T {
+
+    const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(
+        /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, ""
+    ).replace(/^\s*$(?:\r\n?|\n)/gm, "");
+
+    return JSON.parse(jsonstr);
+}
+
 export function readJsonSync<T>(absPath: string): T {
 
     try {
-
-        const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(
-            /\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, ""
-        ).replace(/^\s*$(?:\r\n?|\n)/gm, "");
-
-        return JSON.parse(jsonstr);
-
+        return readJsonSyncUnsafe(absPath);
     } catch {
         return null;
     }

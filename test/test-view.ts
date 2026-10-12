@@ -40,7 +40,7 @@ import { HttpCache } from '../lib/http-cache';
 import { SocketClient, SocketErr1, SocketErr2 } from './socket-client';
 import {
 	ICwServer, IContext, IPostedFileInfo, UploadFileInfo, IBodyParser,
-	socketInitilizer, getBodyParser, PayloadParser, HttpCache as _HttpCache,
+	socketInitilizer, getBodyParser, HttpCache as _HttpCache,
 	HttpMimeHandler, Streamer, Encryption, SessionSecurity, Session, registerView
 } from '../index';
 import { toString } from '../lib/app-static';
@@ -229,7 +229,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 		expect(ctx.req.isMobile).toBeTruthy();
 		if (task && task === "ERROR") {
 			try {
-				await parser.parseSync();
+				await parser.parseAsync();
 			} catch (e) {
 				expect(e).toBeInstanceOf(Error);
 			}
@@ -259,7 +259,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
 
 		if (parser.isUrlEncoded() || parser.isAppJson()) {
-			await parser.parseSync();
+			await parser.parseAsync();
 			ctx.res.asHTML(200).end(JSON.stringify(parser.getJson()));
 		} else {
 			parser.saveAsSync(downloadDir);
@@ -285,7 +285,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 	}).post('/upload-invalid-file', async (ctx: IContext, requestParam?: IRequestParam): Promise<void> => {
 		const parser: IBodyParser = getBodyParser(ctx.req);
 		try {
-			await parser.readDataAsync();
+			await parser.parseSync();
 			ctx.res.status(200).json(parser.getUploadFileInfo());
 		} catch (e: any) {
 			parser.dispose();
@@ -296,7 +296,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 		let err: Error | undefined;
 		try {
 			parser.setMaxBuffLength(1024 * 1024 * 20);
-			await parser.parseSync();
+			await parser.parseAsync();
 		} catch (e: any) {
 			err = e;
 		}
@@ -313,7 +313,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 		const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
 		let err: Error | undefined;
 		try {
-			await parser.parseSync();
+			await parser.parseAsync();
 		} catch (e: any) {
 			err = e;
 		}
@@ -327,7 +327,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 		const parser: IBodyParser = getBodyParser(_ctx.req);
 		try {
 			console.log(_ctx.req.get("content-type"));
-			await parser.parseSync();
+			await parser.parseAsync();
 			_ctx.res.status(200).json(parser.getJson());
 		} catch (ex) {
 			_ctx.transferError(ex as any);
@@ -341,7 +341,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			}
 			return skip;
 		}
-		await parser.parseSync();
+		await parser.parseAsync();
 		const data: UploadFileInfo[] = parser.getUploadFileInfo();
 		parser.dispose();
 		ctx.res.json(data);
@@ -360,7 +360,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			expect(shouldBeError(() => {
 				parser.getData();
 			})).toBeInstanceOf(Error);
-			await parser.parseSync();
+			await parser.parseAsync();
 			parser.getFiles((pf, fdone) => {
 				console.log(pf?.getFileName());
 				fdone?.();
@@ -407,7 +407,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 		expect(shouldBeError(() => {
 			parser.saveAsSync(downloadDir);
 		})).toBeInstanceOf(Error);
-		parser.readData((err) => {
+		parser.parse((err) => {
 			assert(err === undefined, "parser.parse");
 			if (!parser.isMultipart()) {
 				ctx.next(404);
@@ -612,10 +612,6 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 				})();
 
 				expect(decodeBodyBuffer(Buffer.from("data==10&p=10&a"))).toBeInstanceOf(Object);
-				(() => {
-					const parser = new PayloadParser(ctx8.req, server.mapPath("/upload/temp/"));
-					parser.clear();
-				})();
 
 				process.env.TASK_TYPE = 'TESTX';
 

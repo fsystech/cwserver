@@ -41,6 +41,7 @@ export interface IDataParser extends IDispose {
 }
 
 export class DataParser implements IDataParser {
+    private _isDisposed: boolean = false;
     private _files: IPostedFileInfo[];
     private _body: IBufferArray;
     private _multipartBody: { [id: string]: string };
@@ -64,11 +65,16 @@ export class DataParser implements IDataParser {
         this._readers = []; this._tempDir = tempDir;
         this._multipartBody = {};
     }
+
     public onRawData(buff: Buffer | string): void {
+        if (this._isDisposed)
+            return;
         this._body.push(buff);
     }
 
     public getRawData(encoding?: BufferEncoding): string {
+        if (this._isDisposed)
+            return null;
 
         const data = [this._body.toString(encoding)];
 
@@ -80,6 +86,9 @@ export class DataParser implements IDataParser {
     }
 
     public getMultipartBody(): { [id: string]: string } {
+        if (this._isDisposed)
+            return null;
+
         return this._multipartBody;
     }
 
@@ -89,6 +98,9 @@ export class DataParser implements IDataParser {
         skipFile?: (fileInfo: IPostedFileInfo) => boolean
     ): void {
 
+        if (this._isDisposed)
+            return;
+
         const reader: IMultipartDataReader = new MultipartDataReader();
 
         if (skipFile) {
@@ -96,14 +108,23 @@ export class DataParser implements IDataParser {
         }
 
         reader.on("file", (file: IPostedFileInfo): void => {
+            if (this._isDisposed)
+                return;
+
             this._files.push(file);
         });
 
         reader.on("field", (key: string, data: string): void => {
+            if (this._isDisposed)
+                return;
+
             this._multipartBody[key] = encodeURIComponent(data);
         });
 
         reader.on("end", (err?: Error): void => {
+            if (this._isDisposed)
+                return;
+
             if (err) {
                 this._errors.push(err);
             }
@@ -117,6 +138,8 @@ export class DataParser implements IDataParser {
     }
 
     public getError(): string | void {
+        if (this._isDisposed)
+            return null;
 
         if (this._errors.length > 0) {
             return this._errors.join("\n");
@@ -125,17 +148,17 @@ export class DataParser implements IDataParser {
     }
 
     public dispose(): void {
+        if (this._isDisposed)
+            return;
 
+        this._isDisposed = true;
         dispose(this._readers);
         dispose(this._files);
         this._body.dispose();
 
-        delete this._body;
-        delete this._multipartBody;
-
-        if (this._errors) {
-            delete this._errors;
-        }
+        this._body = null;
+        this._errors = null;
+        this._multipartBody = null;
     }
 }
 

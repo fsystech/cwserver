@@ -306,14 +306,18 @@ class CwServer {
         if (!_fs.existsSync(configPath)) {
             throw new Error(`No config file found in ${configPath}`);
         }
-        const config = fsw.readJsonSync(configPath);
-        if (!config) {
-            throw new Error(`Invalid config file defined.\r\nConfig: ${configPath}`);
+        let config = null;
+        try {
+            config = fsw.readJsonSyncUnsafe(configPath);
+        }
+        catch (ex) {
+            console.warn(`Invalid config file defined.\r\nConfig: ${configPath}`);
+            throw ex;
         }
         schema_validator_1.Schema.Validate(config);
         if (this._public !== config.hostInfo.root) {
             throw new Error(`Server ready for App Root: ${this._public}.
-    But host_info root path is ${config.hostInfo.root}.`);
+                But host_info root path is ${config.hostInfo.root}.`);
         }
         const libRoot = (0, app_util_1.getAppDir)();
         this._errorPage = {
@@ -348,9 +352,7 @@ class CwServer {
         return {};
     }
     updateEncryption(serverEnc) {
-        if (this._encryption) {
-            delete this._encryption;
-        }
+        this._encryption = null;
         if (serverEnc) {
             this._encryption = serverEnc;
         }

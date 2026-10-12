@@ -168,9 +168,9 @@ export class Schema {
 			throw new Error(`Invalid config file defined.\nConfig file should be ${schema.type}.`);
 		}
 		assert(config.$schema, `No schema defined in config file.\nConfig file should be use $schema:${schema.$schema}`);
-		delete config.$schema;
+		config.$schema = null;
 		if (config.$comment) {
-			delete config.$comment;
+			config.$comment = null;
 		}
 		schemaValidate("config", schema.properties, config, schema.additionalProperties);
 	}
