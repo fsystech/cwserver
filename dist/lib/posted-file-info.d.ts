@@ -18,8 +18,6 @@ export interface IPostedFileInfo extends IDispose {
     readAsync(): Promise<Buffer>;
     read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
     getTempPath(): string | undefined;
-    /** @deprecated since v2.0.3 - use `dispose` instead. */
-    clear(): void;
 }
 export declare class PostedFileInfo implements IPostedFileInfo {
     private _fileInfo;
@@ -41,5 +39,4 @@ export declare class PostedFileInfo implements IPostedFileInfo {
     saveAsAsync(absPath: string): Promise<void>;
     saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void;
     dispose(): void;
-    clear(): void;
 }

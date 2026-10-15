@@ -36,6 +36,7 @@ export interface IBodyParser extends IDispose {
     getData(): string;
     parse(onReadEnd: (err?: Error) => void): void;
     parseAsync(): Promise<void>;
+    getFilesAsync(next: (file: IPostedFileInfo) => Promise<void>): Promise<void>;
     /** @deprecated since v4.1.2 - use `parseAsync` instead. */
     parseSync(): Promise<void>;
 }

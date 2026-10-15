@@ -71,6 +71,9 @@ export interface IBodyParser extends IDispose {
     getData(): string;
     parse(onReadEnd: (err?: Error) => void): void;
     parseAsync(): Promise<void>;
+    getFilesAsync(
+        next: (file: IPostedFileInfo) => Promise<void>
+    ): Promise<void>;
 
     /** @deprecated since v4.1.2 - use `parseAsync` instead. */
     parseSync(): Promise<void>;
@@ -189,14 +192,17 @@ class BodyParser implements IBodyParser {
     }
 
     private validate(isMultipart: boolean): void {
+        if (this._isDisposed)
+            throw new Error("BodyParser is disposed state");
+
         if (!this.isValidRequest())
             throw new Error("Invalid request defiend....");
+
         if (!this._isReadEnd)
             throw new Error("Data did not read finished yet...");
-        if (isMultipart) {
-            if (this._contentTypeEnum !== ContentType.MULTIPART)
-                throw new Error("Multipart form data required....");
-            return;
+
+        if (isMultipart && this._contentTypeEnum !== ContentType.MULTIPART) {
+            throw new Error("Multipart form data required....");
         }
     }
 
@@ -247,6 +253,7 @@ class BodyParser implements IBodyParser {
     }
 
     public getFilesSync(next: (file: IPostedFileInfo) => void): void {
+
         this.validate(true);
 
         const files = this._parser.files;
@@ -254,6 +261,26 @@ class BodyParser implements IBodyParser {
         for (const file of files) {
             next(file);
         }
+    }
+
+    public async getFilesAsync(
+        next: (file: IPostedFileInfo) => Promise<void>
+    ): Promise<void> {
+
+        this.validate(true);
+
+        const files = this._parser.files;
+
+        if (files.length === 0)
+            return;
+
+        const promises: Array<Promise<void>> = [];
+
+        for (const file of files) {
+            promises.push(next(file));
+        }
+
+        await Promise.all(promises);
     }
 
     public getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void {
@@ -378,6 +405,8 @@ class BodyParser implements IBodyParser {
     }
 
     public parse(onReadEnd: (err?: Error) => void): void {
+        if (this._isDisposed)
+            return onReadEnd(new Error("BodyParser is disposed state"));
 
         if (!this.isValidRequest()) {
             return process.nextTick(() => onReadEnd(

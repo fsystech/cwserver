@@ -316,8 +316,10 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			await parser.parseAsync();
 		} catch (e: any) {
 			err = e;
+		} finally {
+			parser.dispose();
 		}
-		parser.dispose();
+
 		if (err) {
 			server.addError(ctx, err);
 			return server.transferRequest(ctx, 500);
@@ -341,11 +343,16 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			}
 			return skip;
 		}
-		await parser.parseAsync();
-		const data: UploadFileInfo[] = parser.getUploadFileInfo();
-		parser.dispose();
-		ctx.res.json(data);
-		ctx.next(200);
+		
+		try {
+			await parser.parseAsync();
+			const data: UploadFileInfo[] = parser.getUploadFileInfo();
+			ctx.json(data);
+			ctx.next(200);
+		} finally {
+			parser.dispose();
+		}
+
 	}).post('/upload-test', async (ctx: IContext, requestParam?: IRequestParam): Promise<void> => {
 		try {
 			const parser: IBodyParser = getBodyParser(ctx.req, tempDir);
@@ -417,7 +424,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 					expect(file.readSync()).toBeInstanceOf(Buffer);
 					if (saveTo) {
 						if (saveTo === "C") {
-							file.clear();
+							file.dispose();
 						}
 						return;
 					}
@@ -429,13 +436,15 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 						file.saveAsSync(`${downloadDir}/${Util.guid()}_${file.getFileName()}`);
 					})).toBeInstanceOf(Error);
 				});
+
 				if (saveTo && saveTo !== "C") {
 					expect(shouldBeError(() => {
 						parser.saveAsSync(server.mapPath("/upload/data/schema.json"));
 					})).toBeInstanceOf(Error);
 					parser.saveAsSync(downloadDir);
 				}
-				ctx.res.json(data.shift() || {});
+
+				ctx.json(data.shift() || {});
 				ctx.next(200);
 			}
 			parser.dispose();

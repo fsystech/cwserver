@@ -163,14 +163,14 @@ class BodyParser {
         return this._contentLength > 0 && this._contentTypeEnum !== ContentType.UNKNOWN;
     }
     validate(isMultipart) {
+        if (this._isDisposed)
+            throw new Error("BodyParser is disposed state");
         if (!this.isValidRequest())
             throw new Error("Invalid request defiend....");
         if (!this._isReadEnd)
             throw new Error("Data did not read finished yet...");
-        if (isMultipart) {
-            if (this._contentTypeEnum !== ContentType.MULTIPART)
-                throw new Error("Multipart form data required....");
-            return;
+        if (isMultipart && this._contentTypeEnum !== ContentType.MULTIPART) {
+            throw new Error("Multipart form data required....");
         }
     }
     saveAsSync(outdir) {
@@ -207,6 +207,19 @@ class BodyParser {
         for (const file of files) {
             next(file);
         }
+    }
+    getFilesAsync(next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.validate(true);
+            const files = this._parser.files;
+            if (files.length === 0)
+                return;
+            const promises = [];
+            for (const file of files) {
+                promises.push(next(file));
+            }
+            yield Promise.all(promises);
+        });
     }
     getFiles(next) {
         this.validate(true);
@@ -291,6 +304,8 @@ class BodyParser {
         };
     }
     parse(onReadEnd) {
+        if (this._isDisposed)
+            return onReadEnd(new Error("BodyParser is disposed state"));
         if (!this.isValidRequest()) {
             return process.nextTick(() => onReadEnd(new Error("Invalid request defiend....")));
         }

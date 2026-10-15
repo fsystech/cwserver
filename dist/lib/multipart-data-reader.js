@@ -61,7 +61,6 @@ exports.MultipartDataReader = void 0;
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
 const node_stream_1 = require("node:stream");
-const node_util_1 = require("node:util");
 const node_events_1 = require("node:events");
 const destroy_1 = __importDefault(require("destroy"));
 const app_util_1 = require("./app-util");
@@ -175,5 +174,4 @@ function _extractBetween(data, separator1, separator2) {
     }
     return result;
 }
-posted_file_info_1.PostedFileInfo.prototype.clear = (0, node_util_1.deprecate)(posted_file_info_1.PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');
 //# sourceMappingURL=multipart-data-reader.js.map

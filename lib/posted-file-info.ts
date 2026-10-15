@@ -47,8 +47,6 @@ export interface IPostedFileInfo extends IDispose {
     readAsync(): Promise<Buffer>;
     read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
     getTempPath(): string | undefined;
-    /** @deprecated since v2.0.3 - use `dispose` instead. */
-    clear(): void;
 }
 
 export class PostedFileInfo implements IPostedFileInfo {
@@ -172,9 +170,5 @@ export class PostedFileInfo implements IPostedFileInfo {
 
         this._fileInfo = null;
         this._tempFile = null;
-    }
-
-    public clear(): void {
-        this.dispose();
     }
 }

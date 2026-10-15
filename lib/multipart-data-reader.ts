@@ -23,7 +23,6 @@
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
 import { pipeline } from 'node:stream';
-import { deprecate } from 'node:util';
 import { EventEmitter } from 'node:events';
 import destroy from 'destroy';
 import { PartStream } from "./dicer";
@@ -198,5 +197,3 @@ function _extractBetween(
     }
     return result;
 }
-
-PostedFileInfo.prototype.clear = deprecate(PostedFileInfo.prototype.clear, '`PostedFileInfo.clear` is depreciated, please use `PostedFileInfo.dispose` instead.', 'v2.0.3:5');

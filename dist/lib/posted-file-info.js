@@ -160,9 +160,6 @@ class PostedFileInfo {
         this._fileInfo = null;
         this._tempFile = null;
     }
-    clear() {
-        this.dispose();
-    }
 }
 exports.PostedFileInfo = PostedFileInfo;
 //# sourceMappingURL=posted-file-info.js.map
