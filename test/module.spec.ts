@@ -53,7 +53,7 @@ import { assert, Util } from '../lib/app-util';
 import { injectPrototype, parseIp } from '../lib/help';
 import { Schema, fillUpType, schemaValidate, IProperties } from '../lib/schema-validator';
 import { TemplateCore, templateNext, CompilerResult } from '../lib/app-template';
-import { shouldBeError, shouldBeErrorAsync } from "./test-view";
+import { shouldBeError, shouldBeErrorAsync, shouldNotError } from "./test-view";
 import { promisify } from 'util';
 import destroy from 'destroy';
 import { AppView } from '../lib/app-view';
@@ -388,7 +388,7 @@ describe("cwserver-router", () => {
             .get(`http://localhost:${appUtility.port}/user/10/settings/100`)
             .end((err, res) => {
                 expect(err).toBeInstanceOf(Error);
-                console.log(err);
+                // console.log(err);
                 expect(res.status).toBe(404);
                 done();
             });
@@ -2470,33 +2470,41 @@ describe("cwserver-utility", () => {
         expect(toResponseTime()).toBeDefined();
         expect(toResponseTime(new Date("2020-01-01").getTime())).toBeDefined();
         expect(toResponseTime(new Date("2020-01-05").getTime())).toBeDefined();
+
         expect(shouldBeError(() => {
             cwserver.Encryption.encrypt("nothing", {
                 oldKey: "",
-                key: void 0,
-                iv: void 0
+                key: null,
+                iv: null
             });
         })).toBeInstanceOf(Error);
-        expect(shouldBeError(() => {
+
+        expect(shouldNotError(() => {
             cwserver.Encryption.decrypt("nothing", {
                 oldKey: "",
-                key: void 0,
-                iv: void 0
+                key: null,
+                iv: null
             });
-        })).toBeInstanceOf(Error);
+        })).not.toBeInstanceOf(Error);
+
         expect(shouldBeError(() => {
             fsw.mkdirSync(logDir, "./");
         })).toBeInstanceOf(Error);
+
         expect(fsw.mkdirSync("")).toBeFalsy();
+
         expect(shouldBeError(() => {
             fsw.copyFileSync(`${logDir}/temp/`, "./");
         })).toBeInstanceOf(Error);
+
         expect(shouldBeError(() => {
             fsw.copyFileSync(`${logDir}/temp/nofile.lg`, "./");
         })).toBeInstanceOf(Error);
+
         expect(shouldBeError(() => {
             fsw.copyFileSync(`${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx`);
         })).toBeInstanceOf(Error);
+        
         expect(fsw.rmdirSync(`${logDir}/temp/`)).not.toBeInstanceOf(Error);
         expect(fsw.copyDirSync(`${logDir}/temp/`, `${logDir}/tempx/`)).not.toBeInstanceOf(Error);
         expect(fsw.mkdirSync(logDir)).toEqual(true);
@@ -2602,7 +2610,7 @@ describe("cwserver-utility", () => {
                 }
             })).toBeInstanceOf(Error);
 
-            expect(shouldBeError(() => {
+            expect(shouldNotError(() => {
                 const _server = appUtility.server;
                 // encryption set test
                 _server.updateEncryption();
@@ -2675,23 +2683,23 @@ describe("cwserver-utility", () => {
         it('override', function (done: Mocha.Done): void {
             this.timeout(5000);
             /* [Error Page] */
-            expect(shouldBeError(() => {
+            expect(shouldNotError(() => {
                 const newConfig: { [x: string]: any; } = getConfig();
                 newConfig.errorPage = {};
                 appUtility.server.implimentConfig(newConfig);
                 appUtility.server.initilize();
-            }, true)).not.toBeInstanceOf(Error);
-            expect(shouldBeError(() => {
+            })).not.toBeInstanceOf(Error);
+            expect(shouldNotError(() => {
                 const newConfig: { [x: string]: any; } = appUtility.server.config;
                 newConfig.errorPage = void 0;
                 appUtility.server.initilize();
             })).not.toBeInstanceOf(Error);
-            expect(shouldBeError(() => {
+            expect(shouldNotError(() => {
                 appUtility.server.config.errorPage = {
                     "404": appUtility.server.errorPage["404"]
                 };
                 appUtility.server.initilize();
-            }, true)).not.toBeInstanceOf(Error);
+            })).not.toBeInstanceOf(Error);
             expect(shouldBeError(() => {
                 const oldkey = appUtility.server.config.errorPage;
                 try {

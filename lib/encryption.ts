@@ -20,77 +20,158 @@
 
 // 6:22 PM 5/19/2020
 // by rajib chy
-import CryptoJS from 'crypto-js';
+
 import * as crypto from 'node:crypto';
+import { TextDecoder } from 'node:util';
+
 export interface ICryptoInfo {
     oldKey: string;
     md5?: string;
-    key: any;
-    iv: any;
+    key: Buffer | null;
+    iv: Buffer | null;
 }
+
 export function md5(contents: string): string {
-    return crypto.createHash('md5').update(contents).digest("hex");
+    return crypto
+        .createHash('md5')
+        .update(contents, 'utf8')
+        .digest('hex');
 }
+
 export class CryptoInfo implements ICryptoInfo {
-    oldKey: string;
-    md5?: string;
-    key: any;
-    iv: any;
-    constructor() {
-        this.oldKey = ""; this.md5 = "";
-        this.key = void 0; this.iv = void 0;
-    }
+    public oldKey: string = '';
+    public md5?: string = undefined;
+    public key: Buffer | null = null;
+    public iv: Buffer | null = null;
 }
+
 export class Encryption {
-    public static utf8ToHex(str: string) {
+    private static readonly AES_ALGORITHM = 'aes-128-cbc';
+
+    private static readonly UTF8_DECODER = new TextDecoder(
+        'utf-8',
+        { fatal: true }
+    );
+
+    public static utf8ToHex(str: string): string {
         return Buffer.from(str, 'utf8').toString('hex');
     }
-    public static hexToUtf8(str: string) {
+
+    public static hexToUtf8(str: string): string {
         return Buffer.from(str, 'hex').toString('utf8');
     }
+
     public static toMd5(str: string): string {
         return md5(str);
     }
+
     public static updateCryptoKeyIV(key: string): ICryptoInfo {
         const res = new CryptoInfo();
+
         res.oldKey = key;
         res.md5 = this.toMd5(key);
-        res.key = CryptoJS.enc.Hex.parse(res.md5);
-        res.iv = CryptoJS.enc.Hex.parse(this.utf8ToHex(res.oldKey));
+
+        // MD5 hex digest produces a 16-byte AES-128 key.
+        res.key = Buffer.from(res.md5, 'hex');
+
+        // Preserve the legacy UTF-8 IV bytes.
+        // CryptoJS accepts IVs of arbitrary length; Node requires 16 bytes.
+        // Copying into a zero-filled buffer preserves the legacy behavior
+        // of zero-padding short IVs and ignoring bytes beyond 16.
+        res.iv = Buffer.alloc(16);
+        Buffer.from(key, 'utf8').copy(res.iv, 0, 0, 16);
+
         return res;
     }
-    public static encrypt(plainText: string, inf: ICryptoInfo): string {
-        if (!inf.key) throw new Error("Invalid iv and key....");
-        return CryptoJS.AES.encrypt(plainText, inf.key, { iv: inf.iv }).toString();
+
+    private static getCryptoParams(
+        inf: ICryptoInfo
+    ): { key: Buffer; iv: Buffer } {
+        if (
+            !inf.key || !inf.iv ||
+            !Buffer.isBuffer(inf.key) ||
+            !Buffer.isBuffer(inf.iv) ||
+            inf.key.length !== 16 ||
+            inf.iv.length !== 16
+        ) {
+            throw new Error('Invalid IV and key.');
+        }
+
+        return {
+            key: inf.key,
+            iv: inf.iv
+        };
     }
-    public static decrypt(encryptedText: string, inf: ICryptoInfo): string {
-        if (!inf.key) throw new Error("Invalid iv and key....");
+
+    public static encrypt(
+        plainText: string,
+        inf: ICryptoInfo
+    ): string {
+        const { key, iv } = this.getCryptoParams(inf);
+
+        const cipher = crypto.createCipheriv(
+            this.AES_ALGORITHM,
+            key,
+            iv
+        );
+
+        return Buffer.concat([
+            cipher.update(plainText, 'utf8'),
+            cipher.final()
+        ]).toString('base64');
+    }
+
+    public static decrypt(
+        encryptedText: string,
+        inf: ICryptoInfo
+    ): string {
         try {
-            const dec = CryptoJS.AES.decrypt(CryptoJS.lib.CipherParams.create({
-                iv: inf.iv,
-                ciphertext: CryptoJS.enc.Base64.parse(encryptedText)
-            }), inf.key, {
-                iv: inf.iv
-            });
-            return CryptoJS.enc.Utf8.stringify(dec);
+            const { key, iv } = this.getCryptoParams(inf);
+
+            const decipher = crypto.createDecipheriv(
+                this.AES_ALGORITHM,
+                key,
+                iv
+            );
+
+            const decrypted = Buffer.concat([
+                decipher.update(encryptedText, 'base64'),
+                decipher.final()
+            ]);
+
+            // CryptoJS throws on malformed UTF-8; Buffer.toString()
+            // replaces invalid sequences, so use a strict decoder.
+            return this.UTF8_DECODER.decode(decrypted);
         } catch {
-            return "";
+            return '';
         }
     }
-    public static encryptToHex(plainText: string, inf: ICryptoInfo): string {
-        const encryptedText = this.encrypt(plainText, inf);
-        return this.utf8ToHex(encryptedText);
+
+    public static encryptToHex(
+        plainText: string,
+        inf: ICryptoInfo
+    ): string {
+        return this.utf8ToHex(this.encrypt(plainText, inf));
     }
-    public static decryptFromHex(encryptedText: string, inf: ICryptoInfo): string {
-        encryptedText = this.hexToUtf8(encryptedText);
-        return this.decrypt(encryptedText, inf);
+
+    public static decryptFromHex(
+        encryptedText: string,
+        inf: ICryptoInfo
+    ): string {
+        return this.decrypt(this.hexToUtf8(encryptedText), inf);
     }
-    public static encryptUri(plainText: string, inf: ICryptoInfo): string {
-        const encryptedText = this.encrypt(plainText, inf);
-        return encodeURIComponent(encryptedText);
+
+    public static encryptUri(
+        plainText: string,
+        inf: ICryptoInfo
+    ): string {
+        return encodeURIComponent(this.encrypt(plainText, inf));
     }
-    public static decryptUri(encryptedText: string, inf: ICryptoInfo): string {
-        encryptedText = decodeURIComponent(encryptedText);
-        return this.decrypt(encryptedText, inf);
+
+    public static decryptUri(
+        encryptedText: string,
+        inf: ICryptoInfo
+    ): string {
+        return this.decrypt(decodeURIComponent(encryptedText), inf);
     }
 }

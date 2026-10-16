@@ -41,7 +41,6 @@
     "webserver"
   ],
   "devDependencies": {
-    "@types/crypto-js": "^4.2.2",
     "@types/destroy": "^1.0.3",
     "@types/dicer": "^0.2.4",
     "@types/mocha": "^10.0.10",
@@ -60,7 +59,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "crypto-js": "^4.2.0",
     "destroy": "^1.2.0",
     "streamsearch": "^1.1.0"
   },

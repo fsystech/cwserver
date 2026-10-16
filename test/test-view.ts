@@ -58,6 +58,20 @@ export function shouldBeError(
 		if (printerr === true) console.log(e);
 		return e;
 	}
+
+	console.log("No Error:", next.toString())
+}
+
+export function shouldNotError(
+	next: () => void
+): Error | void {
+	try {
+		next();
+	} catch (e: any) {
+		console.log(e);
+		console.log("Error at:", next.toString())
+		throw e;
+	}
 }
 
 export async function shouldBeErrorAsync(
@@ -343,7 +357,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 			}
 			return skip;
 		}
-		
+
 		try {
 			await parser.parseAsync();
 			const data: UploadFileInfo[] = parser.getUploadFileInfo();

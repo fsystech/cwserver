@@ -51,25 +51,25 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Encryption = exports.CryptoInfo = void 0;
 exports.md5 = md5;
 // 6:22 PM 5/19/2020
 // by rajib chy
-const crypto_js_1 = __importDefault(require("crypto-js"));
 const crypto = __importStar(require("node:crypto"));
+const node_util_1 = require("node:util");
 function md5(contents) {
-    return crypto.createHash('md5').update(contents).digest("hex");
+    return crypto
+        .createHash('md5')
+        .update(contents, 'utf8')
+        .digest('hex');
 }
 class CryptoInfo {
     constructor() {
-        this.oldKey = "";
-        this.md5 = "";
-        this.key = void 0;
-        this.iv = void 0;
+        this.oldKey = '';
+        this.md5 = undefined;
+        this.key = null;
+        this.iv = null;
     }
 }
 exports.CryptoInfo = CryptoInfo;
@@ -87,47 +87,67 @@ class Encryption {
         const res = new CryptoInfo();
         res.oldKey = key;
         res.md5 = this.toMd5(key);
-        res.key = crypto_js_1.default.enc.Hex.parse(res.md5);
-        res.iv = crypto_js_1.default.enc.Hex.parse(this.utf8ToHex(res.oldKey));
+        // MD5 hex digest produces a 16-byte AES-128 key.
+        res.key = Buffer.from(res.md5, 'hex');
+        // Preserve the legacy UTF-8 IV bytes.
+        // CryptoJS accepts IVs of arbitrary length; Node requires 16 bytes.
+        // Copying into a zero-filled buffer preserves the legacy behavior
+        // of zero-padding short IVs and ignoring bytes beyond 16.
+        res.iv = Buffer.alloc(16);
+        Buffer.from(key, 'utf8').copy(res.iv, 0, 0, 16);
         return res;
     }
+    static getCryptoParams(inf) {
+        if (!inf.key || !inf.iv ||
+            !Buffer.isBuffer(inf.key) ||
+            !Buffer.isBuffer(inf.iv) ||
+            inf.key.length !== 16 ||
+            inf.iv.length !== 16) {
+            throw new Error('Invalid IV and key.');
+        }
+        return {
+            key: inf.key,
+            iv: inf.iv
+        };
+    }
     static encrypt(plainText, inf) {
-        if (!inf.key)
-            throw new Error("Invalid iv and key....");
-        return crypto_js_1.default.AES.encrypt(plainText, inf.key, { iv: inf.iv }).toString();
+        const { key, iv } = this.getCryptoParams(inf);
+        const cipher = crypto.createCipheriv(this.AES_ALGORITHM, key, iv);
+        return Buffer.concat([
+            cipher.update(plainText, 'utf8'),
+            cipher.final()
+        ]).toString('base64');
     }
     static decrypt(encryptedText, inf) {
-        if (!inf.key)
-            throw new Error("Invalid iv and key....");
         try {
-            const dec = crypto_js_1.default.AES.decrypt(crypto_js_1.default.lib.CipherParams.create({
-                iv: inf.iv,
-                ciphertext: crypto_js_1.default.enc.Base64.parse(encryptedText)
-            }), inf.key, {
-                iv: inf.iv
-            });
-            return crypto_js_1.default.enc.Utf8.stringify(dec);
+            const { key, iv } = this.getCryptoParams(inf);
+            const decipher = crypto.createDecipheriv(this.AES_ALGORITHM, key, iv);
+            const decrypted = Buffer.concat([
+                decipher.update(encryptedText, 'base64'),
+                decipher.final()
+            ]);
+            // CryptoJS throws on malformed UTF-8; Buffer.toString()
+            // replaces invalid sequences, so use a strict decoder.
+            return this.UTF8_DECODER.decode(decrypted);
         }
         catch (_a) {
-            return "";
+            return '';
         }
     }
     static encryptToHex(plainText, inf) {
-        const encryptedText = this.encrypt(plainText, inf);
-        return this.utf8ToHex(encryptedText);
+        return this.utf8ToHex(this.encrypt(plainText, inf));
     }
     static decryptFromHex(encryptedText, inf) {
-        encryptedText = this.hexToUtf8(encryptedText);
-        return this.decrypt(encryptedText, inf);
+        return this.decrypt(this.hexToUtf8(encryptedText), inf);
     }
     static encryptUri(plainText, inf) {
-        const encryptedText = this.encrypt(plainText, inf);
-        return encodeURIComponent(encryptedText);
+        return encodeURIComponent(this.encrypt(plainText, inf));
     }
     static decryptUri(encryptedText, inf) {
-        encryptedText = decodeURIComponent(encryptedText);
-        return this.decrypt(encryptedText, inf);
+        return this.decrypt(decodeURIComponent(encryptedText), inf);
     }
 }
 exports.Encryption = Encryption;
+Encryption.AES_ALGORITHM = 'aes-128-cbc';
+Encryption.UTF8_DECODER = new node_util_1.TextDecoder('utf-8', { fatal: true });
 //# sourceMappingURL=encryption.js.map
