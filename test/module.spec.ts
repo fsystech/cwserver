@@ -1369,6 +1369,7 @@ describe("cwserver-post", () => {
             .send({
                 name: 'rajibs',
                 occupation: 'kutukutu',
+                uuid: Util.UUID(),
                 large: largeBuff.toString('hex')
             })
             .end((err, res) => {
@@ -2504,7 +2505,7 @@ describe("cwserver-utility", () => {
         expect(shouldBeError(() => {
             fsw.copyFileSync(`${logDir}/temp/nofile.lg`, `${logDir}/temp/nofile.lgx`);
         })).toBeInstanceOf(Error);
-        
+
         expect(fsw.rmdirSync(`${logDir}/temp/`)).not.toBeInstanceOf(Error);
         expect(fsw.copyDirSync(`${logDir}/temp/`, `${logDir}/tempx/`)).not.toBeInstanceOf(Error);
         expect(fsw.mkdirSync(logDir)).toEqual(true);

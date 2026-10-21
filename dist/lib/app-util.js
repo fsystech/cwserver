@@ -73,6 +73,7 @@ exports.generateRandomString = generateRandomString;
 // by rajib chy
 const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
+const crypto = __importStar(require("node:crypto"));
 const node_stream_1 = require("node:stream");
 const destroy_1 = __importDefault(require("destroy"));
 const _zlib = __importStar(require("node:zlib"));
@@ -168,6 +169,9 @@ class Util {
             const v = c === 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
+    }
+    static UUID() {
+        return crypto.randomUUID().replace(/-/g, '');
     }
     static extend(destination, source, deep) {
         if (deep === true)

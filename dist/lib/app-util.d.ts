@@ -11,6 +11,7 @@ declare class JSONW {
 }
 export declare class Util {
     static guid(): string;
+    static UUID(): string;
     static readonly JSON: typeof JSONW;
     static extend<T>(destination: T, source: any, deep?: boolean): T;
     static clone<T>(source: T): T;

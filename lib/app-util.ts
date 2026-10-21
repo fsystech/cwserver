@@ -22,6 +22,8 @@
 // by rajib chy
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
+import * as crypto from 'node:crypto';
+
 import { pipeline, Readable } from 'node:stream';
 import type { IContext } from './context';
 import destroy from 'destroy';
@@ -112,7 +114,7 @@ class JSONW {
             return undefined;
         }
     }
-    
+
     static stringify(value: any, replacer?: (this: any, key: string, value: any) => any, space?: string | number): any {
         return JSON.stringify(value, replacer, space);
     }
@@ -126,6 +128,10 @@ export class Util {
             const v = c === 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
+    }
+
+    public static UUID(): string {
+        return crypto.randomUUID().replace(/-/g, '');
     }
 
     public static readonly JSON = JSONW;
