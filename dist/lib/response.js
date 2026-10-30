@@ -293,8 +293,9 @@ class Response extends node_http_1.ServerResponse {
         }
         const contentLength = buffer.length;
         const shouldCompress = !compress ? false : (contentLength >= COMPRESSION_THRESHOLD);
+        const statusCode = this._statusCode > 0 ? this._statusCode : 200;
         if (!shouldCompress) {
-            this.status(200, getCommonHeader(_mimeType.getMimeType(contentType), contentLength)).end(buffer);
+            this.status(statusCode, getCommonHeader(_mimeType.getMimeType(contentType), contentLength)).end(buffer);
             return;
         }
         if (!(compress === 'gzip' || compress === "br")) {
@@ -303,7 +304,7 @@ class Response extends node_http_1.ServerResponse {
         if (contentLength <= DEFAULT_MAX_MEMORY_COMPRESS_SIZE) {
             return this._memoryCompress(buffer, contentType, compress, next);
         }
-        this.status(200, getCommonHeader(_mimeType.getMimeType(contentType), null, compress));
+        this.status(statusCode, getCommonHeader(_mimeType.getMimeType(contentType), null, compress));
         const compressor = compress === "gzip"
             ? _zlib.createGzip(GZIP_OPTIONS)
             : _zlib.createBrotliCompress(BROTLI_OPTIONS);

@@ -607,7 +607,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 						return this;
 					}
 
-					expect(shouldBeError(() => {
+					expect(shouldNotError(() => {
 						ctx7.res.status(200).send("Nothing to do...");
 						ctx7.res.setHeader('Content-Type', "");
 						ctx7.res.send(true);
@@ -615,7 +615,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 						ctx7.res.send(1000);
 						ctx7.res.setHeader('Content-Type', "");
 						ctx7.res.send(Buffer.from("Nothing to do...."));
-					}, true)).not.toBeInstanceOf(Error);
+					})).not.toBeInstanceOf(Error);
 
 					ctx7.res.status(204).send();
 

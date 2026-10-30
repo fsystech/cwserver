@@ -713,9 +713,11 @@ export class Response extends ServerResponse implements IResponse {
             contentLength >= COMPRESSION_THRESHOLD
         );
 
+        const statusCode = this._statusCode > 0 ? this._statusCode : 200;
+
         if (!shouldCompress) {
 
-            this.status(200, getCommonHeader(
+            this.status(statusCode, getCommonHeader(
                 _mimeType.getMimeType(contentType), contentLength
             )).end(buffer);
 
@@ -734,7 +736,7 @@ export class Response extends ServerResponse implements IResponse {
 
         }
 
-        this.status(200, getCommonHeader(
+        this.status(statusCode, getCommonHeader(
             _mimeType.getMimeType(contentType), null, compress
         ));
 
