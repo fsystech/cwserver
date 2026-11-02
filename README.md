@@ -631,7 +631,7 @@ What changed:
 - **Templates are compiled once.** A cached script template used to be recompiled in a new `vm` context on every request; the compiled function is now kept in memory (`useFullOptimization`) and reused. In `template.cacheType = "FILE"` mode with `useFullOptimization: false` the `.cach` file is now actually picked up instead of being rewritten on every request.
 - **Small static files are served from memory** when `useFullOptimization` is on (≤ 512 KiB each, at most 512 files), like the gzip cache already was.
 - **On-the-fly compression is cheaper.** Per-request gzip streams use the default level instead of level 9, and dynamic brotli uses quality 4 instead of 11 (override with `DEFAULT_BROTLI_QUALITY`, 0-11). Pre-compressed cache files are still written with maximum compression.
-- **`Util.guid()`** (one per request) uses `crypto.randomUUID()`.
+- **`Util.UUID()`** (one per request) uses `crypto.randomUUID()`.
 - **The "file not found" stat cache is bounded** (1 024 entries); random 404 URLs can no longer grow it forever.
 - **Fix:** compressed JSON responses keep the status code you set (`res.status(404).json(data, 'gzip')` used to be sent as `200`).
 
