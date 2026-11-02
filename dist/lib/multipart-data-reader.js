@@ -130,7 +130,7 @@ class MultipartDataReader extends node_events_1.EventEmitter {
                 return;
             }
             if (contentType.length > 0) {
-                const fileInfo = new posted_file_info_1.PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), _path.resolve(`${tempDir}/${app_util_1.Util.guid()}.temp`));
+                const fileInfo = new posted_file_info_1.PostedFileInfo(disposition, fieldName.replace(/"/gi, ""), fileName.replace(/"/gi, ""), contentType.replace(/"/gi, ""), _path.resolve(`${tempDir}/${app_util_1.Util.UUID()}.temp`));
                 if (this.skipFile(fileInfo)) {
                     stream.resume();
                     this.emit("end");

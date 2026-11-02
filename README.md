@@ -31,6 +31,8 @@ Socket.IO integration, and a project scaffolder — with only two runtime depend
 - [WebSocket (Socket.IO)](#websocket-socketio)
 - [Low-level `App()`](#low-level-app)
 - [Configuration (`app.config.json`)](#configuration-appconfigjson)
+- [Async API and deprecated callbacks](#async-api-and-deprecated-callbacks)
+- [Performance notes](#performance-notes)
 - [Public API](#public-api)
 - [TypeScript](#typescript)
 - [Repository layout](#repository-layout)
@@ -278,7 +280,7 @@ Every handler receives an `IContext` — one instance per request.
 | `send(chunk?)` | Send string / Buffer / number / boolean / object |
 | `asHTML(code)` / `asJSON(code)` | Set status + content type, then `.end(…)` yourself |
 | `type(ext)` | Set content type from an extension |
-| `render(ctx, absPath, status?)` | Render a template / static file |
+| `render(ctx, absPath, status?)` | Render a template / static file. Returns a `Promise<void>` you can `await` |
 | `cookie(name, value, options)` | `Set-Cookie` with `sameSite`, `httpOnly`, `secure`, `maxAge`… |
 | `redirect(url, force?)`, `noCache()`, `get()`, `set()` | Convenience |
 | `compress(data, contentType, 'gzip' \| 'br')` | Explicit compression |
@@ -589,6 +591,49 @@ Use the `APP_CONFIG_NAME` environment variable to load a different file name.
 
 Environment variables: `APP_CONFIG_NAME`, `IISNODE_VERSION` / `PORT`, `APP_POOL_ID`,
 `DEFAULT_CONTENT_COMPRESSION` (`gzip` by default).
+
+---
+
+## Async API and deprecated callbacks
+
+Everything that does I/O has a promise-based form; use these in new code. The old callback forms still work
+(they are thin wrappers) but are marked `@deprecated`.
+
+| Use | Instead of (deprecated) |
+| --- | --- |
+| `await parser.parseAsync()` | `parser.parse(cb)` |
+| `await file.readAsync()` / `await file.saveAsAsync(path)` | `file.read(cb)` / `file.saveAs(path, cb)` |
+| `await parser.saveAsAsync(dir)` | `parser.saveAs(dir, cb, onError)` |
+| `fsw.statAsync`, `fsw.isExistsAsync`, `fsw.readJsonAsync`, `fsw.moveFileAsync`, `fsw.compareFileAsync` | `fsw.stat`, `fsw.isExists`, `fsw.readJson`, `fsw.moveFile`, `fsw.compareFile` |
+| `fsw.mkdirAsyncx`, `fsw.rmdirAsync`, `fsw.copyFileAsync`, `fsw.copyDirAsync`, `fsw.unlinkAsync` | `fsw.mkdir`, `fsw.rmdir`, `fsw.copyFile`, `fsw.copyDir`, `fsw.unlink` |
+| `await fileInfo.statAsync(path)` / `existsAsync(path)` | `fileInfo.stat(path, cb)` / `exists(path, cb)` |
+| `await ctx.res.render(ctx, path)` | (was `void`) |
+
+The callback style `errHandler` argument of the `fsw` wrappers is now optional.
+
+---
+
+## Performance notes
+
+Measured with `autocannon` (64 connections, 2 vCPU container, production config `isDebug: false`),
+before → after this release:
+
+| Scenario | Before | After |
+| --- | ---: | ---: |
+| Template page (`#extends`, `{= =}`) | ~530 req/s | ~8 000 req/s |
+| Error page (404) | ~530 req/s | ~8 500 req/s |
+| Static file, no gzip | ~2 900 req/s | ~9 000 req/s |
+| JSON response, gzip | ~8 300 req/s | ~15 000 req/s |
+| `POST` JSON + body parser | ~4 700 req/s | ~8 000 req/s |
+
+What changed:
+
+- **Templates are compiled once.** A cached script template used to be recompiled in a new `vm` context on every request; the compiled function is now kept in memory (`useFullOptimization`) and reused. In `template.cacheType = "FILE"` mode with `useFullOptimization: false` the `.cach` file is now actually picked up instead of being rewritten on every request.
+- **Small static files are served from memory** when `useFullOptimization` is on (≤ 512 KiB each, at most 512 files), like the gzip cache already was.
+- **On-the-fly compression is cheaper.** Per-request gzip streams use the default level instead of level 9, and dynamic brotli uses quality 4 instead of 11 (override with `DEFAULT_BROTLI_QUALITY`, 0-11). Pre-compressed cache files are still written with maximum compression.
+- **`Util.guid()`** (one per request) uses `crypto.randomUUID()`.
+- **The "file not found" stat cache is bounded** (1 024 entries); random 404 URLs can no longer grow it forever.
+- **Fix:** compressed JSON responses keep the status code you set (`res.status(404).json(data, 'gzip')` used to be sent as `200`).
 
 ---
 

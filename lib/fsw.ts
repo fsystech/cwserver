@@ -22,26 +22,17 @@
 // by rajib chy
 import * as _fs from 'node:fs';
 import * as _path from 'node:path';
-import type { PathLike, RmOptions, NoParamCallback } from 'node:fs';
 import { ErrorHandler } from './app-static';
 
 const _fsp = _fs.promises;
 
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
 
-function _fsRmdir(path: PathLike, options: RmOptions, callback: NoParamCallback) {
-
-    if (typeof (_fs.rm) === "function") {
-        return _fs.rm(path, options, callback);
-    }
-
-    return _fs.rmdir(path, callback);
-}
-
 export async function statAsync(path: string): Promise<_fs.Stats> {
     return await _fsp.stat(path);
 }
 
+/** @deprecated Use {@link statAsync} */
 export function stat(
     path: string,
     next: (err?: NodeJS.ErrnoException, stat?: _fs.Stats) => void
@@ -70,6 +61,7 @@ export async function moveFileAsync(
     return true;
 }
 
+/** @deprecated Use {@link moveFileAsync} */
 export function moveFile(
     src: string, dest: string,
     next: (err?: NodeJS.ErrnoException) => void,
@@ -92,17 +84,22 @@ export async function compareFileAsync(a: string, b: string): Promise<boolean> {
     return astat.mtime.getTime() > bstat.mtime.getTime();
 }
 
-/** compareFile a stat.mtime > b stat.mtime */
+/**
+ * compareFile a stat.mtime > b stat.mtime
+ * @deprecated Use {@link compareFileAsync}
+ */
 export function compareFile(
     a: string, b: string,
     next: (err?: NodeJS.ErrnoException, changed?: boolean) => void,
-    errHandler: ErrorHandler
+    errHandler?: ErrorHandler
 ): void {
 
+    const handle = errHandler ?? ((_err, cb: () => void) => cb());
+
     compareFileAsync(a, b).then(
-        r => errHandler(null, () => next(null, r))
+        r => handle(null, () => next(null, r))
     ).catch(
-        ex => errHandler(ex, () => next(ex))
+        ex => handle(ex, () => next(ex))
     );
 }
 /** compareFileSync a stat.mtime > b stat.mtime */
@@ -113,6 +110,7 @@ export function compareFileSync(a: string, b: string): boolean {
     return false;
 }
 
+/** @deprecated Use {@link isExistsAsync} */
 export function isExists(
     path: string,
     next: (exists: boolean, url: string) => void
@@ -152,15 +150,18 @@ export async function readJsonAsync<T>(
     ) as T;
 }
 
+/** @deprecated Use {@link readJsonAsync} */
 export function readJson<T>(
     absPath: string,
     next: (err?: NodeJS.ErrnoException, json?: T) => void,
-    errHandler: ErrorHandler
+    errHandler?: ErrorHandler
 ): void {
 
+    const handle = errHandler ?? ((_err, cb: () => void) => cb());
+
     readJsonAsync<T>(absPath).then(rs => {
-        errHandler(null, () => next(null, rs));
-    }).catch(ex => errHandler(ex, () => next(ex)));
+        handle(null, () => next(null, rs));
+    }).catch(ex => handle(ex, () => next(ex)));
 }
 
 export function readJsonSyncUnsafe<T>(absPath: string): T {
@@ -258,19 +259,22 @@ export async function mkdirAsyncx(
 
 }
 
+/** @deprecated Use {@link mkdirAsyncx} */
 export function mkdir(
     rootDir: string,
     targetDir: string,
     next: (err?: NodeJS.ErrnoException) => void,
-    errHandler: ErrorHandler
+    errHandler?: ErrorHandler
 ): void {
+
+    const handle = errHandler ?? ((_err, cb: () => void) => cb());
 
     mkdirAsyncx(
         rootDir, targetDir
     ).then(
-        () => errHandler(null, () => next(null))
+        () => handle(null, () => next(null))
     ).catch(
-        ex => errHandler(ex, () => next(ex))
+        ex => handle(ex, () => next(ex))
     );
 }
 
@@ -304,37 +308,24 @@ export function mkdirSync(rootDir: string, targetDir?: string): boolean {
     return _fs.existsSync(fullPath);
 }
 
+/** Remove a file or a directory (recursively). Rejects when `path` does not exist. */
+export async function rmdirAsync(path: string): Promise<void> {
+    const stats = await _fsp.stat(path);
+
+    if (stats.isDirectory()) {
+        return await _fsp.rm(path, { recursive: true, force: true });
+    }
+
+    await _fsp.unlink(path);
+}
+
+/** @deprecated Use {@link rmdirAsync} */
 export function rmdir(
     path: string,
     next: (err: NodeJS.ErrnoException | null) => void,
-    errHandler: ErrorHandler
+    errHandler?: ErrorHandler
 ): void {
-    return _fs.stat(path, (err: NodeJS.ErrnoException | null, stats: _fs.Stats) => {
-        if (err) return next(err);
-        if (stats.isDirectory()) {
-            return _fs.readdir(path, (rerr: NodeJS.ErrnoException | null, files: string[]): void => {
-                return errHandler(err, () => {
-                    const forward = (): void => {
-                        const npath: string | undefined = files.shift();
-                        if (!npath) {
-                            return _fsRmdir(path, { recursive: true, force: true }, (rmerr: NodeJS.ErrnoException | null): void => {
-                                return next(rmerr);
-                            });
-                        }
-                        rmdir(_path.join(path, npath), (ferr: NodeJS.ErrnoException | null): void => {
-                            return errHandler(ferr, () => {
-                                return forward();
-                            });
-                        }, errHandler);
-                    };
-                    return forward();
-                });
-            });
-        }
-        return _fs.unlink(path, (uerr: NodeJS.ErrnoException | null): void => {
-            return next(uerr);
-        });
-    });
+    rmdirAsync(path).then(() => next(null), (ex) => next(ex));
 }
 
 export function rmdirSync(path: string): void {
@@ -352,34 +343,42 @@ export function rmdirSync(path: string): void {
     }
 }
 
+/** @deprecated Use {@link unlinkAsync} */
 export function unlink(
     path: string,
     next: (err: NodeJS.ErrnoException | null) => void
 ): void {
-    return _fs.unlink(path, (err: NodeJS.ErrnoException | null): void => {
-        return next(err);
-    });
+    _fsp.unlink(path).then(() => next(null), (ex) => next(ex));
 }
+
+/**
+ * Copy `src` file to `dest`. An existing `dest` file is replaced.
+ * Both paths must be file paths (with an extension).
+ */
+export async function copyFileAsync(src: string, dest: string): Promise<void> {
+    if (!_path.parse(src).ext)
+        throw new Error("Source file path required....");
+
+    if (!_path.parse(dest).ext)
+        throw new Error("Dest file path required....");
+
+    try {
+        await _fsp.stat(src);
+    } catch {
+        throw new Error(`Source directory not found ${src}`);
+    }
+
+    await _fsp.rm(dest, { force: true });
+    await _fsp.copyFile(src, dest);
+}
+
+/** @deprecated Use {@link copyFileAsync} */
 export function copyFile(
     src: string, dest: string,
     next: (err: NodeJS.ErrnoException | null) => void,
-    errHandler: ErrorHandler
+    errHandler?: ErrorHandler
 ): void {
-    if (!_path.parse(src).ext)
-        return process.nextTick(() => next(new Error("Source file path required....")));
-    if (!_path.parse(dest).ext)
-        return process.nextTick(() => next(new Error("Dest file path required....")));
-    return _fs.stat(src, (errs: NodeJS.ErrnoException | null, stats: _fs.Stats): void => {
-        if (errs)
-            return next(new Error(`Source directory not found ${src}`));
-        return unlink(dest, (err: NodeJS.ErrnoException | null): void => {
-            return errHandler(err, () => {
-                return _fs.copyFile(src, dest, (cerr: NodeJS.ErrnoException | null): void => {
-                    return next(cerr);
-                });
-            });
-        });
-    });
+    copyFileAsync(src, dest).then(() => next(null), (ex) => next(ex));
 }
 export function copyFileSync(src: string, dest: string): void {
     let parse = _path.parse(src);
@@ -395,40 +394,32 @@ export function copyFileSync(src: string, dest: string): void {
     _fs.copyFileSync(src, dest);
 }
 
+/** Copy a file or a directory (recursively) from `src` to `dest`. */
+export async function copyDirAsync(src: string, dest: string): Promise<void> {
+    const stats = await _fsp.stat(src);
+
+    if (!stats.isDirectory()) {
+        await _fsp.copyFile(src, dest);
+        return;
+    }
+
+    await mkdirAsyncx(dest);
+
+    const files = await _fsp.readdir(src);
+
+    await Promise.all(files.map(
+        (name) => copyDirAsync(_path.join(src, name), _path.join(dest, name))
+    ));
+}
+
+/** @deprecated Use {@link copyDirAsync} */
 export function copyDir(
     src: string,
     dest: string,
     next: (err: NodeJS.ErrnoException | null) => void,
-    errHandler: ErrorHandler
+    errHandler?: ErrorHandler
 ): void {
-    return _fs.stat(src, (err: NodeJS.ErrnoException | null, stats: _fs.Stats) => {
-        if (err) return next(err);
-        return errHandler(err, () => {
-            if (stats.isDirectory()) {
-                return mkdir(dest, "", (merr: NodeJS.ErrnoException | null): void => {
-                    return errHandler(merr, () => {
-                        return _fs.readdir(src, (rerr: NodeJS.ErrnoException | null, files: string[]): void => {
-                            return errHandler(rerr, () => {
-                                const forward = (): void => {
-                                    const npath: string | undefined = files.shift();
-                                    if (!npath) return next(null);
-                                    return copyDir(_path.join(src, npath), _path.join(dest, npath), (copyErr: NodeJS.ErrnoException | null): void => {
-                                        return errHandler(copyErr, () => {
-                                            return forward();
-                                        });
-                                    }, errHandler);
-                                };
-                                return forward();
-                            });
-                        });
-                    });
-                }, errHandler);
-            }
-            return _fs.copyFile(src, dest, (cerr: NodeJS.ErrnoException | null): void => {
-                return next(cerr);
-            });
-        });
-    });
+    copyDirAsync(src, dest).then(() => next(null), (ex) => next(ex));
 }
 
 export function copyDirSync(src: string, dest: string): void {

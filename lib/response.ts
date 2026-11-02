@@ -27,6 +27,7 @@ import {
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream";
 import * as _zlib from 'node:zlib';
+import { promisify } from 'node:util';
 import { toResponseTime, toString, type IResInfo } from './app-static';
 import { HttpStatus } from './http-status';
 import type { IContext } from './context';
@@ -268,9 +269,9 @@ export interface IResponse extends ServerResponse {
      * @param {IResInfo} [status]
      * Optional data passed to the template during rendering.
      *
-     * @returns {void}
+     * @returns {Promise<void>} Resolves when the response has been handled.
      */
-    render(ctx: IContext, path: string, status?: IResInfo): void;
+    render(ctx: IContext, path: string, status?: IResInfo): Promise<void>;
 
     /**
      * Sets the response `Content-Type` header using a file extension or MIME alias.
@@ -400,12 +401,31 @@ const GZIP_OPTIONS = {
     level: _zlib.constants.Z_DEFAULT_COMPRESSION
 };
 
+/**
+ * Brotli quality used for responses that are compressed on the fly.
+ *
+ * Quality 11 (the zlib default) is meant for assets that are compressed once
+ * and served many times; on a request path it is more than an order of
+ * magnitude slower than quality 4-5 for a small gain in size.
+ *
+ * The value can be configured (0-11) using the `DEFAULT_BROTLI_QUALITY`
+ * environment variable.
+ *
+ * Default: `4`
+ */
+const BROTLI_QUALITY = (() => {
+    const value = Number(process.env.DEFAULT_BROTLI_QUALITY);
+    return Number.isInteger(value) && value >= 0 && value <= 11 ? value : 4;
+})();
+
 const BROTLI_OPTIONS = {
     params: {
-        [_zlib.constants.BROTLI_PARAM_QUALITY]:
-            _zlib.constants.BROTLI_DEFAULT_QUALITY
+        [_zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY
     }
 };
+
+const _gzipAsync = promisify(_zlib.gzip);
+const _brotliAsync = promisify(_zlib.brotliCompress);
 
 export class Response extends ServerResponse implements IResponse {
     private _isAlive: boolean | undefined;
@@ -602,7 +622,7 @@ export class Response extends ServerResponse implements IResponse {
         ), this;
     }
 
-    public render(ctx: IContext, path: string, status?: IResInfo): void {
+    public render(ctx: IContext, path: string, status?: IResInfo): Promise<void> {
         return Template.parse(ctx, path, status);
     }
 
@@ -729,8 +749,8 @@ export class Response extends ServerResponse implements IResponse {
 
         if (contentLength <= DEFAULT_MAX_MEMORY_COMPRESS_SIZE) {
 
-            return this._memoryCompress(
-                buffer, contentType, compress, next
+            return void this._memoryCompress(
+                buffer, contentType, compress, statusCode, next
             );
 
         }
@@ -808,28 +828,27 @@ export class Response extends ServerResponse implements IResponse {
      * @param {(err: Error) => void} [next] - Optional callback invoked if compression fails.
      * @returns {void}
      */
-    private _memoryCompress(
+    private async _memoryCompress(
         buffer: Buffer,
         contentType: string,
-        compress?: CompressionType,
+        compress: CompressionType,
+        statusCode: number,
         next?: (err: Error) => void
-    ): void {
+    ): Promise<void> {
 
-        if (compress === 'gzip') {
+        let compressed: Buffer | undefined;
+        let error: Error | undefined;
 
-            return _zlib.gzip(
-                buffer, GZIP_OPTIONS,
-                (error, compressed) => this._onCompress(
-                    contentType, compressed, compress, next, error
-                )
-            );
+        try {
+            compressed = compress === 'gzip'
+                ? await _gzipAsync(buffer, GZIP_OPTIONS)
+                : await _brotliAsync(buffer, BROTLI_OPTIONS);
+        } catch (ex: any) {
+            error = ex;
         }
 
-        return _zlib.brotliCompress(
-            buffer, BROTLI_OPTIONS,
-            (error, compressed) => this._onCompress(
-                contentType, compressed, compress, next, error
-            )
+        this._onCompress(
+            contentType, compressed, compress, statusCode, next, error
         );
     }
 
@@ -845,14 +864,16 @@ export class Response extends ServerResponse implements IResponse {
      * @param {string} contentType - The MIME type or file extension used to determine the response Content-Type.
      * @param {Buffer} compressed - The compressed response payload.
      * @param {CompressionType} compress - The compression algorithm used.
+     * @param {number} statusCode - The status code the response was prepared with.
      * @param {(err: Error) => void} [next] - Invoked if compression fails.
      * @param {Error} [error] - The compression error, if any.
      * @returns {void}
      */
     private _onCompress(
         contentType: string,
-        compressed: Buffer,
+        compressed: Buffer | undefined,
         compress: CompressionType,
+        statusCode: number,
         next?: (err: Error) => void,
         error?: Error
     ): void {
@@ -869,7 +890,7 @@ export class Response extends ServerResponse implements IResponse {
         }
 
         this.status(
-            200, getCommonHeader(
+            statusCode, getCommonHeader(
                 _mimeType.getMimeType(contentType),
                 compressed.length, compress
             )

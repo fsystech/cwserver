@@ -442,12 +442,12 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 						}
 						return;
 					}
-					file.saveAsSync(`${downloadDir}/${Util.guid()}_${file.getFileName()}`);
+					file.saveAsSync(`${downloadDir}/${Util.UUID()}_${file.getFileName()}`);
 					expect(shouldBeError(() => {
 						file.readSync();
 					})).toBeInstanceOf(Error);
 					expect(shouldBeError(() => {
-						file.saveAsSync(`${downloadDir}/${Util.guid()}_${file.getFileName()}`);
+						file.saveAsSync(`${downloadDir}/${Util.UUID()}_${file.getFileName()}`);
 					})).toBeInstanceOf(Error);
 				});
 

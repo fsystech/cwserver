@@ -61,6 +61,12 @@ export declare class Util {
     static isArrayLike<T>(obj?: any): obj is T[];
     static isError(obj: any): obj is Error;
     static throwIfError(obj: any): void;
+    /**
+     * Gzip level for responses that are compressed on every request.
+     * Level 9 (the default of {@link createGzip}) is only worth it for content
+     * that is compressed once and cached.
+     */
+    static readonly GZIP_STREAM_LEVEL: number;
     static createGzip(level?: number): _zlib.Gzip;
     static writeGzipStreamAsync(phypath: string, res: IResponse): Promise<void>;
     static compressAsync(absPath: string | Uint8Array, cachePath: string): Promise<void>;

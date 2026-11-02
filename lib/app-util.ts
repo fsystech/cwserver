@@ -142,7 +142,7 @@ export class Util {
      * identifier is needed.
      */
     public static guid(): string {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c: string) => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
             const r = Math.random() * 16 | 0;
             const v = c === 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
@@ -206,6 +206,13 @@ export class Util {
     public static throwIfError(obj: any): void {
         if (this.isError(obj)) throw obj;
     }
+
+    /**
+     * Gzip level for responses that are compressed on every request.
+     * Level 9 (the default of {@link createGzip}) is only worth it for content
+     * that is compressed once and cached.
+     */
+    public static readonly GZIP_STREAM_LEVEL: number = _zlib.constants.Z_DEFAULT_COMPRESSION;
 
     public static createGzip(level?: number): _zlib.Gzip {
         return _zlib.createGzip({

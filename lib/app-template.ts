@@ -24,6 +24,7 @@ import * as _fs from 'node:fs';
 import * as _vm from 'node:vm';
 import * as _zlib from 'node:zlib';
 import * as _path from 'node:path';
+import { promisify } from 'node:util';
 import { HttpStatus } from './http-status';
 import type { IResInfo, IDispose } from './app-static';
 import type { IContext } from './context';
@@ -34,6 +35,12 @@ import { FileInfoCacheHandler, type IFileInfoCacheHandler } from './file-info';
 import { TemplateCtx, type SandBox, type SandBoxNext } from './app-template-ctx';
 
 const _isWin: boolean = platform() === "win32";
+const _fsp = _fs.promises;
+const _gzipAsync = promisify(_zlib.gzip);
+const MAX_TEMPLATE_DEPTH = 32;
+const _RE_ATTACH = /#attach/i;
+const _RE_EXTENDS = /#extends/i;
+const _RE_SCRIPT = /{%|{=|<script runat="template-engine">/i;
 
 interface IScriptTag {
     readonly lre: RegExp;
@@ -73,7 +80,7 @@ type TemplateNextFunc = (params: CompilerResult) => void;
 
 export function templateNext(
     ctx: IContext, next: SandBoxNext, isCompressed?: boolean
-): void {
+): Promise<void> {
     throw new Error("Function not implemented.");
 }
 
@@ -302,33 +309,34 @@ function ExportExtendMatch(str: string): RegExpExecArray | null {
 const _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
 
 class TemplateParser {
-    private static implimentAttachment(
-        ctx: IContext, appRoot: string, str: string,
-        next: (str: string) => void
-    ): void {
-        if (/#attach/gi.test(str) === false) return next(str);
+    private static async implimentAttachment(
+        appRoot: string, str: string
+    ): Promise<string> {
+        if (!_RE_ATTACH.test(str)) return str;
+
         const match: RegExpMatchArray | null = ExportAttachMatch(str);
-        if (!match) return next(str);
-        const forword = (): void => {
-            const orgMatch: string | undefined = match.shift();
-            if (!orgMatch) return process.nextTick(() => next(str));
+        if (!match) return str;
+
+        // read every attachment in parallel, then replace them in order
+        const contents = await Promise.all(match.map(async (orgMatch: string): Promise<string> => {
             const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
-            return _fileInfo.exists(abspath, (exists: boolean, url: string): void => {
-                if (!exists) {
-                    return ctx.transferError(new Error(`Attachement ${path} not found...`));
-                }
-                return _fs.readFile(url, "utf8", (err: NodeJS.ErrnoException | null, data: string): void => {
-                    return ctx.handleError(err, () => {
-                        // \n is reuired for tailing gurd
-                        str = str.replace(orgMatch, data + "\n");
-                        return forword();
-                    });
-                });
-            });
-        };
+            const { exists, url } = await _fileInfo.existsAsync(abspath);
 
-        return forword();
+            if (!exists) {
+                throw new Error(`Attachement ${path} not found...`);
+            }
+
+            return await _fsp.readFile(url, "utf8");
+        }));
+
+        for (let i = 0; i < match.length; i++) {
+            // \n is reuired for tailing gurd
+            const data = contents[i] + "\n";
+            str = str.replace(match[i], () => data);
+        }
+
+        return str;
     }
 
     private static mergeTemplate(
@@ -356,87 +364,91 @@ class TemplateParser {
         }
         return body;
     }
-    private static prepareTemplate(
-        ctx: IContext,
-        appRoot: string, str: string,
-        next: (templats: string[]) => void
-    ): void {
+
+    private static async prepareTemplate(
+        appRoot: string, str: string
+    ): Promise<string[]> {
         const templats: string[] = [];
-        const forword = (): void => {
+
+        for (let depth = 0; depth < MAX_TEMPLATE_DEPTH; depth++) {
             const match: RegExpExecArray | null = ExportExtendMatch(str);
+
             if (!match) {
                 templats.push(str);
-                return next(templats);
+                return templats;
             }
+
             const found: string | undefined = match[1];
             if (!found || (found && found.trim().length === 0)) {
-                return ctx.transferError(new Error("Invalid template format..."));
+                throw new Error("Invalid template format...");
             }
+
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").replace(/\n/gi, "").trim();
             const abspath = _path.resolve(`${appRoot}${path}`);
-            const matchStr = match[0];
-            return _fileInfo.exists(abspath, (exists: boolean): void => {
-                if (!exists) {
-                    return ctx.transferError(new Error(`Template ${path} not found...`));
-                }
-                templats.push(str.replace(matchStr, ""));
-                return _fs.readFile(abspath, "utf8", (err: NodeJS.ErrnoException | null, data: string): void => {
-                    return ctx.handleError(err, () => {
-                        str = data.replace(/^\uFEFF/, '');
-                        return forword();
-                    });
-                });
-            });
-        };
-        return forword();
-    }
-    private static implimentTemplateExtend(
-        ctx: IContext,
-        appRoot: string, str: string,
-        next: (str: string) => void
-    ): void {
-        if (/#extends/gi.test(str) === false) return next(str);
-        return this.prepareTemplate(ctx, appRoot, str, (templates: string[]): void => {
-            try {
-                const templatesLength: number = templates.length - 1;
-                const startTagPattern: RegExp = /<placeholder[^>]*>/gi;
-                let parentTemplate: string = templates[templatesLength].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
-                let body: string = parentTemplate;
-                for (let i = templatesLength - 1; i >= 0; i--) {
-                    const currentTemplate = templates[i].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
-                    const matches: RegExpMatchArray | null = parentTemplate.match(startTagPattern);
-                    if (matches === null || (matches && matches.length === 0)) {
-                        throw new Error("Invalid master template. No placeholder tag found.");
-                    }
-                    parentTemplate = currentTemplate;
-                    body = this.mergeTemplate(matches, parentTemplate, body);
-                }
-                return process.nextTick(() => next(body.replace(/8rngx8/gi, "\r\n").replace(/8ngx8/gi, "\n")));
-            } catch (e: any) {
-                return ctx.transferError(e);
+            const { exists } = await _fileInfo.existsAsync(abspath);
+
+            if (!exists) {
+                throw new Error(`Template ${path} not found...`);
             }
-        });
+
+            templats.push(str.replace(match[0], () => ""));
+
+            const data = await _fsp.readFile(abspath, "utf8");
+            str = data.replace(/^\uFEFF/, '');
+        }
+
+        throw new Error(`Template extends depth exceeded ${MAX_TEMPLATE_DEPTH}...`);
     }
-    public static parse(
-        ctx: IContext,
-        appRoot: string, str: string,
-        next: (str: string) => void
-    ): void {
-        return this.implimentTemplateExtend(ctx, appRoot, str, (istr: string): void => {
-            return this.implimentAttachment(ctx, appRoot, istr, (astr: string) => {
-                return next(astr.replace(/^\s*$(?:\r\n?|\n)/gm, "\n"));
-            });
-        });
+
+    private static async implimentTemplateExtend(
+        appRoot: string, str: string
+    ): Promise<string> {
+        if (!_RE_EXTENDS.test(str)) return str;
+
+        const templates = await this.prepareTemplate(appRoot, str);
+        const templatesLength: number = templates.length - 1;
+        const startTagPattern: RegExp = /<placeholder[^>]*>/gi;
+        let parentTemplate: string = templates[templatesLength].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
+        let body: string = parentTemplate;
+
+        for (let i = templatesLength - 1; i >= 0; i--) {
+            const currentTemplate = templates[i].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
+            const matches: RegExpMatchArray | null = parentTemplate.match(startTagPattern);
+            if (matches === null || (matches && matches.length === 0)) {
+                throw new Error("Invalid master template. No placeholder tag found.");
+            }
+            parentTemplate = currentTemplate;
+            body = this.mergeTemplate(matches, parentTemplate, body);
+        }
+
+        return body.replace(/8rngx8/gi, "\r\n").replace(/8ngx8/gi, "\n");
+    }
+
+    /**
+     * Resolve `#extends` and `#attach` directives.
+     * Rejects when a template/attachment is missing or malformed.
+     */
+    public static async parseAsync(
+        appRoot: string, str: string
+    ): Promise<string> {
+        const istr = await this.implimentTemplateExtend(appRoot, str);
+        const astr = await this.implimentAttachment(appRoot, istr);
+        return astr.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
     }
 }
+
 export class TemplateCore {
-    public static compile(
-        str: string | undefined, next: TemplateNextFunc,
+    /**
+     * Compile a template script into a reusable sandbox function.
+     * Never throws; failures are reported in `CompilerResult.err`.
+     */
+    public static compileScript(
+        str: string | undefined,
         vimCtx: Record<string, any>
-    ): void {
+    ): CompilerResult {
 
         if (!str) {
-            return process.nextTick(() => next({ str: "", err: new Error("No script found to compile....") }));
+            return { str: "", err: new Error("No script found to compile....") };
         }
 
         try {
@@ -459,10 +471,19 @@ export class TemplateCore {
 
             TemplateCtx.deleteCtx(sandBox);
 
-            return process.nextTick(() => next({ str, isScript: true, sandBox: func }));
+            return { str, isScript: true, sandBox: func };
         } catch (e: any) {
-            return process.nextTick(() => next({ str, err: e }));
+            return { str, err: e };
         }
+    }
+
+    /** @deprecated Use {@link compileScript} */
+    public static compile(
+        str: string | undefined, next: TemplateNextFunc,
+        vimCtx: Record<string, any>
+    ): void {
+        const result = this.compileScript(str, vimCtx);
+        process.nextTick(() => next(result));
     }
 
     private static parseScript(str: string): string | undefined {
@@ -502,20 +523,11 @@ export class TemplateCore {
     }
 
     private static isScript(str: string): boolean {
-        if (/{%/gi.test(str) === true
-            || /{=/gi.test(str) === true
-            || /<script runat="template-engine">/gi.test(str)) {
-            return true;
-        }
-        return false;
+        return _RE_SCRIPT.test(str);
     }
 
     public static isTemplate(str: string): boolean {
-        if (/#attach/gi.test(str) === true
-            || /#extends/gi.test(str) === true) {
-            return true;
-        }
-        return false;
+        return _RE_ATTACH.test(str) || _RE_EXTENDS.test(str);
     }
 
     public static isScriptTemplate(str: string): boolean {
@@ -524,246 +536,254 @@ export class TemplateCore {
         return str.substring(0, index).indexOf("__cw_template_script__") > -1;
     }
 
-    private static _run(
+    /**
+     * Resolve directives (`#extends`, `#attach`) and compile the script (if any).
+     * Rejects when a template is missing or malformed.
+     */
+    public static async runAsync(
         ctx: IContext,
         appRoot: string,
-        str: string,
-        fnext: (str: string, isTemplate: boolean) => void
-    ): void {
+        str: string
+    ): Promise<CompilerResult> {
+
         const isTemplate = this.isTemplate(str);
-        if (isTemplate) {
-            return TemplateParser.parse(ctx, appRoot, str, (tstr: string): void => {
-                return fnext(tstr, true);
-            });
+        const fstr = isTemplate ? await TemplateParser.parseAsync(appRoot, str) : str;
+
+        if (this.isScript(fstr)) {
+            return this.compileScript(this.parseScript(fstr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match: string): string => {
+                return match.replace(/<script runat="template-engine">/gi, "{%").replace(/<\/script>/gi, "%}");
+            })), ctx.server.createVimContext());
         }
-        return process.nextTick(() => fnext(str, false));
+
+        return { str: fstr, isScript: false, isTemplate };
     }
 
+    /** @deprecated Use {@link runAsync} */
     public static run(
         ctx: IContext,
         appRoot: string,
         str: string,
         next: TemplateNextFunc
     ): void {
-        return this._run(ctx, appRoot, str, (fstr: string, isTemplate: boolean): void => {
-            if (this.isScript(fstr)) {
-                return this.compile(this.parseScript(fstr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match: string): string => {
-                    return match.replace(/<script runat="template-engine">/gi, "{%").replace(/<\/script>/gi, "%}");
-                })), next, ctx.server.createVimContext());
-            }
-            return next({ str: fstr, isScript: false, isTemplate });
-        });
+        this.runAsync(ctx, appRoot, str).then(
+            (result) => next(result),
+            (err) => ctx.transferError(err)
+        );
     }
 }
 
-function canReadFileCache(ctx: IContext, filePath: string, cachePath: string, next: (readCache: boolean) => void): void {
-    return _fileInfo.exists(cachePath, (exists: boolean): void => {
-        if (!exists) return next(false);
-        return fsw.compareFile(filePath, cachePath, (err: NodeJS.ErrnoException | null, changed: boolean) => {
-            return ctx.handleError(err, () => {
-                if (changed) {
-                    return _fs.unlink(cachePath, (uerr: NodeJS.ErrnoException | null): void => {
-                        return ctx.handleError(uerr, () => {
-                            return next(false);
-                        });
-                    });
-                }
-                return next(true);
-            });
-        }, ctx.handleError.bind(ctx));
-    });
+/** A cached template: either a compiled sandbox function or a plain html string. */
+type TemplateEntry = { sandBox?: SandBox; html?: string; };
+
+async function canReadFileCache(filePath: string, cachePath: string): Promise<boolean> {
+    const { exists } = await _fileInfo.existsAsync(cachePath);
+
+    if (!exists)
+        return false;
+
+    if (await fsw.compareFileAsync(filePath, cachePath)) {
+        await _fsp.unlink(cachePath);
+        _fileInfo.rmove(cachePath);
+        return false;
+    }
+
+    return true;
+}
+
+function toEntry(result: CompilerResult): TemplateEntry {
+    return result.sandBox ? { sandBox: result.sandBox } : { html: result.str };
 }
 
 class TemplateLink {
-    private static _tw: Map<string, any> = new Map();
+    private static _tw: Map<string, TemplateEntry> = new Map();
+    private static _responders: Map<number, SandBoxNext> = new Map();
 
     private static processResponse(status: IResInfo): SandBoxNext {
-        return (ctx: IContext, body: string, isCompressed?: boolean): void => {
+        let responder = this._responders.get(status.code);
 
-            if (isCompressed && isCompressed === true) {
-                return _zlib.gzip(Buffer.from(body), (error: Error | null, buff: Buffer) => {
-                    return ctx.handleError(error, () => {
-                        return ctx.res.type("html").noCache().status(status.code, {
-                            'Content-Encoding': 'gzip',
-                            'Content-Length': buff.length
-                        }).end(buff);
-                    });
-                });
-            }
+        if (!responder) {
+            responder = async (ctx: IContext, body: string, isCompressed?: boolean): Promise<void> => {
 
-            return ctx.handleError(null, () => {
-                return ctx.res.type("html").noCache().status(status.code, {
-                    'Content-Length': Buffer.byteLength(body)
-                }).end(body);
-            });
-        };
-    }
+                if (isCompressed && isCompressed === true) {
 
-    public static tryLive(ctx: IContext, path: string, status: IResInfo): void {
-        return _fileInfo.exists(path, (exists: boolean, url: string): void => {
-            if (!exists) return ctx.next(404);
-            return _fs.readFile(url, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
-                return ctx.handleError(err, (): void => {
-                    return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
-                        return ctx.handleError(result.err, () => {
-                            if (result.sandBox) {
-                                try {
-                                    result.sandBox(ctx, this.processResponse(status), false);
-                                    result.sandBox = null;
-                                    return void 0;
-                                } catch (e: any) {
-                                    return ctx.transferError(e);
-                                }
-                            }
-                            return ctx.res.type("html").status(200).noCache().send(result.str);
-                        });
-                    });
-                });
-            });
-        });
+                    try {
+                        const buff = await _gzipAsync(Buffer.from(body));
+
+                        if (!ctx.isDisposed) {
+                            ctx.res.type("html").noCache().status(status.code, {
+                                'Content-Encoding': 'gzip',
+                                'Content-Length': buff.length
+                            }).end(buff);
+                        }
+
+                        return;
+
+                    } catch (error: any) {
+                        return ctx.handleError(error, () => void 0);
+                    }
+                }
+
+                if (!ctx.isDisposed) {
+                    ctx.res.type("html").noCache().status(status.code, {
+                        'Content-Length': Buffer.byteLength(body)
+                    }).end(body);
+                }
+            };
+
+            this._responders.set(status.code, responder);
+        }
+
+        return responder;
     }
 
     private static _getCacheMape(str: string): string {
         return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
 
-    private static _tryMemCache(
-        ctx: IContext,
-        path: string,
-        status: IResInfo,
-        next: (func: SandBox | string) => void
-    ): void {
+    private static async _readSource(ctx: IContext, url: string): Promise<CompilerResult> {
+        const data = await _fsp.readFile(url, "utf8");
+        const result = await TemplateCore.runAsync(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''));
 
-        const key = this._getCacheMape(path);
-        const cache = this._tw.get(key);
+        if (result.err)
+            throw result.err;
 
-        if (cache) return process.nextTick(() => next(cache));
-
-        return _fileInfo.exists(path, (exists: boolean, url: string): void => {
-            if (!exists) return ctx.next(404);
-            return _fs.readFile(url, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
-                return ctx.handleError(err, (): void => {
-                    return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
-                        return ctx.handleError(result.err, () => {
-                            const ox = result.sandBox || result.str;
-
-                            this._tw.set(key, ox);
-                            return next(ox);
-                        });
-                    });
-                });
-            });
-        });
+        return result;
     }
 
-    public static tryMemCache(ctx: IContext, path: string, status: IResInfo): void {
-        return this._tryMemCache(ctx, path, status, (func: SandBox | string): void => {
-            if (typeof (func) === "function") {
-                return func(ctx, this.processResponse(status));
+    private static async _respondAsync(ctx: IContext, status: IResInfo, entry: TemplateEntry): Promise<void> {
+
+        if (entry.sandBox) {
+
+            try {
+                // sandbox function handles its own errors (ctx.addError + ctx.next(500))
+                await entry.sandBox(ctx, this.processResponse(status));
+            } catch (e: any) {
+                ctx.transferError(e);
             }
-            return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
-        });
+
+            return;
+        }
+
+        ctx.res.type("html").noCache().status(status.code).end(entry.html);
     }
 
-    private static _tryFileCacheOrLive(
-        ctx: IContext,
-        cacheKey: string,
-        filePath: string,
-        next: (func: SandBox | string) => void
-    ): void {
+    /** `template.cache = false`: compile on every request. */
+    public static async tryLive(ctx: IContext, path: string, status: IResInfo): Promise<void> {
+        try {
+            const { exists, url } = await _fileInfo.existsAsync(path);
+
+            if (!exists)
+                return ctx.next(404);
+
+            const result = await this._readSource(ctx, url);
+
+            if (result.sandBox) {
+                try {
+                    await result.sandBox(ctx, this.processResponse(status), false);
+                } catch (e: any) {
+                    ctx.transferError(e);
+                }
+                return;
+            }
+
+            ctx.res.type("html").status(200).noCache().send(result.str);
+        } catch (e: any) {
+            ctx.transferError(e);
+        }
+    }
+
+    /** `template.cacheType = "MEM"` */
+    public static async tryMemCache(ctx: IContext, path: string, status: IResInfo): Promise<void> {
+        try {
+            const key = this._getCacheMape(path);
+            let entry = this._tw.get(key);
+
+            if (!entry) {
+                const { exists, url } = await _fileInfo.existsAsync(path);
+
+                if (!exists)
+                    return ctx.next(404);
+
+                entry = toEntry(await this._readSource(ctx, url));
+                this._tw.set(key, entry);
+            }
+
+            return this._respondAsync(ctx, status, entry);
+        } catch (e: any) {
+            ctx.transferError(e);
+        }
+    }
+
+    private static async _loadFileCacheOrLive(
+        ctx: IContext, cacheKey: string, filePath: string
+    ): Promise<TemplateEntry> {
+
         const cachePath: string = `${filePath}.cach`;
         const useFullOptimization: boolean = ctx.server.config.useFullOptimization;
-        return canReadFileCache(ctx, filePath, cachePath, (readCache: boolean): void => {
-            if (!readCache) {
-                return _fs.readFile(filePath, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
-                    return ctx.handleError(err, (): void => {
-                        return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result: CompilerResult): void => {
-                            return ctx.handleError(result.err, () => {
-                                if (useFullOptimization) {
-                                    this._tw.set(cacheKey, {
-                                        data: result.str,
-                                        isScriptTemplate: result.isScript
-                                    });
-                                }
-                                return _fs.writeFile(cachePath, result.str, (werr: NodeJS.ErrnoException | null) => {
-                                    return ctx.handleError(werr, () => {
-                                        return next(result.sandBox || result.str);
-                                    });
-                                });
-                            });
-                        });
-                    });
-                });
-            }
+        let entry: TemplateEntry;
 
-            return _fs.readFile(cachePath, "utf8", (err: NodeJS.ErrnoException | null, data: string) => {
-                return ctx.handleError(err, (): void => {
-                    const isScript: boolean = TemplateCore.isScriptTemplate(data);
-                    if (useFullOptimization) {
-                        this._tw.set(cacheKey, {
-                            data, isScriptTemplate: isScript
-                        });
-                    }
-                    if (isScript) {
-                        return TemplateCore.compile(data, (result: CompilerResult): void => {
-                            return ctx.handleError(result.err, () => {
-                                return next(result.sandBox || result.str);
-                            });
-                        }, ctx.server.createVimContext());
-                    }
-                    return next(data);
-                });
-            });
-        });
-    }
+        if (!await canReadFileCache(filePath, cachePath)) {
+            const result = await this._readSource(ctx, filePath);
+            entry = toEntry(result);
 
-    private static _hadleCacheResponse(ctx: IContext, status: IResInfo, func: string | SandBox): void {
-        if (typeof (func) === "function") {
-            try {
-                return func(ctx, this.processResponse(status));
-            } catch (e: any) {
-                return ctx.transferError(e);
+            await _fsp.writeFile(cachePath, result.str);
+            // `cachePath` has been just created. forget the old "not exists" stat.
+            _fileInfo.rmove(cachePath);
+        } else {
+            const data = await _fsp.readFile(cachePath, "utf8");
+
+            if (TemplateCore.isScriptTemplate(data)) {
+                const result = TemplateCore.compileScript(data, ctx.server.createVimContext());
+
+                if (result.err)
+                    throw result.err;
+
+                entry = toEntry(result);
+            } else {
+                entry = { html: data };
             }
         }
-        return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
+
+        if (useFullOptimization) {
+            this._tw.set(cacheKey, entry);
+        }
+
+        return entry;
     }
 
-    public static tryFileCacheOrLive(
+    /** `template.cacheType = "FILE"` (default) */
+    public static async tryFileCacheOrLive(
         ctx: IContext, path: string, status: IResInfo
-    ): void {
+    ): Promise<void> {
 
-        const cacheKey: string = this._getCacheMape(path);
+        try {
+            const cacheKey: string = this._getCacheMape(path);
 
-        if (ctx.server.config.useFullOptimization) {
-            const val = this._tw.get(cacheKey);
+            if (ctx.server.config.useFullOptimization) {
+                const entry = this._tw.get(cacheKey);
 
-            if (val) {
-
-                ctx.res.setHeader('x-served-from', 'mem-cache');
-
-                if (val.isScriptTemplate) {
-                    return TemplateCore.compile(val.data, (result: CompilerResult): void => {
-                        return ctx.handleError(result.err, () => {
-                            return this._hadleCacheResponse(ctx, status, result.sandBox || result.str);
-                        });
-                    }, ctx.server.createVimContext());
+                if (entry) {
+                    ctx.res.setHeader('x-served-from', 'mem-cache');
+                    return this._respondAsync(ctx, status, entry);
                 }
-
-                return this._hadleCacheResponse(ctx, status, val.data);
             }
-        }
 
-        return _fileInfo.exists(path, (exists: boolean, filePath: string) => {
-            ctx.handleError(null, () => {
-                if (!exists) return ctx.next(404);
-                return this._tryFileCacheOrLive(ctx, cacheKey, filePath, (func: string | SandBox) => this._hadleCacheResponse(ctx, status, func));
-            });
-        });
+            const { exists, url } = await _fileInfo.existsAsync(path);
+
+            if (!exists)
+                return ctx.next(404);
+
+            return this._respondAsync(
+                ctx, status, await this._loadFileCacheOrLive(ctx, cacheKey, url)
+            );
+        } catch (e: any) {
+            ctx.transferError(e);
+        }
     }
 }
 
 export class Template {
-    public static parse(ctx: IContext, path: string, status?: IResInfo): void {
+    public static parse(ctx: IContext, path: string, status?: IResInfo): Promise<void> {
 
         if (!status)
             status = HttpStatus.getResInfo(path, 200);

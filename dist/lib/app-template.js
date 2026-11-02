@@ -51,6 +51,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Template = exports.TemplateCore = void 0;
 exports.templateNext = templateNext;
@@ -60,6 +69,7 @@ const _fs = __importStar(require("node:fs"));
 const _vm = __importStar(require("node:vm"));
 const _zlib = __importStar(require("node:zlib"));
 const _path = __importStar(require("node:path"));
+const node_util_1 = require("node:util");
 const http_status_1 = require("./http-status");
 const fsw = __importStar(require("./fsw"));
 const app_util_1 = require("./app-util");
@@ -67,6 +77,12 @@ const node_os_1 = require("node:os");
 const file_info_1 = require("./file-info");
 const app_template_ctx_1 = require("./app-template-ctx");
 const _isWin = (0, node_os_1.platform)() === "win32";
+const _fsp = _fs.promises;
+const _gzipAsync = (0, node_util_1.promisify)(_zlib.gzip);
+const MAX_TEMPLATE_DEPTH = 32;
+const _RE_ATTACH = /#attach/i;
+const _RE_EXTENDS = /#extends/i;
+const _RE_SCRIPT = /{%|{=|<script runat="template-engine">/i;
 function templateNext(ctx, next, isCompressed) {
     throw new Error("Function not implemented.");
 }
@@ -264,32 +280,30 @@ function ExportExtendMatch(str) {
 }
 const _fileInfo = new file_info_1.FileInfoCacheHandler();
 class TemplateParser {
-    static implimentAttachment(ctx, appRoot, str, next) {
-        if (/#attach/gi.test(str) === false)
-            return next(str);
-        const match = ExportAttachMatch(str);
-        if (!match)
-            return next(str);
-        const forword = () => {
-            const orgMatch = match.shift();
-            if (!orgMatch)
-                return process.nextTick(() => next(str));
-            const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
-            const abspath = _path.resolve(`${appRoot}${path}`);
-            return _fileInfo.exists(abspath, (exists, url) => {
+    static implimentAttachment(appRoot, str) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!_RE_ATTACH.test(str))
+                return str;
+            const match = ExportAttachMatch(str);
+            if (!match)
+                return str;
+            // read every attachment in parallel, then replace them in order
+            const contents = yield Promise.all(match.map((orgMatch) => __awaiter(this, void 0, void 0, function* () {
+                const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
+                const abspath = _path.resolve(`${appRoot}${path}`);
+                const { exists, url } = yield _fileInfo.existsAsync(abspath);
                 if (!exists) {
-                    return ctx.transferError(new Error(`Attachement ${path} not found...`));
+                    throw new Error(`Attachement ${path} not found...`);
                 }
-                return _fs.readFile(url, "utf8", (err, data) => {
-                    return ctx.handleError(err, () => {
-                        // \n is reuired for tailing gurd
-                        str = str.replace(orgMatch, data + "\n");
-                        return forword();
-                    });
-                });
-            });
-        };
-        return forword();
+                return yield _fsp.readFile(url, "utf8");
+            })));
+            for (let i = 0; i < match.length; i++) {
+                // \n is reuired for tailing gurd
+                const data = contents[i] + "\n";
+                str = str.replace(match[i], () => data);
+            }
+            return str;
+        });
     }
     static mergeTemplate(match, template, body) {
         for (const key of match) {
@@ -312,73 +326,73 @@ class TemplateParser {
         }
         return body;
     }
-    static prepareTemplate(ctx, appRoot, str, next) {
-        const templats = [];
-        const forword = () => {
-            const match = ExportExtendMatch(str);
-            if (!match) {
-                templats.push(str);
-                return next(templats);
-            }
-            const found = match[1];
-            if (!found || (found && found.trim().length === 0)) {
-                return ctx.transferError(new Error("Invalid template format..."));
-            }
-            const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").replace(/\n/gi, "").trim();
-            const abspath = _path.resolve(`${appRoot}${path}`);
-            const matchStr = match[0];
-            return _fileInfo.exists(abspath, (exists) => {
+    static prepareTemplate(appRoot, str) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const templats = [];
+            for (let depth = 0; depth < MAX_TEMPLATE_DEPTH; depth++) {
+                const match = ExportExtendMatch(str);
+                if (!match) {
+                    templats.push(str);
+                    return templats;
+                }
+                const found = match[1];
+                if (!found || (found && found.trim().length === 0)) {
+                    throw new Error("Invalid template format...");
+                }
+                const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").replace(/\n/gi, "").trim();
+                const abspath = _path.resolve(`${appRoot}${path}`);
+                const { exists } = yield _fileInfo.existsAsync(abspath);
                 if (!exists) {
-                    return ctx.transferError(new Error(`Template ${path} not found...`));
+                    throw new Error(`Template ${path} not found...`);
                 }
-                templats.push(str.replace(matchStr, ""));
-                return _fs.readFile(abspath, "utf8", (err, data) => {
-                    return ctx.handleError(err, () => {
-                        str = data.replace(/^\uFEFF/, '');
-                        return forword();
-                    });
-                });
-            });
-        };
-        return forword();
-    }
-    static implimentTemplateExtend(ctx, appRoot, str, next) {
-        if (/#extends/gi.test(str) === false)
-            return next(str);
-        return this.prepareTemplate(ctx, appRoot, str, (templates) => {
-            try {
-                const templatesLength = templates.length - 1;
-                const startTagPattern = /<placeholder[^>]*>/gi;
-                let parentTemplate = templates[templatesLength].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
-                let body = parentTemplate;
-                for (let i = templatesLength - 1; i >= 0; i--) {
-                    const currentTemplate = templates[i].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
-                    const matches = parentTemplate.match(startTagPattern);
-                    if (matches === null || (matches && matches.length === 0)) {
-                        throw new Error("Invalid master template. No placeholder tag found.");
-                    }
-                    parentTemplate = currentTemplate;
-                    body = this.mergeTemplate(matches, parentTemplate, body);
-                }
-                return process.nextTick(() => next(body.replace(/8rngx8/gi, "\r\n").replace(/8ngx8/gi, "\n")));
+                templats.push(str.replace(match[0], () => ""));
+                const data = yield _fsp.readFile(abspath, "utf8");
+                str = data.replace(/^\uFEFF/, '');
             }
-            catch (e) {
-                return ctx.transferError(e);
-            }
+            throw new Error(`Template extends depth exceeded ${MAX_TEMPLATE_DEPTH}...`);
         });
     }
-    static parse(ctx, appRoot, str, next) {
-        return this.implimentTemplateExtend(ctx, appRoot, str, (istr) => {
-            return this.implimentAttachment(ctx, appRoot, istr, (astr) => {
-                return next(astr.replace(/^\s*$(?:\r\n?|\n)/gm, "\n"));
-            });
+    static implimentTemplateExtend(appRoot, str) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!_RE_EXTENDS.test(str))
+                return str;
+            const templates = yield this.prepareTemplate(appRoot, str);
+            const templatesLength = templates.length - 1;
+            const startTagPattern = /<placeholder[^>]*>/gi;
+            let parentTemplate = templates[templatesLength].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
+            let body = parentTemplate;
+            for (let i = templatesLength - 1; i >= 0; i--) {
+                const currentTemplate = templates[i].replace(/\r\n/gi, '8rngx8').replace(/\n/gi, '8ngx8');
+                const matches = parentTemplate.match(startTagPattern);
+                if (matches === null || (matches && matches.length === 0)) {
+                    throw new Error("Invalid master template. No placeholder tag found.");
+                }
+                parentTemplate = currentTemplate;
+                body = this.mergeTemplate(matches, parentTemplate, body);
+            }
+            return body.replace(/8rngx8/gi, "\r\n").replace(/8ngx8/gi, "\n");
+        });
+    }
+    /**
+     * Resolve `#extends` and `#attach` directives.
+     * Rejects when a template/attachment is missing or malformed.
+     */
+    static parseAsync(appRoot, str) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const istr = yield this.implimentTemplateExtend(appRoot, str);
+            const astr = yield this.implimentAttachment(appRoot, istr);
+            return astr.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
         });
     }
 }
 class TemplateCore {
-    static compile(str, next, vimCtx) {
+    /**
+     * Compile a template script into a reusable sandbox function.
+     * Never throws; failures are reported in `CompilerResult.err`.
+     */
+    static compileScript(str, vimCtx) {
         if (!str) {
-            return process.nextTick(() => next({ str: "", err: new Error("No script found to compile....") }));
+            return { str: "", err: new Error("No script found to compile....") };
         }
         try {
             const sandBox = `${(0, app_util_1.generateRandomString)(30)}_thisNext`;
@@ -390,11 +404,16 @@ class TemplateCore {
                 Buffer, cw: app_template_ctx_1.TemplateCtx })));
             const func = app_template_ctx_1.TemplateCtx.getCtx(sandBox);
             app_template_ctx_1.TemplateCtx.deleteCtx(sandBox);
-            return process.nextTick(() => next({ str, isScript: true, sandBox: func }));
+            return { str, isScript: true, sandBox: func };
         }
         catch (e) {
-            return process.nextTick(() => next({ str, err: e }));
+            return { str, err: e };
         }
+    }
+    /** @deprecated Use {@link compileScript} */
+    static compile(str, next, vimCtx) {
+        const result = this.compileScript(str, vimCtx);
+        process.nextTick(() => next(result));
     }
     static parseScript(str) {
         str = str.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
@@ -434,19 +453,10 @@ class TemplateCore {
         return out.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
     }
     static isScript(str) {
-        if (/{%/gi.test(str) === true
-            || /{=/gi.test(str) === true
-            || /<script runat="template-engine">/gi.test(str)) {
-            return true;
-        }
-        return false;
+        return _RE_SCRIPT.test(str);
     }
     static isTemplate(str) {
-        if (/#attach/gi.test(str) === true
-            || /#extends/gi.test(str) === true) {
-            return true;
-        }
-        return false;
+        return _RE_ATTACH.test(str) || _RE_EXTENDS.test(str);
     }
     static isScriptTemplate(str) {
         const index = str.indexOf("\n");
@@ -454,204 +464,200 @@ class TemplateCore {
             return false;
         return str.substring(0, index).indexOf("__cw_template_script__") > -1;
     }
-    static _run(ctx, appRoot, str, fnext) {
-        const isTemplate = this.isTemplate(str);
-        if (isTemplate) {
-            return TemplateParser.parse(ctx, appRoot, str, (tstr) => {
-                return fnext(tstr, true);
-            });
-        }
-        return process.nextTick(() => fnext(str, false));
-    }
-    static run(ctx, appRoot, str, next) {
-        return this._run(ctx, appRoot, str, (fstr, isTemplate) => {
+    /**
+     * Resolve directives (`#extends`, `#attach`) and compile the script (if any).
+     * Rejects when a template is missing or malformed.
+     */
+    static runAsync(ctx, appRoot, str) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const isTemplate = this.isTemplate(str);
+            const fstr = isTemplate ? yield TemplateParser.parseAsync(appRoot, str) : str;
             if (this.isScript(fstr)) {
-                return this.compile(this.parseScript(fstr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match) => {
+                return this.compileScript(this.parseScript(fstr.replace(/<script runat="template-engine">([\s\S]+?)<\/script>/gi, (match) => {
                     return match.replace(/<script runat="template-engine">/gi, "{%").replace(/<\/script>/gi, "%}");
-                })), next, ctx.server.createVimContext());
+                })), ctx.server.createVimContext());
             }
-            return next({ str: fstr, isScript: false, isTemplate });
+            return { str: fstr, isScript: false, isTemplate };
         });
+    }
+    /** @deprecated Use {@link runAsync} */
+    static run(ctx, appRoot, str, next) {
+        this.runAsync(ctx, appRoot, str).then((result) => next(result), (err) => ctx.transferError(err));
     }
 }
 exports.TemplateCore = TemplateCore;
-function canReadFileCache(ctx, filePath, cachePath, next) {
-    return _fileInfo.exists(cachePath, (exists) => {
+function canReadFileCache(filePath, cachePath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const { exists } = yield _fileInfo.existsAsync(cachePath);
         if (!exists)
-            return next(false);
-        return fsw.compareFile(filePath, cachePath, (err, changed) => {
-            return ctx.handleError(err, () => {
-                if (changed) {
-                    return _fs.unlink(cachePath, (uerr) => {
-                        return ctx.handleError(uerr, () => {
-                            return next(false);
-                        });
-                    });
-                }
-                return next(true);
-            });
-        }, ctx.handleError.bind(ctx));
+            return false;
+        if (yield fsw.compareFileAsync(filePath, cachePath)) {
+            yield _fsp.unlink(cachePath);
+            _fileInfo.rmove(cachePath);
+            return false;
+        }
+        return true;
     });
+}
+function toEntry(result) {
+    return result.sandBox ? { sandBox: result.sandBox } : { html: result.str };
 }
 class TemplateLink {
     static processResponse(status) {
-        return (ctx, body, isCompressed) => {
-            if (isCompressed && isCompressed === true) {
-                return _zlib.gzip(Buffer.from(body), (error, buff) => {
-                    return ctx.handleError(error, () => {
-                        return ctx.res.type("html").noCache().status(status.code, {
-                            'Content-Encoding': 'gzip',
-                            'Content-Length': buff.length
-                        }).end(buff);
-                    });
-                });
-            }
-            return ctx.handleError(null, () => {
-                return ctx.res.type("html").noCache().status(status.code, {
-                    'Content-Length': Buffer.byteLength(body)
-                }).end(body);
+        let responder = this._responders.get(status.code);
+        if (!responder) {
+            responder = (ctx, body, isCompressed) => __awaiter(this, void 0, void 0, function* () {
+                if (isCompressed && isCompressed === true) {
+                    try {
+                        const buff = yield _gzipAsync(Buffer.from(body));
+                        if (!ctx.isDisposed) {
+                            ctx.res.type("html").noCache().status(status.code, {
+                                'Content-Encoding': 'gzip',
+                                'Content-Length': buff.length
+                            }).end(buff);
+                        }
+                        return;
+                    }
+                    catch (error) {
+                        return ctx.handleError(error, () => void 0);
+                    }
+                }
+                if (!ctx.isDisposed) {
+                    ctx.res.type("html").noCache().status(status.code, {
+                        'Content-Length': Buffer.byteLength(body)
+                    }).end(body);
+                }
             });
-        };
-    }
-    static tryLive(ctx, path, status) {
-        return _fileInfo.exists(path, (exists, url) => {
-            if (!exists)
-                return ctx.next(404);
-            return _fs.readFile(url, "utf8", (err, data) => {
-                return ctx.handleError(err, () => {
-                    return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
-                        return ctx.handleError(result.err, () => {
-                            if (result.sandBox) {
-                                try {
-                                    result.sandBox(ctx, this.processResponse(status), false);
-                                    result.sandBox = null;
-                                    return void 0;
-                                }
-                                catch (e) {
-                                    return ctx.transferError(e);
-                                }
-                            }
-                            return ctx.res.type("html").status(200).noCache().send(result.str);
-                        });
-                    });
-                });
-            });
-        });
+            this._responders.set(status.code, responder);
+        }
+        return responder;
     }
     static _getCacheMape(str) {
         return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
-    static _tryMemCache(ctx, path, status, next) {
-        const key = this._getCacheMape(path);
-        const cache = this._tw.get(key);
-        if (cache)
-            return process.nextTick(() => next(cache));
-        return _fileInfo.exists(path, (exists, url) => {
-            if (!exists)
-                return ctx.next(404);
-            return _fs.readFile(url, "utf8", (err, data) => {
-                return ctx.handleError(err, () => {
-                    return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
-                        return ctx.handleError(result.err, () => {
-                            const ox = result.sandBox || result.str;
-                            this._tw.set(key, ox);
-                            return next(ox);
-                        });
-                    });
-                });
-            });
+    static _readSource(ctx, url) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = yield _fsp.readFile(url, "utf8");
+            const result = yield TemplateCore.runAsync(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''));
+            if (result.err)
+                throw result.err;
+            return result;
         });
     }
-    static tryMemCache(ctx, path, status) {
-        return this._tryMemCache(ctx, path, status, (func) => {
-            if (typeof (func) === "function") {
-                return func(ctx, this.processResponse(status));
-            }
-            return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
-        });
-    }
-    static _tryFileCacheOrLive(ctx, cacheKey, filePath, next) {
-        const cachePath = `${filePath}.cach`;
-        const useFullOptimization = ctx.server.config.useFullOptimization;
-        return canReadFileCache(ctx, filePath, cachePath, (readCache) => {
-            if (!readCache) {
-                return _fs.readFile(filePath, "utf8", (err, data) => {
-                    return ctx.handleError(err, () => {
-                        return TemplateCore.run(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''), (result) => {
-                            return ctx.handleError(result.err, () => {
-                                if (useFullOptimization) {
-                                    this._tw.set(cacheKey, {
-                                        data: result.str,
-                                        isScriptTemplate: result.isScript
-                                    });
-                                }
-                                return _fs.writeFile(cachePath, result.str, (werr) => {
-                                    return ctx.handleError(werr, () => {
-                                        return next(result.sandBox || result.str);
-                                    });
-                                });
-                            });
-                        });
-                    });
-                });
-            }
-            return _fs.readFile(cachePath, "utf8", (err, data) => {
-                return ctx.handleError(err, () => {
-                    const isScript = TemplateCore.isScriptTemplate(data);
-                    if (useFullOptimization) {
-                        this._tw.set(cacheKey, {
-                            data, isScriptTemplate: isScript
-                        });
-                    }
-                    if (isScript) {
-                        return TemplateCore.compile(data, (result) => {
-                            return ctx.handleError(result.err, () => {
-                                return next(result.sandBox || result.str);
-                            });
-                        }, ctx.server.createVimContext());
-                    }
-                    return next(data);
-                });
-            });
-        });
-    }
-    static _hadleCacheResponse(ctx, status, func) {
-        if (typeof (func) === "function") {
-            try {
-                return func(ctx, this.processResponse(status));
-            }
-            catch (e) {
-                return ctx.transferError(e);
-            }
-        }
-        return ctx.res.type("html").noCache().status(status.code).end(func), void 0;
-    }
-    static tryFileCacheOrLive(ctx, path, status) {
-        const cacheKey = this._getCacheMape(path);
-        if (ctx.server.config.useFullOptimization) {
-            const val = this._tw.get(cacheKey);
-            if (val) {
-                ctx.res.setHeader('x-served-from', 'mem-cache');
-                if (val.isScriptTemplate) {
-                    return TemplateCore.compile(val.data, (result) => {
-                        return ctx.handleError(result.err, () => {
-                            return this._hadleCacheResponse(ctx, status, result.sandBox || result.str);
-                        });
-                    }, ctx.server.createVimContext());
+    static _respondAsync(ctx, status, entry) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (entry.sandBox) {
+                try {
+                    // sandbox function handles its own errors (ctx.addError + ctx.next(500))
+                    yield entry.sandBox(ctx, this.processResponse(status));
                 }
-                return this._hadleCacheResponse(ctx, status, val.data);
+                catch (e) {
+                    ctx.transferError(e);
+                }
+                return;
             }
-        }
-        return _fileInfo.exists(path, (exists, filePath) => {
-            ctx.handleError(null, () => {
+            ctx.res.type("html").noCache().status(status.code).end(entry.html);
+        });
+    }
+    /** `template.cache = false`: compile on every request. */
+    static tryLive(ctx, path, status) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { exists, url } = yield _fileInfo.existsAsync(path);
                 if (!exists)
                     return ctx.next(404);
-                return this._tryFileCacheOrLive(ctx, cacheKey, filePath, (func) => this._hadleCacheResponse(ctx, status, func));
-            });
+                const result = yield this._readSource(ctx, url);
+                if (result.sandBox) {
+                    try {
+                        yield result.sandBox(ctx, this.processResponse(status), false);
+                    }
+                    catch (e) {
+                        ctx.transferError(e);
+                    }
+                    return;
+                }
+                ctx.res.type("html").status(200).noCache().send(result.str);
+            }
+            catch (e) {
+                ctx.transferError(e);
+            }
+        });
+    }
+    /** `template.cacheType = "MEM"` */
+    static tryMemCache(ctx, path, status) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const key = this._getCacheMape(path);
+                let entry = this._tw.get(key);
+                if (!entry) {
+                    const { exists, url } = yield _fileInfo.existsAsync(path);
+                    if (!exists)
+                        return ctx.next(404);
+                    entry = toEntry(yield this._readSource(ctx, url));
+                    this._tw.set(key, entry);
+                }
+                return this._respondAsync(ctx, status, entry);
+            }
+            catch (e) {
+                ctx.transferError(e);
+            }
+        });
+    }
+    static _loadFileCacheOrLive(ctx, cacheKey, filePath) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const cachePath = `${filePath}.cach`;
+            const useFullOptimization = ctx.server.config.useFullOptimization;
+            let entry;
+            if (!(yield canReadFileCache(filePath, cachePath))) {
+                const result = yield this._readSource(ctx, filePath);
+                entry = toEntry(result);
+                yield _fsp.writeFile(cachePath, result.str);
+                // `cachePath` has been just created. forget the old "not exists" stat.
+                _fileInfo.rmove(cachePath);
+            }
+            else {
+                const data = yield _fsp.readFile(cachePath, "utf8");
+                if (TemplateCore.isScriptTemplate(data)) {
+                    const result = TemplateCore.compileScript(data, ctx.server.createVimContext());
+                    if (result.err)
+                        throw result.err;
+                    entry = toEntry(result);
+                }
+                else {
+                    entry = { html: data };
+                }
+            }
+            if (useFullOptimization) {
+                this._tw.set(cacheKey, entry);
+            }
+            return entry;
+        });
+    }
+    /** `template.cacheType = "FILE"` (default) */
+    static tryFileCacheOrLive(ctx, path, status) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const cacheKey = this._getCacheMape(path);
+                if (ctx.server.config.useFullOptimization) {
+                    const entry = this._tw.get(cacheKey);
+                    if (entry) {
+                        ctx.res.setHeader('x-served-from', 'mem-cache');
+                        return this._respondAsync(ctx, status, entry);
+                    }
+                }
+                const { exists, url } = yield _fileInfo.existsAsync(path);
+                if (!exists)
+                    return ctx.next(404);
+                return this._respondAsync(ctx, status, yield this._loadFileCacheOrLive(ctx, cacheKey, url));
+            }
+            catch (e) {
+                ctx.transferError(e);
+            }
         });
     }
 }
 TemplateLink._tw = new Map();
+TemplateLink._responders = new Map();
 class Template {
     static parse(ctx, path, status) {
         if (!status)

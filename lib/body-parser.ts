@@ -69,6 +69,7 @@ export interface IBodyParser extends IDispose {
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
     getJson(): Record<string, any>;
     getData(): string;
+    /** @deprecated Use {@link parseAsync} */
     parse(onReadEnd: (err?: Error) => void): void;
     parseAsync(): Promise<void>;
     getFilesAsync(
@@ -213,7 +214,7 @@ class BodyParser implements IBodyParser {
             throw new Error(`Invalid outdir dir ${outdir}`);
 
         return this._parser.files.forEach(pf => {
-            return pf.saveAsSync(_path.resolve(`${outdir}/${Util.guid()}_${pf.getFileName()}`));
+            return pf.saveAsSync(_path.resolve(`${outdir}/${Util.UUID()}_${pf.getFileName()}`));
         });
     }
 
@@ -223,7 +224,7 @@ class BodyParser implements IBodyParser {
         await fsw.mkdirAsyncx(outdir);
 
         await Promise.all(this._parser.files.map(
-            pf => pf.saveAsAsync(_path.resolve(`${outdir}/${Util.guid()}_${pf.getFileName()}`))
+            pf => pf.saveAsAsync(_path.resolve(`${outdir}/${Util.UUID()}_${pf.getFileName()}`))
         ));
     }
 
@@ -329,14 +330,26 @@ class BodyParser implements IBodyParser {
         return this._parser.getRawData();
     }
 
+    /**
+     * Reads the request body. Resolves when the whole body has been read
+     * and rejects on a read/parse error or when the client disconnects.
+     */
     public parseAsync(): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
 
-            this.parse((err?: Error): void => {
+            this._read((err?: Error): void => {
                 err ? reject(err) : resolve();
             });
 
         });
+    }
+
+    /** @deprecated Use {@link parseAsync} */
+    public parse(onReadEnd: (err?: Error) => void): void {
+        this.parseAsync().then(
+            () => onReadEnd(),
+            (err: Error) => onReadEnd(err)
+        );
     }
 
     public parseSync(): Promise<void> {
@@ -404,7 +417,7 @@ class BodyParser implements IBodyParser {
         };
     }
 
-    public parse(onReadEnd: (err?: Error) => void): void {
+    private _read(onReadEnd: (err?: Error) => void): void {
         if (this._isDisposed)
             return onReadEnd(new Error("BodyParser is disposed state"));
 

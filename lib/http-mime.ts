@@ -71,8 +71,21 @@ const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "wjsx", gzip: false }
 ];
 
+/** Raw (not compressed) static files, held in memory when `useFullOptimization` is on. */
+type RawCacheInfo = {
+    readonly size: number;
+    readonly mtime: number;
+    readonly data: Buffer;
+};
+
+/** Files larger than this are always streamed from disk. */
+const RAW_CACHE_MAX_FILE_SIZE = 512 * 1024;
+/** Maximum number of files held in the raw cache. */
+const RAW_CACHE_MAX_ENTRIES = 512;
+
 class MimeHandler {
     private static _mamCache: Map<string, MemCacheInfo> = new Map();
+    private static _rawCache: Map<string, RawCacheInfo> = new Map();
     private static _fileInfo: IFileInfoCacheHandler = new FileInfoCacheHandler();
 
     private static getCachePath(ctx: IContext): string {
@@ -300,7 +313,7 @@ class MimeHandler {
             try {
 
                 await pipelineAsync(
-                    rstream, Util.createGzip(), ctx.res
+                    rstream, Util.createGzip(Util.GZIP_STREAM_LEVEL), ctx.res
                 );
 
             } catch (ex: any) {
@@ -353,7 +366,7 @@ class MimeHandler {
             try {
 
                 await pipelineAsync(
-                    rstream, Util.createGzip(), ctx.res
+                    rstream, Util.createGzip(Util.GZIP_STREAM_LEVEL), ctx.res
                 );
 
             } catch (ex: any) {
@@ -365,8 +378,55 @@ class MimeHandler {
             return;
         }
 
+        if (
+            ctx.server.config.useFullOptimization
+            && fstat.size <= RAW_CACHE_MAX_FILE_SIZE
+        ) {
+            return await this._sendRaw(ctx, absPath, mimeType, fstat);
+        }
+
         ctx.res.status(200, { 'Content-Type': mimeType });
         await Util.pipeOutputStreamAsync(absPath, ctx);
+    }
+
+    /**
+     * Serve a small, uncompressed file from memory.
+     * The cache entry is validated against the `stat` of the file.
+     */
+    private static async _sendRaw(
+        ctx: IContext, absPath: string, mimeType: string, fstat: _fs.Stats
+    ): Promise<void> {
+
+        const mtime = fstat.mtime.getTime();
+        let info = this._rawCache.get(absPath);
+
+        if (!info || info.mtime !== mtime || info.size !== fstat.size) {
+
+            let data: Buffer;
+
+            try {
+                data = await _fsp.readFile(absPath);
+            } catch (ex: any) {
+                if (ctx.isDisposed)
+                    return;
+                return ctx.transferError(ex);
+            }
+
+            if (this._rawCache.size >= RAW_CACHE_MAX_ENTRIES) {
+                // Map keeps insertion order; drop the oldest entry
+                this._rawCache.delete(this._rawCache.keys().next().value);
+            }
+
+            info = { size: fstat.size, mtime, data };
+            this._rawCache.set(absPath, info);
+        }
+
+        if (ctx.isDisposed)
+            return;
+
+        ctx.res.status(200, {
+            'Content-Type': mimeType, 'Content-Length': info.data.length
+        }).end(info.data);
     }
 
     private static async _renderAsync(

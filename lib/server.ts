@@ -1503,12 +1503,12 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
             const virtualRoute = `${route.replace(/\/?$/, "/")}*`;
 
-            const processHandler = (
+            const processHandler = async (
                 req: IRequest,
                 res: IResponse,
                 next: NextFunction,
-                handler: (ctx: IContext) => void
-            ): void => {
+                handler: (ctx: IContext) => void | Promise<void>
+            ): Promise<void> => {
 
                 const ctx = _server.createContext(req, res, next);
 
@@ -1532,16 +1532,15 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                     return;
                 }
 
-                fsw.isExists(
-                    `${root}/${ctx.path}`,
-                    (exists: boolean): void => {
-                        if (!exists) {
-                            return ctx.next(404);
-                        }
-
-                        return handler(ctx);
-                    }
+                const { exists } = await fsw.isExistsAsync(
+                    `${root}/${ctx.path}`
                 );
+
+                if (!exists) {
+                    return ctx.next(404);
+                }
+
+                return await handler(ctx);
             };
 
             if (typeof evt !== "function") {
@@ -1562,7 +1561,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
                                 return ctx.next(404);
                             }
-                        );
+                        ).catch(next);
                     },
                     true
                 );
@@ -1583,7 +1582,7 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
                                 return evt(ctx);
                             }
-                        );
+                        ).catch(next);
                     },
                     true
                 );

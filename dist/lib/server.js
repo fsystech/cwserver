@@ -768,7 +768,7 @@ function initilizeServer(appRoot, wwwName) {
                     throw new Error(`You already added this virtual route ${route}`);
                 }
                 const virtualRoute = `${route.replace(/\/?$/, "/")}*`;
-                const processHandler = (req, res, next, handler) => {
+                const processHandler = (req, res, next, handler) => __awaiter(this, void 0, void 0, function* () {
                     const ctx = _server.createContext(req, res, next);
                     ctx.next = (code, transfer) => {
                         if (!code || code === 200) {
@@ -779,13 +779,12 @@ function initilizeServer(appRoot, wwwName) {
                     if (!_server.isValidContext(ctx)) {
                         return;
                     }
-                    fsw.isExists(`${root}/${ctx.path}`, (exists) => {
-                        if (!exists) {
-                            return ctx.next(404);
-                        }
-                        return handler(ctx);
-                    });
-                };
+                    const { exists } = yield fsw.isExistsAsync(`${root}/${ctx.path}`);
+                    if (!exists) {
+                        return ctx.next(404);
+                    }
+                    return yield handler(ctx);
+                });
                 if (typeof evt !== "function") {
                     _app.use(virtualRoute, (req, res, next) => {
                         processHandler(req, res, next, ctx => {
@@ -793,7 +792,7 @@ function initilizeServer(appRoot, wwwName) {
                                 return _controller.httpMimeHandler.renderAsync(ctx, root);
                             }
                             return ctx.next(404);
-                        });
+                        }).catch(next);
                     }, true);
                 }
                 else {
@@ -801,7 +800,7 @@ function initilizeServer(appRoot, wwwName) {
                         processHandler(req, res, next, ctx => {
                             _server.log.success(`Send 200 ${virtualRoute}${req.path}`);
                             return evt(ctx);
-                        });
+                        }).catch(next);
                     }, true);
                 }
                 _virtualDir.push({

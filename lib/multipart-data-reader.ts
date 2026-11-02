@@ -140,7 +140,7 @@ export class MultipartDataReader extends EventEmitter implements IMultipartDataR
                     disposition, fieldName.replace(/"/gi, ""),
                     fileName.replace(/"/gi, ""),
                     contentType.replace(/"/gi, ""),
-                    _path.resolve(`${tempDir}/${Util.guid()}.temp`)
+                    _path.resolve(`${tempDir}/${Util.UUID()}.temp`)
                 );
 
                 if (this.skipFile(fileInfo)) {

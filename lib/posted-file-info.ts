@@ -109,11 +109,15 @@ export class PostedFileInfo implements IPostedFileInfo {
         return _fs.readFileSync(this._tempFile);
     }
 
+    /** @deprecated Use {@link readAsync} */
     public read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void {
         if (!this.validate(this._tempFile))
             return;
 
-        return _fs.readFile(this._tempFile, next);
+        _fsp.readFile(this._tempFile).then(
+            (data) => next(null, data),
+            (err) => next(err, null)
+        );
     }
 
     public async readAsync(): Promise<Buffer> {
@@ -146,11 +150,14 @@ export class PostedFileInfo implements IPostedFileInfo {
         this._isMoved = true;
     }
 
+    /** @deprecated Use {@link saveAsAsync} */
     public saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void {
         if (!this.validate(this._tempFile))
             return;
 
-        fsw.moveFile(this._tempFile, absPath, (err) => {
+        fsw.moveFileAsync(this._tempFile, absPath).then(
+            (): Error | null => null, (err: Error): Error | null => err
+        ).then((err) => {
             this._tempFile = null;
             this._isMoved = true;
             return next(err);

@@ -92,7 +92,7 @@ class Request extends node_http_1.IncomingMessage {
     }
     get id() {
         if (!this._id) {
-            this._id = app_util_1.Util.guid();
+            this._id = app_util_1.Util.UUID();
         }
         return this._id;
     }

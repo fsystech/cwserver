@@ -84,17 +84,39 @@ class FileDescription {
     }
 }
 exports.FileDescription = FileDescription;
+/**
+ * Maximum number of "file not found" results that are remembered.
+ * Every unknown URL (scanners, typos, bots) would otherwise add a permanent
+ * entry and grow the cache without bound.
+ */
+const MAX_NEGATIVE_ENTRIES = 1024;
 class FileInfoCacheHandler {
     constructor() {
         this._pathCache = new Map();
+        this._missCache = new Map();
     }
     rmove(path) {
-        return this._pathCache.delete(path);
+        const hit = this._pathCache.delete(path);
+        const miss = this._missCache.delete(path);
+        return hit || miss;
+    }
+    _remember(path, desc) {
+        if (desc.exists) {
+            this._missCache.delete(path);
+            this._pathCache.set(path, desc);
+            return;
+        }
+        this._pathCache.delete(path);
+        if (this._missCache.size >= MAX_NEGATIVE_ENTRIES && !this._missCache.has(path)) {
+            // Map keeps insertion order; drop the oldest entry
+            this._missCache.delete(this._missCache.keys().next().value);
+        }
+        this._missCache.set(path, desc);
     }
     statAsync(path, force) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!force) {
-                const info = this._pathCache.get(path);
+                const info = this._pathCache.get(path) || this._missCache.get(path);
                 if (info)
                     return info;
             }
@@ -102,16 +124,17 @@ class FileInfoCacheHandler {
             try {
                 const stat = yield _fsp.stat(url);
                 const desc = new FileDescription(true, url, stat);
-                this._pathCache.set(path, desc);
+                this._remember(path, desc);
                 return desc;
             }
             catch (_a) {
                 const desc = new FileDescription(false, url, null);
-                this._pathCache.set(path, desc);
+                this._remember(path, desc);
                 return desc;
             }
         });
     }
+    /** @deprecated Use {@link statAsync} */
     stat(path, next, force) {
         this.statAsync(path, force).then(next);
     }
@@ -124,6 +147,7 @@ class FileInfoCacheHandler {
             };
         });
     }
+    /** @deprecated Use {@link existsAsync} */
     exists(path, next, force) {
         this.existsAsync(path, force).then(desc => {
             return next(desc.exists, desc.url);

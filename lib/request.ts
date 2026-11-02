@@ -47,7 +47,7 @@ export interface IRequest extends IncomingMessage {
      * Gets the unique identifier for this request.
      *
      * @remarks
-     * A GUID is generated lazily on first access using `Util.guid()` and
+     * A GUID is generated lazily on first access using `Util.UUID()` and
      * reused for the lifetime of the request.
      *
      * @returns The request identifier.
@@ -215,7 +215,7 @@ export class Request extends IncomingMessage implements IRequest {
     public get id(): string {
 
         if (!this._id) {
-            this._id = Util.guid();
+            this._id = Util.UUID();
         }
 
         return this._id;

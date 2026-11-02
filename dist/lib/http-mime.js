@@ -95,6 +95,10 @@ const TaskDeff = [
     { cache: false, ext: "htm", gzip: false },
     { cache: false, ext: "wjsx", gzip: false }
 ];
+/** Files larger than this are always streamed from disk. */
+const RAW_CACHE_MAX_FILE_SIZE = 512 * 1024;
+/** Maximum number of files held in the raw cache. */
+const RAW_CACHE_MAX_ENTRIES = 512;
 class MimeHandler {
     static getCachePath(ctx) {
         const path = _path.join(ctx.server.config.staticFile.tempPath, encryption_1.Encryption.toMd5(ctx.path));
@@ -243,7 +247,7 @@ class MimeHandler {
                 });
                 const rstream = _fs.createReadStream(absPath);
                 try {
-                    yield pipelineAsync(rstream, app_util_1.Util.createGzip(), ctx.res);
+                    yield pipelineAsync(rstream, app_util_1.Util.createGzip(app_util_1.Util.GZIP_STREAM_LEVEL), ctx.res);
                 }
                 catch (ex) {
                     ctx.transferError(ex);
@@ -278,7 +282,7 @@ class MimeHandler {
                 ctx.res.status(200, { 'Content-Type': mimeType, 'Content-Encoding': 'gzip' });
                 const rstream = _fs.createReadStream(absPath);
                 try {
-                    yield pipelineAsync(rstream, app_util_1.Util.createGzip(), ctx.res);
+                    yield pipelineAsync(rstream, app_util_1.Util.createGzip(app_util_1.Util.GZIP_STREAM_LEVEL), ctx.res);
                 }
                 catch (ex) {
                     ctx.transferError(ex);
@@ -288,8 +292,44 @@ class MimeHandler {
                 }
                 return;
             }
+            if (ctx.server.config.useFullOptimization
+                && fstat.size <= RAW_CACHE_MAX_FILE_SIZE) {
+                return yield this._sendRaw(ctx, absPath, mimeType, fstat);
+            }
             ctx.res.status(200, { 'Content-Type': mimeType });
             yield app_util_1.Util.pipeOutputStreamAsync(absPath, ctx);
+        });
+    }
+    /**
+     * Serve a small, uncompressed file from memory.
+     * The cache entry is validated against the `stat` of the file.
+     */
+    static _sendRaw(ctx, absPath, mimeType, fstat) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const mtime = fstat.mtime.getTime();
+            let info = this._rawCache.get(absPath);
+            if (!info || info.mtime !== mtime || info.size !== fstat.size) {
+                let data;
+                try {
+                    data = yield _fsp.readFile(absPath);
+                }
+                catch (ex) {
+                    if (ctx.isDisposed)
+                        return;
+                    return ctx.transferError(ex);
+                }
+                if (this._rawCache.size >= RAW_CACHE_MAX_ENTRIES) {
+                    // Map keeps insertion order; drop the oldest entry
+                    this._rawCache.delete(this._rawCache.keys().next().value);
+                }
+                info = { size: fstat.size, mtime, data };
+                this._rawCache.set(absPath, info);
+            }
+            if (ctx.isDisposed)
+                return;
+            ctx.res.status(200, {
+                'Content-Type': mimeType, 'Content-Length': info.data.length
+            }).end(info.data);
         });
     }
     static _renderAsync(ctx, mimeType, absPath, stat, cachePath) {
@@ -351,6 +391,7 @@ class MimeHandler {
     }
 }
 MimeHandler._mamCache = new Map();
+MimeHandler._rawCache = new Map();
 MimeHandler._fileInfo = new file_info_1.FileInfoCacheHandler();
 class HttpMimeHandler {
     getMimeType(extension) {

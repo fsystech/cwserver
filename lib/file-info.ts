@@ -67,21 +67,49 @@ export interface IFileInfoCacheHandler {
     ): void;
 }
 
+/**
+ * Maximum number of "file not found" results that are remembered.
+ * Every unknown URL (scanners, typos, bots) would otherwise add a permanent
+ * entry and grow the cache without bound.
+ */
+const MAX_NEGATIVE_ENTRIES = 1024;
+
 export class FileInfoCacheHandler implements IFileInfoCacheHandler {
 
     private _pathCache: Map<string, FileDescription>;
+    private _missCache: Map<string, FileDescription>;
 
     constructor() {
         this._pathCache = new Map();
+        this._missCache = new Map();
     }
 
     public rmove(path: string): boolean {
-        return this._pathCache.delete(path);
+        const hit = this._pathCache.delete(path);
+        const miss = this._missCache.delete(path);
+        return hit || miss;
+    }
+
+    private _remember(path: string, desc: FileDescription): void {
+        if (desc.exists) {
+            this._missCache.delete(path);
+            this._pathCache.set(path, desc);
+            return;
+        }
+
+        this._pathCache.delete(path);
+
+        if (this._missCache.size >= MAX_NEGATIVE_ENTRIES && !this._missCache.has(path)) {
+            // Map keeps insertion order; drop the oldest entry
+            this._missCache.delete(this._missCache.keys().next().value);
+        }
+
+        this._missCache.set(path, desc);
     }
 
     public async statAsync(path: string, force?: boolean): Promise<IFileDescription> {
         if (!force) {
-            const info = this._pathCache.get(path);
+            const info = this._pathCache.get(path) || this._missCache.get(path);
             if (info) return info;
         }
 
@@ -94,7 +122,7 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
                 true, url, stat
             );
 
-            this._pathCache.set(path, desc);
+            this._remember(path, desc);
 
             return desc;
         } catch {
@@ -103,12 +131,13 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
                 false, url, null
             );
 
-            this._pathCache.set(path, desc);
+            this._remember(path, desc);
 
             return desc;
         }
     }
 
+    /** @deprecated Use {@link statAsync} */
     public stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void {
         this.statAsync(path, force).then(next);
     }
@@ -124,6 +153,7 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
         };
     }
 
+    /** @deprecated Use {@link existsAsync} */
     public exists(
         path: string, next: (exists: boolean, url: string) => void, force?: boolean
     ): void {

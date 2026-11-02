@@ -209,9 +209,9 @@ export interface IResponse extends ServerResponse {
      * @param {IResInfo} [status]
      * Optional data passed to the template during rendering.
      *
-     * @returns {void}
+     * @returns {Promise<void>} Resolves when the response has been handled.
      */
-    render(ctx: IContext, path: string, status?: IResInfo): void;
+    render(ctx: IContext, path: string, status?: IResInfo): Promise<void>;
     /**
      * Sets the response `Content-Type` header using a file extension or MIME alias.
      *
@@ -326,7 +326,7 @@ export declare class Response extends ServerResponse implements IResponse {
     send(chunk?: any): void;
     asHTML(code: number, contentLength?: number, compress?: CompressionType): IResponse;
     asJSON(code: number, contentLength?: number, compress?: CompressionType): IResponse;
-    render(ctx: IContext, path: string, status?: IResInfo): void;
+    render(ctx: IContext, path: string, status?: IResInfo): Promise<void>;
     redirect(url: string, force?: boolean): void;
     cookie(name: string, val: string, options: CookieOptions): IResponse;
     sendIfError(err?: any): boolean;
@@ -395,6 +395,7 @@ export declare class Response extends ServerResponse implements IResponse {
      * @param {string} contentType - The MIME type or file extension used to determine the response Content-Type.
      * @param {Buffer} compressed - The compressed response payload.
      * @param {CompressionType} compress - The compression algorithm used.
+     * @param {number} statusCode - The status code the response was prepared with.
      * @param {(err: Error) => void} [next] - Invoked if compression fails.
      * @param {Error} [error] - The compression error, if any.
      * @returns {void}

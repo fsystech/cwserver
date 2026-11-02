@@ -154,7 +154,7 @@ class CwSocketServer {
         }).on('connection', (socket) => {
             const _me = (() => {
                 const socketInfo = {
-                    token: app_util_1.Util.guid(),
+                    token: app_util_1.Util.UUID(),
                     loginId: socket.request.session.loginId,
                     hash: void 0,
                     socketId: socket.id,

@@ -34,6 +34,7 @@ export interface IBodyParser extends IDispose {
     getFiles(next: (file?: IPostedFileInfo, done?: () => void) => void): void;
     getJson(): Record<string, any>;
     getData(): string;
+    /** @deprecated Use {@link parseAsync} */
     parse(onReadEnd: (err?: Error) => void): void;
     parseAsync(): Promise<void>;
     getFilesAsync(next: (file: IPostedFileInfo) => Promise<void>): Promise<void>;

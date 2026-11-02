@@ -51,6 +51,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Response = void 0;
 // 4:08 PM 2/7/2026
@@ -59,6 +68,7 @@ const node_http_1 = require("node:http");
 const node_stream_1 = require("node:stream");
 const node_stream_2 = require("node:stream");
 const _zlib = __importStar(require("node:zlib"));
+const node_util_1 = require("node:util");
 const app_static_1 = require("./app-static");
 const http_status_1 = require("./http-status");
 const app_template_1 = require("./app-template");
@@ -93,11 +103,29 @@ const DEFAULT_MAX_MEMORY_COMPRESS_SIZE = (() => {
 const GZIP_OPTIONS = {
     level: _zlib.constants.Z_DEFAULT_COMPRESSION
 };
+/**
+ * Brotli quality used for responses that are compressed on the fly.
+ *
+ * Quality 11 (the zlib default) is meant for assets that are compressed once
+ * and served many times; on a request path it is more than an order of
+ * magnitude slower than quality 4-5 for a small gain in size.
+ *
+ * The value can be configured (0-11) using the `DEFAULT_BROTLI_QUALITY`
+ * environment variable.
+ *
+ * Default: `4`
+ */
+const BROTLI_QUALITY = (() => {
+    const value = Number(process.env.DEFAULT_BROTLI_QUALITY);
+    return Number.isInteger(value) && value >= 0 && value <= 11 ? value : 4;
+})();
 const BROTLI_OPTIONS = {
     params: {
-        [_zlib.constants.BROTLI_PARAM_QUALITY]: _zlib.constants.BROTLI_DEFAULT_QUALITY
+        [_zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY
     }
 };
+const _gzipAsync = (0, node_util_1.promisify)(_zlib.gzip);
+const _brotliAsync = (0, node_util_1.promisify)(_zlib.brotliCompress);
 class Response extends node_http_1.ServerResponse {
     // @ts-ignore
     get statusCode() {
@@ -302,7 +330,7 @@ class Response extends node_http_1.ServerResponse {
             throw new Error(`This compression type "${compress}" not supported.`);
         }
         if (contentLength <= DEFAULT_MAX_MEMORY_COMPRESS_SIZE) {
-            return this._memoryCompress(buffer, contentType, compress, next);
+            return void this._memoryCompress(buffer, contentType, compress, statusCode, next);
         }
         this.status(statusCode, getCommonHeader(_mimeType.getMimeType(contentType), null, compress));
         const compressor = compress === "gzip"
@@ -355,11 +383,20 @@ class Response extends node_http_1.ServerResponse {
      * @param {(err: Error) => void} [next] - Optional callback invoked if compression fails.
      * @returns {void}
      */
-    _memoryCompress(buffer, contentType, compress, next) {
-        if (compress === 'gzip') {
-            return _zlib.gzip(buffer, GZIP_OPTIONS, (error, compressed) => this._onCompress(contentType, compressed, compress, next, error));
-        }
-        return _zlib.brotliCompress(buffer, BROTLI_OPTIONS, (error, compressed) => this._onCompress(contentType, compressed, compress, next, error));
+    _memoryCompress(buffer, contentType, compress, statusCode, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let compressed;
+            let error;
+            try {
+                compressed = compress === 'gzip'
+                    ? yield _gzipAsync(buffer, GZIP_OPTIONS)
+                    : yield _brotliAsync(buffer, BROTLI_OPTIONS);
+            }
+            catch (ex) {
+                error = ex;
+            }
+            this._onCompress(contentType, compressed, compress, statusCode, next, error);
+        });
     }
     /**
      * Handles the completion of a compression operation and sends the
@@ -373,11 +410,12 @@ class Response extends node_http_1.ServerResponse {
      * @param {string} contentType - The MIME type or file extension used to determine the response Content-Type.
      * @param {Buffer} compressed - The compressed response payload.
      * @param {CompressionType} compress - The compression algorithm used.
+     * @param {number} statusCode - The status code the response was prepared with.
      * @param {(err: Error) => void} [next] - Invoked if compression fails.
      * @param {Error} [error] - The compression error, if any.
      * @returns {void}
      */
-    _onCompress(contentType, compressed, compress, next, error) {
+    _onCompress(contentType, compressed, compress, statusCode, next, error) {
         if (!this.isAlive) {
             console.warn(`Connection Disconnected. Compression type: "${compress}"`);
             return;
@@ -387,7 +425,7 @@ class Response extends node_http_1.ServerResponse {
             this.sendIfError(error);
             return;
         }
-        this.status(200, getCommonHeader(_mimeType.getMimeType(contentType), compressed.length, compress)).end(compressed);
+        this.status(statusCode, getCommonHeader(_mimeType.getMimeType(contentType), compressed.length, compress)).end(compressed);
     }
     dispose() {
         this._method = null;

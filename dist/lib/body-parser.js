@@ -178,14 +178,14 @@ class BodyParser {
         if (!fsw.mkdirSync(outdir))
             throw new Error(`Invalid outdir dir ${outdir}`);
         return this._parser.files.forEach(pf => {
-            return pf.saveAsSync(_path.resolve(`${outdir}/${app_util_1.Util.guid()}_${pf.getFileName()}`));
+            return pf.saveAsSync(_path.resolve(`${outdir}/${app_util_1.Util.UUID()}_${pf.getFileName()}`));
         });
     }
     saveAsAsync(outdir) {
         return __awaiter(this, void 0, void 0, function* () {
             this.validate(true);
             yield fsw.mkdirAsyncx(outdir);
-            yield Promise.all(this._parser.files.map(pf => pf.saveAsAsync(_path.resolve(`${outdir}/${app_util_1.Util.guid()}_${pf.getFileName()}`))));
+            yield Promise.all(this._parser.files.map(pf => pf.saveAsAsync(_path.resolve(`${outdir}/${app_util_1.Util.UUID()}_${pf.getFileName()}`))));
         });
     }
     saveAs(outdir, next, errorHandler) {
@@ -251,12 +251,20 @@ class BodyParser {
         this.validate(false);
         return this._parser.getRawData();
     }
+    /**
+     * Reads the request body. Resolves when the whole body has been read
+     * and rejects on a read/parse error or when the client disconnects.
+     */
     parseAsync() {
         return new Promise((resolve, reject) => {
-            this.parse((err) => {
+            this._read((err) => {
                 err ? reject(err) : resolve();
             });
         });
+    }
+    /** @deprecated Use {@link parseAsync} */
+    parse(onReadEnd) {
+        this.parseAsync().then(() => onReadEnd(), (err) => onReadEnd(err));
     }
     parseSync() {
         return this.parseAsync();
@@ -303,7 +311,7 @@ class BodyParser {
             return onReadEnd(err);
         };
     }
-    parse(onReadEnd) {
+    _read(onReadEnd) {
         if (this._isDisposed)
             return onReadEnd(new Error("BodyParser is disposed state"));
         if (!this.isValidRequest()) {

@@ -323,4 +323,10 @@ class Util {
 }
 exports.Util = Util;
 Util.JSON = JSONW;
+/**
+ * Gzip level for responses that are compressed on every request.
+ * Level 9 (the default of {@link createGzip}) is only worth it for content
+ * that is compressed once and cached.
+ */
+Util.GZIP_STREAM_LEVEL = _zlib.constants.Z_DEFAULT_COMPRESSION;
 //# sourceMappingURL=app-util.js.map

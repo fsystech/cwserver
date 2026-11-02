@@ -108,10 +108,11 @@ class PostedFileInfo {
             return null;
         return _fs.readFileSync(this._tempFile);
     }
+    /** @deprecated Use {@link readAsync} */
     read(next) {
         if (!this.validate(this._tempFile))
             return;
-        return _fs.readFile(this._tempFile, next);
+        _fsp.readFile(this._tempFile).then((data) => next(null, data), (err) => next(err, null));
     }
     readAsync() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -140,10 +141,11 @@ class PostedFileInfo {
             this._isMoved = true;
         });
     }
+    /** @deprecated Use {@link saveAsAsync} */
     saveAs(absPath, next) {
         if (!this.validate(this._tempFile))
             return;
-        fsw.moveFile(this._tempFile, absPath, (err) => {
+        fsw.moveFileAsync(this._tempFile, absPath).then(() => null, (err) => err).then((err) => {
             this._tempFile = null;
             this._isMoved = true;
             return next(err);

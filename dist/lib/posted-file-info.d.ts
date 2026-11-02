@@ -33,10 +33,12 @@ export declare class PostedFileInfo implements IPostedFileInfo {
     getContentType(): string;
     private validate;
     readSync(): Buffer;
+    /** @deprecated Use {@link readAsync} */
     read(next: (err: Error | NodeJS.ErrnoException | null, data: Buffer) => void): void;
     readAsync(): Promise<Buffer>;
     saveAsSync(absPath: string): void;
     saveAsAsync(absPath: string): Promise<void>;
+    /** @deprecated Use {@link saveAsAsync} */
     saveAs(absPath: string, next: (err: Error | NodeJS.ErrnoException | null) => void): void;
     dispose(): void;
 }

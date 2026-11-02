@@ -245,7 +245,7 @@ class CwSocketServer implements ICwSocketServer {
         }).on('connection', (socket: IOSocket): void => {
             const _me: ICwSocketInfo = ((): ICwSocketInfo => {
                 const socketInfo: ICwSocketInfo = {
-                    token: Util.guid(),
+                    token: Util.UUID(),
                     loginId: socket.request.session.loginId,
                     hash: void 0,
                     socketId: socket.id,

@@ -821,7 +821,7 @@ describe("cwserver-template-engine", () => {
             }
             return nextFunc();
         };
-        const ctx: IContext = appUtility.server.createContext(Object.create({ id: Util.guid(), path: "/myfle.html" }), Object.create(null), (err?: any): void => {
+        const ctx: IContext = appUtility.server.createContext(Object.create({ id: Util.UUID(), path: "/myfle.html" }), Object.create(null), (err?: any): void => {
             expect(err).not.toBeInstanceOf(Error);
         });
         ctx.handleError = (err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void => {

@@ -25,13 +25,17 @@ export interface IFileInfoCacheHandler {
 }
 export declare class FileInfoCacheHandler implements IFileInfoCacheHandler {
     private _pathCache;
+    private _missCache;
     constructor();
     rmove(path: string): boolean;
+    private _remember;
     statAsync(path: string, force?: boolean): Promise<IFileDescription>;
+    /** @deprecated Use {@link statAsync} */
     stat(path: string, next: (desc: IFileDescription) => void, force?: boolean): void;
     existsAsync(path: string, force?: boolean): Promise<{
         exists: boolean;
         url: string;
     }>;
+    /** @deprecated Use {@link existsAsync} */
     exists(path: string, next: (exists: boolean, url: string) => void, force?: boolean): void;
 }
