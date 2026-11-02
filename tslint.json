@@ -5,6 +5,7 @@
   ],
   "jsRules": {},
   "rules": {
+    "variable-name": false,
     "no-console": false,
     "no-bitwise": false,
     "max-classes-per-file": false,
@@ -12,9 +13,27 @@
     "forin": false,
     "no-namespace": true,
     "radix": false,
-    "array-type": [false],
+    "array-type": [
+      false
+    ],
     "no-empty": false,
-    "no-trailing-whitespace": false
+    "quotemark": false,
+    "curly": false,
+    "trailing-comma": false,
+    "no-trailing-whitespace": false,
+    "member-access": false,
+    "max-line-length": false,
+    "arrow-parens": false,
+    "indent": false,
+    "ordered-imports": false,
+    "interface-over-type-literal": false,
+    "eofline": false,
+    "object-literal-key-quotes": false,
+    "member-ordering": false,
+    "object-literal-sort-keys": false,
+    "interface-name": false,
+    "align": false,
+    "semicolon": true
   },
   "rulesDirectory": []
 }

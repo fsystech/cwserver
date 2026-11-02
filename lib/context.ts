@@ -39,7 +39,6 @@ import type { ISession } from "./session";
  */
 type CtxNext = (code?: number | undefined, transfer?: boolean) => void;
 
-
 /**
  * Represents the execution context of a single HTTP request.
  *
@@ -360,7 +359,7 @@ export class Context implements IContext {
 
     public addError(err: NodeJS.ErrnoException | Error): void {
         if (!this._isDisposed) {
-            this._server.addError(this, err)
+            this._server.addError(this, err);
         }
     }
 

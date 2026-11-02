@@ -68,10 +68,10 @@ declare type IColor = string;
 export class ConsoleColor {
     public static Cyan(str: string): IColor {
         return `\x1b[36m${str}\x1b[0m`;
-    };
+    }
     public static Yellow(str: string): IColor {
         return `\x1b[33m${str}\x1b[0m`;
-    };
+    }
     public static Reset: IColor = '\x1b[0m';
     public static Bright: IColor = '\x1b[1m';
     public static Dim: IColor = '\x1b[2m';
@@ -110,34 +110,43 @@ export class ShadowLogger implements ILogger {
     writeBuffer(msg: string): void {
         return;
     }
-    newLine() {
+    public newLine(): any {
         return;
     }
-    write(msg: string, color?: IColor): ILogger {
+
+    public write(msg: string, color?: IColor): ILogger {
         return this;
     }
-    log(msg: string, color?: IColor): ILogger {
+
+    public log(msg: string, color?: IColor): ILogger {
         return this;
     }
-    info(msg: string): ILogger {
+
+    public info(msg: string): ILogger {
         return this;
     }
-    success(msg: string): ILogger {
+
+    public success(msg: string): ILogger {
         return this;
     }
-    error(msg: string): ILogger {
+
+    public error(msg: string): ILogger {
         return this;
     }
-    reset(): ILogger {
+
+    public reset(): ILogger {
         return this;
     }
-    writeToStream(str: string): void {
+
+    public writeToStream(str: string): void {
         return;
     }
-    flush(): boolean {
+
+    public flush(): boolean {
         return true;
     }
-    dispose(): void {
+
+    public dispose(): void {
         return;
     }
 

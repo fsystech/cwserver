@@ -91,11 +91,9 @@ class ConsoleColor {
     static Cyan(str) {
         return `\x1b[36m${str}\x1b[0m`;
     }
-    ;
     static Yellow(str) {
         return `\x1b[33m${str}\x1b[0m`;
     }
-    ;
 }
 exports.ConsoleColor = ConsoleColor;
 ConsoleColor.Reset = '\x1b[0m';

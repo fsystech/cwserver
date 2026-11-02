@@ -136,7 +136,6 @@ class HeaderParser extends stream_1.EventEmitter {
             }
         }
     }
-    ;
 }
 /// [/Header Parser]
 /// [Dicer]

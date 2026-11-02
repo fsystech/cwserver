@@ -138,14 +138,14 @@ class HeaderParser extends EventEmitter {
                         headerPart[headerPart.length - 1] += lines[i];
                     }
 
-                    continue
+                    continue;
                 }
             }
 
-            const posColon: number = lines[i].indexOf(':')
+            const posColon: number = lines[i].indexOf(':');
 
             if (posColon === -1 || posColon === 0)
-                return
+                return;
 
             const m: RegExpExecArray | null = RE_HDR.exec(lines[i]);
 
@@ -163,7 +163,7 @@ class HeaderParser extends EventEmitter {
                     break;
             }
         }
-    };
+    }
 }
 /// [/Header Parser]
 
@@ -453,7 +453,6 @@ export class Dicer extends WritableStream {
         cb();
     }
 }
-
 
 function EMPTY_FN() { }
 

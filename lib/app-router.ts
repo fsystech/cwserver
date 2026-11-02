@@ -24,12 +24,12 @@ export type IRouteMatcher = {
     readonly test: (val: string) => boolean;
     readonly replace: (val: string) => string;
     readonly exec: (val: string) => RegExpMatchArray | null;
-}
+};
 
 export type IRequestParam = {
     query: { [x: string]: string };
     match: string[];
-}
+};
 
 export type ILayerInfo<T> = {
     route?: string;
@@ -37,12 +37,12 @@ export type ILayerInfo<T> = {
     routeMatcher?: IRouteMatcher;
     method?: "GET" | "POST" | "ANY";
     pathArray?: string[];
-}
+};
 
 export type IRouteInfo<T> = {
     layer: ILayerInfo<T>;
     requestParam?: IRequestParam;
-}
+};
 
 const pathRegx: RegExp = /\//g;
 

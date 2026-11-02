@@ -26,7 +26,6 @@ import type { IContext } from "./context";
 export type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
 export type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => void;
 
-
 export interface ITemplateCtx {
     getCtx(key: string): SandBox;
     deleteCtx(key: string): boolean;
@@ -61,6 +60,5 @@ class ITemplateCtxStatic {
         return this._instance;
     }
 }
-
 
 export const TemplateCtx = ITemplateCtxStatic.getInstance();

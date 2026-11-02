@@ -375,7 +375,6 @@ export declare class ServerConfig implements IServerConfig {
     constructor();
 }
 export declare class SessionSecurity {
-    constructor();
     static getRemoteAddress(ip: string): string;
     static createSession(req: IRequest, sessionObj: Record<string, any>): string;
     static isValidSession(req: IRequest): void;

@@ -38,17 +38,21 @@ export interface QueryResultBase {
     oid: number;
     fields: FieldDef[];
 }
+
 export interface QueryResult<R extends QueryResultRow = any> extends QueryResultBase {
     rows: R[];
 }
+
 export type IoResult = {
     ret_val: number;
     ret_msg: string;
     ret_data_table?: any;
-}
+};
+
 export type QResult<R extends QueryResultRow> = {
     isError: boolean; err?: Error; res?: QueryResult<R>;
-}
+};
+
 export interface ICwDatabaseType {
     [id: string]: (...args: any[]) => any;
     getConn(): any;

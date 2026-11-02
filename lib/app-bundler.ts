@@ -46,7 +46,7 @@ type MemCacheInfo = {
     readonly cfileSize: number;
     readonly bundleData: Buffer;
     readonly lastChangeTime: number;
-}
+};
 
 class Bundel {
     public static cache: Map<string, MemCacheInfo> = null;
@@ -88,9 +88,9 @@ class Bundlew {
 
         let fileName: string = `${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${Encryption.toMd5(str)}`;
         if (ctEnum === ContentType.JS) {
-            fileName = `${fileName}.js.cache`
+            fileName = `${fileName}.js.cache`;
         } else {
-            fileName = `${fileName}.css.cache`
+            fileName = `${fileName}.css.cache`;
         }
 
         return {
@@ -152,7 +152,7 @@ class Bundlew {
             changeTime,
             isChange: lchangeTime === 0 ? true : changeTime > lchangeTime,
             iCwn
-        }
+        };
     }
 
     public static async getBundleInfoAsync(
@@ -160,7 +160,6 @@ class Bundlew {
         lastChangeTime: number | void,
         hasCacheFile: boolean
     ): Promise<BundlerFileInfo[]> {
-
 
         if (hasCacheFile && !server.config.bundler.reValidate) {
             return [];

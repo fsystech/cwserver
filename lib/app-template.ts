@@ -67,7 +67,7 @@ export type CompilerResult = {
     str: string; isScript?: boolean; isTemplate?: boolean;
     sandBox?: SandBox,
     err?: NodeJS.ErrnoException | Error | null
-}
+};
 
 type TemplateNextFunc = (params: CompilerResult) => void;
 
@@ -112,7 +112,7 @@ class WriteTag implements IScriptTag {
     public l: string;
     public get lre(): RegExp {
         return /{=/gi;
-    };
+    }
     public r: string;
     public get rre(): RegExp {
         return /=}/gi;
@@ -326,7 +326,8 @@ class TemplateParser {
                     });
                 });
             });
-        }
+        };
+
         return forword();
     }
 
@@ -386,7 +387,7 @@ class TemplateParser {
                     });
                 });
             });
-        }
+        };
         return forword();
     }
     private static implimentTemplateExtend(
@@ -595,7 +596,7 @@ class TemplateLink {
                     'Content-Length': Buffer.byteLength(body)
                 }).end(body);
             });
-        }
+        };
     }
 
     public static tryLive(ctx: IContext, path: string, status: IResInfo): void {
@@ -650,7 +651,7 @@ class TemplateLink {
                             return next(ox);
                         });
                     });
-                })
+                });
             });
         });
     }

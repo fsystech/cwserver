@@ -54,7 +54,6 @@ export interface IRequest extends IncomingMessage {
      */
     readonly id: string;
 
-
     /**
      * Gets the parsed HTTP cookies.
      *

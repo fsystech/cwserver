@@ -121,7 +121,7 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
         return {
             url: desc.url,
             exists: desc.exists
-        }
+        };
     }
 
     public exists(

@@ -244,7 +244,6 @@ export class Controller implements IController {
             return ctx.next(404);
         }
 
-
         if (rpath.charAt(rpath.length - 1) === "/") {
             return await this.passDefaultDocAsync(ctx);
         }

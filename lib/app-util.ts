@@ -272,13 +272,13 @@ export class Util {
             return;
 
         const response = ctx.res;
-        response.status(200)
+        response.status(200);
 
         let openenedFile: _fs.ReadStream = null;
 
         try {
 
-            openenedFile = _fs.createReadStream(absPath)
+            openenedFile = _fs.createReadStream(absPath);
             await pipelineAsync(openenedFile, response);
 
         } catch (ex: any) {

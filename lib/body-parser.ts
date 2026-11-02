@@ -40,14 +40,14 @@ export type UploadFileInfo = {
     fileName: string;
     contentDisposition: string;
     tempPath: string | undefined
-}
+};
 
 export type FileInfo = {
     contentDisposition: string;
     name: string;
     fileName: string;
     contentType: string;
-}
+};
 
 export interface IBodyParser extends IDispose {
     /** If you return true, this file will be skip */
@@ -89,7 +89,7 @@ const incomingContentType: {
     MULTIPART: "multipart/form-data",
     RAW_TEXT: "text/plain",
     URL_ENCODE: "application/x-www-form-urlencoded"
-}
+};
 
 enum ContentType {
     URL_ENCODE = 1,
@@ -297,7 +297,7 @@ class BodyParser implements IBodyParser {
             return next(pf, () => {
                 return forward();
             });
-        }
+        };
 
         return forward();
     }
@@ -379,7 +379,7 @@ class BodyParser implements IBodyParser {
 
                         this._multipartParser.on(
                             "part", this.skipPart
-                        )
+                        );
                     }
 
                 } else {
@@ -389,7 +389,7 @@ class BodyParser implements IBodyParser {
                 return this.tryFinish(onReadEnd);
 
             }, this.skipFile);
-        }
+        };
     }
 
     private finalEvent(ev: "close" | "error", onReadEnd: (err?: Error) => void): (err?: Error) => void {
@@ -401,7 +401,7 @@ class BodyParser implements IBodyParser {
             this._isReadEnd = true;
             this._part.length = 0;
             return onReadEnd(err);
-        }
+        };
     }
 
     public parse(onReadEnd: (err?: Error) => void): void {

@@ -273,7 +273,7 @@ export class Session implements ISession {
     public updateRoleId(roleIds: string | Array<string>): void {
 
         if (!this._obj)
-            throw new Error("No active session found.")
+            throw new Error("No active session found.");
 
         const roles = this._obj.roles;
 
@@ -323,7 +323,7 @@ export class Session implements ISession {
         if (!this._obj)
             return;
 
-        this._obj.roles.clear()
+        this._obj.roles.clear();
 
         this._obj = null;
     }

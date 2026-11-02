@@ -49,10 +49,10 @@ type MemCacheInfo = {
     readonly cfileSize: number;
     readonly gizipData: Buffer;
     readonly lastChangeTime: number;
-}
+};
 
 interface ITaskDeff {
-    cache: boolean; ext: string; gzip: boolean
+    cache: boolean; ext: string; gzip: boolean;
 }
 
 // "exe", "zip", "doc", "docx", "pdf", "ppt", "pptx", "gz"
@@ -70,7 +70,6 @@ const TaskDeff: ITaskDeff[] = [
     { cache: false, ext: "htm", gzip: false },
     { cache: false, ext: "wjsx", gzip: false }
 ];
-
 
 class MimeHandler {
     private static _mamCache: Map<string, MemCacheInfo> = new Map();

@@ -46,7 +46,7 @@ type CookieOptions = {
     secure?: boolean;
     encode?: (val: string) => string;
     sameSite?: boolean | 'lax' | 'strict' | 'none';
-}
+};
 
 export interface IResponse extends ServerResponse {
     /**
@@ -377,7 +377,6 @@ const COMPRESSION_THRESHOLD = (() => {
     const value = Number(process.env.COMPRESSION_THRESHOLD);
     return Number.isFinite(value) ? value : 8 * 1024;
 })();
-
 
 /**
  * Maximum payload size (in bytes) eligible for in-memory compression.
@@ -725,7 +724,7 @@ export class Response extends ServerResponse implements IResponse {
         }
 
         if (!(compress === 'gzip' || compress === "br")) {
-            throw new Error(`This compression type "${compress}" not supported.`)
+            throw new Error(`This compression type "${compress}" not supported.`);
         }
 
         if (contentLength <= DEFAULT_MAX_MEMORY_COMPRESS_SIZE) {
@@ -859,7 +858,7 @@ export class Response extends ServerResponse implements IResponse {
     ): void {
 
         if (!this.isAlive) {
-            console.warn(`Connection Disconnected. Compression type: "${compress}"`)
+            console.warn(`Connection Disconnected. Compression type: "${compress}"`);
             return;
         }
 

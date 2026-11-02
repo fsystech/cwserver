@@ -113,7 +113,6 @@ export function getMimeType(extension: string): string {
     return setCharset(mimeType);
 }
 
-
 export function setMimeType(extension: string, value: string): void {
     return _mimeType.add(extension, value);
 }

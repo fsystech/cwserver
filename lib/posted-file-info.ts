@@ -32,7 +32,7 @@ export type FileInfo = {
     name: string;
     fileName: string;
     contentType: string;
-}
+};
 
 export interface IPostedFileInfo extends IDispose {
     changePath(path: string): void;
@@ -120,7 +120,7 @@ export class PostedFileInfo implements IPostedFileInfo {
         if (!this.validate(this._tempFile))
             return null;
 
-        return await _fsp.readFile(this._tempFile)
+        return await _fsp.readFile(this._tempFile);
     }
 
     public saveAsSync(absPath: string): void {

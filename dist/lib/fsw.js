@@ -459,8 +459,10 @@ function getFilesAsync(dir, recursive) {
                     if (recursive)
                         yield __await(yield* __asyncDelegator(__asyncValues(yield __await(getFilesAsync(entry, recursive)))));
                 }
-                else if (d.isFile())
-                    yield yield __await(entry);
+                else {
+                    if (d.isFile())
+                        yield yield __await(entry);
+                }
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }

@@ -121,6 +121,7 @@ export const {
     appVersion, readAppVersion
 } = (() => {
     let _appVersion: string = '4.1.1';
+
     const _readAppVersion = (): string => {
         const libRoot = getAppDir();
         const absPath = _path.resolve(`${libRoot}/package.json`);
@@ -128,7 +129,8 @@ export const {
         const data = readFileSync(absPath, "utf-8");
         _appVersion = Util.JSON.parse(data).version;
         return _appVersion;
-    }
+    };
+
     return {
         get appVersion() {
             return _appVersion;
@@ -136,7 +138,7 @@ export const {
         get readAppVersion() {
             return _readAppVersion;
         }
-    }
+    };
 })();
 
 class Application extends EventEmitter implements IApplication {
@@ -383,7 +385,7 @@ class Application extends EventEmitter implements IApplication {
             }
             // no handler matched
             this.emit("error", req, res, new Error("No route matched"));
-        }
+        };
 
         // Execute prerequisites first
         this._handleRequest(req, res, this._prerequisites, (err?: Error): void => {
@@ -402,7 +404,6 @@ class Application extends EventEmitter implements IApplication {
 
         });
     }
-
 
     public prerequisites(handler: HandlerFunc): IApplication {
 

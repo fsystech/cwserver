@@ -80,7 +80,7 @@ declare global {
                 entrypoint: string;
                 defaultEntrypoint: string;
                 path: { resolve: () => void; }
-            }
+            };
         }
     }
 }
@@ -111,4 +111,4 @@ export type CompressionType =
     | "br"
     | "zstd";
 
-export { }
+export { };

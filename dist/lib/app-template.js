@@ -97,7 +97,6 @@ class WriteTag {
     get lre() {
         return /{=/gi;
     }
-    ;
     get rre() {
         return /=}/gi;
     }

@@ -131,10 +131,10 @@ export async function isExistsAsync(
 
     try {
         await _fsp.stat(url);
-        return { exists: true, url }
+        return { exists: true, url };
 
     } catch (ex) {
-        return { exists: false, url }
+        return { exists: false, url };
     }
 }
 
@@ -461,8 +461,9 @@ export async function* getFilesAsync(dir: string, recursive?: boolean): AsyncGen
         if (d.isDirectory()) {
             if (recursive)
                 yield* await getFilesAsync(entry, recursive);
+        } else {
+            if (d.isFile()) yield entry;
         }
-        else if (d.isFile()) yield entry;
     }
 }
 
@@ -483,7 +484,7 @@ export async function mkdirAsync(errHandler: ErrorHandler, rootDir: string, targ
     } catch (ex) {
         errHandler(
             ex as any, () => { }
-        )
+        );
     }
 }
 

@@ -79,7 +79,6 @@ class AppViewRegister implements IAppViewRegister {
     }
 }
 
-
 class AppViewStatic {
     private static _instance: AppViewRegister = null;
     public static getInstance(): AppViewRegister {

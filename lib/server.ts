@@ -435,7 +435,6 @@ const _formatPath = (() => {
         }
     };
 
-
     return (
         server: ICwServer,
         path: string,
@@ -492,7 +491,6 @@ export class ServerEncryption implements IServerEncryption {
         return Encryption.decryptUri(encryptedText, this.cryptoInfo);
     }
 }
-
 
 export class ServerConfig implements IServerConfig {
     [key: string]: any;
@@ -607,9 +605,7 @@ export class ServerConfig implements IServerConfig {
 }
 // prevent session hijacking
 export class SessionSecurity {
-    constructor() {
-        throw new Error("Invalid initilization...");
-    }
+
     public static getRemoteAddress(ip: string): string {
         let ipPart: string = ip.substring(0, ip.lastIndexOf('.'));
         if (!ipPart) {
@@ -618,10 +614,12 @@ export class SessionSecurity {
         }
         return ipPart;
     }
+
     public static createSession(req: IRequest, sessionObj: Record<string, any>): string {
         sessionObj.ipPart = this.getRemoteAddress(req.ip);
         return Util.JSON.stringify(sessionObj);
     }
+
     public static isValidSession(req: IRequest): void {
         if (!req.session.isAuthenticated) return;
         if (!req.session.ipPart || req.session.ipPart !== this.getRemoteAddress(req.ip)) {
@@ -631,6 +629,7 @@ export class SessionSecurity {
         return;
     }
 }
+
 export class CwServer implements ICwServer {
     private _public: string;
     private _log: ILogger;
@@ -750,7 +749,6 @@ export class CwServer implements ICwServer {
             );
         }
 
-
         const libRoot = getAppDir();
 
         this._errorPage = {
@@ -768,7 +766,6 @@ export class CwServer implements ICwServer {
             )
         };
 
-
         Util.extend(
             this._config,
             config,
@@ -776,7 +773,6 @@ export class CwServer implements ICwServer {
         );
 
         this.implimentConfig(config);
-
 
         const normalizedRoot = this._root.replace(/\\/g, "/");
 
@@ -792,7 +788,6 @@ export class CwServer implements ICwServer {
                 "i"
             );
 
-
         this._userInteractive = false;
 
         this.initilize();
@@ -807,11 +802,9 @@ export class CwServer implements ICwServer {
             "/web/temp/cache/"
         );
 
-
         this.on = Object.create(null);
         this.addVirtualDir = Object.create(null);
         this.virtualInfo = Object.create(null);
-
 
         this._config.bundler.tempPath =
             this.mapPath(
@@ -822,7 +815,6 @@ export class CwServer implements ICwServer {
             this.mapPath(
                 this._config.staticFile.tempPath
             );
-
 
         this._log = new ShadowLogger();
     }
@@ -909,7 +901,6 @@ export class CwServer implements ICwServer {
         this._config.encryptionKey =
             Encryption.updateCryptoKeyIV(config.encryptionKey);
 
-
         const session = this._config.session;
 
         if (session) {
@@ -933,7 +924,6 @@ export class CwServer implements ICwServer {
 
             session.maxAge = parseMaxAge(maxAge);
         }
-
 
         const cacheHeader = this._config.cacheHeader;
 
@@ -1045,7 +1035,6 @@ export class CwServer implements ICwServer {
             );
         }
 
-
         this._config.views = this._config.views.map(
             path => this.formatPath(path)
         );
@@ -1072,7 +1061,6 @@ export class CwServer implements ICwServer {
 
         return context;
     }
-
 
     public setDefaultProtectionHeader(res: IResponse): void {
 
@@ -1368,7 +1356,7 @@ export class CwServer implements ICwServer {
 
     public createBundle(str: string): string {
         if (!str)
-            throw new Error("No string found to create bundle...")
+            throw new Error("No string found to create bundle...");
 
         return Encryption.encryptUri(
             str, this._config.encryptionKey
@@ -1431,11 +1419,11 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 }
 
                 return _process.render(code, _context, _next, transfer);
-            }
+            };
 
             return _context;
         }
-    }
+    };
 
     const _controller: IController = new Controller(
         _server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false
@@ -1687,10 +1675,11 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
                 );
             }
         });
+
         _server.init();
 
         return _app;
-    };
+    }
 
     AppView.isInitilized = true;
 
@@ -1702,5 +1691,5 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         get socketPath() { return toString(_server.config.socketPath); },
         get server() { return _server; },
         get controller() { return _controller; }
-    }
+    };
 }

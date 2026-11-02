@@ -218,9 +218,6 @@ class ServerConfig {
 exports.ServerConfig = ServerConfig;
 // prevent session hijacking
 class SessionSecurity {
-    constructor() {
-        throw new Error("Invalid initilization...");
-    }
     static getRemoteAddress(ip) {
         let ipPart = ip.substring(0, ip.lastIndexOf('.'));
         if (!ipPart) {
@@ -860,7 +857,6 @@ function initilizeServer(appRoot, wwwName) {
             return _app;
         });
     }
-    ;
     app_view_1.AppView.isInitilized = true;
     return {
         initAsync: initializeAsync,

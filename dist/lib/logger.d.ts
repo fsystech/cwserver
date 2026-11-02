@@ -51,7 +51,7 @@ export declare class ShadowLogger implements ILogger {
     get isProduction(): boolean;
     constructor();
     writeBuffer(msg: string): void;
-    newLine(): void;
+    newLine(): any;
     write(msg: string, color?: IColor): ILogger;
     log(msg: string, color?: IColor): ILogger;
     info(msg: string): ILogger;

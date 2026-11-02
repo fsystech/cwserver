@@ -46,7 +46,6 @@ export function parseCookie(
     if (typeof cook === 'object' && !Array.isArray(cook))
         return cook as Record<string, string>;
 
-
     if (Array.isArray(cook))
         return getCook(cook);
 
