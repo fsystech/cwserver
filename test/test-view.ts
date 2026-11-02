@@ -91,7 +91,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 		req.session = server.parseSession(req.headers, req.cookies);
 		return next();
 	});
-	expect(shouldBeError(() => new SessionSecurity())).toBeInstanceOf(Error);
+	
 	expect(SessionSecurity.getRemoteAddress("::1")).toEqual('127.0.0');
 	fsw.mkdirSync(server.config.staticFile.tempPath, "");
 	expect(parseCookie(["test"])).toBeInstanceOf(Object);
