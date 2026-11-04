@@ -458,7 +458,7 @@ export class TemplateCore {
 
             // bug fix by rajib chy on 8:16 PM 3/23/2021
             // Error: ctx.addError(ctx, ex) argument error
-            const script: _vm.Script = new _vm.Script(`cw.setCtx("${sandBox}", async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = void 0;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n});`);
+            const script: _vm.Script = new _vm.Script(`cw.setCtx("${sandBox}", async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = null;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n});`);
 
             script.runInContext(_vm.createContext({
                 ...vimCtx,

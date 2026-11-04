@@ -1,5 +1,5 @@
 import type { IContext } from "./context";
-export type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => void;
+export type SandBoxNext = (ctx: IContext, body: string, isCompressed?: boolean) => Promise<void>;
 export type SandBox = (ctx: IContext, next: SandBoxNext, isCompressed?: boolean) => Promise<void>;
 export interface ITemplateCtx {
     getCtx(key: string): SandBox;
