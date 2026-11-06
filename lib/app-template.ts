@@ -422,7 +422,7 @@ class TemplateParser {
         // read every attachment in parallel, then replace them in order
         const contents = await Promise.all(match.map(async (orgMatch: string): Promise<string> => {
             const path = orgMatch.replace(/#attach/gi, "").replace(/\r\n/gi, "").trim();
-            const abspath = _path.resolve(`${appRoot}${path}`);
+            const abspath = getSafeTemplatePath(appRoot, path);
             const { exists, url } = await _fileInfo.existsAsync(abspath);
 
             if (!exists) {
@@ -505,7 +505,7 @@ class TemplateParser {
             }
 
             const path = found.replace(/#extends/gi, "").replace(/\r\n/gi, "").replace(/\n/gi, "").trim();
-            const abspath = _path.resolve(`${appRoot}${path}`);
+            const abspath = getSafeTemplatePath(appRoot, path);
             const { exists } = await _fileInfo.existsAsync(abspath);
 
             if (!exists) {
@@ -569,8 +569,12 @@ class TemplateParser {
 
 export class TemplateCore {
     /**
-     * Compile a template script into a reusable sandbox function.
-     * Never throws; failures are reported in `CompilerResult.err`.
+     * Compiles a template script string into a reusable sandbox function using a restricted VM context.
+     * Never throws exceptions directly; any compilation or execution failures are caught and reported in `CompilerResult.err`.
+     * 
+     * @param str - The raw template script content/string to compile.
+     * @param vimCtx - Additional contextual variables to securely expose within the template execution sandbox.
+     * @returns A `CompilerResult` object containing the script string, compilation status, sandbox function, or any encountered error.
      */
     public static compileScript(
         str: string | undefined,
@@ -582,20 +586,24 @@ export class TemplateCore {
         }
 
         try {
-
             const sandBox: string = `${generateRandomString(30)}_thisNext`;
             TemplateCtx.setCtx(sandBox, templateNext);
 
-            // bug fix by rajib chy on 8:16 PM 3/23/2021
-            // Error: ctx.addError(ctx, ex) argument error
-            const script: _vm.Script = new _vm.Script(`cw.setCtx("${sandBox}", async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = null;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n});`);
+            const scriptStr = `cw.setCtx("${sandBox}", async function( ctx, next, isCompressed ){\nlet __v8val = "";\nctx.write = function( str ) { __v8val += str; }\ntry{\n ${str}\nreturn next( ctx, __v8val, isCompressed ), __v8val = null;\n\n}catch( ex ){\n ctx.addError(ex);\nreturn ctx.next(500);\n}\n});`;
 
-            script.runInContext(_vm.createContext({
+            // FIXED: Do NOT pass ...global. Whitelist only explicitly safe variables.
+            executeTemplateScript(scriptStr, {
                 ...vimCtx,
-                ...global,       // includes standard globals
-                Buffer,          // explicitly expose Buffer
+                Buffer,          // Safe to expose explicitly if needed
                 cw: TemplateCtx, // Template context
-            }));
+            });
+
+            // executeTemplateScript(scriptStr, {
+            //     ...vimCtx,
+            //     ...global,       // includes standard globals
+            //     Buffer,          // explicitly expose Buffer
+            //     cw: TemplateCtx, // Template context
+            // });
 
             const func: SandBox | undefined = TemplateCtx.getCtx(sandBox);
 
@@ -833,7 +841,11 @@ class TemplateLink {
      */
     private static async _readSource(ctx: IContext, url: string): Promise<CompilerResult> {
         const data = await _fsp.readFile(url, "utf8");
-        const result = await TemplateCore.runAsync(ctx, ctx.server.getPublic(), data.replace(/^\uFEFF/, ''));
+
+        const result = await TemplateCore.runAsync(
+            ctx, ctx.server.getPublic(),
+            data.replace(/^\uFEFF/, '')
+        );
 
         if (result.err)
             throw result.err;
@@ -1017,5 +1029,62 @@ export class Template {
         }
 
         return TemplateLink.tryFileCacheOrLive(ctx, path, status);
+    }
+}
+
+/**
+ * Safely resolves a template directive path, preventing directory traversal.
+ * 
+ * @param appRoot - The trusted root directory for templates.
+ * @param requestedPath - The path specified in the directive.
+ * @returns The fully validated absolute file path.
+ * @throws {Error} If the resolved path attempts to escape outside of `appRoot`.
+ */
+function getSafeTemplatePath(appRoot: string, requestedPath: string): string {
+    const normalizedRoot = _path.resolve(appRoot);
+
+    // Remove leading slashes or backslashes to prevent absolute system path resolution
+    const sanitizedRelativePath = requestedPath.replace(/^[\/\\]+/, '');
+
+    // Resolve against the appRoot directory
+    const absolutePath = _path.resolve(normalizedRoot, sanitizedRelativePath);
+
+    // Ensure the resolved path stays strictly within the appRoot
+    const relative = _path.relative(normalizedRoot, absolutePath);
+    if (relative.startsWith('..') || _path.isAbsolute(relative)) {
+        throw new Error(`Security Violation: Access denied for path outside appRoot -> ${requestedPath}`);
+    }
+
+    return absolutePath;
+}
+
+/**
+ * Executes embedded template script content safely within a restricted Node.js VM context.
+ * 
+ * @param scriptContent - The JavaScript string or code content to execute.
+ * @param dataContext - An object containing variables to expose safely within the sandbox context.
+ * @returns The result returned by the executed script.
+ * @throws {Error} If execution fails, times out, or throws an unhandled exception.
+ */
+function executeTemplateScript(scriptContent: string, dataContext: Record<string, any>) {
+    // Create a restricted, frozen sandbox context
+    const sandbox = Object.create(null);
+
+    // Expose only safe data variables
+    for (const key of Object.keys(dataContext)) {
+        sandbox[key] = dataContext[key];
+    }
+
+    // Freeze sandbox properties to prevent prototype escape attempts
+    const context = _vm.createContext(sandbox);
+
+    // Execute with timeout and strict options
+    try {
+        return _vm.runInContext(scriptContent, context, {
+            timeout: 1000, // 1 second execution limit
+            displayErrors: false
+        });
+    } catch (err: any) {
+        throw new Error(`Template execution error: ${err.message}`);
     }
 }

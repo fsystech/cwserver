@@ -21,8 +21,12 @@ type TemplateNextFunc = (params: CompilerResult) => void;
 export declare function templateNext(ctx: IContext, next: SandBoxNext, isCompressed?: boolean): Promise<void>;
 export declare class TemplateCore {
     /**
-     * Compile a template script into a reusable sandbox function.
-     * Never throws; failures are reported in `CompilerResult.err`.
+     * Compiles a template script string into a reusable sandbox function using a restricted VM context.
+     * Never throws exceptions directly; any compilation or execution failures are caught and reported in `CompilerResult.err`.
+     *
+     * @param str - The raw template script content/string to compile.
+     * @param vimCtx - Additional contextual variables to securely expose within the template execution sandbox.
+     * @returns A `CompilerResult` object containing the script string, compilation status, sandbox function, or any encountered error.
      */
     static compileScript(str: string | undefined, vimCtx: Record<string, any>): CompilerResult;
     /** @deprecated Use {@link compileScript} */
