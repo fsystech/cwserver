@@ -259,44 +259,175 @@ export interface IContext {
 }
 export declare class Context implements IContext {
     private _isDisposed;
+    /**
+     * Indicates whether this context has been disposed.
+     *
+     * @returns True if dispose has been called.
+     */
     get isDisposed(): boolean;
     error?: string;
     errorPage: string;
     errorCode: number;
     private _res;
     private _req;
+    /**
+     * Gets the response object for this context.
+     *
+     * @returns The response.
+     */
     get res(): IResponse;
+    /**
+     * Gets the request object for this context.
+     *
+     * @returns The request.
+     */
     get req(): IRequest;
     path: string;
     extension: string;
     root: string;
+    /**
+     * Gets the session of the underlying request.
+     *
+     * @returns The current session.
+     */
     get session(): ISession;
     servedFrom?: string;
     private _server;
+    /**
+     * Gets the server instance that owns this context.
+     *
+     * @returns The server.
+     */
     get server(): ICwServer;
     private _next?;
+    /**
+     * Gets the callback that continues request processing; returns a no-op function if the context is
+     * disposed or no callback was set.
+     *
+     * @returns The next handler function.
+     */
     get next(): CtxNext;
+    /**
+     * Sets the callback that continues request processing.
+     *
+     * @param val The next handler.
+     */
     set next(val: CtxNext);
+    /**
+     * Creates a context bound to a server, request and response, with empty path, root, extension and
+     * error state.
+     *
+     * @param server Owning server instance.
+     * @param req Incoming request.
+     * @param res Outgoing response.
+     */
     constructor(server: ICwServer, req: IRequest, res: IResponse);
+    /**
+     * Records an error for this context on the server; does nothing if the context is disposed.
+     *
+     * @param err The error to record.
+     */
     addError(err: NodeJS.ErrnoException | Error): void;
+    /**
+     * Records the error on the server and transfers the request to the 500 error handling; does nothing if
+     * disposed.
+     *
+     * @param err The error to record and handle.
+     */
     transferError(err: NodeJS.ErrnoException | Error): void;
+    /**
+     * If the context is live and headers have not been sent, transfers the request on error, otherwise
+     * calls next, transferring any error it throws.
+     *
+     * @param err Error from a previous operation, if any.
+     * @param next Callback to run when there is no error.
+     */
     handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void;
+    /**
+     * Sends the body as a JSON response, compressed with the encoding the client accepts; does nothing if
+     * disposed.
+     *
+     * @param body Object to serialize as JSON.
+     */
     json(body: Record<string, any>): void;
+    /**
+     * Sends a 302 redirect to the given URL; does nothing if disposed.
+     *
+     * @param url Target URL.
+     * @param force If true, prevents caching of the redirect.
+     */
     redirect(url: string, force?: boolean): void;
+    /**
+     * Writes a chunk to the response stream without ending it; does nothing if disposed.
+     *
+     * @param chunk Data to write.
+     */
     write(chunk: Buffer | string | number | boolean | {
         [key: string]: any;
     }): void;
+    /**
+     * Transfers the request to another path or error status handled by the server; does nothing if
+     * disposed.
+     *
+     * @param path Target path, or numeric status code.
+     */
     transferRequest(path: string | number): void;
+    /**
+     * Expires the session cookie and clears the session on the server; does nothing if disposed.
+     *
+     * @returns This context, for chaining.
+     */
     signOut(): IContext;
+    /**
+     * Creates a session for the user on the server; does nothing if disposed.
+     *
+     * @param loginId User login identifier.
+     * @param roleId User role identifier.
+     * @param userData Additional data to store in the session.
+     * @returns This context, for chaining.
+     */
     setSession(loginId: string, roleId: string, userData: any): IContext;
+    /**
+     * Disposes the context: marks it disposed, disposes the response and request and clears all
+     * references. Safe to call repeatedly.
+     *
+     * @returns The request id if disposed now, or undefined if it was already disposed.
+     */
     dispose(): string | void;
 }
 declare class ContextManager {
     private _contexts;
+    /**
+     * Creates the manager with an empty context map.
+     */
     constructor();
+    /**
+     * Disposes the context and removes it from the registry by its request id.
+     *
+     * @param ctx The context to dispose.
+     */
     disposeContext(ctx: IContext): void;
+    /**
+     * Looks up a registered context by request id.
+     *
+     * @param id Request id.
+     * @returns The matching context, or undefined if none.
+     */
     getMyContext(id: string): IContext | undefined;
+    /**
+     * Disposes and unregisters the context for the given request id, if present.
+     *
+     * @param id Request id.
+     */
     removeContext(id: string): void;
+    /**
+     * Gets the context for the request id, creating and registering a new one if none exists.
+     *
+     * @param server Owning server.
+     * @param req Incoming request.
+     * @param res Outgoing response.
+     * @returns The existing or newly created context.
+     */
     getContext(server: ICwServer, req: IRequest, res: IResponse): IContext;
 }
 export declare const _ctxManager: ContextManager;

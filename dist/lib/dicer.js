@@ -27,9 +27,19 @@ const streamsearch_1 = __importDefault(require("streamsearch"));
 const stream_1 = require("stream");
 /// [PartStream]
 class PartStream extends stream_1.Readable {
+    /**
+     * Creates a readable stream representing one part of a multipart body.
+     *
+     * @param config Options passed to the Readable stream constructor.
+     */
     constructor(config) {
         super(config);
     }
+    /**
+     * Does nothing because data is pushed into the stream by the Dicer parser.
+     *
+     * @param n Requested number of bytes (ignored).
+     */
     _read(n) {
         // nothing to do
     }
@@ -44,6 +54,12 @@ const RE_HDR = /^([^:]+):[ \t]?([\x00-\xFF]+)?$/;
 const MAX_HEADER_PAIRS = 2000; // From node's http.js
 const MAX_HEADER_SIZE = 80 * 1024; // From node's http_parser
 class HeaderParser extends stream_1.EventEmitter {
+    /**
+     * Creates a parser for the headers of a multipart part, with a limit on header pairs and a fixed
+     * maximum header size.
+     *
+     * @param cfg Options object; maxHeaderPairs overrides the default limit of 2000 header pairs.
+     */
     constructor(cfg) {
         super();
         this.ss = null;
@@ -73,17 +89,30 @@ class HeaderParser extends stream_1.EventEmitter {
                 this._finish();
         });
     }
+    /**
+     * Feeds data to the header search; headers are emitted once the blank line ending them is found.
+     *
+     * @param data Chunk of data to parse.
+     * @returns The number of bytes consumed when the header end was found, otherwise undefined.
+     */
     push(data) {
         const r = this.ss.push(data);
         if (this.finished)
             return r;
     }
+    /**
+     * Resets the parser state so it can parse the next part's headers.
+     */
     reset() {
         this.finished = false;
         this.buffer = '';
         this.header = {};
         this.ss.reset();
     }
+    /**
+     * Finalizes header parsing after the header terminator is matched and emits the 'header' event with
+     * the parsed headers, then resets counters.
+     */
     _finish() {
         if (this.buffer) {
             this._parseHeader();
@@ -97,6 +126,10 @@ class HeaderParser extends stream_1.EventEmitter {
         this.nread = this.npairs = 0;
         this.emit('header', header);
     }
+    /**
+     * Parses the buffered header text into the header map, lowercasing names, appending repeated headers
+     * and joining folded lines. Stops at the maximum pair count or on a malformed line.
+     */
     _parseHeader() {
         var _a;
         if (this.npairs === this.maxHeaderPairs)
@@ -143,6 +176,12 @@ const DASH = 45;
 const B_ONEDASH = Buffer.from('-');
 const B_CRLF = Buffer.from('\r\n');
 class Dicer extends stream_1.Writable {
+    /**
+     * Creates a multipart stream parser. Throws a TypeError if neither a boundary nor headerFirst is
+     * provided.
+     *
+     * @param cfg Configuration with boundary, headerFirst, partHwm and stream writable options.
+     */
     constructor(cfg) {
         super(cfg);
         this._parts = 0;
@@ -179,6 +218,14 @@ class Dicer extends stream_1.Writable {
             }
         });
     }
+    /**
+     * Emits events, but defers the 'finish' event: if the multipart data ended unexpectedly, it emits
+     * errors on the parser and open part instead of finishing normally.
+     *
+     * @param ev Event name.
+     * @param args Arguments passed to listeners.
+     * @returns True if the event was emitted or handled.
+     */
     emit(ev, ...args) {
         if (ev !== 'finish' || this._realFinish) {
             // @ts-ignore
@@ -206,6 +253,14 @@ class Dicer extends stream_1.Writable {
         });
         return true;
     }
+    /**
+     * Writable implementation that accepts incoming chunks, parses part headers first when configured, and
+     * passes data to the boundary search. Applies backpressure by holding the callback while paused.
+     *
+     * @param data Chunk of multipart data.
+     * @param encoding Chunk encoding (unused).
+     * @param cb Callback called when the chunk has been processed.
+     */
     _write(data, encoding, cb) {
         // Ignore unexpected data (e.g. extra trailer data after finished)
         if (!this._hparser && !this._bparser)
@@ -242,14 +297,31 @@ class Dicer extends stream_1.Writable {
             cb();
         }
     }
+    /**
+     * Releases the current part and the header and boundary parsers.
+     */
     reset() {
         this._part = null;
         this._bparser = null;
         this._hparser = null;
     }
+    /**
+     * Sets the multipart boundary by creating a search for the delimiter line preceding it.
+     *
+     * @param boundary Boundary string, without the leading dashes.
+     */
     setBoundary(boundary) {
         this._bparser = new streamsearch_1.default(`\r\n--${boundary}`, this._onInfo.bind(this));
     }
+    /**
+     * Handles boundary search results: emits part and preamble streams, routes data to headers or the part
+     * body, detects the closing delimiter and trailer, and emits finish when done.
+     *
+     * @param isMatch Whether a boundary was matched.
+     * @param data Buffer holding the searched data.
+     * @param start Start offset of the relevant data.
+     * @param end End offset of the relevant data.
+     */
     _onInfo(isMatch, data, start, end) {
         let buf, i = 0, shouldWriteMore = true;
         if (!this._part && this._justMatched && data) {
@@ -347,6 +419,9 @@ class Dicer extends stream_1.Writable {
             this._dashes = 0;
         }
     }
+    /**
+     * Marks the current part's data as ignored and resumes its stream so it still ends.
+     */
     _ignore() {
         if (this._part && !this._ignoreData) {
             this._ignoreData = true;
@@ -357,6 +432,9 @@ class Dicer extends stream_1.Writable {
             this._part.resume();
         }
     }
+    /**
+     * Resumes writing after backpressure by clearing the pause flag and calling the held callback.
+     */
     _unpause() {
         if (!this._pause)
             return;
@@ -369,6 +447,9 @@ class Dicer extends stream_1.Writable {
     }
 }
 exports.Dicer = Dicer;
+/**
+ * Empty function used as a no-op error handler.
+ */
 function EMPTY_FN() { }
 /// [/Dicer]
 //# sourceMappingURL=dicer.js.map

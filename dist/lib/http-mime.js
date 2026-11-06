@@ -100,10 +100,25 @@ const RAW_CACHE_MAX_FILE_SIZE = 512 * 1024;
 /** Maximum number of files held in the raw cache. */
 const RAW_CACHE_MAX_ENTRIES = 512;
 class MimeHandler {
+    /**
+     * Builds the absolute path of the on-disk gzip cache file for the requested resource, from the temp
+     * path and an MD5 of the request path plus its extension.
+     *
+     * @param ctx Request context providing the server config, request path and extension.
+     * @returns Absolute path of the .cache file.
+     */
     static getCachePath(ctx) {
         const path = _path.join(ctx.server.config.staticFile.tempPath, encryption_1.Encryption.toMd5(ctx.path));
         return _path.resolve(`${path}.${ctx.extension}.cache`);
     }
+    /**
+     * Serves a gzip-compressed response from the in-memory cache, replying 304 when the client's ETag or
+     * modified-since validators match. Sets the x-served-from header to mem-cache.
+     *
+     * @param ctx Request context used to read validators and write the response.
+     * @param mimeType Content-Type value to send.
+     * @param dataInfo Cached entry holding the gzip data, size and last change time.
+     */
     static _sendFromMemCache(ctx, mimeType, dataInfo) {
         const reqCacheHeader = http_cache_1.HttpCache.getChangedHeader(ctx.req.headers);
         const etag = http_cache_1.HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize);
@@ -134,6 +149,14 @@ class MimeHandler {
         });
         return ctx.res.end(dataInfo.gizipData), ctx.next(200);
     }
+    /**
+     * Loads a gzip cache file into the in-memory cache unless it is already held there.
+     *
+     * @param cachePath Path of the cache file, also used as the cache key.
+     * @param lastChangeTime Modification time of the cache file in milliseconds.
+     * @param size Size of the cache file in bytes.
+     * @returns Promise that resolves once the entry is stored (or already present).
+     */
     static _holdCacheAsync(cachePath, lastChangeTime, size) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this._mamCache.has(cachePath))
@@ -146,6 +169,18 @@ class MimeHandler {
             });
         });
     }
+    /**
+     * Serves a gzip response using an on-disk cache file, honouring ETag and modified-since validators
+     * with 304 replies. Regenerates the cache file when the source is newer or missing, and optionally
+     * promotes it to the memory cache.
+     *
+     * @param ctx Request context used to read headers and write the response.
+     * @param absPath Absolute path of the source file.
+     * @param mimeType Content-Type value to send.
+     * @param fstat File stats of the source file, used to detect changes.
+     * @param cachePath Path of the gzip cache file.
+     * @returns Promise that resolves when the response has been sent or an error has been transferred.
+     */
     static servedFromServerFileCacheAsync(ctx, absPath, mimeType, fstat, cachePath) {
         return __awaiter(this, void 0, void 0, function* () {
             const useFullOptimization = ctx.server.config.useFullOptimization;
@@ -234,6 +269,17 @@ class MimeHandler {
             }
         });
     }
+    /**
+     * Serves a file with caching disabled (max-age 0, server revalidate), gzip-compressing it on the fly
+     * when compression is enabled and allowed, otherwise streaming it raw with its length.
+     *
+     * @param ctx Request context used to write the response.
+     * @param absPath Absolute path of the file to send.
+     * @param mimeType Content-Type value to send.
+     * @param isGzip Whether the response should be gzip-compressed.
+     * @param size File size in bytes, used as Content-Length for uncompressed output.
+     * @returns Promise that resolves when the file has been streamed.
+     */
     static servedNoChacheAsync(ctx, absPath, mimeType, isGzip, size) {
         return __awaiter(this, void 0, void 0, function* () {
             http_cache_1.HttpCache.writeCacheHeader(ctx.res, {
@@ -263,6 +309,18 @@ class MimeHandler {
             yield app_util_1.Util.pipeOutputStreamAsync(absPath, ctx);
         });
     }
+    /**
+     * Serves a file directly with cache headers, replying 304 when validators match. Streams gzip when
+     * enabled, serves small files from the raw memory cache under full optimization, or streams the file
+     * as-is.
+     *
+     * @param ctx Request context used to read headers and write the response.
+     * @param absPath Absolute path of the file to send.
+     * @param mimeType Content-Type value to send.
+     * @param isGzip Whether the response should be gzip-compressed.
+     * @param fstat File stats used to compute the ETag and modification time.
+     * @returns Promise that resolves when the response has been sent.
+     */
     static servedFromFileAsync(ctx, absPath, mimeType, isGzip, fstat) {
         return __awaiter(this, void 0, void 0, function* () {
             const reqCachHeader = http_cache_1.HttpCache.getChangedHeader(ctx.req.headers);
@@ -332,6 +390,17 @@ class MimeHandler {
             }).end(info.data);
         });
     }
+    /**
+     * Chooses the delivery strategy for a static file (favicon, live streaming, no-cache, plain file or
+     * server file cache) based on config, extension rules and the client's accepted encoding.
+     *
+     * @param ctx Request context for the current request.
+     * @param mimeType Content-Type value to send.
+     * @param absPath Absolute path of the file to serve.
+     * @param stat File stats of the file.
+     * @param cachePath Path of the gzip cache file, or empty when file caching is off.
+     * @returns Promise that resolves when the response has been handled.
+     */
     static _renderAsync(ctx, mimeType, absPath, stat, cachePath) {
         return __awaiter(this, void 0, void 0, function* () {
             ctx.req.setSocketNoDelay(true);
@@ -371,6 +440,15 @@ class MimeHandler {
             return yield this.servedFromServerFileCacheAsync(ctx, absPath, mimeType, stat, cachePath);
         });
     }
+    /**
+     * Resolves and serves a static file for the request, using the memory cache when available. Responds
+     * with 404 when the file does not exist.
+     *
+     * @param ctx Request context for the current request.
+     * @param mimeType Content-Type value to send.
+     * @param maybeDir Optional base directory to resolve the request path against instead of the server's mapped path.
+     * @returns Promise that resolves when the response has been handled.
+     */
     static renderAsync(ctx, mimeType, maybeDir) {
         return __awaiter(this, void 0, void 0, function* () {
             const cachePath = ctx.server.config.staticFile.fileCache ? this.getCachePath(ctx) : undefined;
@@ -394,12 +472,33 @@ MimeHandler._mamCache = new Map();
 MimeHandler._rawCache = new Map();
 MimeHandler._fileInfo = new file_info_1.FileInfoCacheHandler();
 class HttpMimeHandler {
+    /**
+     * Looks up the MIME type for a file extension, adding a UTF-8 charset for text and JS/JSON types.
+     * Throws when the extension is unsupported.
+     *
+     * @param extension File extension or file name to look up.
+     * @returns The MIME type string.
+     */
     getMimeType(extension) {
         return _mimeType.getMimeType(extension);
     }
+    /**
+     * Checks whether a MIME type is registered for the given extension.
+     *
+     * @param extension Extension to check (without a leading dot).
+     * @returns True if the extension is supported, otherwise false.
+     */
     isValidExtension(extension) {
         return _mimeType.isValidExtension(extension);
     }
+    /**
+     * Serves the static file for the current request with the MIME type matching its extension. Transfers
+     * a 404 when the extension is not supported.
+     *
+     * @param ctx Request context for the current request.
+     * @param maybeDir Optional base directory to resolve the request path against.
+     * @returns Promise that resolves when the response has been handled.
+     */
     renderAsync(ctx, maybeDir) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!_mimeType.isValidExtension(ctx.extension)) {

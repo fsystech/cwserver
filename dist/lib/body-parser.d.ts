@@ -41,5 +41,19 @@ export interface IBodyParser extends IDispose {
     /** @deprecated since v4.1.2 - use `parseAsync` instead. */
     parseSync(): Promise<void>;
 }
+/**
+ * Parses a URL-encoded request body buffer into a flat key/value object, decoding keys and values.
+ * Pairs with an empty value are skipped.
+ *
+ * @param buff Buffer holding the application/x-www-form-urlencoded body, decoded as UTF-8.
+ * @returns An object mapping each decoded key to its decoded non-empty value.
+ */
 export declare function decodeBodyBuffer(buff: Buffer): Record<string, string>;
+/**
+ * Creates a body parser for the given request.
+ *
+ * @param req The incoming request to parse.
+ * @param tempDir Optional directory for temporary uploaded files.
+ * @returns A new body parser instance.
+ */
 export declare function getBodyParser(req: IRequest, tempDir?: string): IBodyParser;

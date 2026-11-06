@@ -64,19 +64,38 @@ const _path = __importStar(require("node:path"));
 const app_util_1 = require("./app-util");
 const fsw_1 = require("./fsw");
 class MimeType {
+    /**
+     * Creates the registry and loads the MIME types from the bundled mime-types.json file.
+     */
     constructor() {
         this._data = new Map();
         this._loadSync();
     }
+    /**
+     * Registers a MIME type for an extension. Throws if the extension is already registered.
+     *
+     * @param extension Extension to register.
+     * @param value MIME type string for the extension.
+     */
     add(extension, value) {
         if (this._data.has(extension)) {
             throw new Error(`This given extension (${extension}) already exists`);
         }
         this._data.set(extension, value);
     }
+    /**
+     * Returns the registered MIME type for an extension.
+     *
+     * @param extension Extension to look up (without a leading dot).
+     * @returns The MIME type, or undefined when not registered.
+     */
     type(extension) {
         return this._data.get(extension);
     }
+    /**
+     * Reads mime-types.json from the application directory and fills the registry. Throws if the file is
+     * missing or the registry was already populated.
+     */
     _loadSync() {
         const absPath = _path.resolve((0, app_util_1.getAppDir)(), "mime-types.json");
         (0, app_util_1.assert)(_fs.existsSync(absPath), `No mime-type found in ${absPath}\nPlease re-install cwserver`);
@@ -91,6 +110,11 @@ class MimeType {
     }
 }
 class MimeTypeStatic {
+    /**
+     * Returns the shared MimeType registry, creating it on first use.
+     *
+     * @returns The singleton MimeType instance.
+     */
     static getInstance() {
         if (this._instance === null) {
             this._instance = new MimeType();
@@ -100,6 +124,13 @@ class MimeTypeStatic {
 }
 MimeTypeStatic._instance = null;
 exports._mimeType = MimeTypeStatic.getInstance();
+/**
+ * Appends a UTF-8 charset to text/* and application/javascript or json MIME types that do not already
+ * specify one.
+ *
+ * @param mimeType MIME type to adjust.
+ * @returns The MIME type, with a charset appended when applicable.
+ */
 function setCharset(mimeType) {
     const type = mimeType.toLowerCase();
     if (!type.includes("charset=") &&
@@ -108,6 +139,13 @@ function setCharset(mimeType) {
     }
     return mimeType;
 }
+/**
+ * Resolves the MIME type for a file extension or path, taking the part after the last dot or slash in
+ * lower case. Throws when the extension is unsupported.
+ *
+ * @param extension Extension, file name or path to look up.
+ * @returns The MIME type, with a charset for text-like types.
+ */
 function getMimeType(extension) {
     const ext = extension
         .replace(/^.*[./\\]/, "")
@@ -118,9 +156,21 @@ function getMimeType(extension) {
     }
     return setCharset(mimeType);
 }
+/**
+ * Registers a new MIME type for an extension. Throws if the extension already exists.
+ *
+ * @param extension Extension to register.
+ * @param value MIME type string for the extension.
+ */
 function setMimeType(extension, value) {
     return exports._mimeType.add(extension, value);
 }
+/**
+ * Checks whether a MIME type is registered for the given extension.
+ *
+ * @param extension Extension to check (without a leading dot).
+ * @returns True if the extension is registered, otherwise false.
+ */
 function isValidExtension(extension) {
     return exports._mimeType.type(extension) ? true : false;
 }

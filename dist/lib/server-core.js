@@ -67,6 +67,12 @@ const fs_1 = require("fs");
 const inject_1 = require("./inject");
 _a = (() => {
     let _appVersion = '4.1.1';
+    /**
+     * Reads the cwserver package.json from the library root, stores its version as the current app version
+     * and returns it. Throws an assertion error if package.json is missing.
+     *
+     * @returns The version string from package.json.
+     */
     const _readAppVersion = () => {
         const libRoot = (0, app_util_1.getAppDir)();
         const absPath = _path.resolve(`${libRoot}/package.json`);
@@ -76,24 +82,54 @@ _a = (() => {
         return _appVersion;
     };
     return {
+        /**
+         * Gets the current application version, which is the default value until readAppVersion is called.
+         *
+         * @returns Application version string.
+         */
         get appVersion() {
             return _appVersion;
         },
+        /**
+         * Gets the function that reads the version from package.json.
+         *
+         * @returns Function that reads and returns the version string.
+         */
         get readAppVersion() {
             return _readAppVersion;
         }
     };
 })(), exports.appVersion = _a.appVersion, exports.readAppVersion = _a.readAppVersion;
 class Application extends node_events_1.EventEmitter {
+    /**
+     * Gets the cwserver version.
+     *
+     * @returns Application version string.
+     */
     get version() {
         return exports.appVersion;
     }
+    /**
+     * Gets the underlying Node HTTP server.
+     *
+     * @returns The HTTP server instance.
+     */
     get httpServer() {
         return this._httpServer;
     }
+    /**
+     * Indicates whether the server is currently running.
+     *
+     * @returns True if running.
+     */
     get isRunning() {
         return this._isRunning;
     }
+    /**
+     * Creates the application, its HTTP server and empty route, middleware and prerequisite lists.
+     *
+     * @param useRequestBegain Whether to emit the request-begain event for each incoming request.
+     */
     constructor(useRequestBegain = true) {
         super();
         this._onNewRequest = this._onNewRequest.bind(this);
@@ -106,6 +142,9 @@ class Application extends node_events_1.EventEmitter {
         this._connectionMap = new Map();
         this._connectionKey = 0;
     }
+    /**
+     * Removes all registered routes, middlewares and prerequisite handlers.
+     */
     clearHandler() {
         if (this._routes.length > 0) {
             this._routes.length = 0;
@@ -158,12 +197,23 @@ class Application extends node_events_1.EventEmitter {
         }
         this._connectionMap.clear();
     }
+    /**
+     * Emits the shutdown event and gracefully shuts down the server, reporting the outcome through the
+     * callback.
+     *
+     * @param next Callback called with no argument on success or with an Error on failure.
+     */
     shutdown(next) {
         this.emit('shutdown');
         this._shutdown()
             .then(() => next())
             .catch((err) => next(err));
     }
+    /**
+     * Emits the shutdown event and gracefully shuts down the server.
+     *
+     * @returns Promise that resolves when shutdown completes and rejects on failure.
+     */
     shutdownAsync() {
         this.emit('shutdown');
         return this._shutdown();
@@ -220,6 +270,12 @@ class Application extends node_events_1.EventEmitter {
         if ((_a = routeInfo === null || routeInfo === void 0 ? void 0 : routeInfo.layer) === null || _a === void 0 ? void 0 : _a.routeMatcher) {
             req.path = routeInfo.layer.routeMatcher.replace(req.path);
         }
+        /**
+         * Advances to the next handler layer, running it and handling errors by emitting an error event.
+         *
+         * @param err Error to emit as an application error; when not an Error, the chain simply continues.
+         * @returns Nothing.
+         */
         const _next = (err) => {
             if (err instanceof Error) {
                 this.emit("error", req, res, err);
@@ -293,6 +349,12 @@ class Application extends node_events_1.EventEmitter {
             }, false); // 'false' indicates this is not a middleware
         });
     }
+    /**
+     * Registers a handler that runs before middlewares and routes for every request.
+     *
+     * @param handler Prerequisite function to register; an Error is thrown if it is not a function.
+     * @returns The application instance for chaining.
+     */
     prerequisites(handler) {
         if (typeof (handler) !== 'function') {
             throw new Error('handler should be function');
@@ -377,11 +439,23 @@ class Application extends node_events_1.EventEmitter {
         });
         return this;
     }
+    /**
+     * Sets the server, x-app-version and x-powered-by headers on the response.
+     *
+     * @param res Response to set headers on.
+     */
     _setAppHeader(res) {
         res.setHeader('server', 'FSys Frontend');
         res.setHeader('x-app-version', exports.appVersion);
         res.setHeader('x-powered-by', 'fsys.tech');
     }
+    /**
+     * Handles a new HTTP request: sets headers, tracks response closing, emits request-begain (if enabled)
+     * and response-end events, and starts request handling. Errors are emitted as error events.
+     *
+     * @param request Incoming HTTP request.
+     * @param response Outgoing HTTP response.
+     */
     _onNewRequest(request, response) {
         try {
             this._setAppHeader(response);

@@ -433,27 +433,53 @@ export class Response extends ServerResponse implements IResponse {
     private _cleanSocket: boolean | undefined;
     private _statusCode: number | undefined;
 
+    /**
+     * Gets the HTTP status code set on this response.
+     *
+     * @returns The status code, or 0 if none has been set.
+     */
     // @ts-ignore
     public get statusCode(): number {
         return this._statusCode === undefined ? 0 : this._statusCode;
     }
 
+    /**
+     * Sets the HTTP status code after validating it; throws an Error if the code is not a valid HTTP
+     * status.
+     *
+     * @param code HTTP status code to assign.
+     */
     public set statusCode(code: number) {
         if (!HttpStatus.isValidCode(code))
             throw new Error(`Invalid status code ${code}`);
         this._statusCode = code;
     }
 
+    /**
+     * Indicates whether the underlying socket should be destroyed when this response is disposed.
+     *
+     * @returns True if socket cleanup is enabled, otherwise false (default).
+     */
     public get cleanSocket(): boolean {
         if (this._cleanSocket === undefined)
             return false;
         return this._cleanSocket;
     }
 
+    /**
+     * Sets whether the socket should be cleaned up (listeners removed and destroyed) on dispose.
+     *
+     * @param val True to destroy the socket on dispose.
+     */
     public set cleanSocket(val: boolean) {
         this._cleanSocket = val;
     }
 
+    /**
+     * Indicates whether the response is still considered alive (usable) for further processing.
+     *
+     * @returns True unless it has been explicitly marked as not alive; defaults to true.
+     */
     public get isAlive(): boolean {
         if (this._isAlive !== undefined)
             return this._isAlive;
@@ -462,18 +488,39 @@ export class Response extends ServerResponse implements IResponse {
         return this._isAlive;
     }
 
+    /**
+     * Marks the response as alive or no longer alive.
+     *
+     * @param val The alive flag to store.
+     */
     public set isAlive(val: boolean) {
         this._isAlive = val;
     }
 
+    /**
+     * Gets the HTTP method of the originating request recorded on this response.
+     *
+     * @returns The method string, or an empty string if not set.
+     */
     public get method(): string {
         return toString(this._method);
     }
 
+    /**
+     * Records the HTTP method of the originating request on this response.
+     *
+     * @param val HTTP method name, such as GET or HEAD.
+     */
     public set method(val: string) {
         this._method = val;
     }
 
+    /**
+     * Sets the cache-control header to no-store, max-age=0 so clients do not cache the response; an
+     * existing header containing must-revalidate is left untouched.
+     *
+     * @returns This response, for chaining.
+     */
     public noCache(): IResponse {
         const header = this.get('cache-control');
 
@@ -492,6 +539,14 @@ export class Response extends ServerResponse implements IResponse {
         return this;
     }
 
+    /**
+     * Sets the status code and optionally applies a set of headers, skipping headers whose value is null
+     * or undefined.
+     *
+     * @param code HTTP status code to set.
+     * @param headers Optional headers to set on the response.
+     * @returns This response, for chaining.
+     */
     public status(code: number, headers?: OutgoingHttpHeaders): IResponse {
         this.statusCode = code;
 
@@ -506,6 +561,12 @@ export class Response extends ServerResponse implements IResponse {
         return this;
     }
 
+    /**
+     * Reads a response header value that has been set. Array values are returned JSON-stringified.
+     *
+     * @param name Name of the header to read.
+     * @returns The header value as a string, or undefined if the header is not set.
+     */
     public get(name: string): string | void {
         const val = this.getHeader(name);
 
@@ -519,18 +580,39 @@ export class Response extends ServerResponse implements IResponse {
         }
     }
 
+    /**
+     * Sets a response header.
+     *
+     * @param field Header name.
+     * @param value Header value (number, string or string array).
+     * @returns This response, for chaining.
+     */
     public set(field: string, value: number | string | string[]): IResponse {
         return this.setHeader(
             field, value
         ), this;
     }
 
+    /**
+     * Sets the Content-Type header from a file extension using the MIME type lookup.
+     *
+     * @param extension File extension or type key (for example html, json) to resolve to a MIME type.
+     * @returns This response, for chaining.
+     */
     public type(extension: string): IResponse {
         return this.setHeader(
             'Content-Type', _mimeType.getMimeType(extension)
         ), this;
     }
 
+    /**
+     * Ends the response with the given body, inferring Content-Type when not set (html for strings, text
+     * for numbers/booleans, bin for Buffers, json for objects) and setting Content-Length. For 204/304
+     * statuses or HEAD requests the body is omitted; throws if headers were already sent, the body is
+     * undefined, or the type is unsupported.
+     *
+     * @param chunk Response body: string, number, boolean, Buffer or JSON-serializable object.
+     */
     public send(chunk?: any): void {
 
         if (this.headersSent) {
@@ -600,6 +682,15 @@ export class Response extends ServerResponse implements IResponse {
         // );
     }
 
+    /**
+     * Sets the status code and HTML content headers (Content-Type, plus optional Content-Length and
+     * Content-Encoding) without sending a body.
+     *
+     * @param code HTTP status code.
+     * @param contentLength Optional body length in bytes for the Content-Length header.
+     * @param compress Optional compression type used for the Content-Encoding header.
+     * @returns This response, for chaining.
+     */
     public asHTML(
         code: number, contentLength?: number, compress?: CompressionType
     ): IResponse {
@@ -611,6 +702,15 @@ export class Response extends ServerResponse implements IResponse {
         ), this;
     }
 
+    /**
+     * Sets the status code and JSON content headers (Content-Type, plus optional Content-Length and
+     * Content-Encoding) without sending a body.
+     *
+     * @param code HTTP status code.
+     * @param contentLength Optional body length in bytes for the Content-Length header.
+     * @param compress Optional compression type used for the Content-Encoding header.
+     * @returns This response, for chaining.
+     */
     public asJSON(
         code: number, contentLength?: number, compress?: CompressionType
     ): IResponse {
@@ -622,10 +722,25 @@ export class Response extends ServerResponse implements IResponse {
         ), this;
     }
 
+    /**
+     * Renders the template file at the given path for the context by delegating to the template parser.
+     *
+     * @param ctx Request context to render into.
+     * @param path Path of the template to render.
+     * @param status Optional response status information.
+     * @returns A Promise that resolves when rendering has completed.
+     */
     public render(ctx: IContext, path: string, status?: IResInfo): Promise<void> {
         return Template.parse(ctx, path, status);
     }
 
+    /**
+     * Ends the response with a 302 redirect to the given URL; when forced, cache headers are first set to
+     * prevent caching.
+     *
+     * @param url Target URL for the Location header.
+     * @param force If true, disables caching of the redirect response.
+     */
     public redirect(url: string, force?: boolean): void {
 
         if (force) {
@@ -639,6 +754,15 @@ export class Response extends ServerResponse implements IResponse {
         }).end(), void 0;
     }
 
+    /**
+     * Appends a Set-Cookie header built from the name, value and options, preserving previously set
+     * cookies.
+     *
+     * @param name Cookie name.
+     * @param val Cookie value.
+     * @param options Cookie attributes such as expiry, path and flags.
+     * @returns This response, for chaining.
+     */
     public cookie(name: string, val: string, options: CookieOptions): IResponse {
         const existing = this.getHeader('Set-Cookie');
 
@@ -653,6 +777,13 @@ export class Response extends ServerResponse implements IResponse {
         return this;
     }
 
+    /**
+     * Ends the response with a 500 plain-text 'Runtime Error' message if the argument is an Error. Also
+     * reports true when the response is no longer alive.
+     *
+     * @param err Value to check; treated as an error only if it is an Error instance.
+     * @returns True if the response is not alive or an error response was sent; false otherwise.
+     */
     public sendIfError(err?: any): boolean {
         if (!this.isAlive)
             return true;
@@ -667,6 +798,13 @@ export class Response extends ServerResponse implements IResponse {
         return true;
     }
 
+    /**
+     * Serializes the body to JSON and sends it as a JSON response, compressing it if requested.
+     *
+     * @param body Object to serialize as the JSON payload.
+     * @param compress Optional compression type to apply.
+     * @param next Optional callback invoked with an error if compression fails.
+     */
     public json(
         body: Record<string, any>,
         compress?: CompressionType,
@@ -683,6 +821,15 @@ export class Response extends ServerResponse implements IResponse {
 
     }
 
+    /**
+     * Compresses the given data with the requested compression type and sends it with the given content
+     * type.
+     *
+     * @param data String or Buffer to send.
+     * @param contentType Content type key or MIME type of the data.
+     * @param compress Optional compression type to apply.
+     * @param next Optional callback invoked with an error if compression fails.
+     */
     public compress(
         data: string | Buffer,
         contentType: string,
@@ -897,6 +1044,10 @@ export class Response extends ServerResponse implements IResponse {
         ).end(compressed);
     }
 
+    /**
+     * Releases per-request state by clearing the stored method; when cleanSocket is set (or in test mode)
+     * it also removes all listeners and destroys the socket.
+     */
     public dispose(): void {
         this._method = null;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {

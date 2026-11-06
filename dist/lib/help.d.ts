@@ -15,7 +15,21 @@ import type { IRequest } from './request';
 export declare function parseCookie(cook: undefined | string[] | string | {
     [x: string]: any;
 }): Record<string, string>;
+/**
+ * Strips characters (percent, equals, angle brackets, ampersand) that are unsafe in a path and trims
+ * whitespace.
+ *
+ * @param unsafe Raw path text, may be empty or null.
+ * @returns The cleaned path, or an empty string when input is empty.
+ */
 export declare function escapePath(unsafe?: string | null): string;
+/**
+ * Parses a URL string, including its query string into an object. Returns an object with a null
+ * pathname and empty query when no URL is given.
+ *
+ * @param url URL or request URL to parse.
+ * @returns The parsed URL object with query parsed.
+ */
 export declare function parseUrl(url?: string): UrlWithParsedQuery;
 /**
  * Normalizes an IP address.
@@ -28,6 +42,13 @@ export declare function parseUrl(url?: string): UrlWithParsedQuery;
  * @returns {string} The normalized IP address.
  */
 export declare function parseIp(ip: string): string | void;
+/**
+ * Determines the client IP address from the first x-forwarded-for entry, falling back to the socket's
+ * remote address, normalising IPv4-mapped IPv6 addresses.
+ *
+ * @param req Incoming request.
+ * @returns The client IP address as a string.
+ */
 export declare function getClientIp(req: IRequest): string;
 type Ctor<T = any> = new (...args: any[]) => T;
 /**

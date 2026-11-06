@@ -54,6 +54,15 @@ export class PostedFileInfo implements IPostedFileInfo {
     private _isMoved: boolean;
     private _tempFile?: string;
     private _isDisposed: boolean;
+    /**
+     * Creates a description of an uploaded file and its temporary location.
+     *
+     * @param disposition Content-Disposition header value.
+     * @param fname Form field name.
+     * @param fileName Original file name sent by the client.
+     * @param fcontentType File content type.
+     * @param tempFile Path of the temporary file on disk.
+     */
     constructor(
         disposition: string,
         fname: string,
@@ -71,37 +80,78 @@ export class PostedFileInfo implements IPostedFileInfo {
         this._tempFile = tempFile;
     }
 
+    /**
+     * Points the file to a new path and marks it as moved, so it is no longer deleted on dispose.
+     *
+     * @param path New file path.
+     */
     public changePath(path: string): void {
         this._tempFile = path;
         this._isMoved = true;
     }
 
+    /**
+     * Gets the temporary file path.
+     *
+     * @returns The path, or undefined or null if not available.
+     */
     public getTempPath(): string | undefined {
         return this._tempFile;
     }
 
+    /**
+     * Gets the Content-Disposition header value of the part.
+     *
+     * @returns The content disposition string.
+     */
     public getContentDisposition(): string {
         return this._fileInfo.contentDisposition;
     }
 
+    /**
+     * Gets the form field name of the upload.
+     *
+     * @returns The field name.
+     */
     public getName(): string {
         return this._fileInfo.name;
     }
 
+    /**
+     * Gets the original file name provided by the client.
+     *
+     * @returns The file name.
+     */
     public getFileName(): string {
         return this._fileInfo.fileName;
     }
 
+    /**
+     * Gets the content type of the upload.
+     *
+     * @returns The content type string.
+     */
     public getContentType(): string {
         return this._fileInfo.contentType;
     }
 
+    /**
+     * Checks that the temp file exists and has not been moved. Throws an Error otherwise.
+     *
+     * @param arg Value to check, normally the temp file path (not inspected).
+     * @returns True when the file is available.
+     */
     private validate(arg: any): arg is string {
         if (!this._tempFile || this._isMoved)
             throw new Error("This file already moved or not created yet.");
         return true;
     }
 
+    /**
+     * Synchronously reads the temporary file. Throws if the file was moved or not created.
+     *
+     * @returns A Buffer with the file contents.
+     */
     public readSync(): Buffer {
         if (!this.validate(this._tempFile))
             return null;
@@ -120,6 +170,11 @@ export class PostedFileInfo implements IPostedFileInfo {
         );
     }
 
+    /**
+     * Reads the temporary file asynchronously. Throws if the file was moved or not created.
+     *
+     * @returns A Promise resolving to a Buffer with the file contents.
+     */
     public async readAsync(): Promise<Buffer> {
         if (!this.validate(this._tempFile))
             return null;
@@ -127,6 +182,12 @@ export class PostedFileInfo implements IPostedFileInfo {
         return await _fsp.readFile(this._tempFile);
     }
 
+    /**
+     * Synchronously moves the temp file to the given path by copying then deleting it, and marks it as
+     * moved. Throws if already moved.
+     *
+     * @param absPath Absolute destination path.
+     */
     public saveAsSync(absPath: string): void {
         if (!this.validate(this._tempFile))
             return;
@@ -137,6 +198,13 @@ export class PostedFileInfo implements IPostedFileInfo {
         this._isMoved = true;
     }
 
+    /**
+     * Asynchronously moves the temp file to the given path and marks it as moved. Move errors are
+     * swallowed; throws if already moved.
+     *
+     * @param absPath Absolute destination path.
+     * @returns A Promise that resolves when the move attempt is done.
+     */
     public async saveAsAsync(absPath: string): Promise<void> {
         if (!this.validate(this._tempFile))
             return;
@@ -164,6 +232,9 @@ export class PostedFileInfo implements IPostedFileInfo {
         });
     }
 
+    /**
+     * Releases the file info, deleting the temp file if it was not moved. Safe to call more than once.
+     */
     public dispose(): void {
         if (this._isDisposed)
             return;

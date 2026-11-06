@@ -127,38 +127,85 @@ const BROTLI_OPTIONS = {
 const _gzipAsync = (0, node_util_1.promisify)(_zlib.gzip);
 const _brotliAsync = (0, node_util_1.promisify)(_zlib.brotliCompress);
 class Response extends node_http_1.ServerResponse {
+    /**
+     * Gets the HTTP status code set on this response.
+     *
+     * @returns The status code, or 0 if none has been set.
+     */
     // @ts-ignore
     get statusCode() {
         return this._statusCode === undefined ? 0 : this._statusCode;
     }
+    /**
+     * Sets the HTTP status code after validating it; throws an Error if the code is not a valid HTTP
+     * status.
+     *
+     * @param code HTTP status code to assign.
+     */
     set statusCode(code) {
         if (!http_status_1.HttpStatus.isValidCode(code))
             throw new Error(`Invalid status code ${code}`);
         this._statusCode = code;
     }
+    /**
+     * Indicates whether the underlying socket should be destroyed when this response is disposed.
+     *
+     * @returns True if socket cleanup is enabled, otherwise false (default).
+     */
     get cleanSocket() {
         if (this._cleanSocket === undefined)
             return false;
         return this._cleanSocket;
     }
+    /**
+     * Sets whether the socket should be cleaned up (listeners removed and destroyed) on dispose.
+     *
+     * @param val True to destroy the socket on dispose.
+     */
     set cleanSocket(val) {
         this._cleanSocket = val;
     }
+    /**
+     * Indicates whether the response is still considered alive (usable) for further processing.
+     *
+     * @returns True unless it has been explicitly marked as not alive; defaults to true.
+     */
     get isAlive() {
         if (this._isAlive !== undefined)
             return this._isAlive;
         this._isAlive = true;
         return this._isAlive;
     }
+    /**
+     * Marks the response as alive or no longer alive.
+     *
+     * @param val The alive flag to store.
+     */
     set isAlive(val) {
         this._isAlive = val;
     }
+    /**
+     * Gets the HTTP method of the originating request recorded on this response.
+     *
+     * @returns The method string, or an empty string if not set.
+     */
     get method() {
         return (0, app_static_1.toString)(this._method);
     }
+    /**
+     * Records the HTTP method of the originating request on this response.
+     *
+     * @param val HTTP method name, such as GET or HEAD.
+     */
     set method(val) {
         this._method = val;
     }
+    /**
+     * Sets the cache-control header to no-store, max-age=0 so clients do not cache the response; an
+     * existing header containing must-revalidate is left untouched.
+     *
+     * @returns This response, for chaining.
+     */
     noCache() {
         const header = this.get('cache-control');
         if (header) {
@@ -170,6 +217,14 @@ class Response extends node_http_1.ServerResponse {
         this.setHeader('cache-control', 'no-store, max-age=0');
         return this;
     }
+    /**
+     * Sets the status code and optionally applies a set of headers, skipping headers whose value is null
+     * or undefined.
+     *
+     * @param code HTTP status code to set.
+     * @param headers Optional headers to set on the response.
+     * @returns This response, for chaining.
+     */
     status(code, headers) {
         this.statusCode = code;
         if (headers) {
@@ -182,6 +237,12 @@ class Response extends node_http_1.ServerResponse {
         }
         return this;
     }
+    /**
+     * Reads a response header value that has been set. Array values are returned JSON-stringified.
+     *
+     * @param name Name of the header to read.
+     * @returns The header value as a string, or undefined if the header is not set.
+     */
     get(name) {
         const val = this.getHeader(name);
         if (val) {
@@ -191,12 +252,33 @@ class Response extends node_http_1.ServerResponse {
             return (0, app_static_1.toString)(val);
         }
     }
+    /**
+     * Sets a response header.
+     *
+     * @param field Header name.
+     * @param value Header value (number, string or string array).
+     * @returns This response, for chaining.
+     */
     set(field, value) {
         return this.setHeader(field, value), this;
     }
+    /**
+     * Sets the Content-Type header from a file extension using the MIME type lookup.
+     *
+     * @param extension File extension or type key (for example html, json) to resolve to a MIME type.
+     * @returns This response, for chaining.
+     */
     type(extension) {
         return this.setHeader('Content-Type', _mimeType.getMimeType(extension)), this;
     }
+    /**
+     * Ends the response with the given body, inferring Content-Type when not set (html for strings, text
+     * for numbers/booleans, bin for Buffers, json for objects) and setting Content-Length. For 204/304
+     * statuses or HEAD requests the body is omitted; throws if headers were already sent, the body is
+     * undefined, or the type is unsupported.
+     *
+     * @param chunk Response body: string, number, boolean, Buffer or JSON-serializable object.
+     */
     send(chunk) {
         if (this.headersSent) {
             throw new Error("If you use res.writeHead(), invoke res.end() instead of res.send().");
@@ -253,15 +335,48 @@ class Response extends node_http_1.ServerResponse {
         //     (error) => this._onCompressionError(error)
         // );
     }
+    /**
+     * Sets the status code and HTML content headers (Content-Type, plus optional Content-Length and
+     * Content-Encoding) without sending a body.
+     *
+     * @param code HTTP status code.
+     * @param contentLength Optional body length in bytes for the Content-Length header.
+     * @param compress Optional compression type used for the Content-Encoding header.
+     * @returns This response, for chaining.
+     */
     asHTML(code, contentLength, compress) {
         return this.status(code, getCommonHeader(_mimeType.getMimeType("html"), contentLength, compress)), this;
     }
+    /**
+     * Sets the status code and JSON content headers (Content-Type, plus optional Content-Length and
+     * Content-Encoding) without sending a body.
+     *
+     * @param code HTTP status code.
+     * @param contentLength Optional body length in bytes for the Content-Length header.
+     * @param compress Optional compression type used for the Content-Encoding header.
+     * @returns This response, for chaining.
+     */
     asJSON(code, contentLength, compress) {
         return this.status(code, getCommonHeader(_mimeType.getMimeType('json'), contentLength, compress)), this;
     }
+    /**
+     * Renders the template file at the given path for the context by delegating to the template parser.
+     *
+     * @param ctx Request context to render into.
+     * @param path Path of the template to render.
+     * @param status Optional response status information.
+     * @returns A Promise that resolves when rendering has completed.
+     */
     render(ctx, path, status) {
         return app_template_1.Template.parse(ctx, path, status);
     }
+    /**
+     * Ends the response with a 302 redirect to the given URL; when forced, cache headers are first set to
+     * prevent caching.
+     *
+     * @param url Target URL for the Location header.
+     * @param force If true, disables caching of the redirect response.
+     */
     redirect(url, force) {
         if (force) {
             this.noCache();
@@ -271,6 +386,15 @@ class Response extends node_http_1.ServerResponse {
             'Location': url
         }).end(), void 0;
     }
+    /**
+     * Appends a Set-Cookie header built from the name, value and options, preserving previously set
+     * cookies.
+     *
+     * @param name Cookie name.
+     * @param val Cookie value.
+     * @param options Cookie attributes such as expiry, path and flags.
+     * @returns This response, for chaining.
+     */
     cookie(name, val, options) {
         const existing = this.getHeader('Set-Cookie');
         this.setHeader('Set-Cookie', [
@@ -279,6 +403,13 @@ class Response extends node_http_1.ServerResponse {
         ]);
         return this;
     }
+    /**
+     * Ends the response with a 500 plain-text 'Runtime Error' message if the argument is an Error. Also
+     * reports true when the response is no longer alive.
+     *
+     * @param err Value to check; treated as an error only if it is an Error instance.
+     * @returns True if the response is not alive or an error response was sent; false otherwise.
+     */
     sendIfError(err) {
         if (!this.isAlive)
             return true;
@@ -289,10 +420,26 @@ class Response extends node_http_1.ServerResponse {
         }).end(`Runtime Error: ${err.message}`);
         return true;
     }
+    /**
+     * Serializes the body to JSON and sends it as a JSON response, compressing it if requested.
+     *
+     * @param body Object to serialize as the JSON payload.
+     * @param compress Optional compression type to apply.
+     * @param next Optional callback invoked with an error if compression fails.
+     */
     json(body, compress, next) {
         const buffer = Buffer.from(JSON.stringify(body), "utf8");
         return this._compressData(buffer, "json", compress, next);
     }
+    /**
+     * Compresses the given data with the requested compression type and sends it with the given content
+     * type.
+     *
+     * @param data String or Buffer to send.
+     * @param contentType Content type key or MIME type of the data.
+     * @param compress Optional compression type to apply.
+     * @param next Optional callback invoked with an error if compression fails.
+     */
     compress(data, contentType, compress, next) {
         const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
         return this._compressData(buffer, contentType, compress, next);
@@ -427,6 +574,10 @@ class Response extends node_http_1.ServerResponse {
         }
         this.status(statusCode, getCommonHeader(_mimeType.getMimeType(contentType), compressed.length, compress)).end(compressed);
     }
+    /**
+     * Releases per-request state by clearing the stored method; when cleanSocket is set (or in test mode)
+     * it also removes all listeners and destroys the socket.
+     */
     dispose() {
         this._method = null;
         if (this.cleanSocket || process.env.TASK_TYPE === 'TEST') {

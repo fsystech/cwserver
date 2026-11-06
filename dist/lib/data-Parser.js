@@ -23,12 +23,27 @@ exports.DataParser = void 0;
 const app_static_1 = require("./app-static");
 const multipart_data_reader_1 = require("./multipart-data-reader");
 class DataParser {
+    /**
+     * Gets the files uploaded in the multipart request.
+     *
+     * @returns The array of posted file info objects.
+     */
     get files() {
         return this._files;
     }
+    /**
+     * Gets the raw buffered request body.
+     *
+     * @returns A Buffer with the body data received so far.
+     */
     get body() {
         return this._body.data;
     }
+    /**
+     * Creates a data parser that collects raw data, multipart fields and uploaded files.
+     *
+     * @param tempDir Directory for temporary uploaded files.
+     */
     constructor(tempDir) {
         this._isDisposed = false;
         this._errors = [];
@@ -38,11 +53,23 @@ class DataParser {
         this._tempDir = tempDir;
         this._multipartBody = {};
     }
+    /**
+     * Appends a chunk of raw body data to the buffer. Ignored once disposed.
+     *
+     * @param buff Chunk of data to append.
+     */
     onRawData(buff) {
         if (this._isDisposed)
             return;
         this._body.push(buff);
     }
+    /**
+     * Returns the raw body text joined with any multipart fields as key=value pairs separated by
+     * ampersands.
+     *
+     * @param encoding Optional text encoding used for the body.
+     * @returns The combined string, or null if the parser is disposed.
+     */
     getRawData(encoding) {
         if (this._isDisposed)
             return null;
@@ -52,11 +79,24 @@ class DataParser {
         }
         return data.join('&');
     }
+    /**
+     * Gets the multipart text fields collected so far, with values URL-encoded.
+     *
+     * @returns An object mapping field names to encoded values, or null if disposed.
+     */
     getMultipartBody() {
         if (this._isDisposed)
             return null;
         return this._multipartBody;
     }
+    /**
+     * Processes one multipart part with a new reader, collecting its field or file and reporting
+     * completion. Ignored if disposed.
+     *
+     * @param stream The multipart part stream.
+     * @param next Callback called when the part finishes, with true if the reader forced an exit.
+     * @param skipFile Optional predicate that returns true to skip a file.
+     */
     onPart(stream, next, skipFile) {
         if (this._isDisposed)
             return;
@@ -86,6 +126,11 @@ class DataParser {
         reader.read(stream, this._tempDir);
         this._readers.push(reader);
     }
+    /**
+     * Gets the errors collected during parsing as one message.
+     *
+     * @returns Error messages joined by newlines, or nothing if there were no errors; null if disposed.
+     */
     getError() {
         if (this._isDisposed)
             return null;
@@ -93,6 +138,9 @@ class DataParser {
             return this._errors.join("\n");
         }
     }
+    /**
+     * Disposes readers, files and buffers and clears state. Safe to call more than once.
+     */
     dispose() {
         if (this._isDisposed)
             return;
@@ -106,6 +154,11 @@ class DataParser {
     }
 }
 exports.DataParser = DataParser;
+/**
+ * Removes each item from the array and disposes it.
+ *
+ * @param data Array of disposable objects, emptied by the call.
+ */
 function dispose(data) {
     while (true) {
         const instance = data.shift();
@@ -114,4 +167,4 @@ function dispose(data) {
         instance.dispose();
     }
 }
-//# sourceMappingURL=data-Parser.js.map
+//# sourceMappingURL=data-parser.js.map

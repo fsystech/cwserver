@@ -67,26 +67,56 @@ const app_util_1 = require("./app-util");
 const app_static_1 = require("./app-static");
 const posted_file_info_1 = require("./posted-file-info");
 class MultipartDataReader extends node_events_1.EventEmitter {
+    /**
+     * Whether the reader aborted early because of an error.
+     *
+     * @returns True if a forced exit occurred.
+     */
     get forceExit() {
         return this._forceExit;
     }
+    /**
+     * Creates a multipart part reader in its initial state.
+     */
     constructor() {
         super();
         this._isDisposed = false;
         this._forceExit = false;
     }
+    /**
+     * Destroys the temporary file write stream if it is still open.
+     */
     destroy() {
         if (this._writeStream && !this._writeStream.destroyed) {
             (0, destroy_1.default)(this._writeStream);
         }
     }
+    /**
+     * Marks a forced exit and emits an 'end' event with an error built from the reason.
+     *
+     * @param reason Message of the error to emit.
+     */
     exit(reason) {
         this._forceExit = true;
         this.emit("end", new Error(reason));
     }
+    /**
+     * Default hook deciding whether to skip an uploaded file; it never skips. DataParser may replace it.
+     *
+     * @param fileInfo Information about the file being uploaded.
+     * @returns False, meaning the file is kept.
+     */
     skipFile(fileInfo) {
         return false;
     }
+    /**
+     * Reads one multipart part. After the header arrives it determines field or file; fields are buffered
+     * and emitted as 'field', files are streamed to a temp file and emitted as 'file'. Emits 'end' when
+     * done or with an error for missing name, filename or content type.
+     *
+     * @param stream The multipart part stream to read.
+     * @param tempDir Directory where uploaded file contents are written temporarily.
+     */
     read(stream, tempDir) {
         let fieldName = "", fileName = "", disposition = "", contentType = "", isFile = false;
         stream.once("header", (header) => {
@@ -150,6 +180,9 @@ class MultipartDataReader extends node_events_1.EventEmitter {
             }
         });
     }
+    /**
+     * Removes all listeners, destroys the write stream and clears state. Safe to call more than once.
+     */
     dispose() {
         if (this._isDisposed)
             return;
@@ -161,6 +194,14 @@ class MultipartDataReader extends node_events_1.EventEmitter {
     }
 }
 exports.MultipartDataReader = MultipartDataReader;
+/**
+ * Returns the text between the first occurrence of one separator and the next occurrence of another.
+ *
+ * @param data Text to search.
+ * @param separator1 Separator marking the start.
+ * @param separator2 Separator marking the end.
+ * @returns The text between the separators, or an empty string if either is not found.
+ */
 function _extractBetween(data, separator1, separator2) {
     let result = "";
     let start = 0;

@@ -34,18 +34,39 @@ export interface ITemplateCtx {
 
 class TemplateCtxHandler {
     private _templateCtx: Map<string, SandBox>;
+    /**
+     * Creates an empty registry for compiled template sandbox functions.
+     */
     constructor() {
         this._templateCtx = new Map();
     }
 
+    /**
+     * Looks up a compiled template sandbox function by key.
+     *
+     * @param key Registry key the sandbox was stored under.
+     * @returns The stored sandbox function, or undefined when the key is unknown.
+     */
     public getCtx(key: string): SandBox {
         return this._templateCtx.get(key);
     }
 
+    /**
+     * Stores a compiled template sandbox function under the given key, replacing any existing entry.
+     *
+     * @param key Registry key to store the sandbox under.
+     * @param sendBox Compiled sandbox function to store.
+     */
     public setCtx(key: string, sendBox: SandBox): void {
         this._templateCtx.set(key, sendBox);
     }
 
+    /**
+     * Removes the sandbox function registered under the given key.
+     *
+     * @param key Registry key of the entry to remove.
+     * @returns True if an entry existed and was removed, otherwise false.
+     */
     public deleteCtx(key: string): boolean {
         return this._templateCtx.delete(key);
     }
@@ -53,6 +74,11 @@ class TemplateCtxHandler {
 
 class ITemplateCtxStatic {
     private static _instance: ITemplateCtx = null;
+    /**
+     * Returns the shared template context registry, creating it on first use (lazy singleton).
+     *
+     * @returns The singleton template context handler.
+     */
     public static getInstance(): ITemplateCtx {
         if (this._instance === null) {
             this._instance = new TemplateCtxHandler();

@@ -76,7 +76,7 @@ const destroy_1 = __importDefault(require("destroy"));
 const app_static_1 = require("./app-static");
 const app_util_1 = require("./app-util");
 const fsw = __importStar(require("./fsw"));
-const data_Parser_1 = require("./data-Parser");
+const data_parser_1 = require("./data-parser");
 const incomingContentType = {
     APP_JSON: "application/json",
     MULTIPART: "multipart/form-data",
@@ -92,9 +92,22 @@ var ContentType;
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
 })(ContentType || (ContentType = {}));
 const RE_BOUNDARY = /^multipart\/.+?(?:; boundary=(?:(?:"(.+)")|(?:([^\s]+))))$/i;
+/**
+ * Decodes a URL-encoded component after converting plus signs to spaces.
+ *
+ * @param str The URL-encoded string to decode.
+ * @returns The decoded string. Throws URIError if the input contains malformed percent-encoding.
+ */
 function decode(str) {
     return decodeURIComponent(str.replace(/\+/g, ' '));
 }
+/**
+ * Parses a URL-encoded request body buffer into a flat key/value object, decoding keys and values.
+ * Pairs with an empty value are skipped.
+ *
+ * @param buff Buffer holding the application/x-www-form-urlencoded body, decoded as UTF-8.
+ * @returns An object mapping each decoded key to its decoded non-empty value.
+ */
 function decodeBodyBuffer(buff) {
     const outObj = {};
     const decoder = new node_util_1.TextDecoder('utf-8');
@@ -110,6 +123,14 @@ function decodeBodyBuffer(buff) {
 }
 const MaxBuffLength = 1024 * 1024 * 20; // (20mb)
 class BodyParser {
+    /**
+     * Creates a body parser for a request, detecting the content type (multipart, URL-encoded, JSON or raw
+     * text) from the content-type header and reading the content-length. Unsupported content types leave
+     * the parser in an invalid state.
+     *
+     * @param req The incoming request whose headers and stream are used.
+     * @param tempDir Directory used to store uploaded files temporarily; defaults to the OS temp directory.
+     */
     constructor(req, tempDir) {
         this._isDisposed = false;
         this._part = [];
@@ -132,7 +153,7 @@ class BodyParser {
             this._contentTypeEnum = ContentType.UNKNOWN;
         }
         if (this._contentTypeEnum !== ContentType.UNKNOWN) {
-            this._parser = new data_Parser_1.DataParser(tempDir || node_os_1.default.tmpdir());
+            this._parser = new data_parser_1.DataParser(tempDir || node_os_1.default.tmpdir());
             this._req = req;
         }
         else {
@@ -141,27 +162,66 @@ class BodyParser {
         }
         this._isReadEnd = false;
     }
+    /**
+     * Sets the maximum allowed body size for URL-encoded, JSON and raw text requests. Throws an Error if
+     * the value is not between 1 and the 20 MB default limit.
+     *
+     * @param length Maximum buffer length in bytes.
+     * @returns This parser instance, for chaining.
+     */
     setMaxBuffLength(length) {
         if (length > MaxBuffLength || length <= 0)
             throw new Error(`Max buff length should be between ${MaxBuffLength} and non zero`);
         this._maxBuffLength = length;
         return this;
     }
+    /**
+     * Checks whether the request content type is application/x-www-form-urlencoded.
+     *
+     * @returns True if the body is URL-encoded.
+     */
     isUrlEncoded() {
         return this._contentTypeEnum === ContentType.URL_ENCODE;
     }
+    /**
+     * Checks whether the request content type is JSON.
+     *
+     * @returns True if the body is application/json.
+     */
     isAppJson() {
         return this._contentTypeEnum === ContentType.APP_JSON;
     }
+    /**
+     * Checks whether the request content type is multipart.
+     *
+     * @returns True if the body is multipart form data.
+     */
     isMultipart() {
         return this._contentTypeEnum === ContentType.MULTIPART;
     }
+    /**
+     * Checks whether the request content type is raw text.
+     *
+     * @returns True if the body is raw text data.
+     */
     isRawData() {
         return this._contentTypeEnum === ContentType.RAW_TEXT;
     }
+    /**
+     * Checks whether the request has a positive content length and a supported content type.
+     *
+     * @returns True if the request body can be parsed.
+     */
     isValidRequest() {
         return this._contentLength > 0 && this._contentTypeEnum !== ContentType.UNKNOWN;
     }
+    /**
+     * Verifies the parser is ready to expose parsed data. Throws an Error if the parser is disposed, the
+     * request is invalid, the body has not finished reading, or multipart is required but the request is
+     * not multipart.
+     *
+     * @param isMultipart Whether the request must be multipart form data.
+     */
     validate(isMultipart) {
         if (this._isDisposed)
             throw new Error("BodyParser is disposed state");
@@ -173,6 +233,13 @@ class BodyParser {
             throw new Error("Multipart form data required....");
         }
     }
+    /**
+     * Synchronously moves all uploaded files into the given directory, creating it if needed. Each file is
+     * saved under a UUID-prefixed copy of its original name; throws if the parser state is invalid or the
+     * directory cannot be created.
+     *
+     * @param outdir Destination directory path for the uploaded files.
+     */
     saveAsSync(outdir) {
         this.validate(true);
         if (!fsw.mkdirSync(outdir))
@@ -181,6 +248,14 @@ class BodyParser {
             return pf.saveAsSync(_path.resolve(`${outdir}/${app_util_1.Util.UUID()}_${pf.getFileName()}`));
         });
     }
+    /**
+     * Asynchronously moves all uploaded files into the given directory, creating it if needed. Each file
+     * is saved under a UUID-prefixed copy of its original name, in parallel.
+     *
+     * @param outdir Destination directory path for the uploaded files.
+     * @returns A Promise that resolves once every file has been saved, and rejects on validation or file-system
+     *   errors.
+     */
     saveAsAsync(outdir) {
         return __awaiter(this, void 0, void 0, function* () {
             this.validate(true);
@@ -188,9 +263,23 @@ class BodyParser {
             yield Promise.all(this._parser.files.map(pf => pf.saveAsAsync(_path.resolve(`${outdir}/${app_util_1.Util.UUID()}_${pf.getFileName()}`))));
         });
     }
+    /**
+     * Callback-style wrapper around saveAsAsync that saves all uploaded files to a directory.
+     *
+     * @param outdir Destination directory path for the uploaded files.
+     * @param next Callback invoked with null after all files are saved.
+     * @param errorHandler Handler called with the error and the next callback when saving fails.
+     */
     saveAs(outdir, next, errorHandler) {
         this.saveAsAsync(outdir).then(() => next(null)).catch(ex => errorHandler(ex, next));
     }
+    /**
+     * Returns metadata for every uploaded file in a multipart request. Throws if the parser state is
+     * invalid or the request is not multipart.
+     *
+     * @returns An array of objects with content type, field name, file name, content disposition and temp path for
+     *   each file.
+     */
     getUploadFileInfo() {
         this.validate(true);
         return this._parser.files.map(file => ({
@@ -201,6 +290,12 @@ class BodyParser {
             tempPath: file.getTempPath()
         }));
     }
+    /**
+     * Synchronously invokes a callback for each uploaded file. Throws if the parser state is invalid or
+     * the request is not multipart.
+     *
+     * @param next Callback called once per uploaded file.
+     */
     getFilesSync(next) {
         this.validate(true);
         const files = this._parser.files;
@@ -208,6 +303,13 @@ class BodyParser {
             next(file);
         }
     }
+    /**
+     * Invokes an async callback for every uploaded file concurrently and waits for all of them to finish.
+     * Throws if the parser state is invalid or the request is not multipart.
+     *
+     * @param next Async callback called once per uploaded file.
+     * @returns A Promise that resolves after all callbacks complete, or rejects if one fails.
+     */
     getFilesAsync(next) {
         return __awaiter(this, void 0, void 0, function* () {
             this.validate(true);
@@ -221,9 +323,19 @@ class BodyParser {
             yield Promise.all(promises);
         });
     }
+    /**
+     * Iterates the uploaded files sequentially, advancing to the next file when the callback calls done.
+     * The callback is called with no arguments once all files have been visited.
+     *
+     * @param next Callback receiving each file and a done function to move on, or no arguments at the end.
+     */
     getFiles(next) {
         this.validate(true);
         let index = -1;
+        /**
+         * Advances to the next uploaded file and passes it, with a continuation, to the callback; calls the
+         * callback without arguments when no files remain.
+         */
         const forward = () => {
             index++;
             const pf = this._parser.files[index];
@@ -235,6 +347,13 @@ class BodyParser {
         };
         return forward();
     }
+    /**
+     * Builds an object of the request data. For JSON bodies it parses the raw data; for URL-encoded or
+     * multipart bodies it merges decoded body fields with multipart fields. Throws if the body is raw
+     * text.
+     *
+     * @returns An object containing the parsed request data.
+     */
     getJson() {
         this.isValidRequest();
         if (this._contentTypeEnum === ContentType.APP_JSON) {
@@ -247,6 +366,12 @@ class BodyParser {
         app_util_1.Util.extend(outObj, this._parser.getMultipartBody());
         return outObj;
     }
+    /**
+     * Returns the raw request body as a string. Throws if the parser state is invalid or the body is not
+     * fully read.
+     *
+     * @returns The raw body text, including any multipart fields appended as key=value pairs.
+     */
     getData() {
         this.validate(false);
         return this._parser.getRawData();
@@ -266,9 +391,20 @@ class BodyParser {
     parse(onReadEnd) {
         this.parseAsync().then(() => onReadEnd(), (err) => onReadEnd(err));
     }
+    /**
+     * Deprecated alias of parseAsync that reads the request body.
+     *
+     * @returns A Promise that resolves when the body has been read and rejects on error.
+     */
     parseSync() {
         return this.parseAsync();
     }
+    /**
+     * Completes reading when the body has ended and no parts are pending, reporting any parser error or
+     * success to the callback.
+     *
+     * @param onReadEnd Callback invoked with an Error on failure or with no arguments on success.
+     */
     tryFinish(onReadEnd) {
         if (!this._isReadEnd || this._part.length > 0)
             return void 0;
@@ -277,9 +413,21 @@ class BodyParser {
             return onReadEnd(new Error(error));
         return onReadEnd();
     }
+    /**
+     * Discards a multipart part by resuming its stream.
+     *
+     * @param stream The part stream to drain.
+     */
     skipPart(stream) {
         stream.resume();
     }
+    /**
+     * Creates the handler for multipart 'part' events. It tracks pending parts, delegates each to the data
+     * parser and, on forced exit, stops further parts and finishes.
+     *
+     * @param onReadEnd Callback invoked when reading finishes or fails.
+     * @returns A function that processes one part stream.
+     */
     onPart(onReadEnd) {
         return (stream) => {
             this._part.push(1);
@@ -299,6 +447,14 @@ class BodyParser {
             }, this.skipFile);
         };
     }
+    /**
+     * Creates a handler for stream close or error events that marks reading as finished and reports the
+     * result. A close before the body completed is reported as a client disconnect.
+     *
+     * @param ev The event type being handled, close or error.
+     * @param onReadEnd Callback invoked with the resulting error, if any.
+     * @returns A function that receives the optional error and finishes reading.
+     */
     finalEvent(ev, onReadEnd) {
         return (err) => {
             if (ev === "close") {
@@ -311,6 +467,13 @@ class BodyParser {
             return onReadEnd(err);
         };
     }
+    /**
+     * Starts reading the request body. For JSON, URL-encoded and raw text it buffers data events; for
+     * multipart it pipes the request into a Dicer parser. Reports errors for disposed or invalid state,
+     * oversized bodies and a bad content-type boundary.
+     *
+     * @param onReadEnd Callback invoked with an Error on failure or with no arguments when reading completes.
+     */
     _read(onReadEnd) {
         if (this._isDisposed)
             return onReadEnd(new Error("BodyParser is disposed state"));
@@ -353,6 +516,10 @@ class BodyParser {
         this._multipartParser.on("error", this.finalEvent("error", onReadEnd));
         this._req.pipe(this._multipartParser);
     }
+    /**
+     * Releases the parser, its data parser, the multipart stream and request references. Safe to call more
+     * than once.
+     */
     dispose() {
         if (this._isDisposed)
             return;
@@ -373,6 +540,13 @@ class BodyParser {
     }
 }
 BodyParser.prototype.parseSync = (0, node_util_1.deprecate)(BodyParser.prototype.parseSync, '`BodyParser.parseSync` is depreciated, please use `BodyParser.parseAsync` instead.', '4.1.2');
+/**
+ * Creates a body parser for the given request.
+ *
+ * @param req The incoming request to parse.
+ * @param tempDir Optional directory for temporary uploaded files.
+ * @returns A new body parser instance.
+ */
 function getBodyParser(req, tempDir) {
     return new BodyParser(req, tempDir);
 }

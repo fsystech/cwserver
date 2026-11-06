@@ -122,6 +122,12 @@ export const {
 } = (() => {
     let _appVersion: string = '4.1.1';
 
+    /**
+     * Reads the cwserver package.json from the library root, stores its version as the current app version
+     * and returns it. Throws an assertion error if package.json is missing.
+     *
+     * @returns The version string from package.json.
+     */
     const _readAppVersion = (): string => {
         const libRoot = getAppDir();
         const absPath = _path.resolve(`${libRoot}/package.json`);
@@ -132,9 +138,19 @@ export const {
     };
 
     return {
+        /**
+         * Gets the current application version, which is the default value until readAppVersion is called.
+         *
+         * @returns Application version string.
+         */
         get appVersion() {
             return _appVersion;
         },
+        /**
+         * Gets the function that reads the version from package.json.
+         *
+         * @returns Function that reads and returns the version string.
+         */
         get readAppVersion() {
             return _readAppVersion;
         }
@@ -151,18 +167,38 @@ class Application extends EventEmitter implements IApplication {
     private _prerequisites: ILayerInfo<HandlerFunc>[];
     private _isRunning: boolean;
 
+    /**
+     * Gets the cwserver version.
+     *
+     * @returns Application version string.
+     */
     public get version(): string {
         return appVersion;
     }
 
+    /**
+     * Gets the underlying Node HTTP server.
+     *
+     * @returns The HTTP server instance.
+     */
     public get httpServer(): Server {
         return this._httpServer;
     }
 
+    /**
+     * Indicates whether the server is currently running.
+     *
+     * @returns True if running.
+     */
     public get isRunning(): boolean {
         return this._isRunning;
     }
 
+    /**
+     * Creates the application, its HTTP server and empty route, middleware and prerequisite lists.
+     *
+     * @param useRequestBegain Whether to emit the request-begain event for each incoming request.
+     */
     constructor(useRequestBegain: boolean = true) {
         super();
         this._onNewRequest = this._onNewRequest.bind(this);
@@ -180,6 +216,9 @@ class Application extends EventEmitter implements IApplication {
         this._connectionKey = 0;
     }
 
+    /**
+     * Removes all registered routes, middlewares and prerequisite handlers.
+     */
     public clearHandler(): void {
 
         if (this._routes.length > 0) {
@@ -246,6 +285,12 @@ class Application extends EventEmitter implements IApplication {
         this._connectionMap.clear();
     }
 
+    /**
+     * Emits the shutdown event and gracefully shuts down the server, reporting the outcome through the
+     * callback.
+     *
+     * @param next Callback called with no argument on success or with an Error on failure.
+     */
     public shutdown(next: (err?: Error) => void): void {
         this.emit('shutdown');
 
@@ -254,6 +299,11 @@ class Application extends EventEmitter implements IApplication {
             .catch((err) => next(err));
     }
 
+    /**
+     * Emits the shutdown event and gracefully shuts down the server.
+     *
+     * @returns Promise that resolves when shutdown completes and rejects on failure.
+     */
     public shutdownAsync(): Promise<void> {
         this.emit('shutdown');
         return this._shutdown();
@@ -321,6 +371,12 @@ class Application extends EventEmitter implements IApplication {
             req.path = routeInfo.layer.routeMatcher.replace(req.path);
         }
 
+        /**
+         * Advances to the next handler layer, running it and handling errors by emitting an error event.
+         *
+         * @param err Error to emit as an application error; when not an Error, the chain simply continues.
+         * @returns Nothing.
+         */
         const _next = (err?: number | Error): void => {
 
             if (err instanceof Error) {
@@ -405,6 +461,12 @@ class Application extends EventEmitter implements IApplication {
         });
     }
 
+    /**
+     * Registers a handler that runs before middlewares and routes for every request.
+     *
+     * @param handler Prerequisite function to register; an Error is thrown if it is not a function.
+     * @returns The application instance for chaining.
+     */
     public prerequisites(handler: HandlerFunc): IApplication {
 
         if (typeof (handler) !== 'function') {
@@ -508,12 +570,24 @@ class Application extends EventEmitter implements IApplication {
         return this;
     }
 
+    /**
+     * Sets the server, x-app-version and x-powered-by headers on the response.
+     *
+     * @param res Response to set headers on.
+     */
     private _setAppHeader(res: Response) {
         res.setHeader('server', 'FSys Frontend');
         res.setHeader('x-app-version', appVersion);
         res.setHeader('x-powered-by', 'fsys.tech');
     }
 
+    /**
+     * Handles a new HTTP request: sets headers, tracks response closing, emits request-begain (if enabled)
+     * and response-end events, and starts request handling. Errors are emitted as error events.
+     *
+     * @param request Incoming HTTP request.
+     * @param response Outgoing HTTP response.
+     */
     private _onNewRequest(request: Request, response: Response): void {
         try {
 

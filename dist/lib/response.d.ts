@@ -310,27 +310,174 @@ export declare class Response extends ServerResponse implements IResponse {
     private _method;
     private _cleanSocket;
     private _statusCode;
+    /**
+     * Gets the HTTP status code set on this response.
+     *
+     * @returns The status code, or 0 if none has been set.
+     */
     get statusCode(): number;
+    /**
+     * Sets the HTTP status code after validating it; throws an Error if the code is not a valid HTTP
+     * status.
+     *
+     * @param code HTTP status code to assign.
+     */
     set statusCode(code: number);
+    /**
+     * Indicates whether the underlying socket should be destroyed when this response is disposed.
+     *
+     * @returns True if socket cleanup is enabled, otherwise false (default).
+     */
     get cleanSocket(): boolean;
+    /**
+     * Sets whether the socket should be cleaned up (listeners removed and destroyed) on dispose.
+     *
+     * @param val True to destroy the socket on dispose.
+     */
     set cleanSocket(val: boolean);
+    /**
+     * Indicates whether the response is still considered alive (usable) for further processing.
+     *
+     * @returns True unless it has been explicitly marked as not alive; defaults to true.
+     */
     get isAlive(): boolean;
+    /**
+     * Marks the response as alive or no longer alive.
+     *
+     * @param val The alive flag to store.
+     */
     set isAlive(val: boolean);
+    /**
+     * Gets the HTTP method of the originating request recorded on this response.
+     *
+     * @returns The method string, or an empty string if not set.
+     */
     get method(): string;
+    /**
+     * Records the HTTP method of the originating request on this response.
+     *
+     * @param val HTTP method name, such as GET or HEAD.
+     */
     set method(val: string);
+    /**
+     * Sets the cache-control header to no-store, max-age=0 so clients do not cache the response; an
+     * existing header containing must-revalidate is left untouched.
+     *
+     * @returns This response, for chaining.
+     */
     noCache(): IResponse;
+    /**
+     * Sets the status code and optionally applies a set of headers, skipping headers whose value is null
+     * or undefined.
+     *
+     * @param code HTTP status code to set.
+     * @param headers Optional headers to set on the response.
+     * @returns This response, for chaining.
+     */
     status(code: number, headers?: OutgoingHttpHeaders): IResponse;
+    /**
+     * Reads a response header value that has been set. Array values are returned JSON-stringified.
+     *
+     * @param name Name of the header to read.
+     * @returns The header value as a string, or undefined if the header is not set.
+     */
     get(name: string): string | void;
+    /**
+     * Sets a response header.
+     *
+     * @param field Header name.
+     * @param value Header value (number, string or string array).
+     * @returns This response, for chaining.
+     */
     set(field: string, value: number | string | string[]): IResponse;
+    /**
+     * Sets the Content-Type header from a file extension using the MIME type lookup.
+     *
+     * @param extension File extension or type key (for example html, json) to resolve to a MIME type.
+     * @returns This response, for chaining.
+     */
     type(extension: string): IResponse;
+    /**
+     * Ends the response with the given body, inferring Content-Type when not set (html for strings, text
+     * for numbers/booleans, bin for Buffers, json for objects) and setting Content-Length. For 204/304
+     * statuses or HEAD requests the body is omitted; throws if headers were already sent, the body is
+     * undefined, or the type is unsupported.
+     *
+     * @param chunk Response body: string, number, boolean, Buffer or JSON-serializable object.
+     */
     send(chunk?: any): void;
+    /**
+     * Sets the status code and HTML content headers (Content-Type, plus optional Content-Length and
+     * Content-Encoding) without sending a body.
+     *
+     * @param code HTTP status code.
+     * @param contentLength Optional body length in bytes for the Content-Length header.
+     * @param compress Optional compression type used for the Content-Encoding header.
+     * @returns This response, for chaining.
+     */
     asHTML(code: number, contentLength?: number, compress?: CompressionType): IResponse;
+    /**
+     * Sets the status code and JSON content headers (Content-Type, plus optional Content-Length and
+     * Content-Encoding) without sending a body.
+     *
+     * @param code HTTP status code.
+     * @param contentLength Optional body length in bytes for the Content-Length header.
+     * @param compress Optional compression type used for the Content-Encoding header.
+     * @returns This response, for chaining.
+     */
     asJSON(code: number, contentLength?: number, compress?: CompressionType): IResponse;
+    /**
+     * Renders the template file at the given path for the context by delegating to the template parser.
+     *
+     * @param ctx Request context to render into.
+     * @param path Path of the template to render.
+     * @param status Optional response status information.
+     * @returns A Promise that resolves when rendering has completed.
+     */
     render(ctx: IContext, path: string, status?: IResInfo): Promise<void>;
+    /**
+     * Ends the response with a 302 redirect to the given URL; when forced, cache headers are first set to
+     * prevent caching.
+     *
+     * @param url Target URL for the Location header.
+     * @param force If true, disables caching of the redirect response.
+     */
     redirect(url: string, force?: boolean): void;
+    /**
+     * Appends a Set-Cookie header built from the name, value and options, preserving previously set
+     * cookies.
+     *
+     * @param name Cookie name.
+     * @param val Cookie value.
+     * @param options Cookie attributes such as expiry, path and flags.
+     * @returns This response, for chaining.
+     */
     cookie(name: string, val: string, options: CookieOptions): IResponse;
+    /**
+     * Ends the response with a 500 plain-text 'Runtime Error' message if the argument is an Error. Also
+     * reports true when the response is no longer alive.
+     *
+     * @param err Value to check; treated as an error only if it is an Error instance.
+     * @returns True if the response is not alive or an error response was sent; false otherwise.
+     */
     sendIfError(err?: any): boolean;
+    /**
+     * Serializes the body to JSON and sends it as a JSON response, compressing it if requested.
+     *
+     * @param body Object to serialize as the JSON payload.
+     * @param compress Optional compression type to apply.
+     * @param next Optional callback invoked with an error if compression fails.
+     */
     json(body: Record<string, any>, compress?: CompressionType, next?: (error: Error) => void): void;
+    /**
+     * Compresses the given data with the requested compression type and sends it with the given content
+     * type.
+     *
+     * @param data String or Buffer to send.
+     * @param contentType Content type key or MIME type of the data.
+     * @param compress Optional compression type to apply.
+     * @param next Optional callback invoked with an error if compression fails.
+     */
     compress(data: string | Buffer, contentType: string, compress?: CompressionType, next?: (error: Error) => void): void;
     /**
      * Compresses the specified response payload when enabled and the payload
@@ -401,6 +548,10 @@ export declare class Response extends ServerResponse implements IResponse {
      * @returns {void}
      */
     private _onCompress;
+    /**
+     * Releases per-request state by clearing the stored method; when cleanSocket is set (or in test mode)
+     * it also removes all listeners and destroys the socket.
+     */
     dispose(): void;
 }
 export {};

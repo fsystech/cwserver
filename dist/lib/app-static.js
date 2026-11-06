@@ -139,11 +139,24 @@ class ResInfo {
     }
 }
 exports.ResInfo = ResInfo;
+/**
+ * Converts a value to a string, returning an empty string for falsy values.
+ *
+ * @param val Value to convert.
+ * @returns The value itself if it is a string, an empty string if falsy, otherwise its String() conversion.
+ */
 function toString(val) {
     if (!val)
         return "";
     return typeof (val) === "string" ? val : String(val);
 }
+/**
+ * Parses a value into a number, stripping commas and dollar signs from strings and accepting fractions
+ * and exponents.
+ *
+ * @param v Number or numeric string to convert.
+ * @returns The numeric value, or 0 when the input is not a valid number.
+ */
 function toNumber(v) {
     const type = typeof (v);
     if (type === "number")
@@ -163,7 +176,20 @@ const MONTHS = [
 const DAYS = [
     "Mon", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 ];
+/**
+ * Left-pads a number below 10 with a zero.
+ *
+ * @param n Number to format.
+ * @returns Two-digit string representation of the number (or the plain number string when 10 or more).
+ */
 const pad2 = (n) => n < 10 ? `0${n}` : `${n}`;
+/**
+ * Formats a timestamp as an HTTP-style date string in the form "Day, DD Mon YYYY HH:MM:SS GMT" using
+ * local date parts.
+ *
+ * @param timestamp Date or epoch milliseconds to format; defaults to the current time when omitted.
+ * @returns The formatted date string.
+ */
 function toResponseTime(timestamp) {
     const date = timestamp == null
         ? new Date()

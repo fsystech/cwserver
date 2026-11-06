@@ -60,14 +60,34 @@ const _path = __importStar(require("node:path"));
 const app_static_1 = require("./app-static");
 const fsw = __importStar(require("./fsw"));
 class LogTime {
+    /**
+     * Formats a day-of-month, hour, minute or second value as a two-digit string, mapping 0 to 1 and
+     * zero-padding single digits.
+     *
+     * @param t Numeric date or time component.
+     * @returns Two-digit string.
+     */
     static dfo(t) {
         t = t === 0 ? 1 : t;
         return String(t <= 9 ? "0" + t : t);
     }
+    /**
+     * Formats a zero-based month index as a one-based, two-digit month string.
+     *
+     * @param t Zero-based month index as returned by Date.getMonth.
+     * @returns Two-digit month string from 01 to 12.
+     */
     static dfm(t) {
         t += 1;
         return String(t <= 9 ? "0" + t : t);
     }
+    /**
+     * Builds a Date shifted to the given UTC offset by converting the current time to UTC and adding the
+     * offset in hours.
+     *
+     * @param offset UTC offset in hours (for example +6 or -5).
+     * @returns Date object whose local fields represent the time at the given offset.
+     */
     static getLocalDateTime(offset) {
         // create Date object for current location
         const d = new Date();
@@ -81,6 +101,12 @@ class LogTime {
         // return date
         return nd;
     }
+    /**
+     * Formats the current time at the given UTC offset as a yyyy-MM-dd HH:mm:ss string.
+     *
+     * @param tz UTC offset in hours used to compute the local time.
+     * @returns Formatted date-time string.
+     */
     static getTime(tz) {
         const date = this.getLocalDateTime(tz);
         return `${date.getFullYear()}-${this.dfm(date.getMonth())}-${this.dfo(date.getDate())} ${this.dfo(date.getHours())}:${this.dfo(date.getMinutes())}:${this.dfo(date.getSeconds())}`;
@@ -88,9 +114,21 @@ class LogTime {
 }
 exports.LogTime = LogTime;
 class ConsoleColor {
+    /**
+     * Wraps text in ANSI escape codes so it prints in cyan on a console.
+     *
+     * @param str Text to colorize.
+     * @returns The text surrounded by cyan and reset escape sequences.
+     */
     static Cyan(str) {
         return `\x1b[36m${str}\x1b[0m`;
     }
+    /**
+     * Wraps text in ANSI escape codes so it prints in yellow on a console.
+     *
+     * @param str Text to colorize.
+     * @returns The text surrounded by yellow and reset escape sequences.
+     */
     static Yellow(str) {
         return `\x1b[33m${str}\x1b[0m`;
     }
@@ -119,55 +157,148 @@ ConsoleColor.BgBlue = '\x1b[44m';
 ConsoleColor.BgMagenta = '\x1b[45m';
 ConsoleColor.BgCyan = '\x1b[46m';
 ConsoleColor.BgWhite = '\x1b[47m';
+/**
+ * Type guard that checks whether a value is a string.
+ *
+ * @param a Value to test.
+ * @returns True if the value is of type string, otherwise false.
+ */
 function isString(a) {
     return typeof (a) === "string";
 }
 class ShadowLogger {
+    /**
+     * Indicates whether the logger is a production (no-op) logger.
+     *
+     * @returns Always true for the shadow logger.
+     */
     get isProduction() {
         return this._isProduction;
     }
+    /**
+     * Creates a no-op logger and marks it as production.
+     */
     constructor() {
         this._isProduction = true;
     }
+    /**
+     * Does nothing; discards the supplied buffer message.
+     *
+     * @param msg Message that is ignored.
+     */
     writeBuffer(msg) {
         return;
     }
+    /**
+     * Does nothing; no separator line is written.
+     *
+     * @returns Nothing (undefined).
+     */
     newLine() {
         return;
     }
+    /**
+     * Does nothing; discards the message and returns the logger for chaining.
+     *
+     * @param msg Message that is ignored.
+     * @param color Optional color that is ignored.
+     * @returns This logger instance.
+     */
     write(msg, color) {
         return this;
     }
+    /**
+     * Does nothing; discards the message and returns the logger for chaining.
+     *
+     * @param msg Message that is ignored.
+     * @param color Optional color that is ignored.
+     * @returns This logger instance.
+     */
     log(msg, color) {
         return this;
     }
+    /**
+     * Does nothing; discards the informational message.
+     *
+     * @param msg Message that is ignored.
+     * @returns This logger instance.
+     */
     info(msg) {
         return this;
     }
+    /**
+     * Does nothing; discards the success message.
+     *
+     * @param msg Message that is ignored.
+     * @returns This logger instance.
+     */
     success(msg) {
         return this;
     }
+    /**
+     * Does nothing; discards the error message.
+     *
+     * @param msg Message that is ignored.
+     * @returns This logger instance.
+     */
     error(msg) {
         return this;
     }
+    /**
+     * Does nothing; there is no console state to reset.
+     *
+     * @returns This logger instance.
+     */
     reset() {
         return this;
     }
+    /**
+     * Does nothing; discards the string instead of writing it to a stream.
+     *
+     * @param str Text that is ignored.
+     */
     writeToStream(str) {
         return;
     }
+    /**
+     * Does nothing because nothing is buffered.
+     *
+     * @returns Always true.
+     */
     flush() {
         return true;
     }
+    /**
+     * Does nothing; there are no resources to release.
+     */
     dispose() {
         return;
     }
 }
 exports.ShadowLogger = ShadowLogger;
 class Logger {
+    /**
+     * Indicates whether the logger is a production (no-op) logger.
+     *
+     * @returns Always false for the file logger.
+     */
     get isProduction() {
         return this._isProduction;
     }
+    /**
+     * Creates a logger that writes to the console and, when a directory is given, to a dated log file
+     * opened in append mode. Creates the directory if missing and writes a header for a new file; without
+     * a directory no file output is enabled.
+     *
+     * @param dir Directory for the log file; when omitted file logging is disabled.
+     * @param name Base name of the log file; a random name is used if omitted. The date and .log extension are
+     *   appended.
+     * @param tz UTC offset in hours used for timestamps and file date, defaults to +6.
+     * @param userInteractive Whether to print to the console as well as the file; defaults to true.
+     * @param isDebug Enables debug-level methods (log, info, success, error, reset); defaults to true and, when true, is
+     *   effective only if userInteractive is true.
+     * @param maxBlockSize Buffered size in bytes at which the buffer is flushed to disk; defaults to 10 MB.
+     */
     constructor(dir, name, tz, userInteractive, isDebug, maxBlockSize) {
         this._blockSize = 0;
         this._maxBlockSize = 10485760; /* (Max block size (1024*1024)*10) = 10 MB */
@@ -203,6 +334,12 @@ class Logger {
             this.newLine();
         }
     }
+    /**
+     * Appends all buffered log data to the log file and clears the buffer. Throws an Error if the log file
+     * has not been opened.
+     *
+     * @returns True if buffered data was written, false if the buffer was empty.
+     */
     flush() {
         if (this._fd < 0) {
             throw new Error("File not open yet....");
@@ -214,6 +351,12 @@ class Logger {
         this._blockSize = 0;
         return true;
     }
+    /**
+     * Adds text to the in-memory buffer when file writing is enabled and flushes to disk once the buffer
+     * reaches the maximum block size.
+     *
+     * @param str Raw text to append to the log buffer.
+     */
     writeToStream(str) {
         if (this._canWrite === false)
             return void 0;
@@ -222,9 +365,18 @@ class Logger {
             return void 0;
         return this.flush(), void 0;
     }
+    /**
+     * Writes a separator line of dashes to the log buffer.
+     */
     newLine() {
         return this.writeToStream(`${'-'.repeat(100)}\r\n`);
     }
+    /**
+     * Splits the content into lines and writes each non-blank line to the log buffer prefixed with a
+     * timestamp, with tabs removed.
+     *
+     * @param buffer String or object (converted with toString) to log.
+     */
     _write(buffer) {
         const str = !isString(buffer) ? buffer.toString() : buffer;
         str.split("\r\n").forEach((line) => {
@@ -234,9 +386,22 @@ class Logger {
         });
         return void 0;
     }
+    /**
+     * Converts the string to a Buffer and writes it to the log file buffer as timestamped lines.
+     *
+     * @param buffer Text to write to the log.
+     */
     writeBuffer(buffer) {
         return this._write(Buffer.from(buffer));
     }
+    /**
+     * Internal logging routine that writes the message to the file and/or console depending on interactive
+     * and debug settings, applying the optional color on the console output.
+     *
+     * @param color ANSI color string or function that transforms the message into a colored string.
+     * @param msg Message to log.
+     * @returns This logger instance.
+     */
     _log(color, msg) {
         if (!this._isDebug && !this._userInteractive)
             return this._write(msg), this;
@@ -257,34 +422,75 @@ class Logger {
         }
         return this;
     }
+    /**
+     * Logs a message regardless of debug mode, to the file and console as configured.
+     *
+     * @param msg Message to log.
+     * @param color Optional console color string or function.
+     * @returns This logger instance.
+     */
     write(msg, color) {
         return this._log(color, msg);
     }
+    /**
+     * Logs a message with an optional color when debug mode is enabled; does nothing otherwise.
+     *
+     * @param msg Message to log.
+     * @param color Optional console color string or function.
+     * @returns This logger instance.
+     */
     log(msg, color) {
         if (!this._isDebug)
             return this;
         return this._log(color, msg);
     }
+    /**
+     * Logs an informational message in yellow when debug mode is enabled.
+     *
+     * @param msg Message to log.
+     * @returns This logger instance.
+     */
     info(msg) {
         if (!this._isDebug)
             return this;
         return this._log(ConsoleColor.Yellow, msg);
     }
+    /**
+     * Logs a success message in green when debug mode is enabled.
+     *
+     * @param msg Message to log.
+     * @returns This logger instance.
+     */
     success(msg) {
         if (!this._isDebug)
             return this;
         return this._log(ConsoleColor.FgGreen, msg);
     }
+    /**
+     * Logs an error message in red when debug mode is enabled.
+     *
+     * @param msg Message to log.
+     * @returns This logger instance.
+     */
     error(msg) {
         if (!this._isDebug)
             return this;
         return this._log(ConsoleColor.FgRed, msg);
     }
+    /**
+     * Prints the console reset color code when debug mode is enabled.
+     *
+     * @returns This logger instance.
+     */
     reset() {
         if (!this._isDebug)
             return this;
         return console.log(ConsoleColor.Reset), this;
     }
+    /**
+     * Flushes buffered data, closes the log file and disables further file writing, then disposes the
+     * internal buffer.
+     */
     dispose() {
         if (this._fd > 0) {
             this.flush();

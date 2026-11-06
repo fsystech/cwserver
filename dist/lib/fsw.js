@@ -124,6 +124,12 @@ const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
 const _fsp = _fs.promises;
 const _fsRmdirSync = typeof (_fs.rmSync) === "function" ? _fs.rmSync : _fs.rmdirSync;
+/**
+ * Gets file system stats for a path.
+ *
+ * @param path Path of the file or directory.
+ * @returns Promise resolving to the fs.Stats object; rejects if the path does not exist.
+ */
 function statAsync(path) {
     return __awaiter(this, void 0, void 0, function* () {
         return yield _fsp.stat(path);
@@ -133,6 +139,13 @@ function statAsync(path) {
 function stat(path, next) {
     statAsync(path).then(rs => next(null, rs)).catch(ex => next(ex));
 }
+/**
+ * Compares the drive letters of two paths (the part of the root before the colon).
+ *
+ * @param src First path.
+ * @param dest Second path.
+ * @returns True if both paths are on the same drive.
+ */
 function isSameDrive(src, dest) {
     const aroot = _path.parse(src).root;
     const broot = _path.parse(dest).root;
@@ -153,6 +166,13 @@ function moveFileAsync(src_1, dest_1) {
 function moveFile(src, dest, next, force) {
     moveFileAsync(src, dest, force).then(() => next()).catch((ex) => next(ex));
 }
+/**
+ * Compares the modification times of two files.
+ *
+ * @param a Path of the first file.
+ * @param b Path of the second file.
+ * @returns Promise resolving to true if file a was modified later than file b.
+ */
 function compareFileAsync(a, b) {
     return __awaiter(this, void 0, void 0, function* () {
         const [astat, bstat] = yield Promise.all([
@@ -182,6 +202,12 @@ function compareFileSync(a, b) {
 function isExists(path, next) {
     isExistsAsync(path).then(rs => next(rs.exists, rs.url));
 }
+/**
+ * Checks whether a path exists and resolves it to an absolute path. Never rejects.
+ *
+ * @param path Path to check.
+ * @returns Promise resolving to an object with exists and the resolved absolute url.
+ */
 function isExistsAsync(path) {
     return __awaiter(this, void 0, void 0, function* () {
         const url = _path.resolve(path);
@@ -194,6 +220,12 @@ function isExistsAsync(path) {
         }
     });
 }
+/**
+ * Reads a file and parses it as JSON, removing a leading BOM.
+ *
+ * @param absPath Absolute path of the JSON file.
+ * @returns Promise resolving to the parsed data, or null if the file is empty; rejects on read or parse errors.
+ */
 function readJsonAsync(absPath) {
     return __awaiter(this, void 0, void 0, function* () {
         const data = yield _fsp.readFile(absPath);
@@ -209,10 +241,23 @@ function readJson(absPath, next, errHandler) {
         handle(null, () => next(null, rs));
     }).catch(ex => handle(ex, () => next(ex)));
 }
+/**
+ * Synchronously reads a JSON file, removing a BOM, comments and blank lines before parsing. Throws on
+ * read or parse errors.
+ *
+ * @param absPath Absolute path of the JSON file.
+ * @returns The parsed JSON data.
+ */
 function readJsonSyncUnsafe(absPath) {
     const jsonstr = _fs.readFileSync(absPath, "utf8").replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "").replace(/^\s*$(?:\r\n?|\n)/gm, "");
     return JSON.parse(jsonstr);
 }
+/**
+ * Synchronously reads a JSON file (comments allowed), swallowing any error.
+ *
+ * @param absPath Absolute path of the JSON file.
+ * @returns The parsed data, or null if reading or parsing failed.
+ */
 function readJsonSync(absPath) {
     try {
         return readJsonSyncUnsafe(absPath);
@@ -221,6 +266,12 @@ function readJsonSync(absPath) {
         return null;
     }
 }
+/**
+ * Ensures a single directory exists, creating it if missing (non-recursive). Errors are swallowed.
+ *
+ * @param path Directory path to check or create.
+ * @returns Promise resolving to true if the directory exists or was created, false otherwise.
+ */
 function mkdirCheckAndCreateAsync(path) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!path)
@@ -239,6 +290,14 @@ function mkdirCheckAndCreateAsync(path) {
         return false;
     });
 }
+/**
+ * Creates a directory path, including missing parent directories. Throws if arguments are missing,
+ * targetDir starts with a dot, the path exists as a non-directory, or the path has a file extension.
+ *
+ * @param rootDir Root directory, or the full directory path when targetDir is omitted.
+ * @param targetDir Optional sub-path to create under rootDir.
+ * @returns Promise that resolves once the directories exist or already existed.
+ */
 function mkdirAsyncx(rootDir, targetDir) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!rootDir || rootDir.length === 0) {
@@ -287,6 +346,14 @@ function mkdir(rootDir, targetDir, next, errHandler) {
     const handle = errHandler !== null && errHandler !== void 0 ? errHandler : ((_err, cb) => cb());
     mkdirAsyncx(rootDir, targetDir).then(() => handle(null, () => next(null))).catch(ex => handle(ex, () => next(ex)));
 }
+/**
+ * Synchronously creates a directory path including missing parents. Throws if targetDir starts with a
+ * dot; returns false for an empty root or a path with a file extension.
+ *
+ * @param rootDir Root directory, or the full directory path when targetDir is omitted.
+ * @param targetDir Optional sub-path to create under rootDir.
+ * @returns True if the target directory exists afterwards, otherwise false.
+ */
 function mkdirSync(rootDir, targetDir) {
     if (rootDir.length === 0)
         return false;
@@ -335,6 +402,12 @@ function rmdirAsync(path) {
 function rmdir(path, next, errHandler) {
     rmdirAsync(path).then(() => next(null), (ex) => next(ex));
 }
+/**
+ * Synchronously deletes a file, or a directory with all its contents. Does nothing if the path does
+ * not exist.
+ *
+ * @param path Path of the file or directory to remove.
+ */
 function rmdirSync(path) {
     if (!_fs.existsSync(path))
         return;
@@ -377,6 +450,13 @@ function copyFileAsync(src, dest) {
 function copyFile(src, dest, next, errHandler) {
     copyFileAsync(src, dest).then(() => next(null), (ex) => next(ex));
 }
+/**
+ * Synchronously copies a file, replacing an existing destination. Throws if either path lacks an
+ * extension or the source does not exist.
+ *
+ * @param src Source file path.
+ * @param dest Destination file path.
+ */
 function copyFileSync(src, dest) {
     let parse = _path.parse(src);
     if (!parse.ext)
@@ -407,6 +487,12 @@ function copyDirAsync(src, dest) {
 function copyDir(src, dest, next, errHandler) {
     copyDirAsync(src, dest).then(() => next(null), (ex) => next(ex));
 }
+/**
+ * Synchronously copies a file or a directory tree. Does nothing if the source does not exist.
+ *
+ * @param src Source file or directory path.
+ * @param dest Destination path; created if missing.
+ */
 function copyDirSync(src, dest) {
     if (!_fs.existsSync(src))
         return;

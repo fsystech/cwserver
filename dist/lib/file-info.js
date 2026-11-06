@@ -68,15 +68,37 @@ const _fs = __importStar(require("node:fs"));
 const _path = __importStar(require("node:path"));
 const _fsp = _fs.promises;
 class FileDescription {
+    /**
+     * Gets the resolved absolute path of the file.
+     *
+     * @returns The absolute path.
+     */
     get url() {
         return this._url;
     }
+    /**
+     * Gets whether the file exists.
+     *
+     * @returns True if the file exists.
+     */
     get exists() {
         return this._exists;
     }
+    /**
+     * Gets the file stats.
+     *
+     * @returns The Stats object, or null if the file does not exist.
+     */
     get stats() {
         return this._stats;
     }
+    /**
+     * Creates a file description result.
+     *
+     * @param exists Whether the file exists.
+     * @param url Resolved file path.
+     * @param stats Optional file stats.
+     */
     constructor(exists, url, stats) {
         this._exists = exists;
         this._url = url;
@@ -91,15 +113,31 @@ exports.FileDescription = FileDescription;
  */
 const MAX_NEGATIVE_ENTRIES = 1024;
 class FileInfoCacheHandler {
+    /**
+     * Creates a file cache with empty hit and miss caches.
+     */
     constructor() {
         this._pathCache = new Map();
         this._missCache = new Map();
     }
+    /**
+     * Removes a path from both the found and not-found caches.
+     *
+     * @param path Path key to remove.
+     * @returns True if the path was in either cache.
+     */
     rmove(path) {
         const hit = this._pathCache.delete(path);
         const miss = this._missCache.delete(path);
         return hit || miss;
     }
+    /**
+     * Stores a result in the cache: found files in the main cache, missing files in a bounded not-found
+     * cache that evicts the oldest entry when full.
+     *
+     * @param path Cache key path.
+     * @param desc File description to remember.
+     */
     _remember(path, desc) {
         if (desc.exists) {
             this._missCache.delete(path);
@@ -113,6 +151,14 @@ class FileInfoCacheHandler {
         }
         this._missCache.set(path, desc);
     }
+    /**
+     * Gets file details, using the cache unless forced, otherwise stats the file and caches the result.
+     * Never rejects.
+     *
+     * @param path Path of the file to inspect.
+     * @param force If true, bypasses the cache and stats again.
+     * @returns A Promise resolving to a description with existence, resolved path and stats.
+     */
     statAsync(path, force) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!force) {
@@ -138,6 +184,13 @@ class FileInfoCacheHandler {
     stat(path, next, force) {
         this.statAsync(path, force).then(next);
     }
+    /**
+     * Checks whether a file exists, using the cache unless forced.
+     *
+     * @param path Path of the file to check.
+     * @param force If true, bypasses the cache.
+     * @returns A Promise resolving to an object with exists and the resolved url.
+     */
     existsAsync(path, force) {
         return __awaiter(this, void 0, void 0, function* () {
             const desc = yield this.statAsync(path, force);

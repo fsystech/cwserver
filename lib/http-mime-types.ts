@@ -30,11 +30,20 @@ class MimeType {
 
     private _data: Map<string, string>;
 
+    /**
+     * Creates the registry and loads the MIME types from the bundled mime-types.json file.
+     */
     constructor() {
         this._data = new Map();
         this._loadSync();
     }
 
+    /**
+     * Registers a MIME type for an extension. Throws if the extension is already registered.
+     *
+     * @param extension Extension to register.
+     * @param value MIME type string for the extension.
+     */
     public add(extension: string, value: string): void {
 
         if (this._data.has(extension)) {
@@ -44,10 +53,20 @@ class MimeType {
         this._data.set(extension, value);
     }
 
+    /**
+     * Returns the registered MIME type for an extension.
+     *
+     * @param extension Extension to look up (without a leading dot).
+     * @returns The MIME type, or undefined when not registered.
+     */
     public type(extension: string): string {
         return this._data.get(extension);
     }
 
+    /**
+     * Reads mime-types.json from the application directory and fills the registry. Throws if the file is
+     * missing or the registry was already populated.
+     */
     private _loadSync(): void {
 
         const absPath = _path.resolve(
@@ -76,6 +95,11 @@ class MimeType {
 
 class MimeTypeStatic {
     private static _instance: MimeType = null;
+    /**
+     * Returns the shared MimeType registry, creating it on first use.
+     *
+     * @returns The singleton MimeType instance.
+     */
     public static getInstance(): MimeType {
         if (this._instance === null) {
             this._instance = new MimeType();
@@ -86,6 +110,13 @@ class MimeTypeStatic {
 
 export const _mimeType = MimeTypeStatic.getInstance();
 
+/**
+ * Appends a UTF-8 charset to text/* and application/javascript or json MIME types that do not already
+ * specify one.
+ *
+ * @param mimeType MIME type to adjust.
+ * @returns The MIME type, with a charset appended when applicable.
+ */
 function setCharset(mimeType: string): string {
     const type = mimeType.toLowerCase();
 
@@ -99,6 +130,13 @@ function setCharset(mimeType: string): string {
     return mimeType;
 }
 
+/**
+ * Resolves the MIME type for a file extension or path, taking the part after the last dot or slash in
+ * lower case. Throws when the extension is unsupported.
+ *
+ * @param extension Extension, file name or path to look up.
+ * @returns The MIME type, with a charset for text-like types.
+ */
 export function getMimeType(extension: string): string {
     const ext = extension
         .replace(/^.*[./\\]/, "")
@@ -113,10 +151,22 @@ export function getMimeType(extension: string): string {
     return setCharset(mimeType);
 }
 
+/**
+ * Registers a new MIME type for an extension. Throws if the extension already exists.
+ *
+ * @param extension Extension to register.
+ * @param value MIME type string for the extension.
+ */
 export function setMimeType(extension: string, value: string): void {
     return _mimeType.add(extension, value);
 }
 
+/**
+ * Checks whether a MIME type is registered for the given extension.
+ *
+ * @param extension Extension to check (without a leading dot).
+ * @returns True if the extension is registered, otherwise false.
+ */
 export function isValidExtension(extension: string): boolean {
     return _mimeType.type(extension) ? true : false;
 }

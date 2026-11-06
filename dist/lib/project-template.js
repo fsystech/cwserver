@@ -60,6 +60,14 @@ const _path = __importStar(require("node:path"));
 const logger_1 = require("./logger");
 const app_util_1 = require("./app-util");
 const fsw = __importStar(require("./fsw"));
+/**
+ * Creates a new project from the bundled template under the application root, copying the www tree,
+ * server.js and web.config, and setting hostInfo.root in the project's app config. Throws when the
+ * template or app root is missing, or the project exists and force is not set.
+ *
+ * @param settings Options: appRoot (parent directory), projectRoot (project folder name), allExample (also copy
+ *   examples), force (replace an existing project), isTest (test mode, quiet and uses test files).
+ */
 function createProjectTemplate(settings) {
     const isTest = typeof (settings.isTest) === "boolean" && settings.isTest === true;
     if (isTest === false) {

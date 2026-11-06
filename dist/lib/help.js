@@ -70,6 +70,13 @@ function getCook(cooks) {
     });
     return cookies;
 }
+/**
+ * Strips characters (percent, equals, angle brackets, ampersand) that are unsafe in a path and trims
+ * whitespace.
+ *
+ * @param unsafe Raw path text, may be empty or null.
+ * @returns The cleaned path, or an empty string when input is empty.
+ */
 function escapePath(unsafe) {
     if (!unsafe)
         return "";
@@ -81,6 +88,13 @@ function escapePath(unsafe) {
         .replace(/&/gi, "")
         .trim();
 }
+/**
+ * Parses a URL string, including its query string into an object. Returns an object with a null
+ * pathname and empty query when no URL is given.
+ *
+ * @param url URL or request URL to parse.
+ * @returns The parsed URL object with query parsed.
+ */
 function parseUrl(url) {
     if (url) {
         return node_url_1.default.parse(url, true);
@@ -106,6 +120,13 @@ function parseIp(ip) {
     }
     return normalized;
 }
+/**
+ * Determines the client IP address from the first x-forwarded-for entry, falling back to the socket's
+ * remote address, normalising IPv4-mapped IPv6 addresses.
+ *
+ * @param req Incoming request.
+ * @returns The client IP address as a string.
+ */
 function getClientIp(req) {
     const res = req.headers['x-forwarded-for'];
     let ip;

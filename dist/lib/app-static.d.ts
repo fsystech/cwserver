@@ -160,6 +160,26 @@ export declare class ResInfo implements IResInfo {
     isInternalErrorCode: boolean;
     description: string;
 }
+/**
+ * Converts a value to a string, returning an empty string for falsy values.
+ *
+ * @param val Value to convert.
+ * @returns The value itself if it is a string, an empty string if falsy, otherwise its String() conversion.
+ */
 export declare function toString(val: any): string;
+/**
+ * Parses a value into a number, stripping commas and dollar signs from strings and accepting fractions
+ * and exponents.
+ *
+ * @param v Number or numeric string to convert.
+ * @returns The numeric value, or 0 when the input is not a valid number.
+ */
 export declare function toNumber(v: any): number;
+/**
+ * Formats a timestamp as an HTTP-style date string in the form "Day, DD Mon YYYY HH:MM:SS GMT" using
+ * local date parts.
+ *
+ * @param timestamp Date or epoch milliseconds to format; defaults to the current time when omitted.
+ * @returns The formatted date string.
+ */
 export declare function toResponseTime(timestamp?: number | Date): string;

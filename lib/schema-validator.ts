@@ -46,6 +46,12 @@ export interface ISchema {
 const _supportSchema: { [id: string]: string } = {
 	"http://json-schema.org/draft-07/schema": "draft-07"
 };
+/**
+ * Reads and parses the JSON schema file synchronously. Throws if the content is not valid JSON.
+ *
+ * @param absPath Absolute path of the schema file.
+ * @returns The parsed schema object.
+ */
 function readSchemaAsync(absPath: string): ISchema {
 	const jsonstr = _fs.readFileSync(absPath, "utf8");
 	try {
@@ -54,6 +60,15 @@ function readSchemaAsync(absPath: string): ISchema {
 		throw new Error(`Invalid schema file defined.\nPlease re-install cwserver.`);
 	}
 }
+/**
+ * Checks that every config property is declared in the schema (unless additional properties are
+ * allowed) and has the declared type. Throws a descriptive error on mismatch.
+ *
+ * @param dataPath Path of the object being checked, used in error messages.
+ * @param configProperties Configuration object whose properties are checked.
+ * @param schemaProperties Schema property definitions to check against.
+ * @param additionalProperties Whether properties not in the schema are allowed.
+ */
 function propertiValidate(
 	dataPath: string,
 	configProperties: { [id: string]: any },
@@ -78,6 +93,12 @@ function propertiValidate(
 		}
 	}
 }
+/**
+ * Returns the default empty value for a schema type name.
+ *
+ * @param type Schema type name such as array, number, boolean, string or object.
+ * @returns An empty array, 0, false, empty string or empty object for the type, otherwise undefined.
+ */
 export function fillUpType(type?: string): any {
 	switch (type) {
 		case "array": return [];
@@ -88,6 +109,16 @@ export function fillUpType(type?: string): any {
 	}
 	return void 0;
 }
+/**
+ * Recursively validates a configuration object against schema properties, throwing on type, length,
+ * enum, const or missing required value violations. Fills missing optional properties with default
+ * values of their type.
+ *
+ * @param dataPath Path of the object being validated, used in error messages.
+ * @param schemaProperties Schema property definitions.
+ * @param configProperties Configuration object to validate; modified in place with defaults.
+ * @param additionalProperties Whether properties not in the schema are allowed.
+ */
 export function schemaValidate(
 	dataPath: string,
 	schemaProperties: IProperties,
@@ -158,6 +189,12 @@ export function schemaValidate(
 	}
 }
 export class Schema {
+	/**
+	 * Validates an application config object against the bundled schema.json, filling in defaults. Throws
+	 * if the schema or config is invalid or does not match.
+	 *
+	 * @param config Configuration object to validate; modified in place.
+	 */
 	public static Validate(config: { [id: string]: any } | any): void {
 		const parent: string = getAppDir();
 		const absPath: string = _path.resolve(`${parent}/schema.json`);

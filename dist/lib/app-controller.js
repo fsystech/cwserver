@@ -36,12 +36,24 @@ const http_status_1 = require("./http-status");
 const app_static_1 = require("./app-static");
 const app_router_1 = require("./app-router");
 const file_info_1 = require("./file-info");
+/**
+ * Extracts the file name (the part after the last slash) from a path.
+ *
+ * @param path Path to inspect.
+ * @returns The file name, or undefined when the path contains no slash.
+ */
 function getFileName(path) {
     const index = path.lastIndexOf("/");
     if (index < 0)
         return void 0;
     return path.substring(index + 1);
 }
+/**
+ * Deletes from a route map every entry whose key does not match any of the skip patterns.
+ *
+ * @param skip List of patterns (joined into one regular expression) for routes to keep.
+ * @param router Route map that is modified in place.
+ */
 function _deleteRouter(skip, router) {
     const re = new RegExp(skip.join('|'));
     for (const [key] of router) {
@@ -60,21 +72,41 @@ const _createDRM = (method, route) => {
     return `This given "${method}" route ${route} already exists in route table`;
 };
 class Controller {
+    /**
+     * Gets the HTTP mime handler used to serve static mime-typed files.
+     *
+     * @returns The HttpMimeHandler instance owned by this controller.
+     */
     get httpMimeHandler() {
         return this._httpMimeHandler;
     }
+    /**
+     * Creates a controller with fresh file info cache and mime handler.
+     *
+     * @param hasDefaultExt Whether the server uses a default extension, which enables extension-less url handling.
+     */
     constructor(hasDefaultExt) {
         this._routeTable = { any: new Map(), get: new Map(), post: new Map(), router: [] };
         this._fileInfo = new file_info_1.FileInfoCacheHandler();
         this._httpMimeHandler = new http_mime_1.HttpMimeHandler();
         this._hasDefaultExt = hasDefaultExt;
     }
+    /**
+     * Clears all registered get, post and any routes and the parameterized router list.
+     */
     reset() {
         this._routeTable.get.clear();
         this._routeTable.post.clear();
         this._routeTable.any.clear();
         this._routeTable.router.length = 0;
     }
+    /**
+     * Finds a parameterized route matching the request path and method and invokes its handler with the
+     * extracted request parameters.
+     *
+     * @param ctx Current request context.
+     * @returns A promise resolving to true if a route handler was found and invoked, otherwise false.
+     */
     fireHandlerAsync(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this._routeTable.router.length === 0)
@@ -87,6 +119,12 @@ class Controller {
             return yield asyncHandler(ctx, routeInfo.requestParam), true;
         });
     }
+    /**
+     * Removes all registered routes except those matching the given patterns. With no arguments, resets
+     * the whole route table.
+     *
+     * @param args Route patterns to keep; every other route is deleted.
+     */
     delete(...args) {
         if (args.length === 0)
             return this.reset();
@@ -99,6 +137,14 @@ class Controller {
             return false;
         });
     }
+    /**
+     * Registers a handler for GET requests on a route. Routes containing ":" or "*" are also added to the
+     * parameterized router. Throws if the route already exists as a get or any route.
+     *
+     * @param route Route path, optionally with parameters or wildcards.
+     * @param next Handler invoked for matching requests.
+     * @returns The controller itself, for chaining.
+     */
     get(route, next) {
         if (this._routeTable.get.has(route))
             throw new Error(_createDRM('get', route));
@@ -116,6 +162,14 @@ class Controller {
         this._routeTable.get.set(route, next);
         return this;
     }
+    /**
+     * Registers a handler for POST requests on a route. Routes containing ":" or "*" are also added to the
+     * parameterized router. Throws if the route already exists as a post or any route.
+     *
+     * @param route Route path, optionally with parameters or wildcards.
+     * @param next Handler invoked for matching requests.
+     * @returns The controller itself, for chaining.
+     */
     post(route, next) {
         if (this._routeTable.post.has(route))
             throw new Error(_createDRM('post', route));
@@ -133,6 +187,14 @@ class Controller {
         this._routeTable.post.set(route, next);
         return this;
     }
+    /**
+     * Registers a handler for any HTTP method on a route. Routes containing ":" or "*" are also added to
+     * the parameterized router. Throws if the route already exists as a get, post or any route.
+     *
+     * @param route Route path, optionally with parameters or wildcards.
+     * @param next Handler invoked for matching requests.
+     * @returns The controller itself, for chaining.
+     */
     any(route, next) {
         if (this._routeTable.post.has(route))
             throw new Error(_createDRM('post', route));
@@ -152,6 +214,13 @@ class Controller {
         this._routeTable.any.set(route, next);
         return this;
     }
+    /**
+     * Looks for a configured default document in the requested directory and renders the first one that
+     * exists; otherwise responds with 404.
+     *
+     * @param ctx Current request context.
+     * @returns A promise that resolves when the response has been rendered or passed on as 404.
+     */
     passDefaultDocAsync(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const rpath = ctx.req.path;
@@ -170,6 +239,14 @@ class Controller {
             return ctx.next(404);
         });
     }
+    /**
+     * Handles extension-less requests: serves a default document for directory paths, or, when a default
+     * extension is configured, maps the path to a file with that extension and renders it. Falls back to
+     * 404 or transfers error-code file names to the matching error page.
+     *
+     * @param ctx Current request context.
+     * @returns A promise that resolves once the request has been rendered or passed on.
+     */
     sendDefaultDocAsync(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const rpath = ctx.req.path;
@@ -199,6 +276,13 @@ class Controller {
             return ctx.next(404);
         });
     }
+    /**
+     * Processes a GET request by trying, in order, an exact route handler, a parameterized route, template
+     * rendering, mime-type file serving and default documents, responding 404 when none apply.
+     *
+     * @param ctx Current request context.
+     * @returns A promise that resolves when the request has been handled.
+     */
     processGetAsync(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const handlerAsync = this._routeTable.get.get(ctx.path);
@@ -224,6 +308,13 @@ class Controller {
             return yield this.sendDefaultDocAsync(ctx);
         });
     }
+    /**
+     * Processes a POST request using an exact route handler or a parameterized route; responds 404 if none
+     * matches.
+     *
+     * @param ctx Current request context.
+     * @returns A promise that resolves when the request has been handled.
+     */
     processPostAsync(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const handlerAsync = this._routeTable.post.get(ctx.path);
@@ -235,6 +326,13 @@ class Controller {
             return ctx.next(404);
         });
     }
+    /**
+     * Dispatches a request: uses an exact any-route handler if present, otherwise delegates to GET or POST
+     * processing by method, and responds 404 for other methods.
+     *
+     * @param ctx Current request context.
+     * @returns A promise that resolves when the request has been handled.
+     */
     processAny(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const handlerAsync = this._routeTable.any.get(ctx.path);
@@ -248,6 +346,13 @@ class Controller {
             return ctx.next(404);
         });
     }
+    /**
+     * Removes the route registered for the given path from the any, post or get table (first match found)
+     * and from the parameterized router.
+     *
+     * @param path Route path to remove.
+     * @returns True if a route was removed, false if none was registered.
+     */
     remove(path) {
         let found = 0;
         if (this._routeTable.any.delete(path)) {
@@ -267,6 +372,9 @@ class Controller {
         }
         return true;
     }
+    /**
+     * Sorts the parameterized route list in place by ascending route length.
+     */
     sort() {
         return this._routeTable.router = this._routeTable.router.sort((a, b) => {
             return a.route.length - b.route.length;

@@ -85,6 +85,11 @@ type IWsNext = (session: ISession, socket: IOSocket) => void | boolean;
 type IWsClient = (me: ICwSocketInfo, session: ISession, CwSocket: ICwSocketServer, server: ICwServer) => {
     [x: string]: any;
 };
+/**
+ * Creates a new object used to register web socket event handlers for the server.
+ *
+ * @returns A new web socket client info instance.
+ */
 export declare function wsClient(): IWsClientInfo;
 /**
  * If you want to use it you've to install socket.io

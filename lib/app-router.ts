@@ -133,12 +133,31 @@ export function getRouteMatcher(route: string, rRepRegx?: boolean): IRouteMatche
     const mainRegx = new RegExp(`^${croute}\\/?$`, "i");
 
     return {
+        /**
+         * Tests whether the given path matches the compiled route pattern (case-insensitive).
+         *
+         * @param val Request path to test.
+         * @returns True if the path matches the route, otherwise false.
+         */
         test(val: string): boolean {
             return mainRegx.test(val);
         },
+        /**
+         * Executes the compiled route pattern against the given path to extract matches.
+         *
+         * @param val Request path to match.
+         * @returns The regular expression match result, or null if the path does not match.
+         */
         exec(val: string): RegExpMatchArray | null {
             return mainRegx.exec(val);
         },
+        /**
+         * Strips the static route prefix from the path when the route has one, so the remainder can be used as
+         * a relative path.
+         *
+         * @param val Request path to transform.
+         * @returns The path with the route prefix removed, or the original value when no prefix pattern applies.
+         */
         replace(val: string): string {
             if (!repRegx) return val;
             return val.replace(repRegx, "");

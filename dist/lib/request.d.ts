@@ -108,18 +108,85 @@ export declare class Request extends IncomingMessage implements IRequest {
     private _cleanSocket;
     private _isMobile;
     private _isLocal;
+    /**
+     * Detects whether the request comes from a mobile device by testing the User-Agent header; the result
+     * is cached.
+     *
+     * @returns True if the user agent matches a mobile pattern, otherwise false.
+     */
     get isMobile(): boolean;
+    /**
+     * Indicates whether the underlying socket should be destroyed when this request is disposed.
+     *
+     * @returns True if socket cleanup is enabled, otherwise false (default).
+     */
     get cleanSocket(): boolean;
+    /**
+     * Sets whether the socket should be cleaned up (listeners removed and destroyed) on dispose.
+     *
+     * @param val True to destroy the socket on dispose.
+     */
     set cleanSocket(val: boolean);
+    /**
+     * Lazily parses the request URL, including the query string, and caches the result.
+     *
+     * @returns The parsed URL object with parsed query.
+     */
     get q(): UrlWithParsedQuery;
+    /**
+     * Lazily parses the Cookie request header into a name/value map and caches it.
+     *
+     * @returns Record of cookie names to values.
+     */
     get cookies(): Record<string, string>;
+    /**
+     * Gets the session associated with this request.
+     *
+     * @returns The current session, or an empty object if none has been assigned.
+     */
     get session(): ISession;
+    /**
+     * Assigns the session for this request.
+     *
+     * @param val Session object to attach.
+     */
     set session(val: ISession);
+    /**
+     * Determines whether the client address is a loopback address (::1 or 127.0.0.1); the result is
+     * cached.
+     *
+     * @returns True if the request originates from localhost.
+     */
     get isLocal(): boolean;
+    /**
+     * Gets the decoded, sanitized pathname of the request URL; cached after first access.
+     *
+     * @returns The request path.
+     */
     get path(): string;
+    /**
+     * Overrides the request path, for example when a request is internally transferred.
+     *
+     * @param val New path to use.
+     */
     set path(val: string);
+    /**
+     * Resolves the client IP address for the request and caches it.
+     *
+     * @returns The client IP address string.
+     */
     get ip(): string;
+    /**
+     * Gets a unique identifier for this request, generating a UUID on first access.
+     *
+     * @returns The request id.
+     */
     get id(): string;
+    /**
+     * Gets the parsed query string parameters of the request URL.
+     *
+     * @returns The parsed query object.
+     */
     get query(): ParsedUrlQuery;
     /**
      * Retrieves the value of an HTTP request header.
@@ -147,7 +214,16 @@ export declare class Request extends IncomingMessage implements IRequest {
      * compression algorithm is accepted by the client.
      */
     acceptEncoding(): CompressionType;
+    /**
+     * Enables or disables Nagle's algorithm on the request socket (TCP no-delay) if a socket exists.
+     *
+     * @param noDelay Whether to disable the delay; passed to the socket's setNoDelay.
+     */
     setSocketNoDelay(noDelay?: boolean): void;
+    /**
+     * Clears cached per-request state (id, URL, ip, path, cookies, locality); when cleanSocket is set (or
+     * in test mode) also removes listeners and destroys the socket.
+     */
     dispose(): void;
 }
 export {};

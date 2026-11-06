@@ -46,14 +46,33 @@ class AppViewRegister implements IAppViewRegister {
     private _evt: ViewRegisterFunc[] = [];
     private _isInitilized: boolean = false;
 
+    /**
+     * Indicates whether the registered views have been initialized by the application.
+     *
+     * @returns True if views have been initialized, otherwise false.
+     */
     public get isInitilized(): boolean {
         return this._isInitilized;
     }
 
+    /**
+     * Sets the flag that records whether the registered views have been initialized.
+     *
+     * @param value New initialized state.
+     */
     public set isInitilized(value: boolean) {
         this._isInitilized = value;
     }
 
+    /**
+     * Runs every registered view handler in parallel with the application, controller and server, then
+     * clears the handler list. Does nothing if already run or if no handlers are registered.
+     *
+     * @param app Application instance passed to each view handler.
+     * @param controller Route controller passed to each view handler.
+     * @param server Server instance passed to each view handler.
+     * @returns A promise that resolves once all view handlers have completed; it rejects if any handler fails.
+     */
     public async initAsync(
         app: IApplication, controller: IController, server: ICwServer
     ): Promise<void> {
@@ -69,6 +88,12 @@ class AppViewRegister implements IAppViewRegister {
         this._evt.length = 0;
     }
 
+    /**
+     * Queues a view registration handler to be run during initialization. Throws an Error if views have
+     * already been initialized.
+     *
+     * @param next View registration function to queue.
+     */
     public add(next: ViewRegisterFunc): void {
 
         if (this._isInit) {
@@ -81,6 +106,11 @@ class AppViewRegister implements IAppViewRegister {
 
 class AppViewStatic {
     private static _instance: AppViewRegister = null;
+    /**
+     * Returns the shared view register, creating it on first use (lazy singleton).
+     *
+     * @returns The singleton AppViewRegister.
+     */
     public static getInstance(): AppViewRegister {
         if (this._instance === null) {
             this._instance = new AppViewRegister();
@@ -91,6 +121,12 @@ class AppViewStatic {
 
 export const AppView = AppViewStatic.getInstance();
 
+/**
+ * Registers a view handler with the global view register so it is run when views are initialized.
+ * Throws if registration happens after initialization.
+ *
+ * @param next View registration function receiving the app, controller and server.
+ */
 export function registerView(next: ViewRegisterFunc): void {
     AppView.add(next);
 }

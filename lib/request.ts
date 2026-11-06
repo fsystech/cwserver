@@ -153,6 +153,12 @@ export class Request extends IncomingMessage implements IRequest {
     private _isMobile: boolean | undefined;
     private _isLocal: boolean | undefined;
 
+    /**
+     * Detects whether the request comes from a mobile device by testing the User-Agent header; the result
+     * is cached.
+     *
+     * @returns True if the user agent matches a mobile pattern, otherwise false.
+     */
     public get isMobile(): boolean {
         if (this._isMobile !== undefined) return this._isMobile;
         const userAgent: string = toString(this.get('user-agent'));
@@ -160,58 +166,114 @@ export class Request extends IncomingMessage implements IRequest {
         return this._isMobile;
     }
 
+    /**
+     * Indicates whether the underlying socket should be destroyed when this request is disposed.
+     *
+     * @returns True if socket cleanup is enabled, otherwise false (default).
+     */
     public get cleanSocket(): boolean {
         if (this._cleanSocket === undefined)
             return false;
         return this._cleanSocket;
     }
 
+    /**
+     * Sets whether the socket should be cleaned up (listeners removed and destroyed) on dispose.
+     *
+     * @param val True to destroy the socket on dispose.
+     */
     public set cleanSocket(val: boolean) {
         this._cleanSocket = val;
     }
 
+    /**
+     * Lazily parses the request URL, including the query string, and caches the result.
+     *
+     * @returns The parsed URL object with parsed query.
+     */
     public get q(): UrlWithParsedQuery {
         if (this._q !== undefined) return this._q;
         this._q = parseUrl(this.url);
         return this._q;
     }
 
+    /**
+     * Lazily parses the Cookie request header into a name/value map and caches it.
+     *
+     * @returns Record of cookie names to values.
+     */
     public get cookies(): Record<string, string> {
         if (this._cookies !== undefined) return this._cookies;
         this._cookies = parseCookie(this.headers.cookie);
         return this._cookies;
     }
 
+    /**
+     * Gets the session associated with this request.
+     *
+     * @returns The current session, or an empty object if none has been assigned.
+     */
     public get session(): ISession {
         return this._session || Object.create({});
     }
 
+    /**
+     * Assigns the session for this request.
+     *
+     * @param val Session object to attach.
+     */
     public set session(val: ISession) {
         this._session = val;
     }
 
+    /**
+     * Determines whether the client address is a loopback address (::1 or 127.0.0.1); the result is
+     * cached.
+     *
+     * @returns True if the request originates from localhost.
+     */
     public get isLocal() {
         if (this._isLocal !== undefined) return this._isLocal;
         this._isLocal = this.ip === '::1' || this.ip === '127.0.0.1';
         return this._isLocal;
     }
 
+    /**
+     * Gets the decoded, sanitized pathname of the request URL; cached after first access.
+     *
+     * @returns The request path.
+     */
     public get path(): string {
         if (this._path !== undefined) return this._path;
         this._path = decodeURIComponent(escapePath(this.q.pathname));
         return this._path;
     }
 
+    /**
+     * Overrides the request path, for example when a request is internally transferred.
+     *
+     * @param val New path to use.
+     */
     public set path(val: string) {
         this._path = val;
     }
 
+    /**
+     * Resolves the client IP address for the request and caches it.
+     *
+     * @returns The client IP address string.
+     */
     public get ip(): string {
         if (this._ip !== undefined) return this._ip;
         this._ip = getClientIp(this);
         return this._ip;
     }
 
+    /**
+     * Gets a unique identifier for this request, generating a UUID on first access.
+     *
+     * @returns The request id.
+     */
     public get id(): string {
 
         if (!this._id) {
@@ -221,6 +283,11 @@ export class Request extends IncomingMessage implements IRequest {
         return this._id;
     }
 
+    /**
+     * Gets the parsed query string parameters of the request URL.
+     *
+     * @returns The parsed query object.
+     */
     public get query(): ParsedUrlQuery {
         return this.q.query;
     }
@@ -277,12 +344,21 @@ export class Request extends IncomingMessage implements IRequest {
         return null;
     }
 
+    /**
+     * Enables or disables Nagle's algorithm on the request socket (TCP no-delay) if a socket exists.
+     *
+     * @param noDelay Whether to disable the delay; passed to the socket's setNoDelay.
+     */
     public setSocketNoDelay(noDelay?: boolean) {
         if (this.socket) {
             this.socket.setNoDelay(noDelay);
         }
     }
 
+    /**
+     * Clears cached per-request state (id, URL, ip, path, cookies, locality); when cleanSocket is set (or
+     * in test mode) also removes listeners and destroys the socket.
+     */
     public dispose(): void {
         this._id = null;
         this._q = null;

@@ -378,10 +378,25 @@ export interface ICwServer {
 
 export type IViewHandler = (app: IApplication, controller: IController, server: ICwServer) => void;
 
+/**
+ * Type guard that checks a value is neither null nor undefined.
+ *
+ * @param a Value to test.
+ * @returns True when the value is defined, narrowing its type to T.
+ */
 function isDefined<T>(a: T | null | undefined): a is T {
     return a !== null && a !== undefined;
 }
 
+/**
+ * Converts a maxAge unit code and amount into milliseconds, recursing from minutes up to hours, days
+ * and 30-day months. Throws an Error for an unsupported unit.
+ *
+ * @param type Upper-case unit code: M (minute), H (hour), D (day) or MM (month).
+ * @param add Number of units to convert.
+ * @param maxAge Original maxAge string, used only in the error message.
+ * @returns Duration in milliseconds.
+ */
 function getEpoch(type: string, add: number, maxAge: string): number {
     switch (type) {
         case "M": return (add * 60 * 1000); // Minute
@@ -392,6 +407,13 @@ function getEpoch(type: string, add: number, maxAge: string): number {
     }
 }
 
+/**
+ * Parses a maxAge string such as 30D, 1H or 5M into milliseconds. Throws an Error when the value is
+ * not a string or does not match the digits-plus-unit format.
+ *
+ * @param maxAge Max-age text made of a number followed by a unit (M, H, D or MM).
+ * @returns Duration in milliseconds.
+ */
 function parseMaxAge(maxAge: unknown): number {
     if (typeof maxAge !== "string") {
         throw new Error("Invalid maxAge...");
@@ -416,6 +438,14 @@ function parseMaxAge(maxAge: unknown): number {
 
 const _formatPath = (() => {
 
+    /**
+     * Resolves a reserved path key used in $key/ path placeholders to a server directory. Throws an Error
+     * for unknown keys.
+     *
+     * @param server Server instance providing the root and public directory values.
+     * @param key Placeholder key, either root or public.
+     * @returns The server root path for root, or the public directory name for public.
+     */
     const exportPath = (
         server: ICwServer,
         key: string
@@ -469,24 +499,65 @@ const _formatPath = (() => {
 
 export class ServerEncryption implements IServerEncryption {
     private cryptoInfo: ICryptoInfo;
+    /**
+     * Creates an encryption helper bound to the given key and IV information.
+     *
+     * @param inf Crypto key and IV information used for all operations.
+     */
     constructor(inf: ICryptoInfo) {
         this.cryptoInfo = inf;
     }
+    /**
+     * Encrypts plain text using the configured crypto info.
+     *
+     * @param plainText Text to encrypt.
+     * @returns The encrypted text.
+     */
     encrypt(plainText: string): string {
         return Encryption.encrypt(plainText, this.cryptoInfo);
     }
+    /**
+     * Decrypts text previously produced by encrypt using the configured crypto info.
+     *
+     * @param encryptedText Encrypted text to decrypt.
+     * @returns The decrypted plain text.
+     */
     decrypt(encryptedText: string): string {
         return Encryption.decrypt(encryptedText, this.cryptoInfo);
     }
+    /**
+     * Encrypts plain text and returns the result hex encoded.
+     *
+     * @param plainText Text to encrypt.
+     * @returns The encrypted value as a hex string.
+     */
     encryptToHex(plainText: string): string {
         return Encryption.encryptToHex(plainText, this.cryptoInfo);
     }
+    /**
+     * Decrypts a hex encoded encrypted value back to plain text.
+     *
+     * @param encryptedText Hex encoded encrypted text.
+     * @returns The decrypted plain text.
+     */
     decryptFromHex(encryptedText: string): string {
         return Encryption.decryptFromHex(encryptedText, this.cryptoInfo);
     }
+    /**
+     * Encrypts plain text into a URI-safe encrypted string.
+     *
+     * @param plainText Text to encrypt.
+     * @returns The encrypted URI-safe string.
+     */
     encryptUri(plainText: string): string {
         return Encryption.encryptUri(plainText, this.cryptoInfo);
     }
+    /**
+     * Decrypts a URI-safe encrypted string produced by encryptUri.
+     *
+     * @param encryptedText URI-safe encrypted text.
+     * @returns The decrypted plain text.
+     */
     decryptUri(encryptedText: string): string {
         return Encryption.decryptUri(encryptedText, this.cryptoInfo);
     }
@@ -547,6 +618,10 @@ export class ServerConfig implements IServerConfig {
         ext: string[];
     };
     useFullOptimization: boolean;
+    /**
+     * Creates a server configuration populated with defaults such as app name, session cookie, host info
+     * on port 8080, static file and bundler settings and a 30 day cache max age.
+     */
     constructor() {
         this.Author = "FSys Tech Ltd.";
         this.appName = "Cw Server";
@@ -606,6 +681,13 @@ export class ServerConfig implements IServerConfig {
 // prevent session hijacking
 export class SessionSecurity {
 
+    /**
+     * Returns the first part of an IP address (everything before the last dot), used to bind a session to
+     * a client network. Falls back to 127.0.0 when no part can be derived.
+     *
+     * @param ip Remote IP address of the request.
+     * @returns The IP address without its last octet.
+     */
     public static getRemoteAddress(ip: string): string {
         let ipPart: string = ip.substring(0, ip.lastIndexOf('.'));
         if (!ipPart) {
@@ -615,11 +697,24 @@ export class SessionSecurity {
         return ipPart;
     }
 
+    /**
+     * Stamps the session object with the client's IP part and serializes it to JSON.
+     *
+     * @param req Current request, whose IP is recorded in the session.
+     * @param sessionObj Session data object; its ipPart property is set by this call.
+     * @returns JSON string of the session object.
+     */
     public static createSession(req: IRequest, sessionObj: Record<string, any>): string {
         sessionObj.ipPart = this.getRemoteAddress(req.ip);
         return Util.JSON.stringify(sessionObj);
     }
 
+    /**
+     * Checks that an authenticated session belongs to the same client network and clears its authenticated
+     * flag if the stored IP part is missing or differs, to prevent session hijacking.
+     *
+     * @param req Request whose session is validated and possibly modified.
+     */
     public static isValidSession(req: IRequest): void {
         if (!req.session.isAuthenticated) return;
         if (!req.session.ipPart || req.session.ipPart !== this.getRemoteAddress(req.ip)) {
@@ -645,35 +740,89 @@ export class CwServer implements ICwServer {
     private _isInitialized: boolean = false;
     private _db: Record<string, ICwDatabaseType>;
     private _errorPage: { [x: string]: string; };
+    /**
+     * Gets the framework version.
+     *
+     * @returns The application version string.
+     */
     public get version() {
         return appVersion;
     }
+    /**
+     * Gets whether the server has finished initialization.
+     *
+     * @returns True once init has been called.
+     */
     public get isInitialized() {
         return this._isInitialized;
     }
+    /**
+     * Gets the loaded server configuration.
+     *
+     * @returns The server configuration object.
+     */
     public get config(): IServerConfig {
         return this._config;
     }
+    /**
+     * Gets the public (www) directory name.
+     *
+     * @returns The public directory name.
+     */
     public get public(): string {
         return this._public;
     }
+    /**
+     * Gets the server logger.
+     *
+     * @returns The logger instance.
+     */
     public get log(): ILogger {
         return this._log;
     }
+    /**
+     * Gets the port the server listens on.
+     *
+     * @returns The listener port number or string.
+     */
     public get port(): string | number {
         return this._port;
     }
+    /**
+     * Gets the database modules loaded from configuration, keyed by module name.
+     *
+     * @returns Record of database instances by module name.
+     */
     public get db(): Record<string, ICwDatabaseType> {
         return this._db;
     }
+    /**
+     * Gets the server encryption helper.
+     *
+     * @returns The current server encryption instance.
+     */
     public get encryption(): IServerEncryption {
         return this._encryption;
     }
 
+    /**
+     * Gets the built-in default error page paths keyed by status code.
+     *
+     * @returns Record mapping status codes to error page file paths.
+     */
     public get errorPage(): { [x: string]: string; } {
         return this._errorPage;
     }
 
+    /**
+     * Creates the server: validates the app root and public directory name, loads and validates the app
+     * config file, applies configuration, initializes databases and error pages, and prepares temp
+     * directories. Throws an Error if arguments are missing, the config file is absent or invalid, or host
+     * root does not match.
+     *
+     * @param appRoot Application root directory path.
+     * @param wwwName Name of the public directory under the app root; required.
+     */
     constructor(appRoot: string, wwwName?: string) {
         this._port = 0;
         this._log = Object.create(null);
@@ -819,10 +968,22 @@ export class CwServer implements ICwServer {
         this._log = new ShadowLogger();
     }
 
+    /**
+     * Creates the context object made available to view templates; the base implementation returns an
+     * empty object.
+     *
+     * @returns A new empty object.
+     */
     public createVimContext(): Record<string, any> {
         return {};
     }
 
+    /**
+     * Replaces the server encryption helper with the supplied one, or with a new one built from the
+     * configured encryption key when none is given.
+     *
+     * @param serverEnc Optional custom encryption implementation.
+     */
     public updateEncryption(serverEnc?: IServerEncryption): void {
         this._encryption = null;
 
@@ -836,6 +997,12 @@ export class CwServer implements ICwServer {
     public on: (ev: "shutdown", handler: () => void) => void;
     public addVirtualDir: (route: string, root: string, evt?: (ctx: IContext) => void) => void;
     public virtualInfo: (route: string) => { route: string; root: string; } | void;
+    /**
+     * Gets the config file name, taken from the APP_CONFIG_NAME environment variable or defaulting to
+     * app.config.json.
+     *
+     * @returns The config file name.
+     */
     public getAppConfigName(): string {
         if (process.env.APP_CONFIG_NAME) {
             return process.env.APP_CONFIG_NAME;
@@ -843,30 +1010,68 @@ export class CwServer implements ICwServer {
         return "app.config.json";
     }
 
+    /**
+     * Hook that decides whether a request context may be processed; the base implementation accepts every
+     * context.
+     *
+     * @param ctx Request context to check.
+     * @returns True when the context is valid.
+     */
     public isValidContext(ctx: IContext): boolean {
         return true;
     }
 
+    /**
+     * Gets the application root directory.
+     *
+     * @returns The root path.
+     */
     public getRoot(): string {
         return this._root;
     }
 
+    /**
+     * Parses a maxAge string such as 1d or 30D into milliseconds.
+     *
+     * @param maxAge Max-age text made of a number and a unit.
+     * @returns Duration in milliseconds.
+     */
     public parseMaxAge(maxAge: any): number {
         return parseMaxAge(maxAge);
     }
 
+    /**
+     * Gets the full path of the public directory (root plus public name).
+     *
+     * @returns The public directory path.
+     */
     public getPublic(): string {
         return `${this._root}/${this._public}`;
     }
 
+    /**
+     * Gets the name of the public directory.
+     *
+     * @returns The public directory name.
+     */
     public getPublicDirName(): string {
         return this._public;
     }
 
+    /**
+     * Marks the server as initialized.
+     */
     public init() {
         this._isInitialized = true;
     }
 
+    /**
+     * Validates and applies loaded configuration: checks encryption key, hidden directory list, listener
+     * port, session key and max age, and cache header, converting keys and max ages to their runtime
+     * forms. Throws an Error when a required setting is missing or invalid.
+     *
+     * @param config Raw configuration values loaded from the config file.
+     */
     public implimentConfig(config: Record<string, any>): void {
 
         if (typeof this._config.bundler.reValidate !== "boolean") {
@@ -937,6 +1142,10 @@ export class CwServer implements ICwServer {
             parseMaxAge(config.cacheHeader.maxAge);
     }
 
+    /**
+     * Creates the server logger, disposing any previous one. Uses a file/console Logger in debug mode and
+     * a no-op ShadowLogger otherwise.
+     */
     public createLogger() {
         this._userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
 
@@ -951,6 +1160,11 @@ export class CwServer implements ICwServer {
         }
     }
 
+    /**
+     * Initializes configured database modules, validates and normalizes the errorPage settings (merging
+     * defaults for missing codes) and resolves view paths. Throws an Error on invalid database, module or
+     * error page configuration.
+     */
     public initilize(): void {
         const database = this._config.database;
 
@@ -1040,10 +1254,24 @@ export class CwServer implements ICwServer {
         );
     }
 
+    /**
+     * Gets the copyright header line for generated output.
+     *
+     * @returns Copyright comment text.
+     */
     public copyright(): string {
         return '//\tCopyright (c) 2022 FSys Tech Ltd.\r\n';
     }
 
+    /**
+     * Creates the request context for a request/response pair and sets its path, root, next callback and
+     * file extension.
+     *
+     * @param req Incoming request.
+     * @param res Outgoing response.
+     * @param next Next handler callback.
+     * @returns The new request context.
+     */
     public createContext(
         req: IRequest,
         res: IResponse,
@@ -1062,6 +1290,12 @@ export class CwServer implements ICwServer {
         return context;
     }
 
+    /**
+     * Sets default security headers on the response, including a timestamp, configured default headers,
+     * frame-ancestors policy and, when the session is secure, strict transport security and expect-ct.
+     *
+     * @param res Response to add headers to.
+     */
     public setDefaultProtectionHeader(res: IResponse): void {
 
         res.setHeader("x-timestamp", Date.now());
@@ -1096,6 +1330,14 @@ export class CwServer implements ICwServer {
         }
     }
 
+    /**
+     * Reads the session cookie, decrypts it and parses it into a session object. Returns an empty session
+     * when the cookie is missing or cannot be decrypted; throws if no session cookie name is configured.
+     *
+     * @param headers Incoming HTTP headers of the request.
+     * @param cook Raw cookie value or already parsed cookie collection.
+     * @returns The parsed session, or a new empty session.
+     */
     public parseSession(headers: IncomingHttpHeaders, cook: undefined | string[] | string | { [x: string]: any; }): ISession {
         if (
             !this._config.session.cookie ||
@@ -1125,10 +1367,25 @@ export class CwServer implements ICwServer {
         return session.parse(str);
     }
 
+    /**
+     * Hook called when a session is cleared; the base implementation does nothing.
+     *
+     * @param ctx Request context whose session is being cleared.
+     */
     public onClearSession(ctx: IContext): void {
         // nothing to do
     }
 
+    /**
+     * Creates an encrypted session token containing login id, role id and user data and sets it as an
+     * httpOnly cookie on the response.
+     *
+     * @param ctx Request context providing request and response.
+     * @param loginId Login identifier of the user.
+     * @param roleId Role identifier of the user.
+     * @param userData Additional user data stored in the session.
+     * @returns Always true.
+     */
     public setSession(
         ctx: IContext,
         loginId: string,
@@ -1150,6 +1407,13 @@ export class CwServer implements ICwServer {
         return true;
     }
 
+    /**
+     * Sends the context's error as a 500 response, showing sanitized error details in debug mode and a
+     * generic message otherwise.
+     *
+     * @param ctx Request context that may hold an error.
+     * @returns True if an error was sent, false when the context has no error.
+     */
     public passError(ctx: IContext): boolean {
         if (!ctx.error) {
             return false;
@@ -1177,6 +1441,14 @@ export class CwServer implements ICwServer {
         return true;
     }
 
+    /**
+     * Finds the error page path for an HTTP error status code from configuration or the built-in defaults.
+     * Throws an Error for non-error codes or when no page is found.
+     *
+     * @param statusCode HTTP error status code.
+     * @param tryServer When true, only the built-in server error page is looked up.
+     * @returns The error page path, or undefined when tryServer is true and no built-in page exists.
+     */
     public getErrorPath(
         statusCode: number,
         tryServer: boolean = false
@@ -1207,6 +1479,15 @@ export class CwServer implements ICwServer {
         );
     }
 
+    /**
+     * Transfers processing to another path or to an error page for a status code, rendering the result.
+     * Responds with plain text for error codes on XMLHttpRequest requests, records errors, and falls back
+     * to passError when no page is available.
+     *
+     * @param ctx Request context to transfer.
+     * @param path Target path, or an HTTP status code to resolve an error page for.
+     * @param status Optional response info; derived from path when omitted.
+     */
     public transferRequest(
         ctx: IContext,
         path: string | number,
@@ -1288,10 +1569,23 @@ export class CwServer implements ICwServer {
         ctx.res.render(ctx, nextPath, status);
     }
 
+    /**
+     * Maps a path relative to the public directory to an absolute file system path.
+     *
+     * @param path Path relative to the public directory.
+     * @returns The resolved absolute path.
+     */
     public mapPath(path: string): string {
         return _path.resolve(`${this._root}/${this._public}/${path}`);
     }
 
+    /**
+     * Converts a file system path to a URL-style path without extension, trimming the public directory
+     * prefix or replacing the root with $root. Paths without an extension are returned unchanged.
+     *
+     * @param path File system path to convert.
+     * @returns The URL-style path.
+     */
     public pathToUrl(path: string): string {
 
         if (!Util.getExtension(path))
@@ -1313,6 +1607,14 @@ export class CwServer implements ICwServer {
         return path.substring(0, index).replace(/\\/gi, "/");
     }
 
+    /**
+     * Appends error information to the context's error text with sanitized paths; detailed message and
+     * stack are added only in debug mode. Does nothing for disposed contexts.
+     *
+     * @param ctx Request context to record the error on.
+     * @param ex Error message or Error object.
+     * @returns The same context.
+     */
     public addError(ctx: IContext, ex: string | Error): IContext {
         if (ctx.isDisposed)
             return ctx;
@@ -1340,6 +1642,12 @@ export class CwServer implements ICwServer {
         return ctx;
     }
 
+    /**
+     * Escapes HTML special characters and converts line breaks to br tags.
+     *
+     * @param unsafe Text to escape; may be empty.
+     * @returns The escaped string, or an empty string for empty input.
+     */
     public escape(unsafe?: string | null): string {
         if (!unsafe) return "";
         return unsafe
@@ -1350,10 +1658,25 @@ export class CwServer implements ICwServer {
             .replace(/\n/gi, "<br/>");
     }
 
+    /**
+     * Resolves $root/ and $public/ placeholders in a path and optionally checks that the resulting file
+     * exists. Throws an Error when it does not exist.
+     *
+     * @param path Path possibly containing placeholders.
+     * @param noCheck When true, skip the existence check.
+     * @returns The resolved path, or the original path if it has no placeholder.
+     */
     public formatPath(path: string, noCheck?: boolean): string {
         return _formatPath(this, path, noCheck);
     }
 
+    /**
+     * Encrypts a string into a URI-safe bundle token using the server encryption key. Throws an Error for
+     * an empty string.
+     *
+     * @param str String to encode into a bundle.
+     * @returns The encrypted URI-safe bundle string.
+     */
     public createBundle(str: string): string {
         if (!str)
             throw new Error("No string found to create bundle...");
@@ -1363,6 +1686,12 @@ export class CwServer implements ICwServer {
         );
     }
 
+    /**
+     * Registers a MIME type for a file extension.
+     *
+     * @param extension File extension.
+     * @param val MIME type value.
+     */
     public addMimeType(extension: string, val: string): void {
         return _mimeType.add(extension, val);
     }
@@ -1378,6 +1707,15 @@ export interface IAppUtility {
     readonly initAsync: () => Promise<IApplication>;
 }
 
+/**
+ * Creates the single server instance and controller and returns a utility object to start the
+ * application. Throws an Error if the server was already initialized.
+ *
+ * @param appRoot Application root directory path.
+ * @param wwwName Name of the public directory under the app root.
+ * @returns Utility exposing the server, controller, logger, port, public name, socket path and the async init
+ *   function.
+ */
 export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility {
     if (AppView.isInitilized) {
         throw new Error("Server instance can initilize 1 time...");
@@ -1429,6 +1767,13 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
         _server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false
     );
 
+    /**
+     * Builds and configures the application: registers logging and context cleanup events, virtual
+     * directory support, bundler, views, error handling and the main request handler, then marks the
+     * server initialized. Throws if already initialized.
+     *
+     * @returns Promise resolving to the configured application.
+     */
     async function initializeAsync(): Promise<IApplication> {
 
         if (_server.isInitialized) {
@@ -1503,6 +1848,16 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
             const virtualRoute = `${route.replace(/\/?$/, "/")}*`;
 
+            /**
+             * Creates a context for a virtual directory request, checks the context is valid and the target file
+             * exists (404 otherwise), then runs the given handler.
+             *
+             * @param req Incoming request.
+             * @param res Outgoing response.
+             * @param next Next handler callback.
+             * @param handler Function invoked with the context when the file exists.
+             * @returns Promise that resolves when handling completes.
+             */
             const processHandler = async (
                 req: IRequest,
                 res: IResponse,
@@ -1684,11 +2039,41 @@ export function initilizeServer(appRoot: string, wwwName?: string): IAppUtility 
 
     return {
         initAsync: initializeAsync,
+        /**
+         * Gets the public directory name of the server.
+         *
+         * @returns The public directory name.
+         */
         get public() { return _server.public; },
+        /**
+         * Gets the listener port of the server.
+         *
+         * @returns The port number or string.
+         */
         get port() { return _server.port; },
+        /**
+         * Gets the server logger.
+         *
+         * @returns The logger instance.
+         */
         get log() { return _server.log; },
+        /**
+         * Gets the configured socket path as a string.
+         *
+         * @returns The socket path string.
+         */
         get socketPath() { return toString(_server.config.socketPath); },
+        /**
+         * Gets the server instance.
+         *
+         * @returns The server instance.
+         */
         get server() { return _server; },
+        /**
+         * Gets the request controller.
+         *
+         * @returns The controller instance.
+         */
         get controller() { return _controller; }
     };
 }

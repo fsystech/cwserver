@@ -79,6 +79,10 @@ var ContentType;
     ContentType[ContentType["UNKNOWN"] = -1] = "UNKNOWN";
 })(ContentType || (ContentType = {}));
 class Bundel {
+    /**
+     * Lazily initialises the static in-memory bundle cache and file-info cache handler. Does nothing if
+     * already initialised.
+     */
     static init() {
         if (this.cache)
             return;
@@ -90,11 +94,23 @@ Bundel.cache = null;
 Bundel.fi = null;
 Bundel.init();
 class Bundlew {
+    /**
+     * Maps a bundle content type to the Content-Type header value sent in the response.
+     *
+     * @param ctEnum Bundle content type enum value.
+     * @returns The JavaScript MIME type with utf-8 charset for JS, otherwise text/css.
+     */
     static getResponseContentType(ctEnum) {
         if (ctEnum === ContentType.JS)
             return "application/x-javascript; charset=utf-8";
         return "text/css";
     }
+    /**
+     * Converts a content-type query string into the internal ContentType enum.
+     *
+     * @param ct MIME type string such as text/javascript or text/css (case-insensitive).
+     * @returns ContentType.JS or ContentType.CSS, or ContentType.UNKNOWN for any other value.
+     */
     static getContentType(ct) {
         switch (ct.toLowerCase()) {
             case "text/javascript": return ContentType.JS;
@@ -102,6 +118,17 @@ class Bundlew {
         }
         return ContentType.UNKNOWN;
     }
+    /**
+     * Builds the cache file name for a bundle from its sanitised cache key and the MD5 of the file list,
+     * and resolves it under the configured bundler temp path.
+     *
+     * @param server Server instance providing the bundler temp path configuration.
+     * @param str Decrypted comma-separated list of bundle files, hashed into the file name.
+     * @param ctEnum Bundle content type, selecting the .js.cache or .css.cache extension.
+     * @param cacheKey Client-supplied cache key; characters illegal in file names are stripped.
+     * @returns Object with memCacheKey (the cache file name, also used as the in-memory key) and cachpath (the
+     *   absolute cache file path).
+     */
     static getCachePath(server, str, ctEnum, cacheKey) {
         let fileName = `${cacheKey.replace(/[/\\?%*:|"<>]/g, "")}_${encryption_1.Encryption.toMd5(str)}`;
         if (ctEnum === ContentType.JS) {
@@ -115,6 +142,17 @@ class Bundlew {
             cachpath: _path.join(server.config.bundler.tempPath, fileName)
         };
     }
+    /**
+     * Resolves a single bundle entry to its absolute path and modification info. Handles the '|__owner__'
+     * suffix, default $root/$public prefix and $virtual paths; throws if the file does not exist or the
+     * virtual path is unknown.
+     *
+     * @param server Server instance used to resolve virtual paths and format paths.
+     * @param file Bundle entry, optionally with a '|__owner__' suffix and a $-prefixed root alias.
+     * @param lchangeTime Last known change time in milliseconds; 0 or omitted forces the file to be treated as changed.
+     * @returns Promise resolving to the file info: normalised name, absolute path, mtime, whether it changed since
+     *   lchangeTime, and the owner flag.
+     */
     static getFileInfoAsync(server, file, lchangeTime) {
         return __awaiter(this, void 0, void 0, function* () {
             let fname = file;
@@ -158,6 +196,17 @@ class Bundlew {
             };
         });
     }
+    /**
+     * Resolves info for every file in a comma-separated bundle list in parallel. Returns an empty list
+     * when a cache file exists and revalidation is disabled.
+     *
+     * @param server Server instance providing bundler configuration and path resolution.
+     * @param str Comma-separated list of bundle files.
+     * @param lastChangeTime Client's last known modification time in milliseconds, if any.
+     * @param hasCacheFile Whether a cache file already exists for this bundle.
+     * @returns Promise resolving to an array of file info objects, one per bundle entry (empty when revalidation is
+     *   skipped).
+     */
     static getBundleInfoAsync(server, str, lastChangeTime, hasCacheFile) {
         return __awaiter(this, void 0, void 0, function* () {
             if (hasCacheFile && !server.config.bundler.reValidate) {
@@ -170,6 +219,15 @@ class Bundlew {
             })));
         });
     }
+    /**
+     * Reads one bundle file and returns its buffers, prefixed with a file name comment. For owner files it
+     * adds the copyright header and, unless the file is minified, strips comments and blank lines.
+     *
+     * @param ctx Request context; reading is skipped if it has been disposed.
+     * @param inf Info of the file to read.
+     * @param copyBuff Pre-encoded copyright text inserted before owner files.
+     * @returns Promise resolving to the array of buffers for this file, or null if the context was disposed.
+     */
     static _readFileAsync(ctx, inf, copyBuff) {
         return __awaiter(this, void 0, void 0, function* () {
             if (ctx.isDisposed)
@@ -190,6 +248,15 @@ class Bundlew {
             return result;
         });
     }
+    /**
+     * Reads all bundle files in parallel and concatenates them into a single buffer array, preceded by a
+     * generated header listing the files and the generation time.
+     *
+     * @param ctx Request context; the result is discarded if it has been disposed.
+     * @param files Info of the files to include, in output order.
+     * @param copyright Copyright text inserted before owner files.
+     * @returns Promise resolving to the combined buffer array, or null if the context was disposed.
+     */
     static readBufferAsync(ctx, files, copyright) {
         return __awaiter(this, void 0, void 0, function* () {
             const out = new app_static_1.BufferArray();
@@ -212,6 +279,15 @@ class Bundlew {
             return out;
         });
     }
+    /**
+     * Decrypts the encrypted file list from the request and strips line breaks and whitespace. Responds
+     * with 404 when decryption yields an empty string.
+     *
+     * @param server Server instance providing the encryption service.
+     * @param ctx Request context used to send the 404.
+     * @param str Encrypted, URI-encoded file list from the query string.
+     * @returns The cleaned comma-separated file list, or undefined if the path could not be decrypted.
+     */
     static decryptFilePath(server, ctx, str) {
         str = server.encryption.decryptUri(str);
         if (str.length === 0) {
@@ -219,6 +295,14 @@ class Bundlew {
         }
         return str.replace(/\r\n/gi, "").replace(/\s+/g, "");
     }
+    /**
+     * Builds the bundle in memory and writes it to the response without a server-side file cache. Handles
+     * 304 responses from If-Modified-Since, optional gzip compression, and forwards errors to the context.
+     *
+     * @param server Server instance providing configuration and encryption.
+     * @param ctx Request context whose query supplies the content type (ct) and encrypted file list (g).
+     * @param isGzip Whether the client accepts gzip encoding.
+     */
     static createMemmoryAsync(server, ctx, isGzip) {
         return __awaiter(this, void 0, void 0, function* () {
             const ct = ctx.req.query.ct;
@@ -266,6 +350,15 @@ class Bundlew {
             }
         });
     }
+    /**
+     * Sends a cached bundle from memory, replying 304 when the ETag or Last-Modified validators match.
+     * Otherwise writes cache headers and the (gzip-compressed when enabled) data with an x-served-from
+     * header of mem-cache.
+     *
+     * @param ctx Request context to respond to.
+     * @param cte Bundle content type.
+     * @param dataInfo Cached bundle data, size and last change time.
+     */
     static _sendFromMemCache(ctx, cte, dataInfo) {
         const etag = dataInfo.cfileSize !== 0 ? http_cache_1.HttpCache.getEtag(dataInfo.lastChangeTime, dataInfo.cfileSize) : undefined;
         const cngHander = http_cache_1.HttpCache.getChangedHeader(ctx.req.headers);
@@ -299,6 +392,14 @@ class Bundlew {
         }
         return ctx.res.end(dataInfo.bundleData), ctx.next(200);
     }
+    /**
+     * Loads a bundle cache file into the in-memory cache unless an entry for the key already exists.
+     *
+     * @param cacheKey Key under which the bundle is stored in memory.
+     * @param cachePath Path of the cache file to read.
+     * @param lastChangeTime Modification time stored with the cache entry.
+     * @param size Cache file size in bytes stored with the entry.
+     */
     static _holdCacheAsync(cacheKey, cachePath, lastChangeTime, size) {
         return __awaiter(this, void 0, void 0, function* () {
             if (Bundel.cache.has(cacheKey))
@@ -311,6 +412,15 @@ class Bundlew {
             });
         });
     }
+    /**
+     * Serves a bundle using the on-disk (and optionally in-memory) cache. Builds and writes the cache file
+     * when missing or changed, handles ETag/304 validation, serves gzip data, and forwards errors to the
+     * context.
+     *
+     * @param server Server instance providing configuration and encryption.
+     * @param ctx Request context whose query supplies the cache key (ck), content type (ct) and encrypted file list
+     *   (g).
+     */
     static createServerFileCacheAsync(server, ctx) {
         return __awaiter(this, void 0, void 0, function* () {
             const cacheKey = ctx.req.query.ck;
@@ -452,6 +562,14 @@ class Bundlew {
 // tslint:disable-next-line: variable-name
 exports.__moduleName = "Bundler";
 class Bundler {
+    /**
+     * Registers the bundler route on the controller. Requests are served via the in-memory builder when
+     * gzip is unsupported or file caching is disabled, otherwise via the file cache.
+     *
+     * @param app Application instance (unused).
+     * @param controller Controller on which the bundler GET route is registered.
+     * @param server Server instance providing the bundler configuration.
+     */
     static Init(app, controller, server) {
         controller.get(server.config.bundler.route, (ctx) => __awaiter(this, void 0, void 0, function* () {
             const isGzip = http_cache_1.HttpCache.isAcceptedEncoding(ctx.req.headers, "gzip");
@@ -465,6 +583,11 @@ class Bundler {
     }
 }
 exports.Bundler = Bundler;
+/**
+ * Returns the fixed comment header placed at the top of generated bundles.
+ *
+ * @returns The header text with copyright and file list introduction.
+ */
 function _getInfo() {
     return '// Cw "Combiner"\r\n// Copyright (c) 2022 FSys Tech Ltd.\r\n// Email: mssclang@outlook.com\r\n\r\n// This "Combiner" contains the following files:\r\n';
 }

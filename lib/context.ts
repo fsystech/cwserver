@@ -306,6 +306,11 @@ export interface IContext {
 
 export class Context implements IContext {
     private _isDisposed: boolean;
+    /**
+     * Indicates whether this context has been disposed.
+     *
+     * @returns True if dispose has been called.
+     */
     public get isDisposed(): boolean {
         return this._isDisposed;
     }
@@ -314,26 +319,52 @@ export class Context implements IContext {
     public errorCode: number;
     private _res: IResponse;
     private _req: IRequest;
+    /**
+     * Gets the response object for this context.
+     *
+     * @returns The response.
+     */
     public get res(): IResponse {
         return this._res;
     }
+    /**
+     * Gets the request object for this context.
+     *
+     * @returns The request.
+     */
     public get req(): IRequest {
         return this._req;
     }
     public path: string;
     public extension: string;
     public root: string;
+    /**
+     * Gets the session of the underlying request.
+     *
+     * @returns The current session.
+     */
     public get session(): ISession {
         return this._req.session;
     }
     public servedFrom?: string;
     private _server: ICwServer;
+    /**
+     * Gets the server instance that owns this context.
+     *
+     * @returns The server.
+     */
     public get server(): ICwServer {
         return this._server;
     }
 
     private _next?: CtxNext;
 
+    /**
+     * Gets the callback that continues request processing; returns a no-op function if the context is
+     * disposed or no callback was set.
+     *
+     * @returns The next handler function.
+     */
     public get next(): CtxNext {
         if (!this._isDisposed && this._next) return this._next;
         return (code?: number, transfer?: boolean): void => {
@@ -342,10 +373,23 @@ export class Context implements IContext {
         };
     }
 
+    /**
+     * Sets the callback that continues request processing.
+     *
+     * @param val The next handler.
+     */
     public set next(val: CtxNext) {
         this._next = val;
     }
 
+    /**
+     * Creates a context bound to a server, request and response, with empty path, root, extension and
+     * error state.
+     *
+     * @param server Owning server instance.
+     * @param req Incoming request.
+     * @param res Outgoing response.
+     */
     constructor(
         server: ICwServer,
         req: IRequest,
@@ -357,12 +401,23 @@ export class Context implements IContext {
         this.extension = ""; this.errorPage = ""; this.errorCode = 0;
     }
 
+    /**
+     * Records an error for this context on the server; does nothing if the context is disposed.
+     *
+     * @param err The error to record.
+     */
     public addError(err: NodeJS.ErrnoException | Error): void {
         if (!this._isDisposed) {
             this._server.addError(this, err);
         }
     }
 
+    /**
+     * Records the error on the server and transfers the request to the 500 error handling; does nothing if
+     * disposed.
+     *
+     * @param err The error to record and handle.
+     */
     public transferError(err: NodeJS.ErrnoException | Error): void {
         if (!this._isDisposed) {
             this._server.addError(this, err);
@@ -370,6 +425,13 @@ export class Context implements IContext {
         }
     }
 
+    /**
+     * If the context is live and headers have not been sent, transfers the request on error, otherwise
+     * calls next, transferring any error it throws.
+     *
+     * @param err Error from a previous operation, if any.
+     * @param next Callback to run when there is no error.
+     */
     public handleError(err: NodeJS.ErrnoException | Error | null | undefined, next: () => void): void {
         if (!this._isDisposed && !this._res.headersSent) {
             if (Util.isError(err)) {
@@ -384,6 +446,12 @@ export class Context implements IContext {
         // Nothing to do, context destroyed or response header already been sent
     }
 
+    /**
+     * Sends the body as a JSON response, compressed with the encoding the client accepts; does nothing if
+     * disposed.
+     *
+     * @param body Object to serialize as JSON.
+     */
     public json(body: Record<string, any>): void {
         if (this._isDisposed)
             return;
@@ -393,24 +461,46 @@ export class Context implements IContext {
         );
     }
 
+    /**
+     * Sends a 302 redirect to the given URL; does nothing if disposed.
+     *
+     * @param url Target URL.
+     * @param force If true, prevents caching of the redirect.
+     */
     public redirect(url: string, force?: boolean): void {
         if (!this._isDisposed) {
             this._res.status(302).redirect(url, force);
         }
     }
 
+    /**
+     * Writes a chunk to the response stream without ending it; does nothing if disposed.
+     *
+     * @param chunk Data to write.
+     */
     public write(chunk: Buffer | string | number | boolean | { [key: string]: any }): void {
         if (!this._isDisposed) {
             return this._res.write(chunk), void 0;
         }
     }
 
+    /**
+     * Transfers the request to another path or error status handled by the server; does nothing if
+     * disposed.
+     *
+     * @param path Target path, or numeric status code.
+     */
     public transferRequest(path: string | number): void {
         if (!this._isDisposed) {
             return this._server.transferRequest(this, path);
         }
     }
 
+    /**
+     * Expires the session cookie and clears the session on the server; does nothing if disposed.
+     *
+     * @returns This context, for chaining.
+     */
     public signOut(): IContext {
 
         if (!this._isDisposed) {
@@ -425,6 +515,14 @@ export class Context implements IContext {
         return this;
     }
 
+    /**
+     * Creates a session for the user on the server; does nothing if disposed.
+     *
+     * @param loginId User login identifier.
+     * @param roleId User role identifier.
+     * @param userData Additional data to store in the session.
+     * @returns This context, for chaining.
+     */
     public setSession(loginId: string, roleId: string, userData: any): IContext {
 
         if (!this._isDisposed) {
@@ -437,6 +535,12 @@ export class Context implements IContext {
         return this;
     }
 
+    /**
+     * Disposes the context: marks it disposed, disposes the response and request and clears all
+     * references. Safe to call repeatedly.
+     *
+     * @returns The request id if disposed now, or undefined if it was already disposed.
+     */
     public dispose(): string | void {
         if (this._isDisposed)
             return;
@@ -464,10 +568,18 @@ export class Context implements IContext {
 class ContextManager {
     private _contexts: Map<string, IContext>;
 
+    /**
+     * Creates the manager with an empty context map.
+     */
     constructor() {
         this._contexts = new Map();
     }
 
+    /**
+     * Disposes the context and removes it from the registry by its request id.
+     *
+     * @param ctx The context to dispose.
+     */
     public disposeContext(ctx: IContext): void {
         const reqId = ctx.dispose();
 
@@ -477,10 +589,21 @@ class ContextManager {
 
     }
 
+    /**
+     * Looks up a registered context by request id.
+     *
+     * @param id Request id.
+     * @returns The matching context, or undefined if none.
+     */
     public getMyContext(id: string): IContext | undefined {
         return this._contexts.get(id);
     }
 
+    /**
+     * Disposes and unregisters the context for the given request id, if present.
+     *
+     * @param id Request id.
+     */
     public removeContext(id: string): void {
         const ctx = this._contexts.get(id);
 
@@ -489,6 +612,14 @@ class ContextManager {
         }
     }
 
+    /**
+     * Gets the context for the request id, creating and registering a new one if none exists.
+     *
+     * @param server Owning server.
+     * @param req Incoming request.
+     * @param res Outgoing response.
+     * @returns The existing or newly created context.
+     */
     public getContext(server: ICwServer, req: IRequest, res: IResponse): IContext {
         let ctx: IContext = this._contexts.get(req.id);
 
@@ -504,6 +635,11 @@ class ContextManager {
 class ContextManagerStatic {
     private static _instance: ContextManager = null;
 
+    /**
+     * Returns the singleton ContextManager, creating it on first call.
+     *
+     * @returns The shared ContextManager.
+     */
     public static getInstance(): ContextManager {
         
         if (this._instance === null) {

@@ -86,9 +86,24 @@ const context_1 = require("./context");
 const session_1 = require("./session");
 const default_headers_1 = __importDefault(require("./default-headers"));
 const app_bundler_1 = require("./app-bundler");
+/**
+ * Type guard that checks a value is neither null nor undefined.
+ *
+ * @param a Value to test.
+ * @returns True when the value is defined, narrowing its type to T.
+ */
 function isDefined(a) {
     return a !== null && a !== undefined;
 }
+/**
+ * Converts a maxAge unit code and amount into milliseconds, recursing from minutes up to hours, days
+ * and 30-day months. Throws an Error for an unsupported unit.
+ *
+ * @param type Upper-case unit code: M (minute), H (hour), D (day) or MM (month).
+ * @param add Number of units to convert.
+ * @param maxAge Original maxAge string, used only in the error message.
+ * @returns Duration in milliseconds.
+ */
 function getEpoch(type, add, maxAge) {
     switch (type) {
         case "M": return (add * 60 * 1000); // Minute
@@ -98,6 +113,13 @@ function getEpoch(type, add, maxAge) {
         default: throw new Error(`Invalid maxAage format ${maxAge}`);
     }
 }
+/**
+ * Parses a maxAge string such as 30D, 1H or 5M into milliseconds. Throws an Error when the value is
+ * not a string or does not match the digits-plus-unit format.
+ *
+ * @param maxAge Max-age text made of a number followed by a unit (M, H, D or MM).
+ * @returns Duration in milliseconds.
+ */
 function parseMaxAge(maxAge) {
     if (typeof maxAge !== "string") {
         throw new Error("Invalid maxAge...");
@@ -110,6 +132,14 @@ function parseMaxAge(maxAge) {
     return getEpoch(type.toUpperCase(), Number(value), maxAge);
 }
 const _formatPath = (() => {
+    /**
+     * Resolves a reserved path key used in $key/ path placeholders to a server directory. Throws an Error
+     * for unknown keys.
+     *
+     * @param server Server instance providing the root and public directory values.
+     * @param key Placeholder key, either root or public.
+     * @returns The server root path for root, or the public directory name for public.
+     */
     const exportPath = (server, key) => {
         switch (key) {
             case "root":
@@ -135,30 +165,75 @@ const _formatPath = (() => {
     };
 })();
 class ServerEncryption {
+    /**
+     * Creates an encryption helper bound to the given key and IV information.
+     *
+     * @param inf Crypto key and IV information used for all operations.
+     */
     constructor(inf) {
         this.cryptoInfo = inf;
     }
+    /**
+     * Encrypts plain text using the configured crypto info.
+     *
+     * @param plainText Text to encrypt.
+     * @returns The encrypted text.
+     */
     encrypt(plainText) {
         return encryption_1.Encryption.encrypt(plainText, this.cryptoInfo);
     }
+    /**
+     * Decrypts text previously produced by encrypt using the configured crypto info.
+     *
+     * @param encryptedText Encrypted text to decrypt.
+     * @returns The decrypted plain text.
+     */
     decrypt(encryptedText) {
         return encryption_1.Encryption.decrypt(encryptedText, this.cryptoInfo);
     }
+    /**
+     * Encrypts plain text and returns the result hex encoded.
+     *
+     * @param plainText Text to encrypt.
+     * @returns The encrypted value as a hex string.
+     */
     encryptToHex(plainText) {
         return encryption_1.Encryption.encryptToHex(plainText, this.cryptoInfo);
     }
+    /**
+     * Decrypts a hex encoded encrypted value back to plain text.
+     *
+     * @param encryptedText Hex encoded encrypted text.
+     * @returns The decrypted plain text.
+     */
     decryptFromHex(encryptedText) {
         return encryption_1.Encryption.decryptFromHex(encryptedText, this.cryptoInfo);
     }
+    /**
+     * Encrypts plain text into a URI-safe encrypted string.
+     *
+     * @param plainText Text to encrypt.
+     * @returns The encrypted URI-safe string.
+     */
     encryptUri(plainText) {
         return encryption_1.Encryption.encryptUri(plainText, this.cryptoInfo);
     }
+    /**
+     * Decrypts a URI-safe encrypted string produced by encryptUri.
+     *
+     * @param encryptedText URI-safe encrypted text.
+     * @returns The decrypted plain text.
+     */
     decryptUri(encryptedText) {
         return encryption_1.Encryption.decryptUri(encryptedText, this.cryptoInfo);
     }
 }
 exports.ServerEncryption = ServerEncryption;
 class ServerConfig {
+    /**
+     * Creates a server configuration populated with defaults such as app name, session cookie, host info
+     * on port 8080, static file and bundler settings and a 30 day cache max age.
+     */
     constructor() {
         this.Author = "FSys Tech Ltd.";
         this.appName = "Cw Server";
@@ -218,6 +293,13 @@ class ServerConfig {
 exports.ServerConfig = ServerConfig;
 // prevent session hijacking
 class SessionSecurity {
+    /**
+     * Returns the first part of an IP address (everything before the last dot), used to bind a session to
+     * a client network. Falls back to 127.0.0 when no part can be derived.
+     *
+     * @param ip Remote IP address of the request.
+     * @returns The IP address without its last octet.
+     */
     static getRemoteAddress(ip) {
         let ipPart = ip.substring(0, ip.lastIndexOf('.'));
         if (!ipPart) {
@@ -226,10 +308,23 @@ class SessionSecurity {
         }
         return ipPart;
     }
+    /**
+     * Stamps the session object with the client's IP part and serializes it to JSON.
+     *
+     * @param req Current request, whose IP is recorded in the session.
+     * @param sessionObj Session data object; its ipPart property is set by this call.
+     * @returns JSON string of the session object.
+     */
     static createSession(req, sessionObj) {
         sessionObj.ipPart = this.getRemoteAddress(req.ip);
         return app_util_1.Util.JSON.stringify(sessionObj);
     }
+    /**
+     * Checks that an authenticated session belongs to the same client network and clears its authenticated
+     * flag if the stored IP part is missing or differs, to prevent session hijacking.
+     *
+     * @param req Request whose session is validated and possibly modified.
+     */
     static isValidSession(req) {
         if (!req.session.isAuthenticated)
             return;
@@ -242,33 +337,87 @@ class SessionSecurity {
 }
 exports.SessionSecurity = SessionSecurity;
 class CwServer {
+    /**
+     * Gets the framework version.
+     *
+     * @returns The application version string.
+     */
     get version() {
         return server_core_1.appVersion;
     }
+    /**
+     * Gets whether the server has finished initialization.
+     *
+     * @returns True once init has been called.
+     */
     get isInitialized() {
         return this._isInitialized;
     }
+    /**
+     * Gets the loaded server configuration.
+     *
+     * @returns The server configuration object.
+     */
     get config() {
         return this._config;
     }
+    /**
+     * Gets the public (www) directory name.
+     *
+     * @returns The public directory name.
+     */
     get public() {
         return this._public;
     }
+    /**
+     * Gets the server logger.
+     *
+     * @returns The logger instance.
+     */
     get log() {
         return this._log;
     }
+    /**
+     * Gets the port the server listens on.
+     *
+     * @returns The listener port number or string.
+     */
     get port() {
         return this._port;
     }
+    /**
+     * Gets the database modules loaded from configuration, keyed by module name.
+     *
+     * @returns Record of database instances by module name.
+     */
     get db() {
         return this._db;
     }
+    /**
+     * Gets the server encryption helper.
+     *
+     * @returns The current server encryption instance.
+     */
     get encryption() {
         return this._encryption;
     }
+    /**
+     * Gets the built-in default error page paths keyed by status code.
+     *
+     * @returns Record mapping status codes to error page file paths.
+     */
     get errorPage() {
         return this._errorPage;
     }
+    /**
+     * Creates the server: validates the app root and public directory name, loads and validates the app
+     * config file, applies configuration, initializes databases and error pages, and prepares temp
+     * directories. Throws an Error if arguments are missing, the config file is absent or invalid, or host
+     * root does not match.
+     *
+     * @param appRoot Application root directory path.
+     * @param wwwName Name of the public directory under the app root; required.
+     */
     constructor(appRoot, wwwName) {
         this._isInitialized = false;
         this._port = 0;
@@ -345,9 +494,21 @@ class CwServer {
             this.mapPath(this._config.staticFile.tempPath);
         this._log = new logger_1.ShadowLogger();
     }
+    /**
+     * Creates the context object made available to view templates; the base implementation returns an
+     * empty object.
+     *
+     * @returns A new empty object.
+     */
     createVimContext() {
         return {};
     }
+    /**
+     * Replaces the server encryption helper with the supplied one, or with a new one built from the
+     * configured encryption key when none is given.
+     *
+     * @param serverEnc Optional custom encryption implementation.
+     */
     updateEncryption(serverEnc) {
         this._encryption = null;
         if (serverEnc) {
@@ -357,30 +518,74 @@ class CwServer {
             this._encryption = new ServerEncryption(this._config.encryptionKey);
         }
     }
+    /**
+     * Gets the config file name, taken from the APP_CONFIG_NAME environment variable or defaulting to
+     * app.config.json.
+     *
+     * @returns The config file name.
+     */
     getAppConfigName() {
         if (process.env.APP_CONFIG_NAME) {
             return process.env.APP_CONFIG_NAME;
         }
         return "app.config.json";
     }
+    /**
+     * Hook that decides whether a request context may be processed; the base implementation accepts every
+     * context.
+     *
+     * @param ctx Request context to check.
+     * @returns True when the context is valid.
+     */
     isValidContext(ctx) {
         return true;
     }
+    /**
+     * Gets the application root directory.
+     *
+     * @returns The root path.
+     */
     getRoot() {
         return this._root;
     }
+    /**
+     * Parses a maxAge string such as 1d or 30D into milliseconds.
+     *
+     * @param maxAge Max-age text made of a number and a unit.
+     * @returns Duration in milliseconds.
+     */
     parseMaxAge(maxAge) {
         return parseMaxAge(maxAge);
     }
+    /**
+     * Gets the full path of the public directory (root plus public name).
+     *
+     * @returns The public directory path.
+     */
     getPublic() {
         return `${this._root}/${this._public}`;
     }
+    /**
+     * Gets the name of the public directory.
+     *
+     * @returns The public directory name.
+     */
     getPublicDirName() {
         return this._public;
     }
+    /**
+     * Marks the server as initialized.
+     */
     init() {
         this._isInitialized = true;
     }
+    /**
+     * Validates and applies loaded configuration: checks encryption key, hidden directory list, listener
+     * port, session key and max age, and cache header, converting keys and max ages to their runtime
+     * forms. Throws an Error when a required setting is missing or invalid.
+     *
+     * @param config Raw configuration values loaded from the config file.
+     */
     implimentConfig(config) {
         var _a;
         if (typeof this._config.bundler.reValidate !== "boolean") {
@@ -421,6 +626,10 @@ class CwServer {
         cacheHeader.maxAge =
             parseMaxAge(config.cacheHeader.maxAge);
     }
+    /**
+     * Creates the server logger, disposing any previous one. Uses a file/console Logger in debug mode and
+     * a no-op ShadowLogger otherwise.
+     */
     createLogger() {
         this._userInteractive = process.env.IISNODE_VERSION || process.env.PORT ? false : true;
         if (typeof (this._log.dispose) === "function") {
@@ -433,6 +642,11 @@ class CwServer {
             this._log = new logger_1.Logger(`./log/`, this._public, void 0, this._userInteractive, this._config.isDebug);
         }
     }
+    /**
+     * Initializes configured database modules, validates and normalizes the errorPage settings (merging
+     * defaults for missing codes) and resolves view paths. Throws an Error on invalid database, module or
+     * error page configuration.
+     */
     initilize() {
         const database = this._config.database;
         if (isDefined(database)) {
@@ -480,9 +694,23 @@ class CwServer {
         }
         this._config.views = this._config.views.map(path => this.formatPath(path));
     }
+    /**
+     * Gets the copyright header line for generated output.
+     *
+     * @returns Copyright comment text.
+     */
     copyright() {
         return '//\tCopyright (c) 2022 FSys Tech Ltd.\r\n';
     }
+    /**
+     * Creates the request context for a request/response pair and sets its path, root, next callback and
+     * file extension.
+     *
+     * @param req Incoming request.
+     * @param res Outgoing response.
+     * @param next Next handler callback.
+     * @returns The new request context.
+     */
     createContext(req, res, next) {
         const context = context_1._ctxManager.getContext(this, req, res);
         context.path = req.path;
@@ -491,6 +719,12 @@ class CwServer {
         context.extension = app_util_1.Util.getExtension(context.path) || "";
         return context;
     }
+    /**
+     * Sets default security headers on the response, including a timestamp, configured default headers,
+     * frame-ancestors policy and, when the session is secure, strict transport security and expect-ct.
+     *
+     * @param res Response to add headers to.
+     */
     setDefaultProtectionHeader(res) {
         res.setHeader("x-timestamp", Date.now());
         const headers = default_headers_1.default.getHeaders();
@@ -508,6 +742,14 @@ class CwServer {
             }
         }
     }
+    /**
+     * Reads the session cookie, decrypts it and parses it into a session object. Returns an empty session
+     * when the cookie is missing or cannot be decrypted; throws if no session cookie name is configured.
+     *
+     * @param headers Incoming HTTP headers of the request.
+     * @param cook Raw cookie value or already parsed cookie collection.
+     * @returns The parsed session, or a new empty session.
+     */
     parseSession(headers, cook) {
         if (!this._config.session.cookie ||
             this._config.session.cookie.length === 0) {
@@ -524,9 +766,24 @@ class CwServer {
         }
         return session.parse(str);
     }
+    /**
+     * Hook called when a session is cleared; the base implementation does nothing.
+     *
+     * @param ctx Request context whose session is being cleared.
+     */
     onClearSession(ctx) {
         // nothing to do
     }
+    /**
+     * Creates an encrypted session token containing login id, role id and user data and sets it as an
+     * httpOnly cookie on the response.
+     *
+     * @param ctx Request context providing request and response.
+     * @param loginId Login identifier of the user.
+     * @param roleId Role identifier of the user.
+     * @param userData Additional user data stored in the session.
+     * @returns Always true.
+     */
     setSession(ctx, loginId, roleId, userData) {
         const token = encryption_1.Encryption.encryptToHex(SessionSecurity.createSession(ctx.req, {
             loginId, roleId, userData
@@ -538,6 +795,13 @@ class CwServer {
         });
         return true;
     }
+    /**
+     * Sends the context's error as a 500 response, showing sanitized error details in debug mode and a
+     * generic message otherwise.
+     *
+     * @param ctx Request context that may hold an error.
+     * @returns True if an error was sent, false when the context has no error.
+     */
     passError(ctx) {
         if (!ctx.error) {
             return false;
@@ -557,6 +821,14 @@ class CwServer {
             .send(`<pre>${message}</pre>`);
         return true;
     }
+    /**
+     * Finds the error page path for an HTTP error status code from configuration or the built-in defaults.
+     * Throws an Error for non-error codes or when no page is found.
+     *
+     * @param statusCode HTTP error status code.
+     * @param tryServer When true, only the built-in server error page is looked up.
+     * @returns The error page path, or undefined when tryServer is true and no built-in page exists.
+     */
     getErrorPath(statusCode, tryServer = false) {
         if (!http_status_1.HttpStatus.isErrorCode(statusCode)) {
             throw new Error(`Invalid http error status code ${statusCode}`);
@@ -573,6 +845,15 @@ class CwServer {
         }
         throw new Error(`No error page found in app.config.json->errorPage[${code}]`);
     }
+    /**
+     * Transfers processing to another path or to an error page for a status code, rendering the result.
+     * Responds with plain text for error codes on XMLHttpRequest requests, records errors, and falls back
+     * to passError when no page is available.
+     *
+     * @param ctx Request context to transfer.
+     * @param path Target path, or an HTTP status code to resolve an error page for.
+     * @param status Optional response info; derived from path when omitted.
+     */
     transferRequest(ctx, path, status) {
         if (!ctx) {
             throw new Error("Invalid argument defined...");
@@ -623,9 +904,22 @@ class CwServer {
         }
         ctx.res.render(ctx, nextPath, status);
     }
+    /**
+     * Maps a path relative to the public directory to an absolute file system path.
+     *
+     * @param path Path relative to the public directory.
+     * @returns The resolved absolute path.
+     */
     mapPath(path) {
         return _path.resolve(`${this._root}/${this._public}/${path}`);
     }
+    /**
+     * Converts a file system path to a URL-style path without extension, trimming the public directory
+     * prefix or replacing the root with $root. Paths without an extension are returned unchanged.
+     *
+     * @param path File system path to convert.
+     * @returns The URL-style path.
+     */
     pathToUrl(path) {
         if (!app_util_1.Util.getExtension(path))
             return path;
@@ -641,6 +935,14 @@ class CwServer {
         index = path.lastIndexOf(".");
         return path.substring(0, index).replace(/\\/gi, "/");
     }
+    /**
+     * Appends error information to the context's error text with sanitized paths; detailed message and
+     * stack are added only in debug mode. Does nothing for disposed contexts.
+     *
+     * @param ctx Request context to record the error on.
+     * @param ex Error message or Error object.
+     * @returns The same context.
+     */
     addError(ctx, ex) {
         var _a;
         if (ctx.isDisposed)
@@ -662,6 +964,12 @@ class CwServer {
             .replace(this._nodeModuleregx, "$engine/");
         return ctx;
     }
+    /**
+     * Escapes HTML special characters and converts line breaks to br tags.
+     *
+     * @param unsafe Text to escape; may be empty.
+     * @returns The escaped string, or an empty string for empty input.
+     */
     escape(unsafe) {
         if (!unsafe)
             return "";
@@ -672,19 +980,49 @@ class CwServer {
             .replace(/\r\n/gi, "<br/>")
             .replace(/\n/gi, "<br/>");
     }
+    /**
+     * Resolves $root/ and $public/ placeholders in a path and optionally checks that the resulting file
+     * exists. Throws an Error when it does not exist.
+     *
+     * @param path Path possibly containing placeholders.
+     * @param noCheck When true, skip the existence check.
+     * @returns The resolved path, or the original path if it has no placeholder.
+     */
     formatPath(path, noCheck) {
         return _formatPath(this, path, noCheck);
     }
+    /**
+     * Encrypts a string into a URI-safe bundle token using the server encryption key. Throws an Error for
+     * an empty string.
+     *
+     * @param str String to encode into a bundle.
+     * @returns The encrypted URI-safe bundle string.
+     */
     createBundle(str) {
         if (!str)
             throw new Error("No string found to create bundle...");
         return encryption_1.Encryption.encryptUri(str, this._config.encryptionKey);
     }
+    /**
+     * Registers a MIME type for a file extension.
+     *
+     * @param extension File extension.
+     * @param val MIME type value.
+     */
     addMimeType(extension, val) {
         return http_mime_types_1._mimeType.add(extension, val);
     }
 }
 exports.CwServer = CwServer;
+/**
+ * Creates the single server instance and controller and returns a utility object to start the
+ * application. Throws an Error if the server was already initialized.
+ *
+ * @param appRoot Application root directory path.
+ * @param wwwName Name of the public directory under the app root.
+ * @returns Utility exposing the server, controller, logger, port, public name, socket path and the async init
+ *   function.
+ */
 function initilizeServer(appRoot, wwwName) {
     if (app_view_1.AppView.isInitilized) {
         throw new Error("Server instance can initilize 1 time...");
@@ -719,6 +1057,13 @@ function initilizeServer(appRoot, wwwName) {
         }
     };
     const _controller = new app_controller_1.Controller(_server.config.defaultExt && _server.config.defaultExt.length > 0 ? true : false);
+    /**
+     * Builds and configures the application: registers logging and context cleanup events, virtual
+     * directory support, bundler, views, error handling and the main request handler, then marks the
+     * server initialized. Throws if already initialized.
+     *
+     * @returns Promise resolving to the configured application.
+     */
     function initializeAsync() {
         return __awaiter(this, void 0, void 0, function* () {
             if (_server.isInitialized) {
@@ -768,6 +1113,16 @@ function initilizeServer(appRoot, wwwName) {
                     throw new Error(`You already added this virtual route ${route}`);
                 }
                 const virtualRoute = `${route.replace(/\/?$/, "/")}*`;
+                /**
+                 * Creates a context for a virtual directory request, checks the context is valid and the target file
+                 * exists (404 otherwise), then runs the given handler.
+                 *
+                 * @param req Incoming request.
+                 * @param res Outgoing response.
+                 * @param next Next handler callback.
+                 * @param handler Function invoked with the context when the file exists.
+                 * @returns Promise that resolves when handling completes.
+                 */
                 const processHandler = (req, res, next, handler) => __awaiter(this, void 0, void 0, function* () {
                     const ctx = _server.createContext(req, res, next);
                     ctx.next = (code, transfer) => {
@@ -859,11 +1214,41 @@ function initilizeServer(appRoot, wwwName) {
     app_view_1.AppView.isInitilized = true;
     return {
         initAsync: initializeAsync,
+        /**
+         * Gets the public directory name of the server.
+         *
+         * @returns The public directory name.
+         */
         get public() { return _server.public; },
+        /**
+         * Gets the listener port of the server.
+         *
+         * @returns The port number or string.
+         */
         get port() { return _server.port; },
+        /**
+         * Gets the server logger.
+         *
+         * @returns The logger instance.
+         */
         get log() { return _server.log; },
+        /**
+         * Gets the configured socket path as a string.
+         *
+         * @returns The socket path string.
+         */
         get socketPath() { return (0, app_static_1.toString)(_server.config.socketPath); },
+        /**
+         * Gets the server instance.
+         *
+         * @returns The server instance.
+         */
         get server() { return _server; },
+        /**
+         * Gets the request controller.
+         *
+         * @returns The controller instance.
+         */
         get controller() { return _controller; }
     };
 }

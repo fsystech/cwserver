@@ -63,6 +63,12 @@ const app_util_1 = require("./app-util");
 const _supportSchema = {
     "http://json-schema.org/draft-07/schema": "draft-07"
 };
+/**
+ * Reads and parses the JSON schema file synchronously. Throws if the content is not valid JSON.
+ *
+ * @param absPath Absolute path of the schema file.
+ * @returns The parsed schema object.
+ */
 function readSchemaAsync(absPath) {
     const jsonstr = _fs.readFileSync(absPath, "utf8");
     try {
@@ -72,6 +78,15 @@ function readSchemaAsync(absPath) {
         throw new Error(`Invalid schema file defined.\nPlease re-install cwserver.`);
     }
 }
+/**
+ * Checks that every config property is declared in the schema (unless additional properties are
+ * allowed) and has the declared type. Throws a descriptive error on mismatch.
+ *
+ * @param dataPath Path of the object being checked, used in error messages.
+ * @param configProperties Configuration object whose properties are checked.
+ * @param schemaProperties Schema property definitions to check against.
+ * @param additionalProperties Whether properties not in the schema are allowed.
+ */
 function propertiValidate(dataPath, configProperties, schemaProperties, additionalProperties) {
     for (const prop in configProperties) {
         const svalue = schemaProperties[prop];
@@ -92,6 +107,12 @@ function propertiValidate(dataPath, configProperties, schemaProperties, addition
         }
     }
 }
+/**
+ * Returns the default empty value for a schema type name.
+ *
+ * @param type Schema type name such as array, number, boolean, string or object.
+ * @returns An empty array, 0, false, empty string or empty object for the type, otherwise undefined.
+ */
 function fillUpType(type) {
     switch (type) {
         case "array": return [];
@@ -102,6 +123,16 @@ function fillUpType(type) {
     }
     return void 0;
 }
+/**
+ * Recursively validates a configuration object against schema properties, throwing on type, length,
+ * enum, const or missing required value violations. Fills missing optional properties with default
+ * values of their type.
+ *
+ * @param dataPath Path of the object being validated, used in error messages.
+ * @param schemaProperties Schema property definitions.
+ * @param configProperties Configuration object to validate; modified in place with defaults.
+ * @param additionalProperties Whether properties not in the schema are allowed.
+ */
 function schemaValidate(dataPath, schemaProperties, configProperties, additionalProperties) {
     // check config properties are valid
     propertiValidate(dataPath, configProperties, schemaProperties, additionalProperties);
@@ -167,6 +198,12 @@ function schemaValidate(dataPath, schemaProperties, configProperties, additional
     }
 }
 class Schema {
+    /**
+     * Validates an application config object against the bundled schema.json, filling in defaults. Throws
+     * if the schema or config is invalid or does not match.
+     *
+     * @param config Configuration object to validate; modified in place.
+     */
     static Validate(config) {
         const parent = (0, app_util_1.getAppDir)();
         const absPath = _path.resolve(`${parent}/schema.json`);

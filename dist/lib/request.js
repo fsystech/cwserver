@@ -36,6 +36,12 @@ const MOBILE_RE = /mobile/i;
  */
 const _DEFAULT_CONTENT_COMPRESSION = (_a = process.env.DEFAULT_CONTENT_COMPRESSION) !== null && _a !== void 0 ? _a : "gzip";
 class Request extends node_http_1.IncomingMessage {
+    /**
+     * Detects whether the request comes from a mobile device by testing the User-Agent header; the result
+     * is cached.
+     *
+     * @returns True if the user agent matches a mobile pattern, otherwise false.
+     */
     get isMobile() {
         if (this._isMobile !== undefined)
             return this._isMobile;
@@ -43,59 +49,120 @@ class Request extends node_http_1.IncomingMessage {
         this._isMobile = MOBILE_RE.test(userAgent);
         return this._isMobile;
     }
+    /**
+     * Indicates whether the underlying socket should be destroyed when this request is disposed.
+     *
+     * @returns True if socket cleanup is enabled, otherwise false (default).
+     */
     get cleanSocket() {
         if (this._cleanSocket === undefined)
             return false;
         return this._cleanSocket;
     }
+    /**
+     * Sets whether the socket should be cleaned up (listeners removed and destroyed) on dispose.
+     *
+     * @param val True to destroy the socket on dispose.
+     */
     set cleanSocket(val) {
         this._cleanSocket = val;
     }
+    /**
+     * Lazily parses the request URL, including the query string, and caches the result.
+     *
+     * @returns The parsed URL object with parsed query.
+     */
     get q() {
         if (this._q !== undefined)
             return this._q;
         this._q = (0, help_1.parseUrl)(this.url);
         return this._q;
     }
+    /**
+     * Lazily parses the Cookie request header into a name/value map and caches it.
+     *
+     * @returns Record of cookie names to values.
+     */
     get cookies() {
         if (this._cookies !== undefined)
             return this._cookies;
         this._cookies = (0, help_1.parseCookie)(this.headers.cookie);
         return this._cookies;
     }
+    /**
+     * Gets the session associated with this request.
+     *
+     * @returns The current session, or an empty object if none has been assigned.
+     */
     get session() {
         return this._session || Object.create({});
     }
+    /**
+     * Assigns the session for this request.
+     *
+     * @param val Session object to attach.
+     */
     set session(val) {
         this._session = val;
     }
+    /**
+     * Determines whether the client address is a loopback address (::1 or 127.0.0.1); the result is
+     * cached.
+     *
+     * @returns True if the request originates from localhost.
+     */
     get isLocal() {
         if (this._isLocal !== undefined)
             return this._isLocal;
         this._isLocal = this.ip === '::1' || this.ip === '127.0.0.1';
         return this._isLocal;
     }
+    /**
+     * Gets the decoded, sanitized pathname of the request URL; cached after first access.
+     *
+     * @returns The request path.
+     */
     get path() {
         if (this._path !== undefined)
             return this._path;
         this._path = decodeURIComponent((0, help_1.escapePath)(this.q.pathname));
         return this._path;
     }
+    /**
+     * Overrides the request path, for example when a request is internally transferred.
+     *
+     * @param val New path to use.
+     */
     set path(val) {
         this._path = val;
     }
+    /**
+     * Resolves the client IP address for the request and caches it.
+     *
+     * @returns The client IP address string.
+     */
     get ip() {
         if (this._ip !== undefined)
             return this._ip;
         this._ip = (0, help_1.getClientIp)(this);
         return this._ip;
     }
+    /**
+     * Gets a unique identifier for this request, generating a UUID on first access.
+     *
+     * @returns The request id.
+     */
     get id() {
         if (!this._id) {
             this._id = app_util_1.Util.UUID();
         }
         return this._id;
     }
+    /**
+     * Gets the parsed query string parameters of the request URL.
+     *
+     * @returns The parsed query object.
+     */
     get query() {
         return this.q.query;
     }
@@ -144,11 +211,20 @@ class Request extends node_http_1.IncomingMessage {
         // zstd not supported write now. will be implement
         return null;
     }
+    /**
+     * Enables or disables Nagle's algorithm on the request socket (TCP no-delay) if a socket exists.
+     *
+     * @param noDelay Whether to disable the delay; passed to the socket's setNoDelay.
+     */
     setSocketNoDelay(noDelay) {
         if (this.socket) {
             this.socket.setNoDelay(noDelay);
         }
     }
+    /**
+     * Clears cached per-request state (id, URL, ip, path, cookies, locality); when cleanSocket is set (or
+     * in test mode) also removes listeners and destroys the socket.
+     */
     dispose() {
         this._id = null;
         this._q = null;

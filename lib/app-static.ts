@@ -269,11 +269,24 @@ export class ResInfo implements IResInfo {
     public description: string = "ok";
 }
 
+/**
+ * Converts a value to a string, returning an empty string for falsy values.
+ *
+ * @param val Value to convert.
+ * @returns The value itself if it is a string, an empty string if falsy, otherwise its String() conversion.
+ */
 export function toString(val: any): string {
     if (!val) return "";
     return typeof (val) === "string" ? val : String(val);
 }
 
+/**
+ * Parses a value into a number, stripping commas and dollar signs from strings and accepting fractions
+ * and exponents.
+ *
+ * @param v Number or numeric string to convert.
+ * @returns The numeric value, or 0 when the input is not a valid number.
+ */
 export function toNumber(v: any): number {
     const type = typeof (v);
 
@@ -299,9 +312,22 @@ const DAYS = [
     "Mon", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 ] as const;
 
+/**
+ * Left-pads a number below 10 with a zero.
+ *
+ * @param n Number to format.
+ * @returns Two-digit string representation of the number (or the plain number string when 10 or more).
+ */
 const pad2 = (n: number): string =>
     n < 10 ? `0${n}` : `${n}`;
 
+/**
+ * Formats a timestamp as an HTTP-style date string in the form "Day, DD Mon YYYY HH:MM:SS GMT" using
+ * local date parts.
+ *
+ * @param timestamp Date or epoch milliseconds to format; defaults to the current time when omitted.
+ * @returns The formatted date string.
+ */
 export function toResponseTime(timestamp?: number | Date): string {
     const date = timestamp == null
         ? new Date()

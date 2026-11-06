@@ -83,10 +83,22 @@ const MAX_TEMPLATE_DEPTH = 32;
 const _RE_ATTACH = /#attach/i;
 const _RE_EXTENDS = /#extends/i;
 const _RE_SCRIPT = /{%|{=|<script runat="template-engine">/i;
+/**
+ * Placeholder for the template response callback; the implementation is not provided and calling it
+ * throws an Error.
+ *
+ * @param ctx Current request context.
+ * @param next Response callback that sends the rendered body.
+ * @param isCompressed Whether the output should be gzip compressed.
+ * @returns Never returns normally; it always throws "Function not implemented."
+ */
 function templateNext(ctx, next, isCompressed) {
     throw new Error("Function not implemented.");
 }
 class ParserInfo {
+    /**
+     * Creates parser state with an empty line and tag, no active tag, and the tag end flag set.
+     */
     constructor() {
         this.line = "";
         this.tag = "";
@@ -97,12 +109,25 @@ class ParserInfo {
     }
 }
 class ScriptTag {
+    /**
+     * Gets a global case-insensitive regular expression matching the script opening tag.
+     *
+     * @returns Regular expression matching the "{%" tag.
+     */
     get lre() {
         return /{%/gi;
     }
+    /**
+     * Gets a global case-insensitive regular expression matching the script closing tag.
+     *
+     * @returns Regular expression matching the "%}" tag.
+     */
     get rre() {
         return /%}/gi;
     }
+    /**
+     * Creates the script tag definition with "{%" and "%}" delimiters.
+     */
     constructor() {
         this.l = '{%';
         this.r = '%}';
@@ -110,36 +135,77 @@ class ScriptTag {
     }
 }
 class WriteTag {
+    /**
+     * Gets a global case-insensitive regular expression matching the write tag opening delimiter.
+     *
+     * @returns Regular expression matching the "{=" tag.
+     */
     get lre() {
         return /{=/gi;
     }
+    /**
+     * Gets a global case-insensitive regular expression matching the write tag closing delimiter.
+     *
+     * @returns Regular expression matching the "=}" tag.
+     */
     get rre() {
         return /=}/gi;
     }
+    /**
+     * Gets a global case-insensitive regular expression matching a complete single-line write expression.
+     *
+     * @returns Regular expression matching "{= ... =}" segments.
+     */
     get repre() {
         return /{=(.+?)=}/gi;
     }
+    /**
+     * Creates the write tag definition with "{=" and "=}" delimiters.
+     */
     constructor() {
         this.l = '{=';
         this.r = '=}';
     }
 }
 class Tag {
+    /**
+     * Creates the tag set holding the script and write tag definitions.
+     */
     constructor() {
         this.script = new ScriptTag();
         this.write = new WriteTag();
     }
 }
 class CommentTag {
+    /**
+     * Gets a regular expression matching the JavaScript-comment form of the script start tag.
+     *
+     * @returns Regular expression matching the comment-wrapped script start tag.
+     */
     get jsStart() {
         return /\/\*{%\*\//gi;
     }
+    /**
+     * Gets a regular expression matching the JavaScript-comment form of the script end tag.
+     *
+     * @returns Regular expression matching the comment-wrapped script end tag.
+     */
     get jsEnd() {
         return /\/\*%}\*\//gi;
     }
+    /**
+     * Gets a regular expression matching the HTML-comment form of the script start tag.
+     *
+     * @returns Regular expression matching the HTML comment wrapped script start tag.
+     */
     get htmlStart() {
         return /<\!--{%-->/gi;
     }
+    /**
+     * Gets a regular expression matching the HTML-comment form of the script end tag.
+     *
+     * @returns Regular expression matching the HTML comment wrapped script end tag.
+     */
     get htmlEnd() {
         return /<\!--%}-->/gi;
     }
@@ -149,6 +215,12 @@ class ScriptParser {
         this.tag = new Tag();
         this._cmnt = new CommentTag();
     }
+    /**
+     * Rewrites the current line when it contains the given opening tag, converting template text and tag
+     * content into script output statements and recording whether the tag is still open.
+     *
+     * @param parserInfo Mutable parser state holding the current line and tag; updated in place.
+     */
     startTage(parserInfo) {
         if (!parserInfo.line.includes(parserInfo.tag)) {
             if (parserInfo.isLastTag && parserInfo.isTagEnd) {
@@ -218,6 +290,12 @@ class ScriptParser {
         parserInfo.startTageName = (!parserInfo.isTagEnd ? parserInfo.tag : void 0);
         return;
     }
+    /**
+     * Rewrites the current line when it contains the closing tag of a tag opened on an earlier line,
+     * updating the parser state to show whether the tag is now closed.
+     *
+     * @param parserInfo Mutable parser state holding the current line and tag; updated in place.
+     */
     endTage(parserInfo) {
         if (parserInfo.isTagStart === false && parserInfo.isTagEnd === true)
             return;
@@ -250,11 +328,21 @@ class ScriptParser {
             parserInfo.startTageName = (!parserInfo.isTagEnd ? parserInfo.startTageName : void 0);
         }
     }
+    /**
+     * Releases the tag and comment definitions held by the parser.
+     */
     dispose() {
         this.tag = null;
         this._cmnt = null;
     }
 }
+/**
+ * Finds all "#attach" directives in a template string, trying the line ending for the current platform
+ * first.
+ *
+ * @param str Template source text.
+ * @returns Array of matched directive lines, or null if none was found.
+ */
 function ExportAttachMatch(str) {
     let match = null;
     if (_isWin) {
@@ -271,6 +359,12 @@ function ExportAttachMatch(str) {
     }
     return match;
 }
+/**
+ * Finds the "#extends" directive in a template string, trying CRLF first and then LF line endings.
+ *
+ * @param str Template source text.
+ * @returns The regular expression exec result for the directive, or null if not found.
+ */
 function ExportExtendMatch(str) {
     let match = /#extends([\s\S]+?)\r\n/gi.exec(str);
     if (!match) {
@@ -280,6 +374,14 @@ function ExportExtendMatch(str) {
 }
 const _fileInfo = new file_info_1.FileInfoCacheHandler();
 class TemplateParser {
+    /**
+     * Replaces each "#attach" directive in the template with the contents of the referenced file. Throws
+     * an Error if an attached file does not exist.
+     *
+     * @param appRoot Application root directory used to resolve attachment paths.
+     * @param str Template source text.
+     * @returns A promise resolving to the template with all attachments inlined.
+     */
     static implimentAttachment(appRoot, str) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!_RE_ATTACH.test(str))
@@ -305,6 +407,16 @@ class TemplateParser {
             return str;
         });
     }
+    /**
+     * Merges placeholder implementations from a child template into the parent body by replacing each
+     * placeholder with the matching impl-placeholder content. Throws an Error if a placeholder tag is
+     * invalid.
+     *
+     * @param match Placeholder tags found in the parent template.
+     * @param template Child template containing impl-placeholder blocks.
+     * @param body Merged body being built.
+     * @returns The body with placeholders replaced by implementations.
+     */
     static mergeTemplate(match, template, body) {
         for (const key of match) {
             const tmplArr = /<placeholder id=\"(.*)\">/gi.exec(key.trim());
@@ -326,6 +438,15 @@ class TemplateParser {
         }
         return body;
     }
+    /**
+     * Follows the chain of "#extends" directives, reading each parent template, and collects the template
+     * sources from child to root. Throws an Error if a template is missing, invalid or the extends depth
+     * is exceeded.
+     *
+     * @param appRoot Application root directory used to resolve template paths.
+     * @param str Source of the starting template.
+     * @returns A promise resolving to the template sources ordered from the child to the root parent.
+     */
     static prepareTemplate(appRoot, str) {
         return __awaiter(this, void 0, void 0, function* () {
             const templats = [];
@@ -352,6 +473,15 @@ class TemplateParser {
             throw new Error(`Template extends depth exceeded ${MAX_TEMPLATE_DEPTH}...`);
         });
     }
+    /**
+     * Resolves template inheritance by merging child templates into their parent templates through
+     * placeholders. Throws an Error if no placeholder is found in a master template.
+     *
+     * @param appRoot Application root directory used to resolve template paths.
+     * @param str Template source text.
+     * @returns A promise resolving to the fully merged template, or the input unchanged when it has no "#extends"
+     *   directive.
+     */
     static implimentTemplateExtend(appRoot, str) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!_RE_EXTENDS.test(str))
@@ -415,6 +545,13 @@ class TemplateCore {
         const result = this.compileScript(str, vimCtx);
         process.nextTick(() => next(result));
     }
+    /**
+     * Converts template text containing script and write tags into a JavaScript source string that builds
+     * the output.
+     *
+     * @param str Template source with script tags.
+     * @returns The generated script source.
+     */
     static parseScript(str) {
         str = str.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
         const script = str.split('\n');
@@ -452,12 +589,31 @@ class TemplateCore {
         out = out.replace(/__v8val \+\= '';/g, '');
         return out.replace(/^\s*$(?:\r\n?|\n)/gm, "\n");
     }
+    /**
+     * Tests whether the string contains a template engine script tag.
+     *
+     * @param str Template source text.
+     * @returns True if script tags are present, otherwise false.
+     */
     static isScript(str) {
         return _RE_SCRIPT.test(str);
     }
+    /**
+     * Tests whether the string uses "#attach" or "#extends" directives.
+     *
+     * @param str Template source text.
+     * @returns True if the string contains a template directive, otherwise false.
+     */
     static isTemplate(str) {
         return _RE_ATTACH.test(str) || _RE_EXTENDS.test(str);
     }
+    /**
+     * Tests whether the string is previously generated script output by checking the first line for the
+     * template script marker.
+     *
+     * @param str Cached template text.
+     * @returns True if the first line contains the script marker, otherwise false.
+     */
     static isScriptTemplate(str) {
         const index = str.indexOf("\n");
         if (index < 0)
@@ -486,6 +642,14 @@ class TemplateCore {
     }
 }
 exports.TemplateCore = TemplateCore;
+/**
+ * Checks whether a cache file can be used. A stale cache (when the source file differs) is deleted and
+ * dropped from the file info cache.
+ *
+ * @param filePath Path of the source template file.
+ * @param cachePath Path of the cache file.
+ * @returns A promise resolving to true if the cache file exists and is still valid, otherwise false.
+ */
 function canReadFileCache(filePath, cachePath) {
     return __awaiter(this, void 0, void 0, function* () {
         const { exists } = yield _fileInfo.existsAsync(cachePath);
@@ -499,10 +663,23 @@ function canReadFileCache(filePath, cachePath) {
         return true;
     });
 }
+/**
+ * Converts a compiler result into a cache entry holding either the compiled sandbox or the plain html.
+ *
+ * @param result Result produced by the template compiler.
+ * @returns A template entry with the sandbox function if present, otherwise the html string.
+ */
 function toEntry(result) {
     return result.sandBox ? { sandBox: result.sandBox } : { html: result.str };
 }
 class TemplateLink {
+    /**
+     * Returns a cached response function for the status code, creating it on first use. The responder
+     * sends the rendered body as html, optionally gzip compressed, with no-cache headers.
+     *
+     * @param status Response info providing the HTTP status code to send.
+     * @returns A function that writes the rendered body to the response.
+     */
     static processResponse(status) {
         let responder = this._responders.get(status.code);
         if (!responder) {
@@ -532,9 +709,23 @@ class TemplateLink {
         }
         return responder;
     }
+    /**
+     * Builds a cache map key from a path by replacing backslashes and hyphens with underscores.
+     *
+     * @param str Path to convert.
+     * @returns The normalized cache key.
+     */
     static _getCacheMape(str) {
         return str.replace(/\\/gi, "_").replace(/-/gi, "_");
     }
+    /**
+     * Reads a template file, strips a leading BOM, and runs the template compiler on it. Throws the
+     * compiler error if compilation fails.
+     *
+     * @param ctx Current request context.
+     * @param url Absolute path of the template file.
+     * @returns A promise resolving to the compiler result.
+     */
     static _readSource(ctx, url) {
         return __awaiter(this, void 0, void 0, function* () {
             const data = yield _fsp.readFile(url, "utf8");
@@ -544,6 +735,15 @@ class TemplateLink {
             return result;
         });
     }
+    /**
+     * Sends the response for a cache entry: runs its compiled sandbox function, or writes the plain html.
+     * Errors from the sandbox are passed to the context error transfer.
+     *
+     * @param ctx Current request context.
+     * @param status Response info with the status code to send.
+     * @param entry Compiled or plain template entry to respond with.
+     * @returns A promise that resolves once the response has been handled.
+     */
     static _respondAsync(ctx, status, entry) {
         return __awaiter(this, void 0, void 0, function* () {
             if (entry.sandBox) {
@@ -603,6 +803,15 @@ class TemplateLink {
             }
         });
     }
+    /**
+     * Loads a template entry from a valid cache file, or compiles the source and writes a new cache file.
+     * When full optimization is enabled the entry is also kept in memory.
+     *
+     * @param ctx Current request context.
+     * @param cacheKey Key used for the in-memory cache.
+     * @param filePath Path of the source template file.
+     * @returns A promise resolving to the template entry.
+     */
     static _loadFileCacheOrLive(ctx, cacheKey, filePath) {
         return __awaiter(this, void 0, void 0, function* () {
             const cachePath = `${filePath}.cach`;
@@ -659,6 +868,15 @@ class TemplateLink {
 TemplateLink._tw = new Map();
 TemplateLink._responders = new Map();
 class Template {
+    /**
+     * Renders a template file for a request, choosing live compile, memory cache or file cache according
+     * to the template configuration. Also sets the context served-from url.
+     *
+     * @param ctx Current request context.
+     * @param path Absolute path of the template file.
+     * @param status Optional response info; defaults to a 200 status for the path.
+     * @returns A promise that resolves when the response has been handled.
+     */
     static parse(ctx, path, status) {
         if (!status)
             status = http_status_1.HttpStatus.getResInfo(path, 200);

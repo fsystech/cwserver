@@ -34,15 +34,37 @@ export class FileDescription implements IFileDescription {
     private _url: string;
     private _exists: boolean;
     private _stats?: _fs.Stats;
+    /**
+     * Gets the resolved absolute path of the file.
+     *
+     * @returns The absolute path.
+     */
     public get url() {
         return this._url;
     }
+    /**
+     * Gets whether the file exists.
+     *
+     * @returns True if the file exists.
+     */
     public get exists() {
         return this._exists;
     }
+    /**
+     * Gets the file stats.
+     *
+     * @returns The Stats object, or null if the file does not exist.
+     */
     public get stats() {
         return this._stats;
     }
+    /**
+     * Creates a file description result.
+     *
+     * @param exists Whether the file exists.
+     * @param url Resolved file path.
+     * @param stats Optional file stats.
+     */
     constructor(exists: boolean, url: string, stats?: _fs.Stats) {
         this._exists = exists; this._url = url; this._stats = stats;
     }
@@ -79,17 +101,33 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
     private _pathCache: Map<string, FileDescription>;
     private _missCache: Map<string, FileDescription>;
 
+    /**
+     * Creates a file cache with empty hit and miss caches.
+     */
     constructor() {
         this._pathCache = new Map();
         this._missCache = new Map();
     }
 
+    /**
+     * Removes a path from both the found and not-found caches.
+     *
+     * @param path Path key to remove.
+     * @returns True if the path was in either cache.
+     */
     public rmove(path: string): boolean {
         const hit = this._pathCache.delete(path);
         const miss = this._missCache.delete(path);
         return hit || miss;
     }
 
+    /**
+     * Stores a result in the cache: found files in the main cache, missing files in a bounded not-found
+     * cache that evicts the oldest entry when full.
+     *
+     * @param path Cache key path.
+     * @param desc File description to remember.
+     */
     private _remember(path: string, desc: FileDescription): void {
         if (desc.exists) {
             this._missCache.delete(path);
@@ -107,6 +145,14 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
         this._missCache.set(path, desc);
     }
 
+    /**
+     * Gets file details, using the cache unless forced, otherwise stats the file and caches the result.
+     * Never rejects.
+     *
+     * @param path Path of the file to inspect.
+     * @param force If true, bypasses the cache and stats again.
+     * @returns A Promise resolving to a description with existence, resolved path and stats.
+     */
     public async statAsync(path: string, force?: boolean): Promise<IFileDescription> {
         if (!force) {
             const info = this._pathCache.get(path) || this._missCache.get(path);
@@ -142,6 +188,13 @@ export class FileInfoCacheHandler implements IFileInfoCacheHandler {
         this.statAsync(path, force).then(next);
     }
 
+    /**
+     * Checks whether a file exists, using the cache unless forced.
+     *
+     * @param path Path of the file to check.
+     * @param force If true, bypasses the cache.
+     * @returns A Promise resolving to an object with exists and the resolved url.
+     */
     public async existsAsync(
         path: string, force?: boolean
     ): Promise<{ exists: boolean, url: string }> {

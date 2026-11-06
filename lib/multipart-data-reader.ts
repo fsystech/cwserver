@@ -44,31 +44,61 @@ export class MultipartDataReader extends EventEmitter implements IMultipartDataR
     private _writeStream?: _fs.WriteStream;
     private _isDisposed: boolean;
 
+    /**
+     * Whether the reader aborted early because of an error.
+     *
+     * @returns True if a forced exit occurred.
+     */
     public get forceExit(): boolean {
         return this._forceExit;
     }
 
+    /**
+     * Creates a multipart part reader in its initial state.
+     */
     constructor() {
         super();
         this._isDisposed = false;
         this._forceExit = false;
     }
 
+    /**
+     * Destroys the temporary file write stream if it is still open.
+     */
     private destroy(): void {
         if (this._writeStream && !this._writeStream.destroyed) {
             destroy(this._writeStream);
         }
     }
 
+    /**
+     * Marks a forced exit and emits an 'end' event with an error built from the reason.
+     *
+     * @param reason Message of the error to emit.
+     */
     private exit(reason: string): void {
         this._forceExit = true;
         this.emit("end", new Error(reason));
     }
 
+    /**
+     * Default hook deciding whether to skip an uploaded file; it never skips. DataParser may replace it.
+     *
+     * @param fileInfo Information about the file being uploaded.
+     * @returns False, meaning the file is kept.
+     */
     public skipFile(fileInfo: IPostedFileInfo): boolean {
         return false;
     }
 
+    /**
+     * Reads one multipart part. After the header arrives it determines field or file; fields are buffered
+     * and emitted as 'field', files are streamed to a temp file and emitted as 'file'. Emits 'end' when
+     * done or with an error for missing name, filename or content type.
+     *
+     * @param stream The multipart part stream to read.
+     * @param tempDir Directory where uploaded file contents are written temporarily.
+     */
     public read(stream: PartStream, tempDir: string): void {
 
         let
@@ -167,6 +197,9 @@ export class MultipartDataReader extends EventEmitter implements IMultipartDataR
         });
     }
 
+    /**
+     * Removes all listeners, destroys the write stream and clears state. Safe to call more than once.
+     */
     public dispose(): void {
         if (this._isDisposed)
             return;
@@ -180,6 +213,14 @@ export class MultipartDataReader extends EventEmitter implements IMultipartDataR
     }
 }
 
+/**
+ * Returns the text between the first occurrence of one separator and the next occurrence of another.
+ *
+ * @param data Text to search.
+ * @param separator1 Separator marking the start.
+ * @param separator2 Separator marking the end.
+ * @returns The text between the separators, or an empty string if either is not found.
+ */
 function _extractBetween(
     data: string,
     separator1: string,

@@ -41,10 +41,21 @@ class DefaultHttpHeaders {
         "cross-origin-resource-policy": "same-origin",
     };
 
+    /**
+     * Adds or overwrites a default header sent with responses.
+     *
+     * @param key Header name.
+     * @param value Header value.
+     */
     public addHeader(key: string, value: string | number): void {
         this._headers[key] = value;
     }
 
+    /**
+     * Removes a default header if it is set.
+     *
+     * @param key Header name to remove.
+     */
     public deleteHeader(key: string): void {
         if (!this._headers[key])
             return;
@@ -52,6 +63,11 @@ class DefaultHttpHeaders {
         delete this._headers[key];
     }
 
+    /**
+     * Returns the current default headers.
+     *
+     * @returns Read-only map of header names to values.
+     */
     public getHeaders(): Readonly<HeaderType> {
         return this._headers;
     }
@@ -59,6 +75,11 @@ class DefaultHttpHeaders {
 
 class DefaultHttpHeadersStatic {
     private static _instance: DefaultHttpHeaders = null;
+    /**
+     * Returns the shared default headers instance, creating it on first use.
+     *
+     * @returns The singleton DefaultHttpHeaders instance.
+     */
     public static getInstance(): DefaultHttpHeaders {
         if (this._instance === null) {
             this._instance = new DefaultHttpHeaders();

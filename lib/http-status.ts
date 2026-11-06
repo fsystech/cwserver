@@ -48,12 +48,31 @@ const _group: Dict<GroupType> = {
     }
 };
 export class HttpStatus {
+    /**
+     * Exposes the table of HTTP status codes and their descriptions.
+     *
+     * @returns Map from status code number to description text.
+     */
     static get statusCode(): { [id: number]: string } { return HttpStatusCode; }
+    /**
+     * Returns the description text for an HTTP status code. Throws if the code is unknown.
+     *
+     * @param statusCode HTTP status code.
+     * @returns The description of the status code.
+     */
     static getDescription(statusCode: number): string {
         const desc: string | undefined = HttpStatusCode[statusCode];
         if (desc) return desc;
         throw new Error(`Invalid ==> ${statusCode}...`);
     }
+    /**
+     * Extracts a status code from a file name in a path, for example error page names like 404.html. Falls
+     * back to the given code when none can be derived.
+     *
+     * @param path File path whose base name (without extension) may be a status code.
+     * @param statusCode Fallback status code returned when the path has no numeric name.
+     * @returns The status code parsed from the file name, or the fallback.
+     */
     static fromPath(path: string | any, statusCode: any): number {
         const outStatusCode = statusCode;
         let index = path.lastIndexOf("/");
@@ -68,9 +87,23 @@ export class HttpStatus {
         if (statusCode === 0) return outStatusCode;
         return statusCode;
     }
+    /**
+     * Checks whether the code is a known HTTP status code.
+     *
+     * @param statusCode HTTP status code to check.
+     * @returns True if the code is known, otherwise false.
+     */
     static isValidCode(statusCode: number): boolean {
         return HttpStatusCode[statusCode] ? true : false;
     }
+    /**
+     * Builds a response info object for a status code taken from a number or a file path, flagging whether
+     * it is valid, an error code, or a 500 error, and adding a description for error codes.
+     *
+     * @param path Status code number, or a file path from which the code is derived.
+     * @param code Fallback status code used when the path yields none.
+     * @returns Response info with code, validity, error flags and description.
+     */
     static getResInfo(path: string | number, code: any): IResInfo {
         code = toNumber(code);
         const out: IResInfo = new ResInfo();
@@ -90,6 +123,12 @@ export class HttpStatus {
         }
         return out;
     }
+    /**
+     * Checks whether a file name is a numeric valid HTTP error status code such as 404.
+     *
+     * @param name File name (without extension) to test.
+     * @returns True if the name is a valid 4xx or 5xx status code, otherwise false.
+     */
     static isErrorFileName(name: string): boolean {
         if (/^\d*$/.test(name) === false) return false;
         const inf: GroupType | undefined = _group[name.charAt(0)];
@@ -97,6 +136,13 @@ export class HttpStatus {
         const statusCode: number = toNumber(name);
         return this.isValidCode(statusCode);
     }
+    /**
+     * Checks whether a status code belongs to an error class (client or server error). Throws if the
+     * code's class is not recognised.
+     *
+     * @param code HTTP status code to test.
+     * @returns True for error codes, otherwise false.
+     */
     static isErrorCode(code: any): boolean {
         const inf: GroupType | undefined = _group[String(code).charAt(0)];
         if (!inf)

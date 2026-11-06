@@ -1,12 +1,52 @@
 import type { IContext } from './context';
 import * as _zlib from 'node:zlib';
 import { IResponse } from './response';
+/**
+ * Throws an Error when the condition is falsy or an empty string.
+ *
+ * @param condition Value that must be truthy (empty strings count as false).
+ * @param expr Description included in the error message on failure.
+ */
 export declare function assert(condition: any, expr: string): void;
+/**
+ * Resolves the library root directory, one level up when running TypeScript sources (SCRIPT=TS) and
+ * two levels up otherwise.
+ *
+ * @returns Absolute path of the library root.
+ */
 export declare function getLibRoot(): string;
+/**
+ * Returns the application directory: a lib/cwserver folder under the working directory when running as
+ * a packaged (pkg) executable, otherwise the library root.
+ *
+ * @returns Absolute path of the application directory.
+ */
 export declare function getAppDir(): string;
+/**
+ * Generates a random string of ASCII letters using Math.random (not cryptographically secure).
+ *
+ * @param num Number of characters to generate.
+ * @returns The random string of length num.
+ */
 export declare function generateRandomString(num: number): string;
 declare class JSONW {
+    /**
+     * Parses a JSON string, returning undefined instead of throwing on invalid JSON. Non-string input is
+     * returned unchanged.
+     *
+     * @param text JSON text to parse, or an already parsed value.
+     * @param reviver Optional JSON.parse reviver function.
+     * @returns The parsed value, the input itself if it was not a string, or undefined if parsing failed.
+     */
     static parse(text: any, reviver?: (this: any, key: string, value: any) => any): any;
+    /**
+     * Serialises a value to JSON by delegating to JSON.stringify.
+     *
+     * @param value Value to serialise.
+     * @param replacer Optional function transforming values during serialisation.
+     * @param space Optional indentation (number of spaces or string).
+     * @returns The JSON string.
+     */
     static stringify(value: any, replacer?: (this: any, key: string, value: any) => any, space?: string | number): any;
 }
 export declare class Util {
@@ -51,7 +91,22 @@ export declare class Util {
      */
     static UUID(): string;
     static readonly JSON: typeof JSONW;
+    /**
+     * Copies properties from source into destination, either shallowly or recursively. Throws TypeError if
+     * either argument is not a plain object.
+     *
+     * @param destination Object to extend; it is modified in place.
+     * @param source Object whose properties are copied.
+     * @param deep When true, nested plain objects are merged recursively.
+     * @returns The extended destination object.
+     */
     static extend<T>(destination: T, source: any, deep?: boolean): T;
+    /**
+     * Creates a shallow copy of a plain object.
+     *
+     * @param source Plain object to copy; throws TypeError otherwise.
+     * @returns A new object with the properties of source.
+     */
     static clone<T>(source: T): T;
     /** Checks whether the specified value is an object. true if the value is an object; false otherwise. */
     static isPlainObject(obj?: any): obj is {
@@ -59,7 +114,18 @@ export declare class Util {
     };
     /** Checks whether the specified value is an array object. true if the value is an array object; false otherwise. */
     static isArrayLike<T>(obj?: any): obj is T[];
+    /**
+     * Checks whether a value is an Error object.
+     *
+     * @param obj Value to test.
+     * @returns True if obj is an Error instance; false for null or other values.
+     */
     static isError(obj: any): obj is Error;
+    /**
+     * Throws the given value if it is an Error object; otherwise does nothing.
+     *
+     * @param obj Value to inspect.
+     */
     static throwIfError(obj: any): void;
     /**
      * Gzip level for responses that are compressed on every request.
@@ -67,11 +133,56 @@ export declare class Util {
      * that is compressed once and cached.
      */
     static readonly GZIP_STREAM_LEVEL: number;
+    /**
+     * Creates a gzip compression stream, defaulting to best compression.
+     *
+     * @param level Optional zlib compression level; defaults to Z_BEST_COMPRESSION.
+     * @returns A new zlib Gzip stream.
+     */
     static createGzip(level?: number): _zlib.Gzip;
+    /**
+     * Sets a 200 status with gzip content encoding on the response, then streams the file through gzip
+     * into it. The read stream is destroyed when done.
+     *
+     * @param phypath Absolute path of the file to send.
+     * @param res Response to write the compressed data to.
+     * @returns Promise that resolves when the stream finishes and rejects on stream errors.
+     */
     static writeGzipStreamAsync(phypath: string, res: IResponse): Promise<void>;
+    /**
+     * Gzip-compresses a file or in-memory data and writes it to a cache file, cleaning up all streams
+     * afterwards.
+     *
+     * @param absPath Path of the file to compress, or the raw bytes to compress.
+     * @param cachePath Path of the gzip file to write.
+     * @returns Promise that resolves when the compressed file has been written.
+     */
     static compressAsync(absPath: string | Uint8Array, cachePath: string): Promise<void>;
+    /**
+     * Sets a 200 status and streams a file to the response. Stream errors are passed to ctx.transferError
+     * unless the context is disposed.
+     *
+     * @param absPath Absolute path of the file to stream.
+     * @param ctx Request context whose response receives the data.
+     * @returns Promise that resolves when streaming finishes or is skipped.
+     */
     static pipeOutputStreamAsync(absPath: string, ctx: IContext): Promise<void>;
+    /**
+     * Sends a file as the response, replying 404 if it does not exist. Sets the content type (default
+     * text/html; charset=UTF-8) and streams the file.
+     *
+     * @param ctx Request context to respond to.
+     * @param reqPath Path of the file to send.
+     * @param contentType Optional Content-Type header; defaults to text/html; charset=UTF-8.
+     * @returns Promise that resolves when the response has been written.
+     */
     static sendResponseAsync(ctx: IContext, reqPath: string, contentType?: string): Promise<void>;
+    /**
+     * Extracts the lower-cased file extension (text after the last dot) from a path.
+     *
+     * @param reqPath File path or name.
+     * @returns The extension without the dot, or undefined if there is none.
+     */
     static getExtension(reqPath: string): string | void;
 }
 export {};
