@@ -18,9 +18,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseCookie = parseCookie;
 exports.escapePath = escapePath;
@@ -30,7 +27,7 @@ exports.getClientIp = getClientIp;
 exports.injectPrototype = injectPrototype;
 // 4:03 PM 2/7/2026
 // by rajib chy
-const node_url_1 = __importDefault(require("node:url"));
+const node_url_1 = require("node:url");
 const app_static_1 = require("./app-static");
 /**
  * Parses an HTTP `Cookie` header into a dictionary of cookie names and values.
@@ -89,20 +86,80 @@ function escapePath(unsafe) {
         .trim();
 }
 /**
+ * Parse a URL using the WHATWG URL API.
+ *
+ * Supports relative URLs, absolute URLs and protocol-relative URLs.
+ * Avoids the deprecated Node.js url.parse() API.
+ *
+ * @param urlStr URL string to parse.
+ * @returns Parsed URL with query parameters.
+ */
+function parseUrl(urlStr) {
+    if (!urlStr) {
+        return Object.create({
+            pathname: null,
+            query: {}
+        });
+    }
+    try {
+        const isRelative = !/^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(urlStr);
+        const parsed = new node_url_1.URL(urlStr, "http://localhost");
+        const query = Object.create(null);
+        for (const [key, value] of parsed.searchParams) {
+            const existing = query[key];
+            if (existing) {
+                if (Array.isArray(existing)) {
+                    existing.push(value);
+                }
+                else {
+                    query[key] = [existing, value];
+                }
+            }
+            else {
+                query[key] = value;
+            }
+        }
+        const pathname = parsed.pathname;
+        const search = parsed.search || null;
+        return {
+            auth: parsed.username || parsed.password
+                ? `${parsed.username}:${parsed.password}`
+                : null,
+            hash: parsed.hash || null,
+            host: isRelative ? null : parsed.host || null,
+            hostname: isRelative ? null : parsed.hostname || null,
+            port: isRelative ? null : parsed.port || null,
+            href: isRelative ? urlStr : parsed.href,
+            path: pathname + (search || ""),
+            pathname,
+            protocol: isRelative ? null : parsed.protocol || null,
+            search,
+            slashes: /^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(urlStr),
+            query
+        };
+    }
+    catch (_a) {
+        return Object.create({
+            pathname: null,
+            query: {}
+        });
+    }
+}
+/**
  * Parses a URL string, including its query string into an object. Returns an object with a null
  * pathname and empty query when no URL is given.
  *
  * @param url URL or request URL to parse.
  * @returns The parsed URL object with query parsed.
  */
-function parseUrl(url) {
-    if (url) {
-        return node_url_1.default.parse(url, true);
-    }
-    return Object.create({
-        pathname: null, query: {}
-    });
-}
+// export function parseUrl(url?: string): UrlWithParsedQuery {
+//     if (url) {
+//         return urlHelpers.parse(url, true);
+//     }
+//     return Object.create({
+//         pathname: null, query: {}
+//     });
+// }
 /**
  * Normalizes an IP address.
  *

@@ -177,7 +177,7 @@ export declare class Request extends IncomingMessage implements IRequest {
      */
     get ip(): string;
     /**
-     * Gets a unique identifier for this request, generating a UUID on first access.
+     * Gets a unique identifier for this request, generating a guid on first access.
      *
      * @returns The request id.
      */

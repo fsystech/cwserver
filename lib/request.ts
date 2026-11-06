@@ -192,7 +192,9 @@ export class Request extends IncomingMessage implements IRequest {
      * @returns The parsed URL object with parsed query.
      */
     public get q(): UrlWithParsedQuery {
-        if (this._q !== undefined) return this._q;
+        if (this._q !== undefined)
+            return this._q;
+        
         this._q = parseUrl(this.url);
         return this._q;
     }
@@ -264,20 +266,22 @@ export class Request extends IncomingMessage implements IRequest {
      * @returns The client IP address string.
      */
     public get ip(): string {
-        if (this._ip !== undefined) return this._ip;
+        if (this._ip !== undefined)
+            return this._ip;
+
         this._ip = getClientIp(this);
         return this._ip;
     }
 
     /**
-     * Gets a unique identifier for this request, generating a UUID on first access.
+     * Gets a unique identifier for this request, generating a guid on first access.
      *
      * @returns The request id.
      */
     public get id(): string {
 
         if (!this._id) {
-            this._id = Util.UUID();
+            this._id = Util.guid();
         }
 
         return this._id;

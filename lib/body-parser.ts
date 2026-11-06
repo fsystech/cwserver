@@ -75,9 +75,6 @@ export interface IBodyParser extends IDispose {
     getFilesAsync(
         next: (file: IPostedFileInfo) => Promise<void>
     ): Promise<void>;
-
-    /** @deprecated since v4.1.2 - use `parseAsync` instead. */
-    parseSync(): Promise<void>;
 }
 
 const incomingContentType: {
@@ -478,15 +475,6 @@ class BodyParser implements IBodyParser {
     }
 
     /**
-     * Deprecated alias of parseAsync that reads the request body.
-     *
-     * @returns A Promise that resolves when the body has been read and rejects on error.
-     */
-    public parseSync(): Promise<void> {
-        return this.parseAsync();
-    }
-
-    /**
      * Completes reading when the body has ended and no parts are pending, reporting any parser error or
      * success to the callback.
      *
@@ -680,7 +668,7 @@ class BodyParser implements IBodyParser {
     }
 }
 
-BodyParser.prototype.parseSync = deprecate(BodyParser.prototype.parseSync, '`BodyParser.parseSync` is depreciated, please use `BodyParser.parseAsync` instead.', '4.1.2');
+BodyParser.prototype.parse = deprecate(BodyParser.prototype.parse, '`BodyParser.parse` is depreciated, please use `BodyParser.parseAsync` instead.', '4.1.2');
 
 /**
  * Creates a body parser for the given request.

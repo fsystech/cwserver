@@ -24,13 +24,22 @@ export declare function parseCookie(cook: undefined | string[] | string | {
  */
 export declare function escapePath(unsafe?: string | null): string;
 /**
+ * Parse a URL using the WHATWG URL API.
+ *
+ * Supports relative URLs, absolute URLs and protocol-relative URLs.
+ * Avoids the deprecated Node.js url.parse() API.
+ *
+ * @param urlStr URL string to parse.
+ * @returns Parsed URL with query parameters.
+ */
+export declare function parseUrl(urlStr?: string): UrlWithParsedQuery;
+/**
  * Parses a URL string, including its query string into an object. Returns an object with a null
  * pathname and empty query when no URL is given.
  *
  * @param url URL or request URL to parse.
  * @returns The parsed URL object with query parsed.
  */
-export declare function parseUrl(url?: string): UrlWithParsedQuery;
 /**
  * Normalizes an IP address.
  *

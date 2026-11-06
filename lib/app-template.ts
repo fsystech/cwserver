@@ -1078,7 +1078,6 @@ function executeTemplateScript(scriptContent: string, dataContext: Record<string
         // Execute the function, passing the actual values as arguments
         return dynamicFunc(...values);
     } catch (err: any) {
-        console.log(err);
         throw new Error(`Template execution error: ${err.message}`);
     }
 }

@@ -712,7 +712,7 @@ class CwServer {
      * @returns The new request context.
      */
     createContext(req, res, next) {
-        const context = context_1._ctxManager.getContext(this, req, res);
+        const context = context_1._ctxManager.create(this, req, res);
         context.path = req.path;
         context.root = context.path;
         context.next = next;

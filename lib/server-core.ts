@@ -36,6 +36,7 @@ import { Socket } from 'node:net';
 import { Request, type IRequest } from './request';
 import { Response, type IResponse } from './response';
 import { injectIncomingOutgoing } from './inject';
+import { _ctxManager } from './context';
 
 type onErrorFunc = (req: IRequest, res: IResponse, err?: Error | number) => void;
 export type NextFunction = (err?: any) => void;
@@ -159,9 +160,8 @@ export const {
 
 class Application extends EventEmitter implements IApplication {
     private _httpServer: Server;
-    private _connectionKey: number;
-    private _useRequestBegain: boolean;
-    private _connectionMap: Map<string, Socket>;
+    private _isDebug: boolean;
+    private _connections: Set<Socket>;
     private _routes: ILayerInfo<HandlerFunc>[];
     private _middlewares: ILayerInfo<HandlerFunc>[];
     private _prerequisites: ILayerInfo<HandlerFunc>[];
@@ -197,13 +197,13 @@ class Application extends EventEmitter implements IApplication {
     /**
      * Creates the application, its HTTP server and empty route, middleware and prerequisite lists.
      *
-     * @param useRequestBegain Whether to emit the request-begain event for each incoming request.
+     * @param isDebug Whether to emit the request-begain event for each incoming request.
      */
-    constructor(useRequestBegain: boolean = true) {
+    constructor(isDebug: boolean = true) {
         super();
         this._onNewRequest = this._onNewRequest.bind(this);
 
-        this._useRequestBegain = useRequestBegain;
+        this._isDebug = isDebug;
 
         this._httpServer = _createServer(this._onNewRequest);
 
@@ -212,8 +212,7 @@ class Application extends EventEmitter implements IApplication {
         this._prerequisites = [];
 
         this._isRunning = false;
-        this._connectionMap = new Map();
-        this._connectionKey = 0;
+        this._connections = new Set();
     }
 
     /**
@@ -273,16 +272,19 @@ class Application extends EventEmitter implements IApplication {
     }
 
     /**
-     * Destroys all active sockets tracked in `_connectionMap`.
+     * Destroys all active sockets tracked in `_connections`.
      * This prevents shutdown from hanging due to lingering open connections.
      */
     private _destroyActiveSocket(): void {
 
-        for (const socket of this._connectionMap.values()) {
+        if (this._connections.size === 0)
+            return;
+
+        for (const socket of this._connections.values()) {
             socket.destroy();
         }
 
-        this._connectionMap.clear();
+        this._connections.clear();
     }
 
     /**
@@ -559,11 +561,11 @@ class Application extends EventEmitter implements IApplication {
 
         // Track active connections for potential management or cleanup
         this._httpServer.on('connection', (socket: Socket) => {
-            const connectionKey: string = String(++this._connectionKey);
-            this._connectionMap.set(connectionKey, socket);
+
+            this._connections.add(socket);
 
             socket.once('close', () => {
-                this._connectionMap.delete(connectionKey);
+                this._connections.delete(socket);
             });
         });
 
@@ -599,10 +601,16 @@ class Application extends EventEmitter implements IApplication {
 
             response.once('close', (...args: any[]): void => {
                 response.isAlive = false;
-                this.emit('response-end', request, response);
+
+                if (!this._isDebug) {
+                    _ctxManager.removeContext(request.id)
+                } else {
+                    this.emit('response-end', request, response);
+                }
+
             });
 
-            if (this._useRequestBegain) {
+            if (this._isDebug) {
                 this.emit('request-begain', request);
             }
 
@@ -627,15 +635,15 @@ class Application extends EventEmitter implements IApplication {
  *    - 'response-end' when a response closes
  *    - 'error' on any handler error
  *
- * @param {boolean} [useRequestBegain=true] - Whether to emit 'request-begain' for incoming requests.
+ * @param {boolean} [isDebug=true] - Whether to emit 'request-begain' for incoming requests.
  * @returns {IApplication} The initialized Application instance.
  */
-export function App(useRequestBegain: boolean = true): IApplication {
+export function App(isDebug: boolean = true): IApplication {
 
     // Ensure Request/Response prototypes are injected
     injectIncomingOutgoing();
 
-    return new Application(useRequestBegain);
+    return new Application(isDebug);
 }
 
 /**

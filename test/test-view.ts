@@ -299,7 +299,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 	}).post('/upload-invalid-file', async (ctx: IContext, requestParam?: IRequestParam): Promise<void> => {
 		const parser: IBodyParser = getBodyParser(ctx.req);
 		try {
-			await parser.parseSync();
+			await parser.parseAsync();
 			ctx.res.status(200).json(parser.getUploadFileInfo());
 		} catch (e: any) {
 			parser.dispose();
@@ -802,7 +802,7 @@ registerView(async (app: IApplication, controller: IController, server: ICwServe
 
 			try {
 
-				await parser.parseSync();
+				await parser.parseAsync();
 
 				const data = parser.getJson();
 

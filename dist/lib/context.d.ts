@@ -429,6 +429,16 @@ declare class ContextManager {
      * @returns The existing or newly created context.
      */
     getContext(server: ICwServer, req: IRequest, res: IResponse): IContext;
+    /**
+     * Instantiates a new request context, registers it in the context map by request ID,
+     * and returns the newly created instance.
+     *
+     * @param server Owning server instance handling the request.
+     * @param req Incoming HTTP request.
+     * @param res Outgoing HTTP response.
+     * @returns The newly created request context.
+     */
+    create(server: ICwServer, req: IRequest, res: IResponse): Context;
 }
 export declare const _ctxManager: ContextManager;
 export {};

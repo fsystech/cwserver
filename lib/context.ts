@@ -630,6 +630,21 @@ class ContextManager {
 
         return ctx;
     }
+
+    /**
+     * Instantiates a new request context, registers it in the context map by request ID, 
+     * and returns the newly created instance.
+     *
+     * @param server Owning server instance handling the request.
+     * @param req Incoming HTTP request.
+     * @param res Outgoing HTTP response.
+     * @returns The newly created request context.
+     */
+    public create(server: ICwServer, req: IRequest, res: IResponse) {
+        const ctx = new Context(server, req, res);
+        this._contexts.set(req.id, ctx);
+        return ctx;
+    }
 }
 
 class ContextManagerStatic {
@@ -641,7 +656,7 @@ class ContextManagerStatic {
      * @returns The shared ContextManager.
      */
     public static getInstance(): ContextManager {
-        
+
         if (this._instance === null) {
             this._instance = new ContextManager();
         }

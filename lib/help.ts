@@ -21,7 +21,7 @@
 // 4:03 PM 2/7/2026
 // by rajib chy
 
-import urlHelpers, { UrlWithParsedQuery } from 'node:url';
+import { URL, UrlWithParsedQuery } from 'node:url';
 import { toString } from './app-static';
 import type { IRequest } from './request';
 
@@ -89,20 +89,97 @@ export function escapePath(unsafe?: string | null): string {
 }
 
 /**
+ * Parse a URL using the WHATWG URL API.
+ *
+ * Supports relative URLs, absolute URLs and protocol-relative URLs.
+ * Avoids the deprecated Node.js url.parse() API.
+ *
+ * @param urlStr URL string to parse.
+ * @returns Parsed URL with query parameters.
+ */
+export function parseUrl(urlStr?: string): UrlWithParsedQuery {
+
+    if (!urlStr) {
+        return Object.create({
+            pathname: null,
+            query: {}
+        });
+    }
+
+    try {
+
+        const isRelative = !/^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(urlStr);
+
+        const parsed = new URL(urlStr, "http://localhost");
+
+        const query: UrlWithParsedQuery["query"] = Object.create(null);
+
+        for (const [key, value] of parsed.searchParams) {
+
+            const existing = query[key];
+
+            if (existing) {
+                if (Array.isArray(existing)) {
+                    existing.push(value);
+                } else {
+                    query[key] = [existing as string, value];
+                }
+            } else {
+                query[key] = value;
+            }
+
+        }
+
+        const pathname = parsed.pathname;
+        const search = parsed.search || null;
+
+        return {
+            auth: parsed.username || parsed.password
+                ? `${parsed.username}:${parsed.password}`
+                : null,
+
+            hash: parsed.hash || null,
+
+            host: isRelative ? null : parsed.host || null,
+            hostname: isRelative ? null : parsed.hostname || null,
+            port: isRelative ? null : parsed.port || null,
+
+            href: isRelative ? urlStr : parsed.href,
+
+            path: pathname + (search || ""),
+            pathname,
+
+            protocol: isRelative ? null : parsed.protocol || null,
+
+            search,
+            slashes: /^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(urlStr),
+
+            query
+        };
+
+    } catch {
+        return Object.create({
+            pathname: null,
+            query: {}
+        });
+    }
+}
+
+/**
  * Parses a URL string, including its query string into an object. Returns an object with a null
  * pathname and empty query when no URL is given.
  *
  * @param url URL or request URL to parse.
  * @returns The parsed URL object with query parsed.
  */
-export function parseUrl(url?: string): UrlWithParsedQuery {
-    if (url) {
-        return urlHelpers.parse(url, true);
-    }
-    return Object.create({
-        pathname: null, query: {}
-    });
-}
+// export function parseUrl(url?: string): UrlWithParsedQuery {
+//     if (url) {
+//         return urlHelpers.parse(url, true);
+//     }
+//     return Object.create({
+//         pathname: null, query: {}
+//     });
+// }
 
 /**
  * Normalizes an IP address.

@@ -148,13 +148,13 @@ class Request extends node_http_1.IncomingMessage {
         return this._ip;
     }
     /**
-     * Gets a unique identifier for this request, generating a UUID on first access.
+     * Gets a unique identifier for this request, generating a guid on first access.
      *
      * @returns The request id.
      */
     get id() {
         if (!this._id) {
-            this._id = app_util_1.Util.UUID();
+            this._id = app_util_1.Util.guid();
         }
         return this._id;
     }

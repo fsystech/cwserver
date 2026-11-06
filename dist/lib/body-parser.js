@@ -392,14 +392,6 @@ class BodyParser {
         this.parseAsync().then(() => onReadEnd(), (err) => onReadEnd(err));
     }
     /**
-     * Deprecated alias of parseAsync that reads the request body.
-     *
-     * @returns A Promise that resolves when the body has been read and rejects on error.
-     */
-    parseSync() {
-        return this.parseAsync();
-    }
-    /**
      * Completes reading when the body has ended and no parts are pending, reporting any parser error or
      * success to the callback.
      *
@@ -539,7 +531,7 @@ class BodyParser {
         this._contentLength = null;
     }
 }
-BodyParser.prototype.parseSync = (0, node_util_1.deprecate)(BodyParser.prototype.parseSync, '`BodyParser.parseSync` is depreciated, please use `BodyParser.parseAsync` instead.', '4.1.2');
+BodyParser.prototype.parse = (0, node_util_1.deprecate)(BodyParser.prototype.parse, '`BodyParser.parse` is depreciated, please use `BodyParser.parseAsync` instead.', '4.1.2');
 /**
  * Creates a body parser for the given request.
  *

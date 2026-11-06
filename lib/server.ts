@@ -1278,7 +1278,7 @@ export class CwServer implements ICwServer {
         next: NextFunction
     ): IContext {
 
-        const context = _ctxManager.getContext(
+        const context = _ctxManager.create(
             this, req, res
         );
 

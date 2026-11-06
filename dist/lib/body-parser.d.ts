@@ -38,8 +38,6 @@ export interface IBodyParser extends IDispose {
     parse(onReadEnd: (err?: Error) => void): void;
     parseAsync(): Promise<void>;
     getFilesAsync(next: (file: IPostedFileInfo) => Promise<void>): Promise<void>;
-    /** @deprecated since v4.1.2 - use `parseAsync` instead. */
-    parseSync(): Promise<void>;
 }
 /**
  * Parses a URL-encoded request body buffer into a flat key/value object, decoding keys and values.

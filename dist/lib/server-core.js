@@ -65,6 +65,7 @@ const app_router_1 = require("./app-router");
 const app_util_1 = require("./app-util");
 const fs_1 = require("fs");
 const inject_1 = require("./inject");
+const context_1 = require("./context");
 _a = (() => {
     let _appVersion = '4.1.1';
     /**
@@ -128,19 +129,18 @@ class Application extends node_events_1.EventEmitter {
     /**
      * Creates the application, its HTTP server and empty route, middleware and prerequisite lists.
      *
-     * @param useRequestBegain Whether to emit the request-begain event for each incoming request.
+     * @param isDebug Whether to emit the request-begain event for each incoming request.
      */
-    constructor(useRequestBegain = true) {
+    constructor(isDebug = true) {
         super();
         this._onNewRequest = this._onNewRequest.bind(this);
-        this._useRequestBegain = useRequestBegain;
+        this._isDebug = isDebug;
         this._httpServer = _createServer(this._onNewRequest);
         this._routes = [];
         this._middlewares = [];
         this._prerequisites = [];
         this._isRunning = false;
-        this._connectionMap = new Map();
-        this._connectionKey = 0;
+        this._connections = new Set();
     }
     /**
      * Removes all registered routes, middlewares and prerequisite handlers.
@@ -188,14 +188,16 @@ class Application extends node_events_1.EventEmitter {
         });
     }
     /**
-     * Destroys all active sockets tracked in `_connectionMap`.
+     * Destroys all active sockets tracked in `_connections`.
      * This prevents shutdown from hanging due to lingering open connections.
      */
     _destroyActiveSocket() {
-        for (const socket of this._connectionMap.values()) {
+        if (this._connections.size === 0)
+            return;
+        for (const socket of this._connections.values()) {
             socket.destroy();
         }
-        this._connectionMap.clear();
+        this._connections.clear();
     }
     /**
      * Emits the shutdown event and gracefully shuts down the server, reporting the outcome through the
@@ -431,10 +433,9 @@ class Application extends node_events_1.EventEmitter {
         });
         // Track active connections for potential management or cleanup
         this._httpServer.on('connection', (socket) => {
-            const connectionKey = String(++this._connectionKey);
-            this._connectionMap.set(connectionKey, socket);
+            this._connections.add(socket);
             socket.once('close', () => {
-                this._connectionMap.delete(connectionKey);
+                this._connections.delete(socket);
             });
         });
         return this;
@@ -464,9 +465,14 @@ class Application extends node_events_1.EventEmitter {
             }
             response.once('close', (...args) => {
                 response.isAlive = false;
-                this.emit('response-end', request, response);
+                if (!this._isDebug) {
+                    context_1._ctxManager.removeContext(request.id);
+                }
+                else {
+                    this.emit('response-end', request, response);
+                }
             });
-            if (this._useRequestBegain) {
+            if (this._isDebug) {
                 this.emit('request-begain', request);
             }
             this._handleNewRequest(request, response);
@@ -489,13 +495,13 @@ class Application extends node_events_1.EventEmitter {
  *    - 'response-end' when a response closes
  *    - 'error' on any handler error
  *
- * @param {boolean} [useRequestBegain=true] - Whether to emit 'request-begain' for incoming requests.
+ * @param {boolean} [isDebug=true] - Whether to emit 'request-begain' for incoming requests.
  * @returns {IApplication} The initialized Application instance.
  */
-function App(useRequestBegain = true) {
+function App(isDebug = true) {
     // Ensure Request/Response prototypes are injected
     (0, inject_1.injectIncomingOutgoing)();
-    return new Application(useRequestBegain);
+    return new Application(isDebug);
 }
 /**
  * Creates a Node.js HTTP server with the provided request handler.

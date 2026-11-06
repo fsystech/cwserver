@@ -939,7 +939,6 @@ function executeTemplateScript(scriptContent, dataContext) {
         return dynamicFunc(...values);
     }
     catch (err) {
-        console.log(err);
         throw new Error(`Template execution error: ${err.message}`);
     }
 }

@@ -21,7 +21,8 @@
     "check-update": "npx npm-check-updates -u; npm install",
     "lint": "tslint --config tslint.json --project tsconfig.json",
     "test:cov": "nyc --reporter=text --reporter=html mocha --require ts-node/register test/env.ts --check-leaks --recursive \"test/*.spec.ts\"",
-    "test:mocha": "mocha --require ts-node/register test/env.ts --check-leaks --recursive \"test/*.spec.ts\""
+    "test:mocha": "mocha --require ts-node/register test/env.ts --check-leaks --recursive \"test/*.spec.ts\"",
+    "test:mochat": "mocha --trace-deprecation --require ts-node/register test/env.ts --check-leaks --recursive \"test/*.spec.ts\""
   },
   "keywords": [
     "cwserver",

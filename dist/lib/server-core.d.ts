@@ -88,8 +88,8 @@ export declare const appVersion: string, readAppVersion: () => string;
  *    - 'response-end' when a response closes
  *    - 'error' on any handler error
  *
- * @param {boolean} [useRequestBegain=true] - Whether to emit 'request-begain' for incoming requests.
+ * @param {boolean} [isDebug=true] - Whether to emit 'request-begain' for incoming requests.
  * @returns {IApplication} The initialized Application instance.
  */
-export declare function App(useRequestBegain?: boolean): IApplication;
+export declare function App(isDebug?: boolean): IApplication;
 export {};
