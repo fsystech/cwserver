@@ -21,7 +21,6 @@
 // 9:01 PM 5/2/2020
 // by rajib chy
 import * as _fs from 'node:fs';
-import * as _vm from 'node:vm';
 import * as _zlib from 'node:zlib';
 import * as _path from 'node:path';
 import { promisify } from 'node:util';
@@ -1059,32 +1058,27 @@ function getSafeTemplatePath(appRoot: string, requestedPath: string): string {
 }
 
 /**
- * Executes embedded template script content safely within a restricted Node.js VM context.
+ * Compiles and executes a template script string safely using a dynamic Function constructor.
  * 
  * @param scriptContent - The JavaScript string or code content to execute.
- * @param dataContext - An object containing variables to expose safely within the sandbox context.
+ * @param dataContext - An object containing variables to expose securely within the execution scope.
  * @returns The result returned by the executed script.
- * @throws {Error} If execution fails, times out, or throws an unhandled exception.
+ * @throws {Error} If execution fails or throws an unhandled exception.
  */
 function executeTemplateScript(scriptContent: string, dataContext: Record<string, any>) {
-    // Create a restricted, frozen sandbox context
-    const sandbox = Object.create(null);
-
-    // Expose only safe data variables
-    for (const key of Object.keys(dataContext)) {
-        sandbox[key] = dataContext[key];
-    }
-
-    // Freeze sandbox properties to prevent prototype escape attempts
-    const context = _vm.createContext(sandbox);
-
-    // Execute with timeout and strict options
     try {
-        return _vm.runInContext(scriptContent, context, {
-            timeout: 1000, // 1 second execution limit
-            displayErrors: false
-        });
+        // Extract parameter names and values from the dataContext object
+        const keys = Object.keys(dataContext);
+        const values = keys.map(key => dataContext[key]);
+
+        // Create a dynamic function with the keys as parameter arguments
+        // e.g., new Function('vimCtx', 'Buffer', 'cw', 'scriptContent...')
+        const dynamicFunc = new Function(...keys, scriptContent);
+
+        // Execute the function, passing the actual values as arguments
+        return dynamicFunc(...values);
     } catch (err: any) {
+        console.log(err);
         throw new Error(`Template execution error: ${err.message}`);
     }
 }
